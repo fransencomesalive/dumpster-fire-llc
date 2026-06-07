@@ -5,17 +5,17 @@ import styles from './MettleBackground.module.css'
 
 type MeshDef = { hex: string; rMin: number; rMax: number; a0: string }
 
-// Original MTTL Grain Background — node hex colors kept dark so background stays readable
+// Original MTTL Grain Background — dumpster-fire palette (greens + mustard from dumpster-fire CSS)
 // Parameters (velocity, grain density, blur, alpha stops, bounce) are locked per preset
 const MESH_DEFS: MeshDef[] = [
-  { hex: '#0d4a1c', rMin: 0.55, rMax: 0.75, a0: 'dd' },
-  { hex: '#062810', rMin: 0.20, rMax: 0.30, a0: '66' },
-  { hex: '#0a3c17', rMin: 0.38, rMax: 0.52, a0: '99' },
-  { hex: '#5c420d', rMin: 0.50, rMax: 0.68, a0: 'cc' },
-  { hex: '#6b4e0f', rMin: 0.52, rMax: 0.70, a0: 'cc' },
-  { hex: '#3d2208', rMin: 0.18, rMax: 0.28, a0: '55' },
-  { hex: '#7a5c12', rMin: 0.48, rMax: 0.65, a0: 'cc' },
-  { hex: '#031206', rMin: 0.15, rMax: 0.25, a0: '44' },
+  { hex: '#1e8c41', rMin: 0.55, rMax: 0.75, a0: 'dd' },
+  { hex: '#0c4b20', rMin: 0.20, rMax: 0.30, a0: '66' },
+  { hex: '#158929', rMin: 0.38, rMax: 0.52, a0: '99' },
+  { hex: '#c9981f', rMin: 0.50, rMax: 0.68, a0: 'cc' },
+  { hex: '#d4a828', rMin: 0.52, rMax: 0.70, a0: 'cc' },
+  { hex: '#7c4a10', rMin: 0.18, rMax: 0.28, a0: '55' },
+  { hex: '#e5b535', rMin: 0.48, rMax: 0.65, a0: 'cc' },
+  { hex: '#03240a', rMin: 0.15, rMax: 0.25, a0: '44' },
 ]
 
 type MeshNode = {

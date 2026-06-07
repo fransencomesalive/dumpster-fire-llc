@@ -53,9 +53,8 @@ export default function LandingPage() {
 
         <p className={styles.body}>
           We&rsquo;re building a tool to help you apply more efficiently
-          and with your own words.{' '}
-          <span className={styles.emphasis}>Not automated, just a little better.</span>{' '}
-          Your job command center.
+          and with your own words.
+          Not automated, just a little better. Your job command center.
         </p>
 
         <div className={styles.cta}>
