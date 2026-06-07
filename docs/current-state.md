@@ -4,13 +4,13 @@
 Coming soon / waitlist landing page for `thejobmarketisadumpsterfire.com`. Temporary placeholder while the public version of the dumpster-fire job intelligence tool is built.
 
 ## Status
-Landing page is built and committed. Not yet deployed.
+LIVE at https://dumpster-fire-llc.vercel.app. Custom domain `thejobmarketisadumpsterfire.com` added to Vercel but DNS not yet configured in GoDaddy.
 
 ## Stack
 - Next.js 16 App Router, TypeScript, CSS Modules
 - Gotham font (local OTF files in `app/fonts/`)
 - Original MTTL Grain Background (canvas animation from Wrenching 101 pattern)
-- Vercel Blob for waitlist email storage
+- Vercel Blob for waitlist email storage (store: `dumpster-fire-blob`, public access)
 
 ## What was built
 - `app/LandingPage.tsx` — client component with mascot, headline, body copy, email form, success/error states
@@ -25,14 +25,13 @@ Node hex colors are the green values from the Lab26 dumpster-fire experiment's m
 `#1e8c41`, `#0c4b20`, `#158929`, `#0a3716`, `#0e461c`, `#083012`, `#1e8c41`, `#03240a`
 Base fill: `#070f0a`. No mustard/amber in background nodes — mustard is UI accent only.
 
-## To deploy
-1. Create GitHub repo and push: `git remote add origin <url> && git push -u origin main`
-2. Import to Vercel
-3. Link a Vercel Blob store (adds `BLOB_READ_WRITE_TOKEN` automatically)
-4. Add `thejobmarketisadumpsterfire.com` as custom domain
-5. To read signups: `GET /api/waitlist`
+## Deployment
+- GitHub: https://github.com/fransencomesalive/dumpster-fire-llc (auto-deploys on push to main)
+- Vercel project: `fransencomesalive-4748s-projects/dumpster-fire-llc`
+- Blob store: `dumpster-fire-blob` (store_79tDmAWSGDXoDWSM), public access, linked via `BLOB_READ_WRITE_TOKEN`
+- To read signups: `GET /api/waitlist`
 
 ## Outstanding
-- No GitHub remote yet — needs to be created before Vercel deployment
+- GoDaddy DNS not yet configured for `thejobmarketisadumpsterfire.com` — domain added to Vercel, waiting on DNS
 - No OG image — should be added before domain goes live
 - Public version of the product (port from Lab26 dumpster-fire experiment) is the next major work
