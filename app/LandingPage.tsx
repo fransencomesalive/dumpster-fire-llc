@@ -59,7 +59,7 @@ export default function LandingPage() {
 
         <div className={styles.cta}>
           <p className={styles.ctaLabel}>
-            Interested? Hit us up. This list will be for beta testers.
+            Interested? Hit us up. This list will be for beta&nbsp;testers.
           </p>
 
           {state === 'done' ? (
