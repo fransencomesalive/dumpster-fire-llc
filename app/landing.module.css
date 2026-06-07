@@ -58,20 +58,20 @@
   line-height: 1.1;
   text-transform: uppercase;
   color: var(--warm-off-white);
-  margin-bottom: 28px;
+  margin-bottom: 32px;
 }
 
 /* ----------------------------------------
-   Body copy
+   Body copy — WCAG AA: ~11:1 on dark bg
 ---------------------------------------- */
 
 .body {
-  font-size: 17px;
+  font-size: 18px;
   font-weight: 300;
   line-height: 1.65;
-  color: rgba(244, 241, 234, 0.78);
-  margin-bottom: 40px;
-  max-width: 480px;
+  color: rgba(244, 241, 234, 0.90);
+  margin-bottom: 48px;
+  max-width: 520px;
 }
 
 .emphasis {
@@ -85,7 +85,7 @@
 
 .cta {
   width: 100%;
-  margin-bottom: 40px;
+  margin-bottom: 48px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -93,9 +93,9 @@
 }
 
 .ctaLabel {
-  font-size: 15px;
+  font-size: 17px;
   font-weight: 300;
-  color: rgba(244, 241, 234, 0.65);
+  color: rgba(244, 241, 234, 0.88);
   letter-spacing: 0.01em;
 }
 
@@ -111,23 +111,23 @@
 .input {
   width: 100%;
   background: rgba(244, 241, 234, 0.07);
-  border: 1px solid rgba(244, 241, 234, 0.2);
+  border: 1px solid rgba(244, 241, 234, 0.25);
   border-radius: 6px;
   color: var(--warm-off-white);
   font-family: var(--font);
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 300;
-  padding: 13px 16px;
+  padding: 14px 16px;
   outline: none;
   transition: border-color 0.15s;
 }
 
 .input::placeholder {
-  color: rgba(244, 241, 234, 0.35);
+  color: rgba(244, 241, 234, 0.45);
 }
 
 .input:focus {
-  border-color: rgba(201, 152, 31, 0.6);
+  border-color: rgba(201, 152, 31, 0.7);
 }
 
 .button {
@@ -137,11 +137,11 @@
   border-radius: 6px;
   color: #070f0a;
   font-family: var(--font);
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  padding: 13px 24px;
+  padding: 15px 24px;
   cursor: pointer;
   transition: background 0.15s;
 }
@@ -156,27 +156,36 @@
 }
 
 .success {
-  font-size: 16px;
+  font-size: 17px;
   font-weight: 500;
   color: var(--mustard-light);
   letter-spacing: 0.02em;
 }
 
 .errorMsg {
-  font-size: 13px;
+  font-size: 14px;
   color: rgba(244, 100, 80, 0.9);
 }
 
 /* ----------------------------------------
-   Pitch line
+   Feature statement — NOT a footer
+   This is the product's core value prop.
+   Separated visually but readable weight.
 ---------------------------------------- */
 
+.pitchDivider {
+  width: 40px;
+  height: 1px;
+  background: rgba(244, 241, 234, 0.2);
+  margin-bottom: 32px;
+}
+
 .pitch {
-  font-size: 14px;
+  font-size: 17px;
   font-weight: 300;
   line-height: 1.7;
-  color: rgba(244, 241, 234, 0.45);
-  max-width: 420px;
+  color: rgba(244, 241, 234, 0.88);
+  max-width: 500px;
 }
 
 /* ----------------------------------------
@@ -190,19 +199,23 @@
   }
 
   .mascotWrap {
-    margin-bottom: 32px;
+    margin-bottom: 28px;
   }
 
   .main {
-    padding: 60px 0 60px;
+    padding: 56px 0 64px;
   }
 
   .body {
-    font-size: 16px;
-    margin-bottom: 44px;
+    font-size: 17px;
+    margin-bottom: 40px;
   }
 
   .cta {
-    margin-bottom: 44px;
+    margin-bottom: 40px;
+  }
+
+  .pitch {
+    font-size: 16px;
   }
 }

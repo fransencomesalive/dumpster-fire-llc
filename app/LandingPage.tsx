@@ -90,6 +90,7 @@ export default function LandingPage() {
           )}
         </div>
 
+        <div className={styles.pitchDivider} aria-hidden="true" />
         <p className={styles.pitch}>
           Use your resume, your skills, and your voice to find the right hiring manager,
           reach out with your words and personality, and apply directly.
