@@ -1,0 +1,16 @@
+.bgCanvas,
+.grainCanvas {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  display: block;
+  pointer-events: none;
+}
+
+.bgCanvas {
+  filter: blur(90px);
+}
+
+.grainCanvas {
+  mix-blend-mode: screen;
+}
