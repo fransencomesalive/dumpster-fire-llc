@@ -1,16 +1,137 @@
 # Current State
 
+## ▶ NEXT SESSION — RESUME HERE (handoff 2026-06-24)
+
+**What this session did:** mid-century design-system reskin of `/scans`, in `design-system/` (repo root, never ships), all synced to the Claude Design project **"Dumpster Fire Design System" (`3af2f1ea-428c-49b3-8b02-c066ec0c7452`)** via the DesignSync tool. Screenshot loop: `node /tmp/ds-shot-*.mjs` (playwright-core from Lab26 + installed Chrome). Full locked conventions live in Claude auto-memory `project_dumpster_fire_design_system.md` — read it first.
+
+**Built + synced this session:** modal shell (`modal.html`), Apply Wizard (`apply-wizard.html` — Pursuit/Human Path phrasing, 4 discrete steps), match-card CTA → "Pursue", and the **hero** (two options).
+
+**Hero is the open thread.** Two options in `design-system/components/`, both synced:
+- `hero-matchbook.html` — cream stock + printed cover frame, Original Surfer hand-painted wordmark in a teal+tomato off-registration overprint (slip 4/4.5px), tight centered title+mascot pair.
+- `hero-atomic.html` — Tanager Red field with a regular tiled **mod lattice** (atomic-star + dot `<pattern>`), Shrikhand wordmark (cream + teal slip), tight centered title+mascot pair.
+- Both: title-case lead, tagline banner ("Stop applying. Start pursuing."), pursuit copy (NO em dash), die-cut mascot, no red+yellow. Roadside concept was trashed per Randall.
+
+**OPEN QUESTION asked, awaiting Randall's answer (resume here):**
+1. On `hero-atomic`, is an **all-over mod pattern** right, or should the mid-century texture be **concentrated** (band/corner block) so type sits on cleaner field?
+2. Are we close enough to **lock one of the two** (Matchbook vs Atomic) and move on?
+
+Hard-won rules from this session (do NOT repeat the mistakes): build literally from the saved refs (El Rancho matchbook, Mr. Product) — no invented web-hero defaults; **title block + mascot = one centered flex pair** (never a `1fr/auto` grid that voids the middle); **atomic = a regular tiled pattern, never scattered icons**; **Ventura font rejected ($30)** — using free SIL OFL faces (Original Surfer / Shrikhand / Pacifico active; Lobster/Kaushan/Rye/Fontdiner downloaded as candidates), licenses bundled in `design-system/fonts/`.
+
+**After the hero is locked:** compose the **full scan-page mock** (hero + section header + rating filter tabs + match-card stack + Overview/Config sidebar incl. `.scanNowBtn`), then port finalized tokens + component CSS into live `app/scans/scans.module.css` and verify the gated page. Secondary surfaces still undesigned: scan-progress modal, activity/scan-history list.
+
+**NOT committed (intentional):** the large pre-existing public-product migration in the working tree (`app/scans/`, `app/onboarding/`, `app/api/public-profile/`, `lib/`, `scripts/`, `supabase/`, many docs) is Randall's separate in-progress build — left untouched. This handoff commit is scoped to `design-system/` + this file only. `Design System Resources/` (reference images + licensed font specimens) is intentionally left untracked.
+
+---
+
+## 2026-06-24 (cont.) - Design system: hero options revised (atomic + matchbook only)
+
+Feedback round: roadside was off-theme (deleted entirely, local + Claude Design + manifest); the atomic elements weren't reading; layouts had dead space / vertical drift; matchbook offset too strong. Fixes:
+- **Layout (both):** proper two-column grid (`minmax(0,1fr) auto`, `align-items:center`) — title block left, mascot right, vertically centered. No dead right-space, no downward drift, mascot no longer absolute.
+- **Atomic (`hero-atomic.html`):** rebuilt with real, prominent mid-century motifs — **sputnik starburst, atom diagram, molecule, boomerang, diamonds** — composed across the red field as a deliberate backdrop (cream + teal), behind the lockup. Now reads as hero + atomic.
+- **Matchbook (`hero-matchbook.html`):** off-registration slip dialed back 35% (6/7px → 4/4.5px); a few restrained atomic accents (sputnik/boomerang/diamond) added.
+- Two options remain: Matchbook (A) + Atomic (B). Verified 1280 + 390. Synced.
+
+Follow-up round (layout + atomic still off): replaced the `1fr/auto` grid (which left a dead middle void and pushed the mascot to the far edge) with a **centered flex pair** — title block + mascot together, vertically aligned, controlled gap. Replaced the **scattered atomic icons** (read as random clip-art) with a **regular tiled mod lattice** (atomic-star + dot `<pattern>`) for cohesive mid-century texture on the red field; matchbook has no scattered icons (clean cover). Re-synced.
+
+## 2026-06-24 (cont.) - Design system: 3 finished hero options (build-them-all)
+
+Per Randall ("build them all"), developed each concept into a complete, polished masthead (with the section-header context below) as three standalone components in a new "Hero options" group; retired the old Bemio `hero.html` and the rough `hero-concepts.html` (deleted locally + from Claude Design) to keep the list clean. Synced.
+- `components/hero-matchbook.html` (**A**) — cream + printed frame, Original Surfer wordmark, teal+tomato off-registration overprint, sparse atomic accents (atom-star/boomerang/diamond), die-cut mascot.
+- `components/hero-atomic.html` (**B**) — Tanager Red field, Shrikhand wordmark (cream + teal slip + ink keyline), atomic spread (atom orbit, spiky stars, boomerang) + faint cream diamond wallpaper, mascot.
+- `components/hero-roadside.html` (**C**) — travel-poster landscape (sunset sky, setting sun at the road's vanishing point + rays, layered teal/green hills, pines, telephone poles, dashed road), Pacifico script wordmark in the sky (copy contrast fixed by keeping all text in the sky band), mascot standee on the hills.
+- All: title-case lead, tagline banner, pursuit copy (no em dash), no red+yellow, verified 1280 + 390. AWAITING Randall's pick of which to lock as the canonical hero for the full page mock (fonts/field colors still swappable). Fonts synced+licensed: Original Surfer, Shrikhand, Pacifico (Rye/Fontdiner/Lobster/Kaushan downloaded, unused).
+
+## 2026-06-24 (cont.) - Design system: 3 hero concepts to choose from
+
+v3 (Bemio overprint) got closer but the title font was too system-display; Randall asked for script/hand-painted type, atomic-era elements, and a possible landscape, built as a separate component. Pulled more free OFL faces (Original Surfer, Shrikhand, Rye, Fontdiner Swanky; Pacifico/Kaushan/Lobster already present) with licenses bundled. Built `design-system/components/hero-concepts.html` (synced; new card):
+- **A · Matchbook** — cream + printed frame, wordmark in **Original Surfer** with teal+tomato off-registration overprint, sparse atomic accents (atom-star, boomerang), die-cut mascot.
+- **B · Atomic Lounge** — bold **Tanager Red field**, wordmark in **Shrikhand** (cream + teal slip), atomic spread (atom orbit, spiky star, boomerang), mascot.
+- **C · Roadside** — travel-poster **landscape** (sunset sky, horizon sun+rays, layered hills, pines, road) in flat two-ink, wordmark in **Pacifico** script, mascot standee.
+- All: title-case lead, tagline banner, pursuit copy (no em dash), no red+yellow. Verified 1280 + 390.
+- AWAITING Randall's pick of concept (+ font). Known refinement if C: description ink overlaps the dark near-hill (contrast) — move/relighten on selection. Only Original Surfer + Shrikhand fonts synced (used); Rye/Fontdiner downloaded but unused.
+
+## 2026-06-24 (cont.) - Design system: hero v3 (matchbook two-ink overprint)
+
+v2 was rejected: ugly script font (Lobster), starburst + tiled-halftone background not in any reference, em dash in copy, tagline buried in a paragraph, lazy headline-left/mascot-right layout. v3 rebuilds straight from the El Rancho matchbook:
+- **Cream stock** (paper-deep) + soft-light grain, inside a **matchbook cover frame** (heavy ink rule + inner hairline keyline). Dropped the bold blue field because a true overlaid-ink off-registration only reads on cream (the matchbook approach). Field-color is revisitable.
+- Wordmark **"Dumpster Fire" as a two-ink off-registration overprint**: a teal plate + a tomato plate slipped down-right, multiplied so the overlap prints a dark third tone and each ink shows on one edge. Set in Bemio (the script font is dropped; Lobster/Pacifico/Kaushan files remain in fonts/ but are unused).
+- Removed the starburst and the tiled-halftone wallpaper entirely.
+- Lead is **title case** ("The Job Market Is A"). Tagline **"Stop applying. Start pursuing."** pulled out into its own tomato banner (ink border + hard offset), not body copy.
+- Copy rephrased per Randall, **no em dash**: "…the person who actually does the hiring by leveraging your own voice and experience to make contact."
+- Mascot = die-cut standee (cream sticker edge + ink offset). Verified 1280 + 390. Synced.
+- Palette safe: teal+tomato+cream+ink, no red+yellow pairing.
+
+## 2026-06-24 (cont.) - Design system: hero v2 (pushed texture + pursuit copy)
+
+Feedback on v1: too flat, not enough of the screenprint style, badge unneeded, copy was a stale artifact. v2:
+- Removed the "Private beta" pill.
+- Pushed the printed-ephemera treatment: atomic **sunburst rays** behind the mascot, **ben-day halftone** across the field (masked to fade center), soft-light grain, a real **screenprint misregister** on the wordmark (mustard fill + ink keyline + cream offset plate), and the mascot as a **die-cut standee** (cream sticker edge + sunburst/halftone seal disc + hard ink offset).
+- Rewrote the subhead from the product's own positioning (`public-product-build-epics.md`: "Stop applying. Start pursuing." / "stop disappearing into application portals"): portals/ATS are where candidates disappear; the fix is a direct line to the person who hires, in your own voice, with experience + proof. Tagline "Stop applying. Start pursuing." set in mustard.
+- Verified 1280 + 390 (mobile: mascot leads, no overflow). Synced.
+
+## 2026-06-24 (cont.) - Design system: hero redesign (vintage logo lockup)
+
+First hero pass was just the original page's text + mascot. Redesigned per Randall's reference review (Mr. Product mascot logos, El Rancho matchbook, Danny Donut, Ventura script, paint deck). Chosen direction: **vintage product-logo lockup on a bold flat color field**, mascot as brand character, **Ventura script accent**, full sentence kept.
+
+`design-system/components/hero.html` now: Egyptian Blue (`--c-bluebird`) full-bleed field (grain soft-light), a cream/ink **label badge**, wordmark = "The job market is a" (Bemio cream) + **"Dumpster Fire" in script** (mustard, ink print-outline + screenprint slip), the dumpsterfireguy mascot popping off the blue, cream description, heavy ink rule into the cream section header. Mirrors `.page/.hero/.heroInner/.heroTitleRow/.heroMascot`; drops the dark `.meshBg`. No Scan CTA (the real hero has none — `.scanNowBtn` is in the sidebar). Verified 1280 + 390 (mobile stacks, no overflow). Synced to Claude Design (`3af2f1ea`).
+
+**OPEN / needs Randall:**
+- **Script font.** Ventura ($30 commercial) rejected; replaced with free **SIL OFL** fonts now embedded in `design-system/fonts/` (with `OFL-*.txt` licenses): **Lobster** active (recommended), **Pacifico** + **Kaushan Script** also loaded — swap via `--font-script`. Comparison at `/tmp/ds-script-compare.png`. Randall to confirm the pick; then copy the chosen TTF + OFL to `app/scans/fonts/` on port.
+- **Field color** is a one-token swap (`--hero-field`): Egyptian Blue now, flip to Tanager Red (`--c-tomato`) if preferred.
+- **Badge copy** "Private beta · by invitation" is placeholder — set the real line.
+
+## 2026-06-24 (cont.) - Design system: Pursuit phrasing + Human Path wizard refinements
+
+Reviewed the modal + wizard against the actual product specs and applied corrections:
+- **Pursuit phrasing across the board** (per `docs/pursuit-workflow-spec.md` — "users do not apply, they pursue"): match-card CTA `Apply` → **Pursue**; wizard title `Apply wizard` → **Human Path** (provisional — may be dropped since the stepper makes steps clear); `Open apply link` → **Open job posting**; final `Save actions` → **Save pursuit**; `Application tracking` → **Pursuit tracking**; close-confirm copy now says Pursuits, not "Previous Applications". Kept spec-correct terms: Step-1 **"Applying as"** (= Role Track recommendation) and **"Applied"** as a Track state.
+- **Contacts step:** removed the manual "Re-research Contacts" button — the Human Path is found automatically on Pursue (a metered, multi-second AI lookup, so NOT instant). Added a **"Fetching potential contacts"** loading placeholder (dashed panel + pulsing dot + skeleton cards). Fixed the 0px status/button gap. Recommendation: generate once per pursuit and cache (Human Path is metered), not on every visit.
+- **Outreach step:** confirmed **save-approved-message** + **rejection-reason** are real (data model `OutreachMessage.status` + `saved_message_feedback` table). Replaced the confusing standing "No rejection note" dropdown with an **Approve / Reject** control; the reason select now appears only after Reject.
+- **Footer:** removed the redundant **Back** button (the numbered stepper already navigates), which also resolves the button-size mismatch.
+- Re-synced apply-wizard + modal + match-card to Claude Design (`3af2f1ea`); verified 1280 + 390.
+
+## 2026-06-24 (cont.) - Design system: modal shell + Apply Wizard
+
+Continued the design-system reskin. Per decision, built the dialog/sub-flow surfaces before the full page mock.
+
+Built + synced (2 new component cards):
+- `design-system/components/modal.html` — reusable modal shell: ink-wash overlay, paper-stock dialog (heavy ink outline + hard offset), printed close button, info-note (`.modalNote`, calm bluebird left-accent), two-column field grid, footer (`.modalBtnClose` secondary / `.modalBtnSave` primary), and the close-confirm interrupt + `.modalBoxSmall` variant.
+- `design-system/components/apply-wizard.html` — full 4-step flow shown as **4 discrete modal states** (Review → Contacts → Outreach → Track), one step visible at a time, navigated by the stepper + Back/Continue (Step 4 ends in Save actions). Active step = teal with paper-knockout disc (avoids the forbidden red+yellow pairing). Step 1 **"Applying as:"** lists the candidate's submitted title narratives from `apply-modes.ts` (Executive Producer / Program Director / AI Workflow · Product Ops) — the lens the candidate applies under, NOT a fit/matching mode. Plus contact lead cards (`.contactSuggestion` + `.seeProfileBtn`), outreach message block (`.copyHeader` + `.messageTextarea` + approval/reject row), and the tracking `.checklistGrid`.
+- Class names mirror `app/scans/DashboardClient.tsx` (`.modalOverlay/.modalBox/.modalHeader/.modalTitle/.modalClose/.modalIntro/.modalFooter/.modalBtnClose/.modalBtnSave/.wizardSteps/.wizardStep/.wizardStepActive/.modeSection/.copyGenerationPanel/.contactSuggestion/.messageTextarea/.checklistGrid`) so CSS ports back ~1:1.
+- Mobile (≤560px): formGrid → 1 col, wizard stepper → 2×2, checklist → 1 col, contact panel stacks. Verified at 1280 + 390 (no overflow/truncation).
+- `_ds_manifest.json` cards array hand-patched with both new cards; all three files synced to the "Dumpster Fire Design System" project (`3af2f1ea`).
+- **Not yet committed** — design-system/ working-tree changes (2 new files + manifest) pending `git add`/commit/push.
+
+**RESUME HERE (next step):** design the **hero/page header** component (the one remaining main-view surface: mascot + title row + primary Scan CTA — `app/scans` `.hero/.heroInner/.heroTitleRow/.heroMascot`), then compose the **full scan-page mock** assembling hero + section header + filter tabs + match-card stack + Overview/Config panels. Screenshot mobile+desktop, sync. *Then* port finalized tokens + component CSS into live `app/scans/scans.module.css` and verify the gated page. Remaining secondary surfaces still undesigned: scan-progress modal, activity/scan-history list.
+
 ## 2026-06-24 - Mid-century design system (in progress)
 
 Building a mid-century-mod reskin of the `/scans` dashboard as a synced Claude Design system, in `design-system/` (repo root, never ships).
 
-**RESUME HERE (next step):** Compose the **full scan-page mock** — assemble the section header + panels + a stack of match cards into the real page layout (in `design-system/`), screenshot at mobile + desktop, sync to Claude Design. *Then* port the finalized tokens + component CSS into the live `app/scans/scans.module.css` and verify the gated page. (Decide first: keep building any remaining surfaces, or go straight to the page mock.)
-
 State:
-- Foundations (color, type, texture) + components (match card, panel, login, badges, forms) all built, screenshotted mobile+desktop, and synced to the "Dumpster Fire Design System" project on claude.ai/design. Committed + pushed (`edac2c3`).
+- Foundations (color, type, texture) + components (match card, panel, login, badges, forms, modal shell, Apply Wizard) all built, screenshotted mobile+desktop, and synced to the "Dumpster Fire Design System" project on claude.ai/design. Foundations→forms committed + pushed (`edac2c3`); modal + wizard pending commit.
 - Component class names mirror `app/scans/DashboardClient.tsx` so CSS ports back ~1:1.
 - Full design context, locked conventions, and gotchas live in Claude auto-memory: `project_dumpster_fire_design_system.md`.
 - Workspace is additive/isolated; the in-progress `/scans` public migration in the working tree is untouched and still uncommitted.
+
+## 2026-06-24 - Work History onboarding form
+
+Expanded the live onboarding shell to the next structured required section.
+
+Implemented:
+- `/onboarding` now loads Work History alongside Identity/Search, Role Tracks, and Resume Uploads after bootstrap.
+- Added authenticated Work History add/edit/remove/save UI in `app/onboarding/OnboardingClient.tsx`.
+- Added company/title/date/current-role/source fields plus responsibilities, accomplishments, skills, and metrics.
+- Added resume attachment checkboxes that use active Resume IDs.
+
+Validated:
+- `npx tsc --noEmit --incremental false`
+- `npm run build`
+- `npm run lint`
+- Production deploy to Vercel.
+- Public-domain smoke test on `https://thejobmarketisadumpsterfire.com`: `GET /onboarding`, `POST /api/public-profile/bootstrap`, `PATCH /api/public-profile/role-tracks`, `PATCH /api/public-profile/resumes`, and `PATCH /api/public-profile/work-history`; temporary user cleanup returned `200`.
+
+Next:
+- Add Proof Library editing to the onboarding shell.
 
 ## 2026-06-23 - Resume Uploads onboarding form
 
@@ -25,6 +146,10 @@ Implemented:
 
 Validated:
 - `npx tsc --noEmit --incremental false`
+- `npm run build`
+- `npm run lint`
+- Production deploy to Vercel.
+- Public-domain smoke test on `https://thejobmarketisadumpsterfire.com`: `GET /onboarding`, unauthenticated `GET /api/public-profile/role-tracks` returns `401`, `POST /api/public-profile/bootstrap`, `PATCH /api/public-profile/role-tracks`, and `PATCH /api/public-profile/resumes`; temporary user cleanup returned `200`.
 
 Next:
 - Add Work History review/editing to the onboarding shell.
@@ -37,6 +162,7 @@ Implemented:
 - Synced required Supabase runtime variables into Vercel for Production, Preview, and Development without printing secret values.
 - Verified Vercel now lists the public Supabase variables as encrypted project env vars.
 - Deployed the current app to Vercel production.
+- Promoted the known-good deployment after a newer incomplete deployment temporarily took the aliases.
 - Expanded `/onboarding` to load both Identity/Search and Role Tracks after bootstrap.
 - Added authenticated Role Tracks add/edit/remove/save UI in `app/onboarding/OnboardingClient.tsx`.
 - Added repeatable Role Track editor layout styles in `app/onboarding/onboarding.module.css`.

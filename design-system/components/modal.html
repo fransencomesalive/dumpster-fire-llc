@@ -1,0 +1,179 @@
+<!-- @dsCard group="Components" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Components · Modal Shell</title>
+<link rel="stylesheet" href="../tokens/tokens.css" />
+<link rel="stylesheet" href="../lib/base.css" />
+<style>
+  /* Page ground (the dashboard behind the modal) carries the halftone */
+  body { margin: 0; background: var(--c-paper); }
+  body::before { content:""; position: fixed; inset: 0; z-index: -1;
+    background-image: radial-gradient(var(--halftone-color) var(--halftone-dot),
+      transparent calc(var(--halftone-dot) + 0.5px)); background-size: var(--halftone-size) var(--halftone-size); }
+
+  /* ====== classes mirror DashboardClient.tsx so CSS ports back ====== */
+
+  /* Overlay · warm ink wash over the dashboard. In live use this is fixed
+     and scroll-locks the body; here it sizes to content for the screenshot. */
+  .modalOverlay { position: relative; min-height: 100vh; z-index: 200;
+    background: rgba(36, 31, 26, 0.62);
+    display: flex; align-items: flex-start; justify-content: center; padding: var(--space-6); }
+
+  /* The dialog · paper stock, heavy ink outline, hard printed offset.
+     Live: max-height min(860px, calc(100svh - 48px)); overflow: auto. */
+  .modalBox { width: min(620px, 100%);
+    background-color: var(--c-paper-deep); background-image: var(--fiber-img), var(--grain-img);
+    background-blend-mode: normal, soft-light; background-size: 170px 170px, 46px 46px;
+    border: var(--line-bold) solid var(--c-ink); border-radius: var(--radius-lg);
+    box-shadow: 6px 6px 0 rgba(36, 31, 26, 0.55); padding: var(--space-6); }
+  .modalBoxSmall { width: min(440px, 100%); }
+
+  .modalHeader { display: flex; align-items: flex-start; justify-content: space-between;
+    gap: var(--space-4); margin-bottom: var(--space-4); padding-bottom: var(--space-3);
+    border-bottom: var(--line-hair) solid var(--c-paper-edge); }
+  .modalTitle { font-family: var(--font-display); font-size: 1.5rem; line-height: 1.05;
+    color: var(--c-ink); margin: 0; }
+
+  /* Close · printed square, ink outline, paper fill, ink X */
+  .modalClose { display: inline-flex; align-items: center; justify-content: center; flex: none;
+    width: 34px; height: 34px; color: var(--c-ink); background-color: var(--c-paper);
+    border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-md);
+    box-shadow: 2px 2px 0 var(--c-ink); cursor: pointer;
+    transition: background-color var(--dur-fast) var(--ease-snap), box-shadow var(--dur-fast) var(--ease-snap); }
+  .modalClose:hover { background-color: color-mix(in srgb, var(--c-tomato) 16%, var(--c-paper));
+    box-shadow: var(--reg-box); }
+
+  .modalIntro { font-family: var(--font-body); font-size: var(--type-body); color: var(--role-text-muted);
+    line-height: var(--leading-body); margin: 0 0 var(--space-5); }
+
+  /* Info note · calm blue left-accent, never red unless a true error */
+  .modalNote { font-family: var(--font-body); font-size: var(--type-small); color: var(--role-text-muted);
+    background-color: var(--c-paper); border: var(--line-hair) solid var(--c-paper-edge);
+    border-left: var(--line-bold) solid var(--c-bluebird); border-radius: var(--radius-sm);
+    padding: var(--space-3) var(--space-4); margin: 0 0 var(--space-5); }
+  .modalNote strong { font-family: var(--font-display); color: var(--c-ink); }
+
+  /* Body form · two-column field grid */
+  .formGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-4); }
+  .formField { display: block; }
+  .formField.span2 { grid-column: 1 / -1; }
+  .formField label { display: block; font-family: var(--font-display); font-size: 1.1rem;
+    color: var(--c-ink); margin-bottom: var(--space-2); }
+  .formField input, .formField select, .formField textarea { width: 100%; box-sizing: border-box;
+    font-family: var(--font-body); font-size: 1rem; color: var(--c-ink); background-color: var(--c-paper);
+    border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-md);
+    padding: var(--space-3) var(--space-4); }
+  .formField textarea { min-height: 88px; resize: vertical; }
+  .formField select { appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23241F1A' stroke-width='2.5' stroke-linecap='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right var(--space-4) center; padding-right: var(--space-7); }
+  .formField input:focus, .formField select:focus, .formField textarea:focus { outline: none;
+    border-color: var(--c-teal); box-shadow: 0 0 0 3px color-mix(in srgb, var(--c-teal) 28%, transparent); }
+
+  /* Footer · actions sit right; secondary (paper) + primary (action) */
+  .modalFooter { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end;
+    gap: var(--space-3); margin-top: var(--space-6); padding-top: var(--space-4);
+    border-top: var(--line-hair) solid var(--c-paper-edge); }
+  .modalBtnClose { font-family: var(--font-display); font-size: 1rem; color: var(--c-ink);
+    background-color: var(--c-paper); border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-md);
+    box-shadow: var(--shadow-card); padding: var(--space-3) var(--space-5); cursor: pointer;
+    text-decoration: none; display: inline-flex; align-items: center;
+    transition: background-color var(--dur-fast) var(--ease-snap), box-shadow var(--dur-fast) var(--ease-snap); }
+  .modalBtnClose:hover { background-color: color-mix(in srgb, var(--c-teal) 14%, var(--c-paper));
+    box-shadow: var(--reg-box); }
+  .modalBtnSave { font-family: var(--font-display); font-size: 1rem; color: var(--role-action-text);
+    background-color: var(--role-action); border: var(--line-bold) solid var(--c-ink); border-radius: var(--radius-md);
+    box-shadow: var(--shadow-card); padding: var(--space-3) var(--space-5); cursor: pointer;
+    transition: background-color var(--dur-fast) var(--ease-snap), box-shadow var(--dur-fast) var(--ease-snap),
+                text-shadow var(--dur-fast) var(--ease-snap); }
+  .modalBtnSave:hover, .modalBtnSave.reg-on { background-color: var(--role-info);
+    box-shadow: var(--reg-box); text-shadow: 1px 1px 0 rgba(36, 31, 26, 0.35); }
+
+  /* Close-confirm · the "save before you go?" interrupt, calm bluebird note */
+  .closeConfirmPanel { background-color: var(--c-paper);
+    border: var(--line-reg) solid var(--c-ink); border-left: var(--line-bold) solid var(--c-bluebird);
+    border-radius: var(--radius-md); padding: var(--space-4); margin-bottom: var(--space-5); }
+  .closeConfirmPanel strong { display: block; font-family: var(--font-display); font-size: 1.15rem;
+    color: var(--c-ink); margin-bottom: var(--space-1); }
+  .closeConfirmPanel p { font-family: var(--font-body); font-size: var(--type-small);
+    color: var(--role-text-muted); margin: 0 0 var(--space-3); }
+  .closeConfirmActions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+
+  /* Demo scaffold only (not part of the ported component) */
+  .dsLabel { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.05em;
+    font-size: 0.78rem; color: var(--c-paper); opacity: 0.78; margin: var(--space-5) 0 var(--space-2); }
+  .dsLabel:first-child { margin-top: 0; }
+
+  @media (max-width: 560px) {
+    .modalOverlay { padding: var(--space-3); }
+    .modalBox { padding: var(--space-5); }
+    .formGrid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+  <div class="modalOverlay">
+    <div style="width: min(620px, 100%);">
+      <p class="dsLabel">Edit modal · default state</p>
+      <div class="modalBox">
+        <div class="modalHeader">
+          <h4 class="modalTitle">Edit: Configuration</h4>
+          <button type="button" class="modalClose" aria-label="Close">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        </div>
+
+        <p class="modalIntro">Tune what the next scan looks for. Changes apply on the following run.</p>
+
+        <p class="modalNote"><strong>Note</strong> &nbsp;Title variants widen the search. Add the words a posting would actually use.</p>
+
+        <div class="formGrid">
+          <div class="formField">
+            <label for="m-title">Target title</label>
+            <input id="m-title" type="text" value="Senior Product Designer" />
+          </div>
+          <div class="formField">
+            <label for="m-remote">Remote preference</label>
+            <select id="m-remote"><option>Remote (US)</option><option>Hybrid</option><option>On-site</option></select>
+          </div>
+          <div class="formField span2">
+            <label for="m-variants">Title variants</label>
+            <textarea id="m-variants">Product Designer, Design Lead, Staff Product Designer, Design Systems Lead</textarea>
+          </div>
+        </div>
+
+        <div class="modalFooter">
+          <button type="button" class="modalBtnClose">Cancel</button>
+          <button type="button" class="modalBtnSave reg-on">Save changes</button>
+        </div>
+      </div>
+
+      <p class="dsLabel">Close-confirm interrupt · small box</p>
+      <div class="modalBox modalBoxSmall">
+        <div class="modalHeader">
+          <h4 class="modalTitle">Before you go</h4>
+          <button type="button" class="modalClose" aria-label="Close">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        </div>
+        <section class="closeConfirmPanel">
+          <strong>Do you want to save?</strong>
+          <p>This adds the role to your Pursuits so you can track it. If you didn&apos;t pursue it, ignore and close.</p>
+          <div class="closeConfirmActions">
+            <button type="button" class="modalBtnSave">Save pursuit</button>
+            <button type="button" class="modalBtnClose">Ignore and close</button>
+            <button type="button" class="modalBtnClose">Keep editing</button>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

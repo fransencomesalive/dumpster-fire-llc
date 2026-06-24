@@ -1,0 +1,89 @@
+<!-- @dsCard group="Hero options" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Hero · Matchbook</title>
+<link rel="stylesheet" href="../tokens/tokens.css" />
+<link rel="stylesheet" href="../lib/base.css" />
+<style>
+  /* HERO · MATCHBOOK — cream stock, printed cover frame, hand-painted Original
+     Surfer wordmark in a teal+tomato off-registration overprint (offset dialed
+     back 35%). Lockup + mascot are one centered pair, vertically aligned. */
+  @font-face { font-family:"Original Surfer"; src:url("../fonts/OriginalSurfer-Regular.ttf") format("truetype"); font-display:swap; }
+
+  body { margin:0; background:var(--c-paper); }
+  body::before { content:""; position:fixed; inset:0; z-index:-1;
+    background-image: radial-gradient(var(--halftone-color) var(--halftone-dot), transparent calc(var(--halftone-dot) + 0.5px));
+    background-size: var(--halftone-size) var(--halftone-size); }
+
+  .page { position:relative; min-height:100svh; color:var(--c-ink); font-family:var(--font-body); }
+
+  .hero { position:relative; background-color:var(--c-paper-deep);
+    background-image:var(--grain-img); background-blend-mode:soft-light; background-size:46px 46px; }
+  .heroInner { position:relative; width:min(1080px, calc(100% - 48px)); margin:0 auto; box-sizing:border-box;
+    padding: clamp(var(--space-6),6vw,var(--space-8)) clamp(var(--space-5),5vw,var(--space-7));
+    border:var(--line-bold) solid var(--c-ink);
+    display:flex; align-items:center; justify-content:center; gap:clamp(var(--space-5),4vw,var(--space-7)); }
+  .heroInner::before { content:""; position:absolute; inset:8px; border:var(--line-hair) solid var(--c-ink); pointer-events:none; }
+
+  .heroLockup { flex:0 1 auto; min-width:0; max-width:600px; }
+  .heroLead { margin:0; font-family:var(--font-display); color:var(--c-ink);
+    font-size:clamp(1.25rem,2.5vw,1.95rem); line-height:1.04; letter-spacing:var(--tracking-display); }
+
+  .word { position:relative; display:inline-block; margin:0.04em 0 0; line-height:0.9;
+    font-family:"Original Surfer", cursive; font-size:clamp(3rem,7.2vw,5.4rem); }
+  .word .plate { display:block; margin:0; }
+  .word .base { color:var(--c-teal); }
+  /* off-registration slip, dialed back 35% (6/7px -> 4/4.5px) */
+  .word .slip { position:absolute; left:0; top:0; color:var(--c-tomato); transform:translate(4px,4.5px); mix-blend-mode:multiply; }
+
+  .heroTag { display:inline-block; margin:var(--space-4) 0 0; font-family:var(--font-subhead); text-transform:uppercase;
+    letter-spacing:0.05em; font-size:clamp(1.02rem,2vw,1.4rem); color:var(--c-paper); background-color:var(--c-tomato);
+    border:var(--line-reg) solid var(--c-ink); box-shadow:4px 4px 0 var(--c-ink); padding:7px 16px; }
+  .heroDesc { max-width:46ch; margin:var(--space-4) 0 0; color:var(--role-text-muted);
+    font-family:var(--font-body); font-size:clamp(1rem,1.35vw,1.14rem); line-height:var(--leading-body); text-wrap:pretty; }
+
+  .heroMascot { flex:none; width:clamp(195px,23vw,290px); height:auto; object-fit:contain;
+    filter: drop-shadow(2.5px 0 0 var(--c-paper)) drop-shadow(-2.5px 0 0 var(--c-paper))
+            drop-shadow(0 2.5px 0 var(--c-paper)) drop-shadow(0 -2.5px 0 var(--c-paper))
+            drop-shadow(6px 7px 0 rgba(36,31,26,0.32)); }
+
+  .section { width:min(1080px, calc(100% - 48px)); margin:var(--space-6) auto 0; }
+  .sectionHead h2 { font-family:var(--font-display); font-size:var(--type-h1); color:var(--c-ink); margin:0; }
+  .lastScan { font-family:var(--font-subhead); text-transform:uppercase; letter-spacing:var(--tracking-subhead);
+    font-size:1.16rem; color:var(--c-tomato); margin:var(--space-2) 0 0; }
+
+  @media (max-width:760px){
+    .heroInner{ flex-direction:column; align-items:flex-start; gap:var(--space-4); }
+    .heroMascot{ order:-1; width:195px; }
+    .heroLockup{ max-width:100%; }
+  }
+</style>
+</head>
+<body>
+  <main class="page">
+    <section class="hero">
+      <div class="heroInner">
+        <div class="heroLockup">
+          <p class="heroLead">The Job Market Is A</p>
+          <h1 class="word"><span class="plate base">Dumpster Fire</span><span class="plate slip" aria-hidden="true">Dumpster Fire</span></h1>
+          <p class="heroTag">Stop applying. Start pursuing.</p>
+          <p class="heroDesc">Portals and ATS bots are where good candidates disappear. Dumpster Fire turns a job
+          post into a direct line to the person who actually does the hiring by leveraging your own voice and
+          experience to make contact.</p>
+        </div>
+        <img class="heroMascot" src="../dumpsterfireguy.png" alt="" aria-hidden="true" />
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="sectionHead">
+        <h2>Today&apos;s Best Matches</h2>
+        <p class="lastScan">Last scan Jun 22, 8:49 PM</p>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

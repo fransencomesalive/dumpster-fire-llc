@@ -1,0 +1,105 @@
+<!-- @dsCard group="Hero options" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Hero · Atomic</title>
+<link rel="stylesheet" href="../tokens/tokens.css" />
+<link rel="stylesheet" href="../lib/base.css" />
+<style>
+  /* HERO · ATOMIC — Tanager Red field carrying a regular mid-century MOD
+     LATTICE (atomic stars + dots, tiled as an SVG pattern, not scattered
+     clip-art). The lockup + mascot are one centered pair, vertically aligned. */
+  @font-face { font-family:"Shrikhand"; src:url("../fonts/Shrikhand-Regular.ttf") format("truetype"); font-display:swap; }
+
+  body { margin:0; background:var(--c-paper); }
+  body::before { content:""; position:fixed; inset:0; z-index:-1;
+    background-image: radial-gradient(var(--halftone-color) var(--halftone-dot), transparent calc(var(--halftone-dot) + 0.5px));
+    background-size: var(--halftone-size) var(--halftone-size); }
+
+  .page { position:relative; min-height:100svh; color:var(--c-ink); font-family:var(--font-body); }
+
+  .hero { position:relative; overflow:hidden; background-color:var(--c-tomato);
+    background-image:var(--grain-img); background-blend-mode:soft-light; background-size:46px 46px;
+    border-bottom:var(--line-bold) solid var(--c-ink); }
+  .modfield { position:absolute; inset:0; z-index:1; width:100%; height:100%; pointer-events:none; }
+
+  .heroInner { position:relative; z-index:2; width:min(1080px, calc(100% - 48px)); margin:0 auto; box-sizing:border-box;
+    padding: clamp(var(--space-7),6.5vw,var(--space-8)) clamp(var(--space-5),5vw,var(--space-7));
+    display:flex; align-items:center; justify-content:center; gap:clamp(var(--space-5),4vw,var(--space-7)); }
+  .heroLockup { flex:0 1 auto; min-width:0; max-width:580px; }
+
+  .heroLead { margin:0; font-family:var(--font-display); color:var(--c-paper);
+    font-size:clamp(1.25rem,2.5vw,1.95rem); line-height:1.04; letter-spacing:var(--tracking-display);
+    text-shadow:2px 2px 0 rgba(36,31,26,0.32); }
+  .word { position:relative; display:inline-block; margin:0.04em 0 0; line-height:0.88;
+    font-family:"Shrikhand", serif; font-size:clamp(2.5rem,6vw,4.4rem); }
+  .word .plate { display:block; margin:0; }
+  .word .base { position:relative; z-index:2; color:var(--c-paper);
+    text-shadow:-1px -1px 0 var(--c-ink),1px -1px 0 var(--c-ink),-1px 1px 0 var(--c-ink),1px 1px 0 var(--c-ink); }
+  .word .slip { position:absolute; left:0; top:0; z-index:1; color:var(--c-teal); transform:translate(5px,6px);
+    text-shadow:-1px -1px 0 var(--c-ink),1px -1px 0 var(--c-ink),-1px 1px 0 var(--c-ink),1px 1px 0 var(--c-ink); }
+
+  .heroTag { display:inline-block; margin:var(--space-4) 0 0; font-family:var(--font-subhead); text-transform:uppercase;
+    letter-spacing:0.05em; font-size:clamp(1.02rem,2vw,1.4rem); color:var(--c-ink); background-color:var(--c-paper);
+    border:var(--line-reg) solid var(--c-ink); box-shadow:4px 4px 0 var(--c-ink); padding:7px 16px; }
+  .heroDesc { max-width:46ch; margin:var(--space-4) 0 0; color:rgba(243,232,210,0.95);
+    font-family:var(--font-body); font-size:clamp(1rem,1.35vw,1.14rem); line-height:var(--leading-body); text-wrap:pretty; }
+
+  .heroMascot { flex:none; width:clamp(200px,23vw,290px); height:auto; object-fit:contain;
+    filter: drop-shadow(2.5px 0 0 var(--c-paper)) drop-shadow(-2.5px 0 0 var(--c-paper))
+            drop-shadow(0 2.5px 0 var(--c-paper)) drop-shadow(0 -2.5px 0 var(--c-paper))
+            drop-shadow(6px 7px 0 rgba(36,31,26,0.40)); }
+
+  .section { width:min(1080px, calc(100% - 48px)); margin:var(--space-6) auto 0; }
+  .sectionHead h2 { font-family:var(--font-display); font-size:var(--type-h1); color:var(--c-ink); margin:0; }
+  .lastScan { font-family:var(--font-subhead); text-transform:uppercase; letter-spacing:var(--tracking-subhead);
+    font-size:1.16rem; color:var(--c-tomato); margin:var(--space-2) 0 0; }
+
+  @media (max-width:760px){
+    .heroInner{ flex-direction:column; align-items:flex-start; gap:var(--space-4); }
+    .heroMascot{ order:-1; width:200px; }
+    .heroLockup{ max-width:100%; }
+  }
+</style>
+</head>
+<body>
+  <main class="page">
+    <section class="hero">
+      <svg class="modfield" aria-hidden="true">
+        <defs>
+          <pattern id="mod" width="120" height="120" patternUnits="userSpaceOnUse">
+            <g stroke="var(--c-paper)" stroke-opacity="0.20" stroke-width="2.4" stroke-linecap="round">
+              <line x1="30" y1="10" x2="30" y2="50"/><line x1="10" y1="30" x2="50" y2="30"/>
+              <line x1="16" y1="16" x2="44" y2="44"/><line x1="44" y1="16" x2="16" y2="44"/>
+              <line x1="90" y1="78" x2="90" y2="102"/><line x1="78" y1="90" x2="102" y2="90"/>
+            </g>
+            <g fill="var(--c-paper)" fill-opacity="0.16"><circle cx="90" cy="30" r="3.4"/><circle cx="30" cy="90" r="3.4"/></g>
+          </pattern>
+        </defs>
+        <rect width="100%" height="100%" fill="url(#mod)"/>
+      </svg>
+
+      <div class="heroInner">
+        <div class="heroLockup">
+          <p class="heroLead">The Job Market Is A</p>
+          <h1 class="word"><span class="plate base">Dumpster Fire</span><span class="plate slip" aria-hidden="true">Dumpster Fire</span></h1>
+          <p class="heroTag">Stop applying. Start pursuing.</p>
+          <p class="heroDesc">Portals and ATS bots are where good candidates disappear. Dumpster Fire turns a job
+          post into a direct line to the person who actually does the hiring by leveraging your own voice and
+          experience to make contact.</p>
+        </div>
+        <img class="heroMascot" src="../dumpsterfireguy.png" alt="" aria-hidden="true" />
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="sectionHead">
+        <h2>Today&apos;s Best Matches</h2>
+        <p class="lastScan">Last scan Jun 22, 8:49 PM</p>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
