@@ -1,0 +1,99 @@
+<!-- @dsCard group="Foundations" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Foundations · Color</title>
+<link rel="stylesheet" href="../tokens/tokens.css" />
+<link rel="stylesheet" href="../lib/base.css" />
+<style>
+  body { padding: var(--space-6); }
+  .wrap { max-width: 980px; margin: 0 auto; }
+  .kicker { font-family: var(--font-subhead); text-transform: uppercase;
+            letter-spacing: var(--tracking-subhead); color: var(--c-tomato);
+            font-size: var(--type-subhead); margin-bottom: var(--space-2); }
+  h1 { font-size: var(--type-h1); margin-bottom: var(--space-2); }
+  .lede { color: var(--role-text-muted); max-width: 56ch; margin-bottom: var(--space-6); }
+
+  h2.sec { font-family: var(--font-subhead); text-transform: uppercase;
+           letter-spacing: var(--tracking-subhead); font-size: 1.3rem;
+           color: var(--c-ink); border-bottom: var(--line-reg) solid var(--c-ink);
+           padding-bottom: var(--space-2); margin: var(--space-7) 0 var(--space-4); }
+
+  .grid { display: grid; gap: var(--space-4);
+          grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+  .chip { border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-md);
+          overflow: hidden; background: var(--c-paper-deep); box-shadow: var(--shadow-card); }
+  .chip .swatch { height: 92px; }
+  .chip .meta { padding: var(--space-3); }
+  .chip .name { font-family: var(--font-subhead); text-transform: uppercase;
+                letter-spacing: 0.04em; font-size: 0.95rem; line-height: 1.1; }
+  .chip .hex { font-size: var(--type-caption); color: var(--role-text-faint);
+               letter-spacing: 0.04em; }
+  .chip .role { font-size: var(--type-caption); color: var(--role-text-muted); }
+
+  .pairings { display: grid; gap: var(--space-4);
+              grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+  .pair { border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-md);
+          padding: var(--space-4); display: flex; align-items: center; gap: var(--space-3);
+          font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.04em; }
+  .pair .dot { width: 26px; height: 26px; border-radius: var(--radius-pill);
+               border: var(--line-reg) solid var(--c-ink); }
+  .pair .verdict { margin-left: auto; font-size: 0.8rem; }
+  .ok  { color: var(--c-teal); }
+  .no  { color: var(--c-tomato); text-decoration: line-through; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="kicker">Foundations</div>
+  <h1>Color</h1>
+  <p class="lede">Consolidated from the mid-century paint deck and the matchbook / Mr.&nbsp;Product
+  references. Paper ground, warm ink linework, four energetic accents. Rotate accents so red and
+  yellow never share a composition.</p>
+
+  <h2 class="sec">Ground &amp; Ink</h2>
+  <div class="grid">
+    <div class="chip"><div class="swatch" style="background:var(--c-paper)"></div>
+      <div class="meta"><div class="name">Paper</div><div class="hex">#F3E8D2</div><div class="role">page ground</div></div></div>
+    <div class="chip"><div class="swatch" style="background:var(--c-paper-deep)"></div>
+      <div class="meta"><div class="name">Paper Deep</div><div class="hex">#EAD9BC</div><div class="role">card stock</div></div></div>
+    <div class="chip"><div class="swatch" style="background:var(--c-paper-edge)"></div>
+      <div class="meta"><div class="name">Paper Edge</div><div class="hex">#DFC9A6</div><div class="role">hairline</div></div></div>
+    <div class="chip"><div class="swatch" style="background:var(--c-ink)"></div>
+      <div class="meta"><div class="name">Ink</div><div class="hex">#241F1A</div><div class="role">text / outline</div></div></div>
+    <div class="chip"><div class="swatch" style="background:var(--c-ink-soft)"></div>
+      <div class="meta"><div class="name">Ink Soft</div><div class="hex">#4A4038</div><div class="role">secondary text</div></div></div>
+    <div class="chip"><div class="swatch" style="background:var(--c-ink-faint)"></div>
+      <div class="meta"><div class="name">Ink Faint</div><div class="hex">#8A7B6A</div><div class="role">captions</div></div></div>
+  </div>
+
+  <h2 class="sec">Energetic Accents</h2>
+  <div class="grid">
+    <div class="chip"><div class="swatch" style="background:var(--c-tomato)"></div>
+      <div class="meta"><div class="name">Tomato</div><div class="hex">#E0512E · Tanager Red 387</div><div class="role">primary action</div></div></div>
+    <div class="chip"><div class="swatch" style="background:var(--c-teal)"></div>
+      <div class="meta"><div class="name">Teal</div><div class="hex">#1F9E96 · Turquoise 518</div><div class="role">links / active</div></div></div>
+    <div class="chip"><div class="swatch" style="background:var(--c-mustard)"></div>
+      <div class="meta"><div class="name">Mustard</div><div class="hex">#E0A52F · Mustard 331</div><div class="role">badges / flags</div></div></div>
+    <div class="chip"><div class="swatch" style="background:var(--c-bluebird)"></div>
+      <div class="meta"><div class="name">Bluebird</div><div class="hex">#2A6AA0 · Egyptian Blue 743</div><div class="role">info / deep cool</div></div></div>
+    <div class="chip"><div class="swatch" style="background:var(--c-rose)"></div>
+      <div class="meta"><div class="name">Rose</div><div class="hex">#E2998C · Flush Pink 792</div><div class="role">soft secondary</div></div></div>
+  </div>
+
+  <h2 class="sec">Pairing Rules</h2>
+  <div class="pairings">
+    <div class="pair"><span class="dot" style="background:var(--c-tomato)"></span>
+      <span class="dot" style="background:var(--c-teal)"></span> Tomato + Teal <span class="verdict ok">✓</span></div>
+    <div class="pair"><span class="dot" style="background:var(--c-mustard)"></span>
+      <span class="dot" style="background:var(--c-bluebird)"></span> Mustard + Bluebird <span class="verdict ok">✓</span></div>
+    <div class="pair"><span class="dot" style="background:var(--c-tomato)"></span>
+      <span class="dot" style="background:var(--c-bluebird)"></span> Tomato + Bluebird <span class="verdict ok">✓</span></div>
+    <div class="pair"><span class="dot" style="background:var(--c-rose)"></span>
+      <span class="dot" style="background:var(--c-bluebird)"></span> Rose + Bluebird <span class="verdict ok">✓</span></div>
+  </div>
+</div>
+</body>
+</html>

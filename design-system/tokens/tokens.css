@@ -1,0 +1,125 @@
+/* ============================================================
+   Dumpster Fire · Design System Tokens
+   Mid-century mod / atomic / futurism, paper-light base.
+   Single source of truth. Components consume these vars only.
+   Values are first-pass, derived from the named paint deck +
+   the matchbook/Mr.Product references. Up for review.
+   ============================================================ */
+
+:root {
+  /* --- CORE PALETTE (consolidated from the paint deck) ----- */
+  /* Ground / paper */
+  --c-paper:        #F3E8D2;  /* Pearl White No.994 · page ground */
+  --c-paper-deep:   #EAD9BC;  /* warmer card paper */
+  --c-paper-edge:   #DFC9A6;  /* paper shadow / hairline on cream */
+
+  /* Ink (warm near-black, the linework color) */
+  --c-ink:          #241F1A;  /* primary text + outlines */
+  --c-ink-soft:     #4A4038;  /* secondary text on paper */
+  --c-ink-faint:    #8A7B6A;  /* tertiary / captions on paper */
+
+  /* Energetic accents · rotate so red + yellow never co-star */
+  --c-tomato:       #E0512E;  /* Tanager Red No.387 · primary action */
+  --c-teal:         #1F9E96;  /* Turquoise No.518 · primary cool */
+  --c-mustard:      #E0A52F;  /* Mustard No.331 · warm highlight */
+  --c-bluebird:     #2A6AA0;  /* Egyptian Blue No.743 · deep cool */
+  --c-rose:         #E2998C;  /* Flush Pink No.792 · soft secondary */
+
+  /* --- SEMANTIC ROLES (components reference these) --------- */
+  --role-bg:            var(--c-paper);
+  --role-surface:       var(--c-paper-deep);
+  --role-text:          var(--c-ink);
+  --role-text-muted:    var(--c-ink-soft);
+  --role-text-faint:    var(--c-ink-faint);
+  --role-line:          var(--c-ink);          /* inked outlines */
+  --role-line-soft:     var(--c-paper-edge);
+
+  --role-action:        var(--c-tomato);       /* primary button */
+  --role-action-text:   var(--c-paper);
+  --role-accent:        var(--c-teal);         /* links / active */
+  --role-highlight:     var(--c-mustard);      /* badges / flags */
+  --role-info:          var(--c-bluebird);
+
+  /* Status (kept inside the deck, no red+yellow pairing) */
+  --role-positive:      var(--c-teal);
+  --role-attention:     var(--c-mustard);
+  --role-critical:      var(--c-tomato);
+
+  /* --- TYPE SYSTEM ---------------------------------------- */
+  --font-display:        "Bemio", system-ui, sans-serif;        /* headlines + buttons */
+  --font-display-accent: "Head-OH", "Bemio", sans-serif;        /* rare heavy display moments */
+  --font-subhead:        "Bebas Neue", "Oswald", sans-serif;    /* condensed subheads */
+  --font-body:           "Plantagenet Cherokee", Georgia, serif;/* body copy */
+  /* Vertical "Motel" sign type uses --font-subhead rotated.   */
+
+  --type-display:   clamp(2.4rem, 5vw, 4rem);
+  --type-h1:        clamp(2rem, 4vw, 3rem);
+  --type-h2:        clamp(1.5rem, 3vw, 2.1rem);
+  --type-subhead:   1.05rem;   /* Bebas, tracked, all-caps */
+  --type-body:      1rem;
+  --type-small:     0.85rem;
+  --type-caption:   0.72rem;
+
+  --tracking-subhead: 0.06em;  /* Bebas wants air */
+  --tracking-display: -0.005em;
+  --leading-tight:  1.05;
+  --leading-body:   1.5;
+
+  /* --- SPACING (4px base) --------------------------------- */
+  --space-1: 4px;  --space-2: 8px;  --space-3: 12px;
+  --space-4: 16px; --space-5: 24px; --space-6: 32px;
+  --space-7: 48px; --space-8: 64px; --space-9: 96px;
+
+  /* --- RADIUS --------------------------------------------- */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 14px;
+  --radius-pill: 999px;
+
+  /* --- BORDERS (inked) ------------------------------------ */
+  --line-hair:  1px;
+  --line-reg:   2px;   /* default inked outline */
+  --line-bold:  3px;   /* heavy screenprint weight */
+
+  /* --- TEXTURE (halftone + grain + registration) ---------- */
+  /* Halftone is page-ground + select elements ONLY. */
+  --halftone-color: rgba(36, 31, 26, 0.10);
+  --halftone-size:  8px;     /* dot cell */
+  --halftone-dot:   2.1px;   /* dot radius */
+  --grain-opacity:  0.10;
+
+  /* Registration misprint · the signature shift */
+  --reg-shift-x: 1.5px;
+  --reg-shift-y: 1.5px;
+  --reg-ink:     rgba(224, 81, 46, 0.95);   /* tomato at screenprint opacity (hard) */
+  /* Single-plate misregister: ONE ink, offset top-left, stepped into a short
+     extrusion. Semi-transparent so the overlap reads as layered ink (screen
+     print), not a clean drop shadow. Pair with mix-blend-mode: multiply. */
+  --reg-shadow:
+    -0.5px -0.5px 0 var(--reg-ink),
+    -1px   -1px   0 var(--reg-ink),
+    -1.5px -1.5px 0 var(--reg-ink);
+  /* Filled surfaces (button): one semi-transparent ink plate offset top-left,
+     plus the resting block. */
+  --reg-box:
+    -1.5px -1.5px 0 rgba(36, 31, 26, 0.32),
+    var(--shadow-card);
+
+  /* --- ELEVATION (printed, not glowy) --------------------- */
+  --shadow-card:  3px 3px 0 var(--c-ink);          /* hard offset block */
+  --shadow-card-soft: 2px 3px 8px rgba(36,31,26,0.18);
+
+  /* --- MOTION --------------------------------------------- */
+  --ease-snap:  cubic-bezier(0.2, 0.8, 0.2, 1);
+  --dur-fast:   120ms;
+  --dur-base:   200ms;
+}
+
+/* Reusable halftone ground (apply to a layer, not text) */
+.ds-halftone {
+  background-image: radial-gradient(
+    var(--halftone-color) var(--halftone-dot),
+    transparent calc(var(--halftone-dot) + 0.5px)
+  );
+  background-size: var(--halftone-size) var(--halftone-size);
+}

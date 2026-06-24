@@ -1,0 +1,102 @@
+<!-- @dsCard group="Foundations" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Foundations · Type</title>
+<link rel="stylesheet" href="../tokens/tokens.css" />
+<link rel="stylesheet" href="../lib/base.css" />
+<style>
+  body { padding: var(--space-6); }
+  .wrap { max-width: 980px; margin: 0 auto; }
+  .kicker { font-family: var(--font-subhead); text-transform: uppercase;
+            letter-spacing: var(--tracking-subhead); color: var(--c-tomato);
+            font-size: var(--type-subhead); margin-bottom: var(--space-2); }
+  h1.page { font-size: var(--type-h1); margin-bottom: var(--space-6); }
+
+  .row { border-top: var(--line-reg) solid var(--c-ink);
+         padding: var(--space-5) 0; display: grid;
+         grid-template-columns: 130px 1fr; gap: var(--space-5); align-items: baseline; }
+  .label { font-family: var(--font-subhead); text-transform: uppercase;
+           letter-spacing: 0.05em; font-size: 0.8rem; color: var(--role-text-faint); }
+  .label small { display:block; color: var(--role-text-muted); text-transform: none;
+                 letter-spacing: 0; font-family: var(--font-body); margin-top: 4px; }
+
+  .display { font-family: var(--font-display); font-size: var(--type-display);
+             line-height: var(--leading-tight); }
+  .subhead { font-family: var(--font-subhead); text-transform: uppercase;
+             letter-spacing: var(--tracking-subhead); font-size: 2rem; }
+  .body { font-family: var(--font-body); font-size: var(--type-body); max-width: 60ch; }
+
+  /* Plantagenet legibility test at real dashboard sizes */
+  .legi { display: flex; flex-wrap: wrap; gap: var(--space-5); }
+  .legi div { font-family: var(--font-body); }
+  .legi .s16 { font-size: 16px; }
+  .legi .s14 { font-size: 14px; }
+  .legi .s13 { font-size: 13px; }
+  .legi .s12 { font-size: 12px; }
+  .legi span { display:block; font-family: var(--font-subhead); font-size: 0.7rem;
+               letter-spacing: 0.05em; color: var(--role-text-faint); text-transform: uppercase; }
+
+  .cand { font-size: 2.4rem; line-height: 1.1; }
+  .head-oh { font-family: "Head-OH"; }
+  .head-th { font-family: "Head-TH"; }
+
+  /* Vertical Motel-sign type */
+  .motel { display: inline-flex; justify-self: start; flex-direction: column; align-items: center;
+           background: var(--c-tomato); color: var(--c-paper);
+           border: var(--line-bold) solid var(--c-ink); border-radius: var(--radius-sm);
+           padding: var(--space-3) var(--space-2); box-shadow: var(--shadow-card); }
+  .motel span { font-family: var(--font-subhead); font-size: 1.8rem; line-height: 0.92;
+                letter-spacing: 0.02em; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="kicker">Foundations</div>
+  <h1 class="page">Type</h1>
+
+  <div class="row">
+    <div class="label">Display<small>Bemio · headlines, buttons</small></div>
+    <div class="display">The Job Market<br>Is a Dumpster Fire</div>
+  </div>
+
+  <div class="row">
+    <div class="label">Subhead<small>Bebas Neue · tracked caps</small></div>
+    <div class="subhead">Private Scans · 142 New Matches Today</div>
+  </div>
+
+  <div class="row">
+    <div class="label">Body<small>Plantagenet Cherokee</small></div>
+    <div class="body">Anthropomorphized objects, energetic flats, and a deliberate
+    off-register misprint. This is the body voice, set in Plantagenet Cherokee, a humanist
+    serif. The question is whether it holds up small.</div>
+  </div>
+
+  <div class="row">
+    <div class="label">Legibility<small>Plantagenet at dashboard sizes</small></div>
+    <div class="legi">
+      <div class="s16"><span>16px</span>Senior Product Designer · Remote</div>
+      <div class="s14"><span>14px</span>Senior Product Designer · Remote</div>
+      <div class="s13"><span>13px</span>Senior Product Designer · Remote</div>
+      <div class="s12"><span>12px</span>Posted 2d ago · 3 contacts · $140–165k</div>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="label">Display alt<small>Head-OH candidate</small></div>
+    <div class="cand head-oh">Dumpster Fire</div>
+  </div>
+  <div class="row">
+    <div class="label">Display alt<small>Head-TH candidate</small></div>
+    <div class="cand head-th">Dumpster Fire</div>
+  </div>
+
+  <div class="row">
+    <div class="label">Vertical sign<small>Bebas rotated · Motel type</small></div>
+    <div class="motel"><span>S</span><span>C</span><span>A</span><span>N</span><span>S</span></div>
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,107 @@
+/* ============================================================
+   Base layer · @font-face + reset. Consumes tokens only.
+   Paths are relative to a foundations/ or components/ file
+   (one level down from design-system/).
+   ============================================================ */
+
+@font-face {
+  font-family: "Bemio";
+  src: url("../fonts/Bemio.otf") format("opentype");
+  font-weight: 400; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: "Bemio";
+  src: url("../fonts/Bemio-Italic.otf") format("opentype");
+  font-weight: 400; font-style: italic; font-display: swap;
+}
+@font-face {
+  font-family: "Bebas Neue";
+  src: url("../fonts/BebasNeue-Regular.woff2") format("woff2"),
+       url("../fonts/BebasNeue-Regular.ttf") format("truetype");
+  font-weight: 400; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: "Plantagenet Cherokee";
+  src: url("../fonts/PlantagenetCherokee.ttf") format("truetype");
+  font-weight: 400; font-style: normal; font-display: swap;
+}
+/* Display candidates for review */
+@font-face {
+  font-family: "Head-OH";
+  src: url("../fonts/Head-OH.ttf") format("truetype");
+  font-weight: 400; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: "Head-TH";
+  src: url("../fonts/Head-TH.ttf") format("truetype");
+  font-weight: 400; font-style: normal; font-display: swap;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--role-bg);
+  color: var(--role-text);
+  font-family: var(--font-body);
+  font-size: var(--type-body);
+  line-height: var(--leading-body);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+h1, h2, h3 {
+  font-family: var(--font-display);
+  line-height: var(--leading-tight);
+  letter-spacing: var(--tracking-display);
+  margin: 0;
+}
+
+.ds-subhead {
+  font-family: var(--font-subhead);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-subhead);
+  line-height: 1;
+}
+
+/* --- Registration misregister · the signature interaction -----
+   On hover the "print slips": a tomato plate up-left, a teal plate
+   down-right. Reusable on any text link or button. --reg-on forces
+   the state for static demos/screenshots. */
+.ds-link {
+  position: relative;
+  color: var(--role-text);                 /* dark ink — the text itself never misregisters */
+  text-decoration: none;
+  padding-bottom: 3px;
+}
+.ds-link::after {                          /* the teal underline carries the registration */
+  content: "";
+  position: absolute; left: 0; right: 0; bottom: 0;
+  height: var(--line-reg);
+  background: var(--role-accent);
+  mix-blend-mode: multiply;
+  transition: box-shadow var(--dur-fast) var(--ease-snap);
+}
+/* --reg-shadow doubles as a box-shadow: a tomato plate slips off the underline */
+.ds-link:hover::after, .ds-link.reg-on::after { box-shadow: var(--reg-shadow); }
+
+.ds-btn {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  color: var(--role-action-text);
+  background: var(--role-action);
+  border: var(--line-bold) solid var(--c-ink);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
+  padding: var(--space-3) var(--space-5);
+  cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease-snap),
+              box-shadow var(--dur-fast) var(--ease-snap),
+              text-shadow var(--dur-fast) var(--ease-snap);
+}
+.ds-btn:hover, .ds-btn.reg-on {
+  background: var(--role-info);                  /* tomato → bluebird on hover */
+  box-shadow: var(--reg-box);
+  text-shadow: 1px 1px 0 rgba(36,31,26,0.35);
+}

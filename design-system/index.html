@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Dumpster Fire · Design System</title>
+<link rel="stylesheet" href="tokens/tokens.css" />
+<style>
+  body { margin: 0; font-family: var(--font-body); background: var(--c-paper);
+         color: var(--c-ink); }
+  body::before { content:""; position: fixed; inset: 0; z-index: -1;
+    background-image: radial-gradient(var(--halftone-color) 2.1px, transparent 2.6px);
+    background-size: 8px 8px; }
+  header { padding: var(--space-7) var(--space-6) var(--space-5);
+           border-bottom: var(--line-bold) solid var(--c-ink); }
+  .kicker { font-family: "Bebas Neue", sans-serif; text-transform: uppercase;
+            letter-spacing: 0.06em; color: var(--c-tomato); }
+  h1 { font-size: clamp(2rem,5vw,3.4rem); margin: var(--space-1) 0 0; }
+  main { padding: var(--space-6); display: grid; gap: var(--space-5);
+         grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); max-width: 1100px; }
+  a.card { display: block; text-decoration: none; color: var(--c-ink);
+           border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-md);
+           background: var(--c-paper-deep); box-shadow: var(--shadow-card);
+           padding: var(--space-5); }
+  a.card .grp { font-family: "Bebas Neue", sans-serif; text-transform: uppercase;
+                letter-spacing: 0.06em; font-size: 0.8rem; color: var(--c-teal); }
+  a.card .ttl { font-family: "Bebas Neue", sans-serif; text-transform: uppercase;
+                letter-spacing: 0.03em; font-size: 1.6rem; margin-top: var(--space-1); }
+  a.card p { margin: var(--space-2) 0 0; font-size: var(--type-small);
+             color: var(--role-text-muted); }
+</style>
+</head>
+<body>
+<header>
+  <div class="kicker">Dumpster Fire</div>
+  <h1>Design System</h1>
+</header>
+<main>
+  <a class="card" href="foundations/colors.html">
+    <div class="grp">Foundations</div><div class="ttl">Color</div>
+    <p>Paper ground, warm ink, four energetic accents. Pairing rules.</p></a>
+  <a class="card" href="foundations/type.html">
+    <div class="grp">Foundations</div><div class="ttl">Type</div>
+    <p>Bemio · Bebas Neue · Plantagenet. HEAD candidates + Motel type.</p></a>
+  <a class="card" href="foundations/texture.html">
+    <div class="grp">Foundations</div><div class="ttl">Texture</div>
+    <p>Halftone ground, gradient ramps, registration offset, grain.</p></a>
+</main>
+</body>
+</html>

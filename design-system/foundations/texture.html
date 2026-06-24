@@ -1,0 +1,129 @@
+<!-- @dsCard group="Foundations" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Foundations · Texture</title>
+<link rel="stylesheet" href="../tokens/tokens.css" />
+<link rel="stylesheet" href="../lib/base.css" />
+<style>
+  body { padding: var(--space-6); }
+  .wrap { max-width: 980px; margin: 0 auto; }
+  .kicker { font-family: var(--font-subhead); text-transform: uppercase;
+            letter-spacing: var(--tracking-subhead); color: var(--c-tomato);
+            font-size: var(--type-subhead); margin-bottom: var(--space-2); }
+  h1.page { font-size: var(--type-h1); margin-bottom: var(--space-2); }
+  .lede { color: var(--role-text-muted); max-width: 60ch; margin-bottom: var(--space-6); }
+  h2.sec { font-family: var(--font-subhead); text-transform: uppercase;
+           letter-spacing: var(--tracking-subhead); font-size: 1.3rem;
+           color: var(--c-ink); border-bottom: var(--line-reg) solid var(--c-ink);
+           padding-bottom: var(--space-2); margin: var(--space-7) 0 var(--space-4); }
+
+  .panels { display: grid; gap: var(--space-5);
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+  .demo { border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-md);
+          overflow: hidden; box-shadow: var(--shadow-card); background: var(--c-paper-deep); }
+  .demo .stage { height: 170px; position: relative; display: grid; place-items: center; }
+  .demo .cap { padding: var(--space-3); border-top: var(--line-reg) solid var(--c-ink);
+               font-family: var(--font-subhead); text-transform: uppercase;
+               letter-spacing: 0.04em; font-size: 0.85rem; }
+  .demo .cap small { display:block; font-family: var(--font-body); text-transform: none;
+                     letter-spacing: 0; color: var(--role-text-muted); margin-top: 2px; }
+
+  /* Halftone ground · page background + select elements only */
+  .stage.halftone { background: var(--c-paper); }
+  .stage.halftone::before { content:""; position:absolute; inset:0;
+    background-image: radial-gradient(var(--halftone-color) var(--halftone-dot),
+                      transparent calc(var(--halftone-dot) + 0.5px));
+    background-size: var(--halftone-size) var(--halftone-size); }
+
+  /* Gradient expressed as a halftone dot ramp · NOT for use behind body copy */
+  .stage.ramp { background: var(--c-teal); }
+  .stage.ramp::before { content:""; position:absolute; inset:0;
+    background-image: radial-gradient(var(--c-paper) 1px, transparent 1.6px);
+    background-size: 7px 7px;
+    -webkit-mask-image: linear-gradient(90deg, #000, transparent);
+            mask-image: linear-gradient(90deg, #000, transparent); }
+
+  /* Registration misprint · single ink plate, multiply-blended */
+  .reg { font-family: var(--font-display); font-size: 2.8rem; color: var(--c-ink);
+         text-shadow: var(--reg-shadow); mix-blend-mode: multiply; }
+
+  /* Print grain · multiply-blended fractal noise over a flat */
+  .stage.grain { background: var(--c-mustard); }
+  .stage.grain::after { content:""; position:absolute; inset:0; pointer-events:none;
+    opacity: 0.65; mix-blend-mode: multiply;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-size: 200px 200px; }
+  .stage.grain .lbl { position: relative; font-family: var(--font-display);
+                      font-size: 2rem; color: var(--c-ink); }
+
+  /* Interaction demo · rest vs hover shown side by side (cards are static) */
+  .inter { display: grid; gap: var(--space-6);
+           grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+           border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-md);
+           background: var(--c-paper-deep); box-shadow: var(--shadow-card);
+           padding: var(--space-6); }
+  .inter .tag { display: block; font-family: var(--font-subhead); text-transform: uppercase;
+                letter-spacing: 0.05em; font-size: 0.72rem; color: var(--role-text-faint);
+                margin-bottom: var(--space-4); }
+  .pairrow { display: flex; gap: var(--space-7); align-items: flex-end; flex-wrap: wrap; }
+  .pairrow > div { display: flex; flex-direction: column; gap: var(--space-2); align-items: flex-start; }
+  .st { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.05em;
+        font-size: 0.65rem; color: var(--role-text-faint); }
+  .inter .ds-link { font-family: var(--font-body); font-size: 1.05rem; }
+  .note { font-family: var(--font-body); color: var(--role-text-muted);
+          font-size: var(--type-small); margin: var(--space-3) 0 var(--space-4); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="kicker">Foundations</div>
+  <h1 class="page">Texture</h1>
+  <p class="lede">Halftone lives on the page ground and select elements, never as the fill for
+  every surface. Gradients are expressed as halftone dot ramps. Registration offset is the
+  signature interaction: on hover the print slips, leaving one tomato plate misregistered.</p>
+
+  <div class="panels">
+    <div class="demo">
+      <div class="stage halftone"></div>
+      <div class="cap">Halftone ground<small>page background · 8px cell</small></div>
+    </div>
+    <div class="demo">
+      <div class="stage ramp"></div>
+      <div class="cap">Gradient → halftone<small>tonal ramp · not behind body copy</small></div>
+    </div>
+    <div class="demo">
+      <div class="stage"><div class="reg">MOD</div></div>
+      <div class="cap">Registration misprint<small>one tomato plate · opacity · 1.5px</small></div>
+    </div>
+    <div class="demo">
+      <div class="stage grain"><div class="lbl">Grain</div></div>
+      <div class="cap">Print grain<small>fractal noise, multiply</small></div>
+    </div>
+  </div>
+
+  <h2 class="sec">Registration · Hover Interaction</h2>
+  <p class="note">Design-system cards are static previews, so a live <code>:hover</code> can't fire
+  here. Each row shows the resting state and the hover (misregister) state side by side. Open
+  <code>foundations/texture.html</code> in a browser to feel it move.</p>
+  <div class="inter">
+    <div>
+      <span class="tag">Text link · underline misregisters</span>
+      <div class="pairrow">
+        <div><span class="st">rest</span><a href="#" class="ds-link">View 142 matches</a></div>
+        <div><span class="st">hover</span><a href="#" class="ds-link reg-on">View 142 matches</a></div>
+      </div>
+    </div>
+    <div>
+      <span class="tag">Button · plate slips</span>
+      <div class="pairrow">
+        <div><span class="st">rest</span><button class="ds-btn" type="button">Run a scan</button></div>
+        <div><span class="st">hover</span><button class="ds-btn reg-on" type="button">Run a scan</button></div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>
