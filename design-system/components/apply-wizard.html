@@ -65,8 +65,10 @@
   .modeSelector > span { font-family: var(--font-display); font-size: 1rem; color: var(--c-ink); }
   .modeSelector label { display: inline-flex; align-items: center; gap: var(--space-2);
     font-family: var(--font-body); color: var(--role-text-muted); cursor: pointer; }
-  .modeRecommendation { font-family: var(--font-body); font-size: var(--type-small); color: var(--role-text-muted);
-    border-left: var(--line-bold) solid var(--c-bluebird); padding-left: var(--space-3); margin: var(--space-3) 0 0; }
+  /* .modeSection scope raises specificity above `.modalStack section > p`, which
+     would otherwise force margin-top to 0 and crowd the note against the options. */
+  .modeSection .modeRecommendation { font-family: var(--font-body); font-size: var(--type-small); color: var(--role-text-muted);
+    border-left: var(--line-bold) solid var(--c-bluebird); padding-left: var(--space-3); margin: var(--space-5) 0 0; }
 
   input[type="checkbox"] { accent-color: var(--c-teal); width: 18px; height: 18px; flex: none; }
 

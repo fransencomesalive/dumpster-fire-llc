@@ -25,10 +25,18 @@
   .heroInner { position:relative; width:min(1080px, calc(100% - 48px)); margin:0 auto; box-sizing:border-box;
     padding: clamp(var(--space-6),6vw,var(--space-8)) clamp(var(--space-5),5vw,var(--space-7));
     border:var(--line-bold) solid var(--c-ink);
-    display:flex; align-items:center; justify-content:center; gap:clamp(var(--space-5),4vw,var(--space-7)); }
+    display:flex; flex-direction:column; align-items:center; gap:clamp(var(--space-5),4vw,var(--space-6)); }
   .heroInner::before { content:""; position:absolute; inset:8px; border:var(--line-hair) solid var(--c-ink); pointer-events:none; }
 
-  .heroLockup { flex:0 1 auto; min-width:0; max-width:600px; }
+  /* Centered stack: mascot, then the title/copy/signs column. The lockup sizes to
+     the wordmark (fit-content); the intro copy is forced to that exact width via the
+     width:0 / min-width:100% trick so it matches "Dumpster Fire" without widening it. */
+  .heroMascot { width:clamp(220px,26vw,320px); height:auto; object-fit:contain;
+    filter: drop-shadow(2.5px 0 0 var(--c-paper)) drop-shadow(-2.5px 0 0 var(--c-paper))
+            drop-shadow(0 2.5px 0 var(--c-paper)) drop-shadow(0 -2.5px 0 var(--c-paper))
+            drop-shadow(6px 7px 0 rgba(36,31,26,0.32)); }
+
+  .heroLockup { width:fit-content; max-width:100%; text-align:center; }
   .heroLead { margin:0; font-family:var(--font-display); color:var(--c-ink);
     font-size:clamp(1.25rem,2.5vw,1.95rem); line-height:1.04; letter-spacing:var(--tracking-display); }
 
@@ -36,19 +44,23 @@
     font-family:"Original Surfer", cursive; font-size:clamp(3rem,7.2vw,5.4rem); }
   .word .plate { display:block; margin:0; }
   .word .base { color:var(--c-teal); }
-  /* off-registration slip, dialed back 35% (6/7px -> 4/4.5px) */
-  .word .slip { position:absolute; left:0; top:0; color:var(--c-tomato); transform:translate(4px,4.5px); mix-blend-mode:multiply; }
+  /* off-registration slip (down-right), dialed back another 10% (4/4.5px -> 3.6/4.05px) */
+  .word .slip { position:absolute; left:0; top:0; color:var(--c-tomato); transform:translate(3.6px,4.05px); mix-blend-mode:multiply; }
 
-  .heroTag { display:inline-block; margin:var(--space-4) 0 0; font-family:var(--font-subhead); text-transform:uppercase;
-    letter-spacing:0.05em; font-size:clamp(1.02rem,2vw,1.4rem); color:var(--c-paper); background-color:var(--c-tomato);
-    border:var(--line-reg) solid var(--c-ink); box-shadow:4px 4px 0 var(--c-ink); padding:7px 16px; }
-  .heroDesc { max-width:46ch; margin:var(--space-4) 0 0; color:var(--role-text-muted);
+  .heroDesc { width:0; min-width:100%; margin:var(--space-6) 0 0; color:var(--role-text-muted); text-align:left;
     font-family:var(--font-body); font-size:clamp(1rem,1.35vw,1.14rem); line-height:var(--leading-body); text-wrap:pretty; }
 
-  .heroMascot { flex:none; width:clamp(195px,23vw,290px); height:auto; object-fit:contain;
-    filter: drop-shadow(2.5px 0 0 var(--c-paper)) drop-shadow(-2.5px 0 0 var(--c-paper))
-            drop-shadow(0 2.5px 0 var(--c-paper)) drop-shadow(0 -2.5px 0 var(--c-paper))
-            drop-shadow(6px 7px 0 rgba(36,31,26,0.32)); }
+  /* Two horizontal "hotel marquee" signs, staggered diagonally and centered under
+     the copy: Stop Applying upper-left, Start Pursuing lower-right. */
+  .heroSigns { width:fit-content; margin:var(--space-6) auto 0; display:flex; flex-direction:column; gap:var(--space-3); }
+  .sign { display:inline-flex; align-items:center; justify-content:center;
+    font-family:var(--font-subhead); text-transform:uppercase; letter-spacing:0.06em;
+    font-size:clamp(1.05rem,1.6vw,1.35rem); line-height:1; padding:9px 18px;
+    border:var(--line-bold) solid var(--c-ink); border-radius:var(--radius-sm); box-shadow:var(--shadow-card);
+    background-image:var(--fiber-img), var(--grain-img);
+    background-blend-mode:normal, soft-light; background-size:170px 170px, 46px 46px; }
+  .signTomato { background-color:var(--c-tomato); color:var(--c-paper); align-self:flex-start; }
+  .signTeal { background-color:var(--c-teal); color:var(--c-paper); align-self:flex-end; margin-left:var(--space-7); }
 
   .section { width:min(1080px, calc(100% - 48px)); margin:var(--space-6) auto 0; }
   .sectionHead h2 { font-family:var(--font-display); font-size:var(--type-h1); color:var(--c-ink); margin:0; }
@@ -56,9 +68,8 @@
     font-size:1.16rem; color:var(--c-tomato); margin:var(--space-2) 0 0; }
 
   @media (max-width:760px){
-    .heroInner{ flex-direction:column; align-items:flex-start; gap:var(--space-4); }
-    .heroMascot{ order:-1; width:195px; }
-    .heroLockup{ max-width:100%; }
+    .heroMascot{ width:210px; }
+    .signTeal{ margin-left:var(--space-5); }
   }
 </style>
 </head>
@@ -66,15 +77,18 @@
   <main class="page">
     <section class="hero">
       <div class="heroInner">
+        <img class="heroMascot" src="../dumpsterfireguy.png" alt="" aria-hidden="true" />
         <div class="heroLockup">
           <p class="heroLead">The Job Market Is A</p>
           <h1 class="word"><span class="plate base">Dumpster Fire</span><span class="plate slip" aria-hidden="true">Dumpster Fire</span></h1>
-          <p class="heroTag">Stop applying. Start pursuing.</p>
           <p class="heroDesc">Portals and ATS bots are where good candidates disappear. Dumpster Fire turns a job
           post into a direct line to the person who actually does the hiring by leveraging your own voice and
           experience to make contact.</p>
+          <div class="heroSigns">
+            <span class="sign signTomato">Stop Applying</span>
+            <span class="sign signTeal">Start Pursuing</span>
+          </div>
         </div>
-        <img class="heroMascot" src="../dumpsterfireguy.png" alt="" aria-hidden="true" />
       </div>
     </section>
 
