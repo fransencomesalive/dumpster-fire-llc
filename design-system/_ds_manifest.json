@@ -1,1 +1,278 @@
-{"namespace":"DumpsterFireDesignSystem_3af2f1","components":[],"startingPoints":[],"cards":[{"path":"foundations/colors.html","group":"Foundations"},{"path":"foundations/texture.html","group":"Foundations"},{"path":"foundations/type.html","group":"Foundations"},{"path":"components/match-card.html","group":"Components"},{"path":"components/panel.html","group":"Components"},{"path":"components/login.html","group":"Components"},{"path":"components/badges.html","group":"Components"},{"path":"components/forms.html","group":"Components"},{"path":"components/modal.html","group":"Components"},{"path":"components/apply-wizard.html","group":"Components"},{"path":"components/hero-matchbook.html","group":"Hero options"},{"path":"components/hero-atomic.html","group":"Hero options"}],"templates":[],"hasThumbnailHtml":false,"globalCssPaths":["lib/base.css","tokens/tokens.css"],"tokens":[{"name":"--c-paper","value":"#F3E8D2","kind":"color","definedIn":"tokens/tokens.css"},{"name":"--c-paper-deep","value":"#EAD9BC","kind":"color","definedIn":"tokens/tokens.css"},{"name":"--c-paper-edge","value":"#DFC9A6","kind":"color","definedIn":"tokens/tokens.css"},{"name":"--c-ink","value":"#241F1A","kind":"color","definedIn":"tokens/tokens.css"},{"name":"--c-ink-soft","value":"#4A4038","kind":"color","definedIn":"tokens/tokens.css"},{"name":"--c-ink-faint","value":"#8A7B6A","kind":"color","definedIn":"tokens/tokens.css"},{"name":"--c-tomato","value":"#E0512E","kind":"color","definedIn":"tokens/tokens.css"},{"name":"--c-teal","value":"#1F9E96","kind":"color","definedIn":"tokens/tokens.css"},{"name":"--c-mustard","value":"#E0A52F","kind":"color","definedIn":"tokens/tokens.css"},{"name":"--c-bluebird","value":"#2A6AA0","kind":"color","definedIn":"tokens/tokens.css"},{"name":"--c-rose","value":"#E2998C","kind":"color","definedIn":"tokens/tokens.css"},{"name":"--font-display","value":"\"Bemio\", system-ui, sans-serif","kind":"font","definedIn":"tokens/tokens.css"},{"name":"--font-display-accent","value":"\"Head-OH\", \"Bemio\", sans-serif","kind":"font","definedIn":"tokens/tokens.css"},{"name":"--font-subhead","value":"\"Bebas Neue\", \"Oswald\", sans-serif","kind":"font","definedIn":"tokens/tokens.css"},{"name":"--font-body","value":"\"Plantagenet Cherokee\", Georgia, serif","kind":"font","definedIn":"tokens/tokens.css"},{"name":"--grain-opacity","value":"0.10","kind":"other","definedIn":"tokens/tokens.css"},{"name":"--reg-ink","value":"rgba(224, 81, 46, 0.95)","kind":"color","definedIn":"tokens/tokens.css"},{"name":"--shadow-card","value":"3px 3px 0 var(--c-ink)","kind":"shadow","definedIn":"tokens/tokens.css"}],"themes":[],"fonts":[{"family":"Bemio","weight":"400","style":"normal","cssPath":"lib/base.css","files":["fonts/Bemio.otf"]},{"family":"Bemio","weight":"400","style":"italic","cssPath":"lib/base.css","files":["fonts/Bemio-Italic.otf"]},{"family":"Bebas Neue","weight":"400","style":"normal","cssPath":"lib/base.css","files":["fonts/BebasNeue-Regular.woff2","fonts/BebasNeue-Regular.ttf"]},{"family":"Plantagenet Cherokee","weight":"400","style":"normal","cssPath":"lib/base.css","files":["fonts/PlantagenetCherokee.ttf"]},{"family":"Head-OH","weight":"400","style":"normal","cssPath":"lib/base.css","files":["fonts/Head-OH.ttf"]},{"family":"Head-TH","weight":"400","style":"normal","cssPath":"lib/base.css","files":["fonts/Head-TH.ttf"]}],"brandFonts":[{"family":"Bemio","status":"ok","tokens":["--font-display"],"path":"lib/base.css"},{"family":"Bebas Neue","status":"ok","tokens":["--font-subhead"],"path":"lib/base.css"},{"family":"Plantagenet Cherokee","status":"ok","tokens":["--font-body"],"path":"lib/base.css"},{"family":"Head-OH","status":"ok","tokens":["--font-display-accent"],"path":"lib/base.css"},{"family":"Head-TH","status":"unreferenced","tokens":[],"path":"lib/base.css"}],"source":"spa"}
+{
+  "namespace": "DumpsterFireDesignSystem_3af2f1",
+  "components": [],
+  "startingPoints": [],
+  "cards": [
+    {
+      "path": "foundations/colors.html",
+      "group": "Foundations"
+    },
+    {
+      "path": "foundations/texture.html",
+      "group": "Foundations"
+    },
+    {
+      "path": "foundations/type.html",
+      "group": "Foundations"
+    },
+    {
+      "path": "components/match-card.html",
+      "group": "Components"
+    },
+    {
+      "path": "components/panel.html",
+      "group": "Components"
+    },
+    {
+      "path": "components/login.html",
+      "group": "Components"
+    },
+    {
+      "path": "components/badges.html",
+      "group": "Components"
+    },
+    {
+      "path": "components/forms.html",
+      "group": "Components"
+    },
+    {
+      "path": "components/modal.html",
+      "group": "Components"
+    },
+    {
+      "path": "components/apply-wizard.html",
+      "group": "Components"
+    },
+    {
+      "group": "Components",
+      "path": "components/scan-progress.html"
+    },
+    {
+      "group": "Components",
+      "path": "components/scan-history.html"
+    },
+    {
+      "path": "components/hero-matchbook.html",
+      "group": "Hero options"
+    },
+    {
+      "path": "components/hero-atomic.html",
+      "group": "Hero options"
+    }
+  ],
+  "templates": [],
+  "hasThumbnailHtml": false,
+  "globalCssPaths": [
+    "lib/base.css",
+    "tokens/tokens.css"
+  ],
+  "tokens": [
+    {
+      "name": "--c-paper",
+      "value": "#F3E8D2",
+      "kind": "color",
+      "definedIn": "tokens/tokens.css"
+    },
+    {
+      "name": "--c-paper-deep",
+      "value": "#EAD9BC",
+      "kind": "color",
+      "definedIn": "tokens/tokens.css"
+    },
+    {
+      "name": "--c-paper-edge",
+      "value": "#DFC9A6",
+      "kind": "color",
+      "definedIn": "tokens/tokens.css"
+    },
+    {
+      "name": "--c-ink",
+      "value": "#241F1A",
+      "kind": "color",
+      "definedIn": "tokens/tokens.css"
+    },
+    {
+      "name": "--c-ink-soft",
+      "value": "#4A4038",
+      "kind": "color",
+      "definedIn": "tokens/tokens.css"
+    },
+    {
+      "name": "--c-ink-faint",
+      "value": "#8A7B6A",
+      "kind": "color",
+      "definedIn": "tokens/tokens.css"
+    },
+    {
+      "name": "--c-tomato",
+      "value": "#E0512E",
+      "kind": "color",
+      "definedIn": "tokens/tokens.css"
+    },
+    {
+      "name": "--c-teal",
+      "value": "#1F9E96",
+      "kind": "color",
+      "definedIn": "tokens/tokens.css"
+    },
+    {
+      "name": "--c-mustard",
+      "value": "#E0A52F",
+      "kind": "color",
+      "definedIn": "tokens/tokens.css"
+    },
+    {
+      "name": "--c-bluebird",
+      "value": "#2A6AA0",
+      "kind": "color",
+      "definedIn": "tokens/tokens.css"
+    },
+    {
+      "name": "--c-rose",
+      "value": "#E2998C",
+      "kind": "color",
+      "definedIn": "tokens/tokens.css"
+    },
+    {
+      "name": "--font-display",
+      "value": "\"Bemio\", system-ui, sans-serif",
+      "kind": "font",
+      "definedIn": "tokens/tokens.css"
+    },
+    {
+      "name": "--font-display-accent",
+      "value": "\"Head-OH\", \"Bemio\", sans-serif",
+      "kind": "font",
+      "definedIn": "tokens/tokens.css"
+    },
+    {
+      "name": "--font-subhead",
+      "value": "\"Bebas Neue\", \"Oswald\", sans-serif",
+      "kind": "font",
+      "definedIn": "tokens/tokens.css"
+    },
+    {
+      "name": "--font-body",
+      "value": "\"Plantagenet Cherokee\", Georgia, serif",
+      "kind": "font",
+      "definedIn": "tokens/tokens.css"
+    },
+    {
+      "name": "--grain-opacity",
+      "value": "0.10",
+      "kind": "other",
+      "definedIn": "tokens/tokens.css"
+    },
+    {
+      "name": "--reg-ink",
+      "value": "rgba(224, 81, 46, 0.95)",
+      "kind": "color",
+      "definedIn": "tokens/tokens.css"
+    },
+    {
+      "name": "--shadow-card",
+      "value": "3px 3px 0 var(--c-ink)",
+      "kind": "shadow",
+      "definedIn": "tokens/tokens.css"
+    }
+  ],
+  "themes": [],
+  "fonts": [
+    {
+      "family": "Bemio",
+      "weight": "400",
+      "style": "normal",
+      "cssPath": "lib/base.css",
+      "files": [
+        "fonts/Bemio.otf"
+      ]
+    },
+    {
+      "family": "Bemio",
+      "weight": "400",
+      "style": "italic",
+      "cssPath": "lib/base.css",
+      "files": [
+        "fonts/Bemio-Italic.otf"
+      ]
+    },
+    {
+      "family": "Bebas Neue",
+      "weight": "400",
+      "style": "normal",
+      "cssPath": "lib/base.css",
+      "files": [
+        "fonts/BebasNeue-Regular.woff2",
+        "fonts/BebasNeue-Regular.ttf"
+      ]
+    },
+    {
+      "family": "Plantagenet Cherokee",
+      "weight": "400",
+      "style": "normal",
+      "cssPath": "lib/base.css",
+      "files": [
+        "fonts/PlantagenetCherokee.ttf"
+      ]
+    },
+    {
+      "family": "Head-OH",
+      "weight": "400",
+      "style": "normal",
+      "cssPath": "lib/base.css",
+      "files": [
+        "fonts/Head-OH.ttf"
+      ]
+    },
+    {
+      "family": "Head-TH",
+      "weight": "400",
+      "style": "normal",
+      "cssPath": "lib/base.css",
+      "files": [
+        "fonts/Head-TH.ttf"
+      ]
+    }
+  ],
+  "brandFonts": [
+    {
+      "family": "Bemio",
+      "status": "ok",
+      "tokens": [
+        "--font-display"
+      ],
+      "path": "lib/base.css"
+    },
+    {
+      "family": "Bebas Neue",
+      "status": "ok",
+      "tokens": [
+        "--font-subhead"
+      ],
+      "path": "lib/base.css"
+    },
+    {
+      "family": "Plantagenet Cherokee",
+      "status": "ok",
+      "tokens": [
+        "--font-body"
+      ],
+      "path": "lib/base.css"
+    },
+    {
+      "family": "Head-OH",
+      "status": "ok",
+      "tokens": [
+        "--font-display-accent"
+      ],
+      "path": "lib/base.css"
+    },
+    {
+      "family": "Head-TH",
+      "status": "unreferenced",
+      "tokens": [],
+      "path": "lib/base.css"
+    }
+  ],
+  "source": "spa"
+}

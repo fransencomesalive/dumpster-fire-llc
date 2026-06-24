@@ -1,0 +1,128 @@
+<!-- @dsCard group="Components" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Components · Scan History</title>
+<link rel="stylesheet" href="../tokens/tokens.css" />
+<link rel="stylesheet" href="../lib/base.css" />
+<style>
+  /* SCAN HISTORY · the log of past scans. Section header (Bemio headline +
+     Bebas sub, no eyebrow), then a stack of scan-log cards. Each card carries
+     a status pill, the run date, and the run's counts. Class names mirror
+     DashboardClient.tsx (ScanCard) so the CSS ports straight back. */
+  body { margin: 0; padding: var(--space-6); background: var(--c-paper); }
+  body::before { content:""; position: fixed; inset: 0; z-index: -1;
+    background-image: radial-gradient(var(--halftone-color) var(--halftone-dot),
+      transparent calc(var(--halftone-dot) + 0.5px)); background-size: var(--halftone-size) var(--halftone-size); }
+
+  .section { width: min(760px, 100%); margin: 0 auto; }
+
+  /* Section header · bold Bemio headline + Bebas sub in tomato (no kicker) */
+  .sectionHead { margin-bottom: var(--space-5); }
+  .sectionHead h2 { font-family: var(--font-display); font-size: var(--type-h2); color: var(--c-ink); margin: 0; }
+  .sectionSub { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: var(--tracking-subhead);
+    font-size: 1.1rem; color: var(--c-tomato); margin: var(--space-2) 0 0; }
+
+  .scanList { display: flex; flex-direction: column; gap: var(--space-4); }
+
+  .scanCard { position: relative; box-sizing: border-box;
+    background-color: var(--c-paper-deep); background-image: var(--fiber-img), var(--grain-img);
+    background-blend-mode: normal, soft-light; background-size: 170px 170px, 46px 46px;
+    border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-card); padding: var(--space-5); }
+
+  .scanCardTop { display: flex; align-items: center; justify-content: space-between;
+    gap: var(--space-4); margin-bottom: var(--space-4); }
+  .scanDate { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: var(--tracking-subhead);
+    font-size: 1.02rem; color: var(--role-text-muted); }
+
+  /* Status pill · scan family (teal ok, mustard warn, tomato fail) */
+  .scanBadge { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.05em;
+    font-size: 0.82rem; line-height: 1; color: var(--c-paper); background-color: var(--c-teal);
+    border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-pill); padding: 6px 13px; }
+  .scanBadgeWarn { background-color: var(--c-mustard); color: var(--c-ink); }
+  .scanBadgeFail { background-color: var(--c-tomato); color: var(--c-paper); }
+
+  /* Primary counts · big ink numbers, teal diamond divider */
+  .scanStats { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-4); }
+  .stat { font-family: var(--font-body); font-size: var(--type-body); color: var(--role-text-muted); }
+  .stat strong { font-family: var(--font-display); font-size: 1.5rem; color: var(--c-ink); margin-right: 4px; }
+  .statDivider { width: 8px; height: 8px; background-color: var(--c-teal);
+    border: var(--line-hair) solid var(--c-ink); transform: rotate(45deg); align-self: center; }
+
+  /* Secondary counts · the delta line, muted */
+  .scanSub { font-family: var(--font-body); font-size: var(--type-small); color: var(--role-text-muted);
+    margin: var(--space-3) 0 0; }
+  .scanSub b { font-family: var(--font-display); color: var(--c-ink); font-weight: 400; }
+
+  .scanError { font-family: var(--font-body); font-size: var(--type-small); color: var(--c-tomato);
+    border-left: var(--line-bold) solid var(--c-tomato); padding-left: var(--space-3); margin: var(--space-4) 0 0; }
+</style>
+</head>
+<body>
+  <section class="section">
+    <div class="sectionHead">
+      <h2>Scan History</h2>
+      <p class="sectionSub">Last 30 days &middot; 6 runs</p>
+    </div>
+
+    <div class="scanList">
+      <article class="scanCard">
+        <div class="scanCardTop">
+          <span class="scanBadge ds-surface">Completed</span>
+          <span class="scanDate">Jun 22, 8:49 PM</span>
+        </div>
+        <div class="scanStats">
+          <span class="stat"><strong>14</strong>companies</span>
+          <span class="statDivider" aria-hidden="true"></span>
+          <span class="stat"><strong>52</strong>relevant</span>
+        </div>
+        <p class="scanSub"><b>11</b> new &middot; <b>6</b> updated &middot; <b>3</b> closed</p>
+      </article>
+
+      <article class="scanCard">
+        <div class="scanCardTop">
+          <span class="scanBadge scanBadgeWarn ds-surface">Completed with errors</span>
+          <span class="scanDate">Jun 21, 8:47 PM</span>
+        </div>
+        <div class="scanStats">
+          <span class="stat"><strong>13</strong>companies</span>
+          <span class="statDivider" aria-hidden="true"></span>
+          <span class="stat"><strong>44</strong>relevant</span>
+        </div>
+        <p class="scanSub"><b>5</b> new &middot; <b>9</b> updated &middot; <b>2</b> closed</p>
+        <p class="scanError">Workday &middot; Meridian Group timed out. Ashby feed returned no results.</p>
+      </article>
+
+      <article class="scanCard">
+        <div class="scanCardTop">
+          <span class="scanBadge ds-surface">Completed</span>
+          <span class="scanDate">Jun 20, 8:51 PM</span>
+        </div>
+        <div class="scanStats">
+          <span class="stat"><strong>14</strong>companies</span>
+          <span class="statDivider" aria-hidden="true"></span>
+          <span class="stat"><strong>49</strong>relevant</span>
+        </div>
+        <p class="scanSub"><b>8</b> new &middot; <b>7</b> updated &middot; <b>1</b> closed</p>
+      </article>
+
+      <article class="scanCard">
+        <div class="scanCardTop">
+          <span class="scanBadge scanBadgeFail ds-surface">Failed</span>
+          <span class="scanDate">Jun 19, 8:45 PM</span>
+        </div>
+        <div class="scanStats">
+          <span class="stat"><strong>0</strong>companies</span>
+          <span class="statDivider" aria-hidden="true"></span>
+          <span class="stat"><strong>0</strong>relevant</span>
+        </div>
+        <p class="scanSub"><b>0</b> new &middot; <b>0</b> updated &middot; <b>0</b> closed</p>
+        <p class="scanError">The scan could not reach any sources. Check the connection and run again.</p>
+      </article>
+    </div>
+  </section>
+</body>
+</html>
