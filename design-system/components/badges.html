@@ -1,0 +1,97 @@
+<!-- @dsCard group="Components" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Components · Badges & Tags</title>
+<link rel="stylesheet" href="../tokens/tokens.css" />
+<link rel="stylesheet" href="../lib/base.css" />
+<style>
+  body { padding: var(--space-6); background: var(--c-paper); }
+  body::before { content:""; position: fixed; inset: 0; z-index: -1;
+    background-image: radial-gradient(var(--halftone-color) var(--halftone-dot),
+      transparent calc(var(--halftone-dot) + 0.5px)); background-size: var(--halftone-size) var(--halftone-size); }
+  .wrap { max-width: 720px; margin: 0 auto; }
+  h1.page { font-family: var(--font-display); font-size: var(--type-h1); color: var(--c-ink); }
+  .lede { font-family: var(--font-body); color: var(--role-text-muted); margin: var(--space-2) 0 var(--space-6); }
+
+  .group { background-color: var(--c-paper-deep); border: var(--line-reg) solid var(--c-ink);
+    border-radius: var(--radius-lg); box-shadow: var(--shadow-card);
+    padding: var(--space-5); margin-bottom: var(--space-5); }
+  .groupLabel { display: block; font-family: var(--font-display); font-size: 1.2rem;
+    color: var(--c-ink); margin-bottom: var(--space-1); }
+  .groupNote { font-family: var(--font-body); font-size: 0.85rem; color: var(--role-text-muted);
+    margin: 0 0 var(--space-4); }
+  .row { display: flex; flex-wrap: wrap; gap: var(--space-4); align-items: center; }
+
+  /* Solid status pills · ink outline, grain+fiber, colour by state */
+  .statusBadge { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.05em;
+    font-size: 0.82rem; line-height: 1; border: var(--line-reg) solid var(--c-ink);
+    border-radius: var(--radius-pill); padding: 6px 13px; }
+  .stSaved   { background-color: var(--c-teal);     color: var(--c-paper); }
+  .stApplied { background-color: var(--c-bluebird); color: var(--c-paper); }
+  .stNew     { background-color: var(--c-mustard);  color: var(--c-ink); }
+  .stSkipped { background-color: var(--c-paper);    color: var(--role-text-muted); }
+
+  .scanBadge { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.05em;
+    font-size: 0.82rem; color: var(--c-paper); background-color: var(--c-teal);
+    border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-pill); padding: 6px 13px; }
+  .scanBadgeWarn { background-color: var(--c-mustard); color: var(--c-ink); }
+
+  /* Tags · keyword (dotted teal underline), industry (outline), missing (warn) */
+  .keywordPill { font-family: var(--font-display); font-size: 0.9rem; color: var(--c-ink);
+    border-bottom: 2.5px dotted var(--c-teal); padding-bottom: 1px; }
+  .industryTag { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.04em;
+    font-size: 0.8rem; color: var(--c-bluebird); border: var(--line-reg) solid var(--c-bluebird);
+    border-radius: var(--radius-pill); padding: 4px 11px; }
+  .missingTag { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.04em;
+    font-size: 0.8rem; color: var(--c-tomato); border: var(--line-reg) dashed var(--c-tomato);
+    border-radius: var(--radius-pill); padding: 4px 11px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1 class="page">Badges & Tags</h1>
+  <p class="lede">The status, scan, and tag family. Solid pills carry the paper texture and an ink
+  outline; tags stay light. Color carries meaning: teal/blue are positive signals, red is a warning.</p>
+
+  <div class="group">
+    <span class="groupLabel">Status</span>
+    <div class="row">
+      <span class="statusBadge stSaved ds-surface">Saved</span>
+      <span class="statusBadge stApplied ds-surface">Applied</span>
+      <span class="statusBadge stNew ds-surface">New</span>
+      <span class="statusBadge stSkipped ds-surface">Skipped</span>
+    </div>
+  </div>
+
+  <div class="group">
+    <span class="groupLabel">Scan counts</span>
+    <div class="row">
+      <span class="scanBadge ds-surface">12 new</span>
+      <span class="scanBadge scanBadgeWarn ds-surface">3 flagged</span>
+    </div>
+  </div>
+
+  <div class="group">
+    <span class="groupLabel">Match tags</span>
+    <p class="groupNote">Positive signals: teal keyword matches, blue industry fit.</p>
+    <div class="row">
+      <span class="keywordPill">Design systems</span>
+      <span class="keywordPill">0→1</span>
+      <span class="industryTag">Healthtech</span>
+    </div>
+  </div>
+
+  <div class="group">
+    <span class="groupLabel">Flags</span>
+    <p class="groupNote">Warnings to avoid: always red.</p>
+    <div class="row">
+      <span class="missingTag">Salary missing</span>
+      <span class="missingTag">Title mismatch</span>
+    </div>
+  </div>
+</div>
+</body>
+</html>

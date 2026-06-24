@@ -105,3 +105,12 @@ h1, h2, h3 {
   box-shadow: var(--reg-box);
   text-shadow: 1px 1px 0 rgba(36,31,26,0.35);
 }
+
+/* --- Paper texture · cream fibers over fine soft-light grain ---------
+   Apply to any surface and set its own background-color. Keeps the base
+   colour bright (soft-light) while adding fibers + grain. */
+.ds-surface {
+  background-image: var(--fiber-img), var(--grain-img);
+  background-blend-mode: normal, soft-light;
+  background-size: 170px 170px, 46px 46px;
+}

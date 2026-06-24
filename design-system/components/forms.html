@@ -1,0 +1,120 @@
+<!-- @dsCard group="Components" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Components · Form Controls</title>
+<link rel="stylesheet" href="../tokens/tokens.css" />
+<link rel="stylesheet" href="../lib/base.css" />
+<style>
+  body { padding: var(--space-6); background: var(--c-paper); }
+  body::before { content:""; position: fixed; inset: 0; z-index: -1;
+    background-image: radial-gradient(var(--halftone-color) var(--halftone-dot),
+      transparent calc(var(--halftone-dot) + 0.5px)); background-size: var(--halftone-size) var(--halftone-size); }
+  .wrap { max-width: 640px; margin: 0 auto; }
+  h1.page { font-family: var(--font-display); font-size: var(--type-h1); color: var(--c-ink); }
+  .lede { font-family: var(--font-body); color: var(--role-text-muted); margin: var(--space-2) 0 var(--space-6); }
+
+  .card { background-color: var(--c-paper-deep); border: var(--line-reg) solid var(--c-ink);
+    border-radius: var(--radius-lg); box-shadow: var(--shadow-card); padding: var(--space-6); }
+
+  .formGrid { display: grid; gap: var(--space-5); }
+  .formField label, .toggleField > span { display: block; font-family: var(--font-display);
+    font-size: 1.1rem; color: var(--c-ink); margin-bottom: var(--space-2); }
+
+  /* Inputs · paper-textured, ink outline, teal focus ring */
+  input[type="text"], input[type="email"], select, textarea { width: 100%; box-sizing: border-box;
+    font-family: var(--font-body); font-size: 1rem; color: var(--c-ink);
+    background-color: var(--c-paper); border: var(--line-reg) solid var(--c-ink);
+    border-radius: var(--radius-md); padding: var(--space-3) var(--space-4); }
+  textarea { min-height: 96px; resize: vertical; }
+  select { appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23241F1A' stroke-width='2.5' stroke-linecap='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right var(--space-4) center; padding-right: var(--space-7); }
+  input:focus, select:focus, textarea:focus { outline: none; border-color: var(--c-teal);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--c-teal) 28%, transparent); }
+
+  /* Toggle · printed switch */
+  .toggleField { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); }
+  .toggle { position: relative; width: 52px; height: 28px; flex: none; cursor: pointer;
+    background-color: var(--c-teal); border: var(--line-reg) solid var(--c-ink);
+    border-radius: var(--radius-pill); }
+  .toggle::after { content: ""; position: absolute; top: 2px; left: 2px; width: 20px; height: 20px;
+    background: var(--c-paper); border: var(--line-hair) solid var(--c-ink); border-radius: var(--radius-pill);
+    transform: translateX(24px); transition: transform var(--dur-base) var(--ease-snap); }
+  .toggle.off { background-color: var(--c-paper); }
+  .toggle.off::after { transform: translateX(0); }
+
+  /* Segmented filter tabs */
+  .filterRow { display: inline-flex; border: var(--line-reg) solid var(--c-ink);
+    border-radius: var(--radius-md); overflow: hidden; }
+  .filterTab { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.04em;
+    font-size: 0.85rem; color: var(--c-ink); background: var(--c-paper); border: none;
+    border-right: var(--line-reg) solid var(--c-ink); padding: var(--space-2) var(--space-4); cursor: pointer; }
+  .filterTab:last-child { border-right: none; }
+  .filterTabActive { color: var(--c-paper); background-color: var(--c-tomato); }
+
+  .btnApply { font-family: var(--font-display); font-size: 1rem; color: var(--role-action-text);
+    background-color: var(--role-action); border: var(--line-bold) solid var(--c-ink);
+    border-radius: var(--radius-md); box-shadow: var(--shadow-card); padding: var(--space-3) var(--space-5);
+    cursor: pointer; transition: background-color var(--dur-fast) var(--ease-snap), box-shadow var(--dur-fast) var(--ease-snap); }
+  .btnApply:hover { background-color: var(--role-info); box-shadow: var(--reg-box);
+    text-shadow: 1px 1px 0 rgba(36,31,26,0.35); }
+
+  .formSuccess { font-family: var(--font-body); font-size: 0.9rem; color: var(--c-ink);
+    background: var(--c-paper); border: var(--line-hair) solid var(--c-paper-edge);
+    border-left: var(--line-bold) solid var(--c-teal); border-radius: var(--radius-sm);
+    padding: var(--space-2) var(--space-3); margin: 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1 class="page">Form Controls</h1>
+  <p class="lede">Text fields, select, textarea, toggle, and segmented filters. Inputs sit on paper
+  with an ink outline and a teal focus ring.</p>
+
+  <div class="card">
+    <div class="formGrid">
+      <div class="formField">
+        <label for="f-title">Target title</label>
+        <input id="f-title" type="text" value="Senior Product Designer" />
+      </div>
+
+      <div class="formField">
+        <label for="f-remote">Remote preference</label>
+        <select id="f-remote">
+          <option>Remote (US)</option>
+          <option>Hybrid</option>
+          <option>On-site</option>
+        </select>
+      </div>
+
+      <div class="formField">
+        <label for="f-notes">Notes for matching</label>
+        <textarea id="f-notes">Prioritize design-systems ownership and 0→1 product work.</textarea>
+      </div>
+
+      <div class="toggleField">
+        <span>Include weird matches</span>
+        <span class="toggle" role="switch" aria-checked="true"></span>
+      </div>
+
+      <div class="formField">
+        <label>Filter by status</label>
+        <div class="filterRow">
+          <button class="filterTab filterTabActive" type="button">All</button>
+          <button class="filterTab" type="button">Saved</button>
+          <button class="filterTab" type="button">Applied</button>
+          <button class="filterTab" type="button">Skipped</button>
+        </div>
+      </div>
+
+      <p class="formSuccess">Preferences saved. Next scan will use these.</p>
+
+      <div><button type="button" class="btnApply">Save preferences</button></div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

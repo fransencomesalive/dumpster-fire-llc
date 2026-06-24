@@ -1,0 +1,99 @@
+<!-- @dsCard group="Components" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Components · Login</title>
+<link rel="stylesheet" href="../tokens/tokens.css" />
+<link rel="stylesheet" href="../lib/base.css" />
+<style>
+  body { margin: 0; background: var(--c-paper); }
+  body::before { content:""; position: fixed; inset: 0; z-index: -1;
+    background-image: radial-gradient(var(--halftone-color) var(--halftone-dot),
+      transparent calc(var(--halftone-dot) + 0.5px)); background-size: var(--halftone-size) var(--halftone-size); }
+
+  .loginShell { min-height: 100vh; display: grid; place-items: center; padding: var(--space-6); }
+  .loginCard { width: 100%; max-width: 420px; text-align: center;
+    background-color: var(--c-paper-deep); background-image: var(--fiber-img), var(--grain-img);
+    background-blend-mode: normal, soft-light; background-size: 170px 170px, 46px 46px;
+    border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-card); padding: var(--space-7) var(--space-6); }
+  .loginCard img { width: 132px; height: auto; margin: 0 auto var(--space-4); display: block; }
+  .loginCard h1 { font-family: var(--font-display); font-size: 1.9rem; line-height: 1.05;
+    color: var(--c-ink); }
+  .subhead { font-family: var(--font-subhead); text-transform: uppercase;
+    letter-spacing: var(--tracking-subhead); font-size: 1.05rem; color: var(--c-tomato);
+    margin: var(--space-2) 0 var(--space-6); }
+
+  .authStack { display: grid; gap: var(--space-3); }
+  .authBtn { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%;
+    font-family: var(--font-display); font-size: 1rem; color: var(--c-ink);
+    background-color: var(--c-paper); border: var(--line-reg) solid var(--c-ink);
+    border-radius: var(--radius-md); box-shadow: var(--shadow-card);
+    padding: var(--space-3) var(--space-4); cursor: pointer;
+    transition: box-shadow var(--dur-fast) var(--ease-snap); }
+  .authBtn:hover { box-shadow: var(--reg-box); }
+  .authBtn svg { width: 20px; height: 20px; flex: none; }
+
+  .divider { display: flex; align-items: center; gap: var(--space-3); margin: var(--space-5) 0; }
+  .divider::before, .divider::after { content: ""; flex: 1; height: var(--line-hair);
+    background: var(--c-paper-edge); }
+  .divider span { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.05em;
+    font-size: 0.82rem; color: var(--role-text-faint); }
+
+  .emailField { text-align: left; margin-bottom: var(--space-4); }
+  .emailField label { display: block; font-family: var(--font-display); font-size: 1.1rem;
+    color: var(--c-ink); margin-bottom: var(--space-2); }
+  .emailField input { width: 100%; box-sizing: border-box; font-family: var(--font-body);
+    font-size: 1rem; color: var(--c-ink); background-color: var(--c-paper);
+    border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-md);
+    padding: var(--space-3) var(--space-4); }
+  .emailField input:focus { outline: none; border-color: var(--c-teal);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--c-teal) 28%, transparent); }
+
+  .loginActions { display: flex; gap: var(--space-3); }
+  .btnPrimary, .btnSecondary { flex: 1; font-family: var(--font-display); font-size: 1rem;
+    border-radius: var(--radius-md); box-shadow: var(--shadow-card); padding: var(--space-3);
+    cursor: pointer; border: var(--line-bold) solid var(--c-ink);
+    transition: background-color var(--dur-fast) var(--ease-snap), box-shadow var(--dur-fast) var(--ease-snap); }
+  .btnPrimary { color: var(--role-action-text); background-color: var(--role-action); }
+  .btnPrimary:hover { background-color: var(--role-info); box-shadow: var(--reg-box);
+    text-shadow: 1px 1px 0 rgba(36,31,26,0.35); }
+  .btnSecondary { color: var(--c-ink); background-color: var(--c-paper); }
+  .btnSecondary:hover { background-color: color-mix(in srgb, var(--c-teal) 16%, var(--c-paper)); }
+</style>
+</head>
+<body>
+  <main class="loginShell">
+    <div class="loginCard">
+      <img src="../dumpsterfireguy.png" alt="Dumpster fire mascot" />
+      <h1>Check in on the Dumpster Fire</h1>
+      <p class="subhead">Login below</p>
+
+      <div class="authStack">
+        <button type="button" class="authBtn">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#EA4335" d="M12 10.2v3.9h5.5c-.24 1.4-1 2.6-2.1 3.4l3.4 2.6c2-1.84 3.1-4.55 3.1-7.75 0-.74-.07-1.45-.2-2.15z"/><path fill="#34A853" d="M6.6 14.3l-.77.6-2.7 2.1C4.8 20 8.1 22 12 22c2.7 0 5-.9 6.65-2.4l-3.4-2.6c-.9.6-2.05.96-3.25.96-2.5 0-4.6-1.7-5.36-3.96z"/><path fill="#4285F4" d="M3.13 7c-.7 1.4-1.1 3-1.1 4.7s.4 3.3 1.1 4.7l3.47-2.7c-.2-.6-.32-1.3-.32-2s.12-1.4.32-2z"/><path fill="#FBBC05" d="M12 6.04c1.47 0 2.78.5 3.82 1.5l2.85-2.85C16.96 3.06 14.7 2 12 2 8.1 2 4.8 4 3.13 7l3.47 2.7C7.4 7.74 9.5 6.04 12 6.04z"/></svg>
+          Continue with Google
+        </button>
+        <button type="button" class="authBtn">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16.37 12.78c.03 3.13 2.75 4.17 2.78 4.18-.02.08-.43 1.5-1.43 2.96-.86 1.27-1.76 2.53-3.17 2.55-1.39.03-1.83-.82-3.42-.82-1.58 0-2.07.8-3.39.85-1.36.05-2.4-1.37-3.27-2.63-1.78-2.57-3.14-7.27-1.31-10.44.9-1.57 2.52-2.57 4.27-2.6 1.34-.02 2.6.9 3.42.9.82 0 2.35-1.11 3.96-.95.67.03 2.57.27 3.79 2.04-.1.06-2.26 1.32-2.23 3.93zM13.9 4.32c.73-.88 1.22-2.1 1.08-3.32-1.05.04-2.32.7-3.07 1.58-.67.78-1.26 2.03-1.1 3.22 1.17.09 2.36-.6 3.09-1.48z"/></svg>
+          Continue with Apple
+        </button>
+      </div>
+
+      <div class="divider"><span>Login via email</span></div>
+
+      <div class="emailField">
+        <label for="login-email">Email</label>
+        <input id="login-email" type="email" placeholder="you@example.com" />
+      </div>
+
+      <div class="loginActions">
+        <button type="submit" class="btnPrimary">Log in</button>
+        <button type="button" class="btnSecondary">Create account</button>
+      </div>
+    </div>
+  </main>
+</body>
+</html>
