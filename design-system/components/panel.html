@@ -1,0 +1,84 @@
+<!-- @dsCard group="Components" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Components · Panel</title>
+<link rel="stylesheet" href="../tokens/tokens.css" />
+<link rel="stylesheet" href="../lib/base.css" />
+<style>
+  /* Halftone is on the page ground only; panels are solid and opaque */
+  body { padding: var(--space-6); background: var(--c-paper); }
+  body::before { content:""; position: fixed; inset: 0; z-index: -1;
+    background-image: radial-gradient(var(--halftone-color) var(--halftone-dot),
+      transparent calc(var(--halftone-dot) + 0.5px)); background-size: var(--halftone-size) var(--halftone-size); }
+  .wrap { max-width: 720px; margin: 0 auto; display: grid; gap: var(--space-6); }
+  h1.page { font-size: var(--type-h1); margin-bottom: var(--space-2); }
+  .lede { color: var(--role-text-muted); max-width: 60ch; font-family: var(--font-body); }
+
+  /* ====== mirrors DashboardClient surface classes ====== */
+  .card { background-color: var(--c-paper-deep); background-image: var(--fiber-img), var(--grain-img);
+          background-blend-mode: normal, soft-light; background-size: 170px 170px, 46px 46px;
+          border: var(--line-reg) solid var(--c-ink);
+          border-radius: var(--radius-lg); box-shadow: var(--shadow-card); padding: var(--space-5); }
+
+  .panelHeaderRow { display: flex; align-items: center; justify-content: space-between;
+                    gap: var(--space-4); padding-bottom: var(--space-3);
+                    border-bottom: var(--line-reg) solid var(--c-ink); margin-bottom: var(--space-4); }
+  .panelTitle { font-family: var(--font-subhead); text-transform: uppercase;
+                letter-spacing: 0.04em; font-size: 1.45rem; color: var(--c-ink); }
+  .scanBadge { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.05em;
+               font-size: 0.78rem; color: var(--c-paper); background: var(--c-teal);
+               border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-pill);
+               padding: 4px 11px; }
+  .scanBadgeWarn { background: var(--c-mustard); color: var(--c-ink); }
+  .panelBody { font-family: var(--font-body); color: var(--role-text-muted); }
+  .panelBody p { margin: 0 0 var(--space-3); }
+  .panelBody p:last-child { margin: 0; }
+
+  /* Accent panel · colored header band, solid body (no halftone behind text) */
+  .panelAccent { padding: 0; overflow: hidden; }
+  .panelAccent .bandHead { display: flex; align-items: center; justify-content: space-between;
+    gap: var(--space-4); background-color: var(--c-bluebird); background-image: var(--fiber-img), var(--grain-img);
+    background-blend-mode: normal, soft-light; background-size: 170px 170px, 46px 46px; color: var(--c-paper);
+    border-bottom: var(--line-reg) solid var(--c-ink); padding: var(--space-3) var(--space-5); }
+  .panelAccent .bandHead .panelTitle { color: var(--c-paper); }
+  .panelAccent .bandBody { padding: var(--space-5); background-color: var(--c-paper-deep);
+    background-image: var(--fiber-img), var(--grain-img); background-blend-mode: normal, soft-light; background-size: 170px 170px, 46px 46px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div>
+    <h1 class="page">Panel</h1>
+    <p class="lede">The foundational surface: a header row with a title and a status badge, body
+    below. Panels are solid and opaque; the page ground carries the halftone, never the panel.
+    An accent variant adds a colored header band for emphasis sections.</p>
+  </div>
+
+  <section class="card">
+    <div class="panelHeaderRow">
+      <h2 class="panelTitle">Best matches</h2>
+      <span class="scanBadge">12 new</span>
+    </div>
+    <div class="panelBody">
+      <p>Ranked by fit against your profile. The strongest matches surface first; weaker ones
+      collapse into the weird-match tier below.</p>
+      <p>Last scan ran 14 minutes ago across 9 connected sources.</p>
+    </div>
+  </section>
+
+  <section class="card panelAccent">
+    <div class="bandHead">
+      <h2 class="panelTitle">Needs review</h2>
+      <span class="scanBadge scanBadgeWarn">3 flagged</span>
+    </div>
+    <div class="bandBody panelBody">
+      <p>These postings tripped a guardrail: salary missing, title mismatch, or a stale repost.
+      Confirm or skip before they count toward your match totals.</p>
+    </div>
+  </section>
+</div>
+</body>
+</html>
