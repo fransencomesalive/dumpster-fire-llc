@@ -35,7 +35,10 @@
             drop-shadow(6px 7px 0 rgba(36,31,26,0.32)); }
   .heroLockup { width:fit-content; max-width:100%; text-align:center; }
   .heroLead { margin:0; font-family:var(--font-display); color:var(--c-ink);
-    font-size:clamp(1.2rem,2.4vw,1.8rem); line-height:1.04; letter-spacing:var(--tracking-display); }
+    font-size:clamp(1.38rem,2.76vw,2.07rem); line-height:1.04; letter-spacing:var(--tracking-display); }
+  .heroSubhead { width:0; min-width:100%; margin:var(--space-3) 0 0; text-align:center; color:var(--c-ink);
+    font-family:var(--font-display); font-size:clamp(1.2rem,2.4vw,1.8rem); line-height:1.12;
+    letter-spacing:var(--tracking-display); text-wrap:balance; }
   .word { position:relative; display:inline-block; margin:0.04em 0 0; line-height:0.9;
     font-family:"Original Surfer", cursive; font-size:clamp(2.8rem,6.8vw,5rem); }
   .word .plate { display:block; margin:0; }
@@ -223,9 +226,11 @@
         <div class="heroLockup">
           <p class="heroLead">The Job Market Is A</p>
           <h1 class="word"><span class="plate base">Dumpster Fire</span><span class="plate slip" aria-hidden="true">Dumpster Fire</span></h1>
-          <p class="heroDesc">Portals and ATS bots are where good candidates disappear. Dumpster Fire turns a job
-          post into a direct line to the person who actually does the hiring by leveraging your own voice and
-          experience to make contact.</p>
+          <p class="heroSubhead">A job-search operating system for people who are done feeding the machine.</p>
+          <p class="heroDesc">Job Boards and ATS&rsquo;s are where good candidates disappear. Dumpster Fire scans roles,
+          finds hiring managers, and quickly helps you reach out with your unique voice and relevant work
+          experience: fewer tabs, better messaging, and a clearer record of what actually happened. No more
+          &ldquo;Spray and Pray&rdquo; - targeted roles and effective comms.</p>
           <div class="heroSigns">
             <span class="sign signTomato">Stop Applying</span>
             <span class="sign signTeal">Start Pursuing</span>
