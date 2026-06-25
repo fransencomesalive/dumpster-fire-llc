@@ -39,11 +39,16 @@
   .heroLockup { width:fit-content; max-width:100%; text-align:center; }
   .heroLead { margin:0; font-family:var(--font-display); color:var(--c-ink);
     font-size:clamp(1.44rem,2.88vw,2.24rem); line-height:1.04; letter-spacing:var(--tracking-display); }
-  /* Subhead · Bemio at the lead's pre-bump size; wraps to the wordmark width
-     (width:0 / min-width:100%) so it never widens the fit-content column. */
-  .heroSubhead { width:0; min-width:100%; margin:var(--space-3) 0 0; text-align:center; color:var(--c-ink);
-    font-family:var(--font-display); font-size:clamp(1.25rem,2.5vw,1.95rem); line-height:1.12;
-    letter-spacing:var(--tracking-display); text-wrap:balance; }
+  /* Divider · ink rule with a centered teal diamond, breaking the wordmark
+     from the tagline + paragraph block below it. */
+  .heroRule { width:0; min-width:100%; margin:var(--space-5) 0 0; display:flex; align-items:center; gap:var(--space-3); }
+  .heroRule::before, .heroRule::after { content:""; flex:1 1 auto; height:var(--line-reg); background:var(--c-ink); }
+  .heroRuleDot { flex:none; width:12px; height:12px; background:var(--c-teal);
+    border:var(--line-hair) solid var(--c-ink); transform:rotate(45deg); }
+  /* Tagline · associated with the paragraph — same body font, left-justified at
+     the same width; sits as the lead line of the copy block. */
+  .heroSubhead { width:0; min-width:100%; margin:var(--space-5) 0 0; text-align:left; color:var(--c-ink);
+    font-family:var(--font-body); font-size:clamp(1.25rem,2.5vw,1.95rem); line-height:1.2; text-wrap:pretty; }
 
   .word { position:relative; display:inline-block; margin:0.04em 0 0; line-height:0.9;
     font-family:"Original Surfer", cursive; font-size:clamp(3rem,7.2vw,5.4rem); }
@@ -52,7 +57,7 @@
   /* off-registration slip (down-right), dialed back another 10% (4/4.5px -> 3.6/4.05px) */
   .word .slip { position:absolute; left:0; top:0; color:var(--c-tomato); transform:translate(3.6px,4.05px); mix-blend-mode:multiply; }
 
-  .heroDesc { width:0; min-width:100%; margin:var(--space-6) 0 0; color:var(--role-text-muted); text-align:left;
+  .heroDesc { width:0; min-width:100%; margin:var(--space-3) 0 0; color:var(--role-text-muted); text-align:left;
     font-family:var(--font-body); font-size:clamp(1rem,1.35vw,1.14rem); line-height:var(--leading-body); text-wrap:pretty; }
 
   /* Two horizontal "hotel marquee" signs, staggered diagonally and centered under
@@ -86,6 +91,7 @@
         <div class="heroLockup">
           <p class="heroLead">The Job Market Is A</p>
           <h1 class="word"><span class="plate base">Dumpster Fire</span><span class="plate slip" aria-hidden="true">Dumpster Fire</span></h1>
+          <div class="heroRule" aria-hidden="true"><span class="heroRuleDot"></span></div>
           <p class="heroSubhead">A job-search operating system for people who are done feeding the machine.</p>
           <p class="heroDesc">Job Boards and ATS&rsquo;s are where good candidates disappear. Dumpster Fire scans roles,
           finds hiring managers, and quickly helps you reach out with your unique voice and relevant work

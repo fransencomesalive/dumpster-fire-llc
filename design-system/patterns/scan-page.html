@@ -36,15 +36,18 @@
   .heroLockup { width:fit-content; max-width:100%; text-align:center; }
   .heroLead { margin:0; font-family:var(--font-display); color:var(--c-ink);
     font-size:clamp(1.38rem,2.76vw,2.07rem); line-height:1.04; letter-spacing:var(--tracking-display); }
-  .heroSubhead { width:0; min-width:100%; margin:var(--space-3) 0 0; text-align:center; color:var(--c-ink);
-    font-family:var(--font-display); font-size:clamp(1.2rem,2.4vw,1.8rem); line-height:1.12;
-    letter-spacing:var(--tracking-display); text-wrap:balance; }
+  .heroRule { width:0; min-width:100%; margin:var(--space-5) 0 0; display:flex; align-items:center; gap:var(--space-3); }
+  .heroRule::before, .heroRule::after { content:""; flex:1 1 auto; height:var(--line-reg); background:var(--c-ink); }
+  .heroRuleDot { flex:none; width:12px; height:12px; background:var(--c-teal);
+    border:var(--line-hair) solid var(--c-ink); transform:rotate(45deg); }
+  .heroSubhead { width:0; min-width:100%; margin:var(--space-5) 0 0; text-align:left; color:var(--c-ink);
+    font-family:var(--font-body); font-size:clamp(1.2rem,2.4vw,1.8rem); line-height:1.2; text-wrap:pretty; }
   .word { position:relative; display:inline-block; margin:0.04em 0 0; line-height:0.9;
     font-family:"Original Surfer", cursive; font-size:clamp(2.8rem,6.8vw,5rem); }
   .word .plate { display:block; margin:0; }
   .word .base { color:var(--c-teal); }
   .word .slip { position:absolute; left:0; top:0; color:var(--c-tomato); transform:translate(3.6px,4.05px); mix-blend-mode:multiply; }
-  .heroDesc { width:0; min-width:100%; margin:var(--space-5) 0 0; color:var(--role-text-muted); text-align:left;
+  .heroDesc { width:0; min-width:100%; margin:var(--space-3) 0 0; color:var(--role-text-muted); text-align:left;
     font-family:var(--font-body); font-size:clamp(1rem,1.3vw,1.1rem); line-height:var(--leading-body); text-wrap:pretty; }
   .heroSigns { width:fit-content; margin:var(--space-5) auto 0; display:flex; flex-direction:column; gap:var(--space-3); }
   .sign { display:inline-flex; align-items:center; justify-content:center;
@@ -226,6 +229,7 @@
         <div class="heroLockup">
           <p class="heroLead">The Job Market Is A</p>
           <h1 class="word"><span class="plate base">Dumpster Fire</span><span class="plate slip" aria-hidden="true">Dumpster Fire</span></h1>
+          <div class="heroRule" aria-hidden="true"><span class="heroRuleDot"></span></div>
           <p class="heroSubhead">A job-search operating system for people who are done feeding the machine.</p>
           <p class="heroDesc">Job Boards and ATS&rsquo;s are where good candidates disappear. Dumpster Fire scans roles,
           finds hiring managers, and quickly helps you reach out with your unique voice and relevant work
