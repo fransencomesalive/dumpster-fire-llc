@@ -1,0 +1,165 @@
+<!-- @dsCard group="Chrome" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Chrome · Footer & Feedback Dock</title>
+<link rel="stylesheet" href="../tokens/tokens.css" />
+<link rel="stylesheet" href="../lib/base.css" />
+<style>
+  /* No page background here: the live page supplies its own background element
+     that overwrites anything set on this card's body. */
+  body { margin: 0; color: var(--c-ink); font-family: var(--font-body); }
+
+  .wrap { max-width: 1080px; margin: 0 auto; padding: var(--space-6) var(--space-5) var(--space-9); display: grid; gap: var(--space-6); }
+  h1.page { font-family: var(--font-display); font-size: var(--type-h1); margin: 0 0 var(--space-2); }
+  .lede { font-family: var(--font-body); color: var(--role-text-muted); max-width: 64ch; margin: 0; }
+  .stateLabel { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: var(--tracking-subhead);
+    font-size: 0.82rem; color: var(--c-tomato); margin: 0 0 var(--space-2); }
+
+  /* ============================ FOOTER ============================ */
+  .siteFooter { background-color: var(--c-paper);
+    background-image: var(--fiber-img), var(--grain-img); background-blend-mode: normal, soft-light;
+    background-size: 170px 170px, 46px 46px;
+    border: var(--line-reg) solid var(--c-ink); border-top-width: var(--line-bold);
+    border-radius: var(--radius-md); box-shadow: var(--shadow-card); overflow: hidden; }
+  .footerMain { display: flex; align-items: center; gap: var(--space-5) var(--space-6); flex-wrap: wrap;
+    padding: var(--space-5); }
+
+  .brand { display: inline-flex; align-items: center; gap: var(--space-3); text-decoration: none;
+    color: var(--c-ink); }
+  .brand img { width: 40px; height: 40px; object-fit: contain; filter: drop-shadow(2px 2px 0 rgba(36,31,26,0.28)); }
+  .brandWord { display: flex; flex-direction: column; line-height: 1; }
+  .brandWord .top { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.05em;
+    font-size: 0.72rem; color: var(--c-tomato); }
+  .brandWord .name { font-family: var(--font-display); font-size: 1.25rem; letter-spacing: var(--tracking-display);
+    color: var(--c-ink); }
+
+  .footerNav { margin-left: auto; display: flex; align-items: center; gap: var(--space-5); flex-wrap: wrap; }
+  .footerNav a { font-family: var(--font-display); font-size: 1rem; }
+
+  /* Fine print · a quiet inked baseline strip. */
+  .footerFine { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap;
+    gap: var(--space-2) var(--space-4); padding: var(--space-3) var(--space-5);
+    border-top: var(--line-hair) solid var(--c-paper-edge);
+    font-family: var(--font-body); font-size: var(--type-small); color: var(--role-text-faint); }
+  .footerFine .dot { width: 8px; height: 8px; background: var(--c-teal); border: 1px solid var(--c-ink);
+    transform: rotate(45deg); display: inline-block; margin: 0 var(--space-2); }
+
+  @media (max-width: 640px) {
+    .footerNav { margin-left: 0; width: 100%; gap: var(--space-3) var(--space-5); }
+  }
+
+  /* ============================ PERSISTENT FEEDBACK DOCK ============================
+     Always-present launcher pinned bottom-right. Resting state is the icon disc only;
+     on hover (or focus) it slips open to reveal its label. This is the mount point for
+     PhredBot: the live bug-tracking + feedback assistant plugs in here later. No live
+     bot yet; clicking opens the feedback panel/PhredBot once wired. */
+  .feedbackDock { position: fixed; right: var(--space-5); bottom: var(--space-5); z-index: 50; }
+  .dockBtn { display: inline-flex; align-items: center; gap: 0; cursor: pointer;
+    font-family: var(--font-display); font-size: 1rem; color: var(--c-paper);
+    background-color: var(--c-tomato); background-image: var(--fiber-img), var(--grain-img);
+    background-blend-mode: normal, soft-light; background-size: 170px 170px, 46px 46px;
+    border: var(--line-bold) solid var(--c-ink); border-radius: var(--radius-pill);
+    box-shadow: var(--shadow-card); padding: 7px; overflow: hidden;
+    transition: box-shadow var(--dur-fast) var(--ease-snap), background-color var(--dur-fast) var(--ease-snap); }
+  .dockIcon { flex: none; width: 38px; height: 38px; display: grid; place-items: center; }
+  .dockIcon svg { width: 24px; height: 24px; }
+  /* Label collapses to zero width at rest, expands on hover/focus. */
+  .dockLabel { display: inline-flex; align-items: center; white-space: nowrap; line-height: 1;
+    max-width: 0; opacity: 0; padding-right: 0;
+    transition: max-width var(--dur-base) var(--ease-snap), opacity var(--dur-fast) var(--ease-snap),
+      padding-right var(--dur-base) var(--ease-snap); }
+  .dockBtn:hover, .dockBtn:focus-visible, .feedbackDock.dockOpen .dockBtn {
+    background-color: var(--c-bluebird); box-shadow: var(--reg-box); outline: none; }
+  .dockBtn:hover .dockLabel, .dockBtn:focus-visible .dockLabel, .feedbackDock.dockOpen .dockLabel {
+    max-width: 220px; opacity: 1; padding-right: var(--space-3); }
+
+  /* Demo helpers · these only exist so the static card shows both states side by side. */
+  .demoDockArea { position: relative; height: 132px; border: var(--line-hair) dashed var(--c-paper-edge);
+    border-radius: var(--radius-md); background-color: color-mix(in srgb, var(--c-paper-deep) 60%, transparent); }
+  .demoDockArea .feedbackDock { position: absolute; }
+  .demoDockArea .restingDock { right: var(--space-5); bottom: var(--space-5); }
+  .demoDockArea .openDock { left: var(--space-5); bottom: var(--space-5); right: auto; }
+  .dockCaption { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.05em;
+    font-size: 0.72rem; color: var(--role-text-faint); position: absolute; top: var(--space-3); left: var(--space-4); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div>
+    <h1 class="page">Footer &amp; Feedback Dock</h1>
+    <p class="lede">Brand mark and Home anchor on the left, the three site links on the right, fine print on a
+    quiet inked baseline below. The <strong>Feedback &amp; QA</strong> link is mirrored by a persistent dock
+    pinned bottom-right on every page: a launcher that slips open to its label on hover and serves as the mount
+    point for PhredBot, the bug-tracking and feedback assistant wired in later.</p>
+  </div>
+
+  <!-- FOOTER -->
+  <footer class="siteFooter">
+    <div class="footerMain">
+      <a class="brand" href="#" aria-label="Dumpster Fire, home">
+        <img src="../dumpsterfireguy.png" alt="" aria-hidden="true" />
+        <span class="brandWord"><span class="top">The Job Market Is A</span><span class="name">Dumpster Fire</span></span>
+      </a>
+      <nav class="footerNav" aria-label="Footer">
+        <a class="ds-link" href="#">Contact Us</a>
+        <a class="ds-link" href="#">Legal &amp; T&amp;C&rsquo;s</a>
+        <a class="ds-link" href="#">Feedback &amp; QA</a>
+      </nav>
+    </div>
+    <div class="footerFine">
+      <span>&copy; 2026 Dumpster Fire<span class="dot" aria-hidden="true"></span>Stop applying. Start pursuing.</span>
+      <span>Built for people done feeding the machine.</span>
+    </div>
+  </footer>
+
+  <!-- FEEDBACK DOCK · state demo -->
+  <div>
+    <p class="stateLabel">Persistent feedback dock · resting &amp; open</p>
+    <div class="demoDockArea">
+      <span class="dockCaption">Hover the disc &rarr; it slips open</span>
+
+      <!-- Resting (icon only) -->
+      <div class="feedbackDock restingDock">
+        <button type="button" class="dockBtn" aria-label="Feedback &amp; bug reports">
+          <span class="dockIcon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8z"/>
+              <line x1="9" y1="10" x2="15" y2="10"/><line x1="9" y1="13.5" x2="13" y2="13.5"/>
+            </svg>
+          </span>
+        </button>
+      </div>
+
+      <!-- Forced-open (shows the hover state for static review) -->
+      <div class="feedbackDock openDock dockOpen">
+        <button type="button" class="dockBtn" aria-label="Feedback &amp; bug reports">
+          <span class="dockIcon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8z"/>
+              <line x1="9" y1="10" x2="15" y2="10"/><line x1="9" y1="13.5" x2="13" y2="13.5"/>
+            </svg>
+          </span>
+          <span class="dockLabel">Feedback &amp; Bug Reports</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- LIVE DOCK · the real fixed-position element, pinned to this card's viewport -->
+  <div class="feedbackDock">
+    <button type="button" class="dockBtn" aria-label="Feedback &amp; bug reports">
+      <span class="dockIcon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8z"/>
+          <line x1="9" y1="10" x2="15" y2="10"/><line x1="9" y1="13.5" x2="13" y2="13.5"/>
+        </svg>
+      </span>
+      <span class="dockLabel">Feedback &amp; Bug Reports</span>
+    </button>
+  </div>
+</div>
+</body>
+</html>

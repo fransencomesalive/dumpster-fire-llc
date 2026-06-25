@@ -1,0 +1,85 @@
+<!-- @dsCard group="Components" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Components · Message Generation</title>
+<link rel="stylesheet" href="../tokens/tokens.css" />
+<link rel="stylesheet" href="../lib/base.css" />
+<style>
+  /* Mirrors the copy-generation panel in DashboardClient.tsx. Generate = tomato
+     (primary CTA); copy button = teal, copied state = teal fill. */
+  body { margin: 0; color: var(--c-ink); font-family: var(--font-ui); }
+  .wrap { max-width: 680px; margin: 0 auto; padding: var(--space-6) var(--space-5); display: grid; gap: var(--space-5); }
+  h1.page { font-family: var(--font-display); font-size: var(--type-h1); margin: 0 0 var(--space-2); }
+  .lede { font-family: var(--font-body); color: var(--role-text-muted); margin: 0; max-width: 60ch; }
+
+  .card { background-color: var(--c-paper-deep); background-image: var(--fiber-img), var(--grain-img);
+    background-blend-mode: normal, soft-light; background-size: 170px 170px, 46px 46px;
+    border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-card); padding: var(--space-5); }
+
+  .copyHeader { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-3);
+    margin-bottom: var(--space-3); }
+  .copyHeader strong { font-family: var(--font-display); font-size: 1.15rem; color: var(--c-ink); }
+  .copyGenerationPanel p { margin: 0 0 var(--space-3); font-family: var(--font-ui); font-size: 0.85rem;
+    line-height: 1.5; color: var(--role-text-muted); }
+
+  /* small copy button */
+  .copyBtn { display: inline-flex; align-items: center; justify-content: center; gap: 5px; flex-shrink: 0; min-width: 76px;
+    padding: 5px 9px; cursor: pointer; font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.05em;
+    font-size: 0.74rem; line-height: 1; white-space: nowrap; color: var(--c-ink);
+    background-color: var(--c-paper); border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-sm);
+    box-shadow: 2px 2px 0 var(--c-ink);
+    transition: background-color var(--dur-fast) var(--ease-snap), box-shadow var(--dur-fast) var(--ease-snap); }
+  .copyBtn svg { flex: none; width: 14px; height: 14px; }
+  .copyBtn:hover { background-color: color-mix(in srgb, var(--c-teal) 16%, var(--c-paper)); box-shadow: var(--reg-box); }
+  .copyBtnCopied, .copyBtnCopied:hover { color: var(--c-paper); background-color: var(--c-teal); box-shadow: var(--reg-box); }
+
+  .messageTextarea { width: 100%; box-sizing: border-box; resize: vertical; min-height: 150px; padding: var(--space-4);
+    font: inherit; font-family: var(--font-ui); font-size: 0.92rem; line-height: 1.55; color: var(--c-ink);
+    background-color: var(--c-paper); border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-lg); }
+  .messageTextarea:focus { outline: none; border-color: var(--c-teal);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--c-teal) 28%, transparent); }
+
+  .copyActions { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: center; margin-top: var(--space-4); }
+  .generateMessageBtn { font-family: var(--font-display); font-size: 1rem; color: var(--role-action-text);
+    background-color: var(--role-action); background-image: var(--fiber-img), var(--grain-img);
+    background-blend-mode: normal, soft-light; background-size: 170px 170px, 46px 46px;
+    border: var(--line-bold) solid var(--c-ink); border-radius: var(--radius-md); box-shadow: var(--shadow-card);
+    padding: var(--space-3) var(--space-5); cursor: pointer; margin-left: auto;
+    transition: background-color var(--dur-fast) var(--ease-snap), box-shadow var(--dur-fast) var(--ease-snap); }
+  .generateMessageBtn:hover { background-color: var(--role-info); box-shadow: var(--reg-box);
+    text-shadow: 1px 1px 0 rgba(36,31,26,0.35); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div>
+    <h1 class="page">Message Generation</h1>
+    <p class="lede">Drafts an outreach message in your voice from the role and your profile. The generated copy is
+    editable; copy-to-clipboard confirms in teal. Generate is the primary tomato action.</p>
+  </div>
+
+  <section class="card copyGenerationPanel">
+    <div class="copyHeader">
+      <strong>Outreach to the hiring manager</strong>
+      <button type="button" class="copyBtn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        <span>Copy</span>
+      </button>
+    </div>
+    <p>Tuned to Maya Chen, Head of Design. References your design-systems and 0→1 work.</p>
+    <textarea class="messageTextarea">Hi Maya, I saw Northbeam is hiring a Senior Product Designer to own the design system through a 0→1 analytics launch. That's the exact shape of work I did at Atlas: built the system from scratch and partnered with PM/eng from discovery to ship. Would love to compare notes on how you're scoping the role. Open to a short call this week?</textarea>
+    <div class="copyActions">
+      <button type="button" class="copyBtn copyBtnCopied">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        <span>Copied</span>
+      </button>
+      <button type="button" class="generateMessageBtn">Generate message</button>
+    </div>
+  </section>
+</div>
+</body>
+</html>

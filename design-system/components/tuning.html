@@ -1,0 +1,125 @@
+<!-- @dsCard group="Components" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Components · Matcher Tuning</title>
+<link rel="stylesheet" href="../tokens/tokens.css" />
+<link rel="stylesheet" href="../lib/base.css" />
+<style>
+  /* Core reusable pieces of the /scans tuning page (DashboardClient tuning
+     subsystem): readiness panel + stats, guardrail panel, and suggestion cards
+     with risk badges. Teal-forward: stats + control chips teal; risk low=ink,
+     medium=mustard, high=tomato. The full page has more (review/preview). */
+  body { margin: 0; color: var(--c-ink); font-family: var(--font-ui); }
+  .wrap { max-width: 860px; margin: 0 auto; padding: var(--space-6) var(--space-5); display: grid; gap: var(--space-5); }
+  h1.page { font-family: var(--font-display); font-size: var(--type-h1); margin: 0 0 var(--space-2); }
+  .lede { font-family: var(--font-body); color: var(--role-text-muted); margin: 0; max-width: 64ch; }
+
+  .panel { background-color: var(--c-paper-deep); background-image: var(--fiber-img), var(--grain-img);
+    background-blend-mode: normal, soft-light; background-size: 170px 170px, 46px 46px;
+    border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-lg); box-shadow: var(--shadow-card); }
+
+  /* Readiness */
+  .tuningReadinessPanel { display: grid; gap: var(--space-5); padding: var(--space-5); }
+  .tuningReadinessPanel > div:first-child strong { font-family: var(--font-display); font-size: 1.35rem; color: var(--c-ink); }
+  .tuningReadinessPanel p { margin: var(--space-2) 0 0; font-family: var(--font-ui); font-size: 0.9rem;
+    line-height: 1.55; color: var(--role-text-muted); }
+  .tuningStatsGrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-2); }
+  .tuningStatsGrid span { display: grid; gap: 4px; padding: var(--space-3); font-family: var(--font-ui); font-size: 0.78rem;
+    color: var(--role-text-faint); background-color: var(--c-paper);
+    border: var(--line-hair) solid var(--c-paper-edge); border-radius: var(--radius-md); }
+  .tuningStatsGrid strong { font-family: var(--font-display); font-size: 1.5rem; line-height: 1; color: var(--c-teal); }
+
+  /* Guardrails */
+  .tuningGuardrailPanel { padding: var(--space-5); }
+  .tuningGuardrailPanel h2 { margin: 0 0 var(--space-3); font-family: var(--font-display); font-size: var(--type-h2); color: var(--c-ink); }
+  .tuningGuardrailPanel ul { margin: 0; padding-left: 1.1em; display: grid; gap: var(--space-2);
+    font-family: var(--font-ui); font-size: 0.9rem; line-height: 1.55; color: var(--role-text-muted); }
+
+  /* Suggestions */
+  .tuningSuggestionGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); }
+  .tuningSuggestionCard { display: grid; gap: var(--space-3); padding: var(--space-4);
+    background-color: var(--c-paper); border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-md);
+    box-shadow: var(--shadow-card); }
+  .tuningSuggestionHeader { display: flex; justify-content: space-between; gap: var(--space-3); align-items: flex-start; }
+  .tuningSuggestionCard h3 { margin: 0; font-family: var(--font-display); font-size: 1.05rem; line-height: 1.2; color: var(--c-ink); }
+  .tuningSuggestionCard p { margin: 0; font-family: var(--font-ui); font-size: 0.85rem; line-height: 1.5; color: var(--role-text-muted); }
+  .tuningRiskBadge { flex: none; height: fit-content; padding: 3px 9px; font-family: var(--font-subhead);
+    text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.72rem;
+    border: var(--line-reg) solid currentColor; border-radius: var(--radius-pill); }
+  .tuningRiskLow { color: var(--c-ink-faint); }
+  .tuningRiskMedium { color: var(--c-mustard); }
+  .tuningRiskHigh { color: var(--c-tomato); }
+
+  .tuningRecommendation, .tuningExamples { display: grid; gap: var(--space-2); padding: var(--space-3);
+    background-color: var(--c-paper-deep); border: var(--line-hair) solid var(--c-paper-edge); border-radius: var(--radius-md); }
+  .tuningRecommendation strong, .tuningExamples strong { font-family: var(--font-subhead); text-transform: uppercase;
+    letter-spacing: 0.05em; font-size: 0.8rem; color: var(--c-teal); }
+  .tuningRecommendation span { font-family: var(--font-ui); font-size: 0.85rem; line-height: 1.5; color: var(--role-text-muted); }
+  .tuningExamples ul { margin: 0; padding-left: 1.1em; display: grid; gap: 5px;
+    font-family: var(--font-ui); font-size: 0.85rem; line-height: 1.5; color: var(--role-text-muted); }
+
+  .tuningControlRow { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+  .tuningControlRow span { padding: 5px 9px; font-family: var(--font-ui); font-size: 0.8rem; color: var(--c-teal);
+    background-color: var(--c-paper); border: var(--line-reg) solid var(--c-teal); border-radius: var(--radius-sm); }
+
+  @media (max-width: 640px) { .tuningStatsGrid, .tuningSuggestionGrid { grid-template-columns: 1fr 1fr; }
+    .tuningSuggestionGrid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div>
+    <h1 class="page">Matcher Tuning</h1>
+    <p class="lede">Core panels from the tuning page: a readiness summary with stats, the guardrails that bound any
+    change, and suggestion cards carrying a risk badge, recommendation, examples, and control chips.</p>
+  </div>
+
+  <section class="panel tuningReadinessPanel">
+    <div>
+      <strong>Tuning readiness</strong>
+      <p>Enough labeled feedback to tune safely. Changes below are scoped to your active profile and reversible.</p>
+    </div>
+    <div class="tuningStatsGrid">
+      <span><strong>248</strong>Rated matches</span>
+      <span><strong>92%</strong>Verdict agreement</span>
+      <span><strong>6</strong>Open suggestions</span>
+      <span><strong>v4</strong>Matcher version</span>
+    </div>
+  </section>
+
+  <section class="panel tuningGuardrailPanel">
+    <h2>Guardrails</h2>
+    <ul>
+      <li>Never auto-apply a change that drops verdict agreement below 85%.</li>
+      <li>High-risk changes require an explicit confirm and a saved rationale.</li>
+      <li>Every change is scoped to one profile and can be rolled back.</li>
+    </ul>
+  </section>
+
+  <div class="tuningSuggestionGrid">
+    <article class="tuningSuggestionCard">
+      <div class="tuningSuggestionHeader">
+        <h3>Raise weight on design-systems</h3>
+        <span class="tuningRiskBadge tuningRiskLow">Low risk</span>
+      </div>
+      <p>Top-rated matches consistently mention design-systems ownership; the signal is under-weighted.</p>
+      <div class="tuningRecommendation"><strong>Recommendation</strong><span>Increase the strength weight from 0.6 to 0.8.</span></div>
+      <div class="tuningControlRow"><span>Strength signals</span><span>+0.2 weight</span></div>
+    </article>
+
+    <article class="tuningSuggestionCard">
+      <div class="tuningSuggestionHeader">
+        <h3>Drop "agency" titles</h3>
+        <span class="tuningRiskBadge tuningRiskHigh">High risk</span>
+      </div>
+      <p>Agency roles are mostly skipped, but the title filter would also catch some in-house hybrids.</p>
+      <div class="tuningExamples"><strong>Would exclude</strong><ul><li>Senior Designer, Agency X</li><li>Design Lead (hybrid), Studio Y</li></ul></div>
+      <div class="tuningControlRow"><span>Title filter</span><span>Exclude: agency</span></div>
+    </article>
+  </div>
+</div>
+</body>
+</html>

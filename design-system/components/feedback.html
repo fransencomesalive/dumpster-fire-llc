@@ -1,0 +1,104 @@
+<!-- @dsCard group="Components" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Components · Match Feedback</title>
+<link rel="stylesheet" href="../tokens/tokens.css" />
+<link rel="stylesheet" href="../lib/base.css" />
+<style>
+  /* No page background: the app grain ground owns that layer. Demos sit on a
+     .card surface, which supplies the paper ground. Mirrors MatchFeedbackControl
+     in DashboardClient.tsx; class names match so it ports back wholesale. */
+  body { margin: 0; color: var(--c-ink); font-family: var(--font-ui); }
+  .wrap { max-width: 640px; margin: 0 auto; padding: var(--space-6) var(--space-5); display: grid; gap: var(--space-5); }
+  h1.page { font-family: var(--font-display); font-size: var(--type-h1); margin: 0 0 var(--space-2); }
+  .lede { font-family: var(--font-body); color: var(--role-text-muted); margin: 0; }
+  .stateLabel { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: var(--tracking-subhead);
+    font-size: 0.82rem; color: var(--c-teal); margin: 0 0 var(--space-2); }
+
+  .card { background-color: var(--c-paper-deep); background-image: var(--fiber-img), var(--grain-img);
+    background-blend-mode: normal, soft-light; background-size: 170px 170px, 46px 46px;
+    border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-card); padding: var(--space-5); }
+
+  /* ===== feedbackBox · inset panel on the card ===== */
+  .feedbackBox { display: grid; gap: var(--space-3); padding: var(--space-3) var(--space-4);
+    background-color: var(--c-paper); background-image: var(--fiber-img), var(--grain-img);
+    background-blend-mode: normal, soft-light; background-size: 170px 170px, 46px 46px;
+    border: var(--line-hair) solid var(--c-paper-edge); border-radius: var(--radius-md); }
+  .feedbackHeader { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3);
+    font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.05em;
+    font-size: 0.92rem; color: var(--c-teal); }
+  .feedbackHeader small { font-family: var(--font-ui); text-transform: none; letter-spacing: 0;
+    font-size: 0.78rem; color: var(--role-text-faint); }
+
+  .feedbackStars { display: inline-flex; align-items: center; gap: var(--space-2); justify-self: start; }
+  .feedbackStar { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px;
+    padding: 0; cursor: pointer; color: var(--c-ink-faint);
+    background-color: var(--c-paper); border: var(--line-reg) solid var(--c-ink);
+    border-radius: var(--radius-sm); box-shadow: 2px 2px 0 var(--c-ink);
+    transition: background-color var(--dur-fast) var(--ease-snap), color var(--dur-fast) var(--ease-snap),
+      box-shadow var(--dur-fast) var(--ease-snap); }
+  .feedbackStar svg { width: 16px; height: 16px; }
+  .feedbackStar:hover:not(:disabled), .feedbackStarActive {
+    background-color: var(--c-teal); color: var(--c-paper); box-shadow: var(--reg-box); }
+  .feedbackStar:disabled { opacity: 0.58; cursor: wait; }
+
+  .feedbackReason { display: grid; gap: var(--space-2); }
+  .feedbackReason span { font-family: var(--font-ui); font-size: 0.85rem; line-height: 1.4; color: var(--role-text-muted); }
+  .feedbackReason textarea { width: 100%; box-sizing: border-box; min-height: 64px; resize: vertical;
+    padding: var(--space-3); font: inherit; font-family: var(--font-ui); font-size: 0.9rem; line-height: 1.45;
+    color: var(--c-ink); background-color: var(--c-paper);
+    border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-md); }
+  .feedbackReason textarea:focus { outline: none; border-color: var(--c-teal);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--c-teal) 28%, transparent); }
+  .feedbackReason small { justify-self: end; font-family: var(--font-ui); font-size: 0.78rem; color: var(--role-text-faint); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div>
+    <h1 class="page">Match Feedback</h1>
+    <p class="lede">Per-match rating that feeds the learning loop. Stars use the teal positive accent (not
+    mustard). When a rating lands, a reason field appears to capture what felt off.</p>
+  </div>
+
+  <!-- Collapsed · awaiting rating -->
+  <section class="card">
+    <p class="stateLabel">No rating yet</p>
+    <div class="feedbackBox">
+      <div class="feedbackHeader"><span>Rate this match for learning</span></div>
+      <div class="feedbackStars" aria-label="Rate this match">
+        <button type="button" class="feedbackStar" aria-label="1 star"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></button>
+        <button type="button" class="feedbackStar" aria-label="2 stars"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></button>
+        <button type="button" class="feedbackStar" aria-label="3 stars"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></button>
+        <button type="button" class="feedbackStar" aria-label="4 stars"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></button>
+        <button type="button" class="feedbackStar" aria-label="5 stars"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Rated · reason captured -->
+  <section class="card">
+    <p class="stateLabel">Rated, reason open</p>
+    <div class="feedbackBox">
+      <div class="feedbackHeader"><span>Rate this match for learning</span><small>Feedback saved</small></div>
+      <div class="feedbackStars" aria-label="Rate this match">
+        <button type="button" class="feedbackStar feedbackStarActive" aria-label="1 star"><svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></button>
+        <button type="button" class="feedbackStar feedbackStarActive" aria-label="2 stars"><svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></button>
+        <button type="button" class="feedbackStar feedbackStarActive" aria-label="3 stars"><svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></button>
+        <button type="button" class="feedbackStar feedbackStarActive" aria-label="4 stars"><svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></button>
+        <button type="button" class="feedbackStar" aria-label="5 stars"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></button>
+      </div>
+      <label class="feedbackReason">
+        <span>What felt off?</span>
+        <textarea rows="2" maxlength="200" placeholder="Too legal. Not enough creative ops. Sounds junior.">Title leans senior IC, but the team is mostly contract. Salary band reads a tier low.</textarea>
+        <small>84/200</small>
+      </label>
+    </div>
+  </section>
+</div>
+</body>
+</html>

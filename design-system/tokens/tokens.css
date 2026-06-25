@@ -34,11 +34,14 @@
   --role-line:          var(--c-ink);          /* inked outlines */
   --role-line-soft:     var(--c-paper-edge);
 
-  --role-action:        var(--c-tomato);       /* primary button */
+  /* Accent strategy (app) = teal-forward. Teal carries most UI accents;
+     tomato is reserved for primary CTAs + destructive; mustard for new/weird
+     flags only; bluebird used sparingly. Red + yellow never co-star. */
+  --role-action:        var(--c-tomato);       /* primary CTA + destructive ONLY */
   --role-action-text:   var(--c-paper);
-  --role-accent:        var(--c-teal);         /* links / active */
-  --role-highlight:     var(--c-mustard);      /* badges / flags */
-  --role-info:          var(--c-bluebird);
+  --role-accent:        var(--c-teal);         /* dominant UI accent: links / active / positive */
+  --role-highlight:     var(--c-mustard);      /* new / weird flags only */
+  --role-info:          var(--c-bluebird);     /* sparingly */
 
   /* Status (kept inside the deck, no red+yellow pairing) */
   --role-positive:      var(--c-teal);
@@ -49,7 +52,11 @@
   --font-display:        "Bemio", system-ui, sans-serif;        /* headlines + buttons */
   --font-display-accent: "Head-OH", "Bemio", sans-serif;        /* rare heavy display moments */
   --font-subhead:        "Bebas Neue", "Oswald", sans-serif;    /* condensed subheads */
-  --font-body:           "Plantagenet Cherokee", Georgia, serif;/* body copy */
+  /* Body type is split: serif for marketing/long-form, sans for the app.
+     --font-body = marketing & editorial. --font-ui = dashboard, tables, forms,
+     dense UI (app supplies Gotham via next/font; DS previews fall back to sans). */
+  --font-body:           "Plantagenet Cherokee", Georgia, serif;        /* marketing / long-form */
+  --font-ui:             var(--font-gotham), "Inter", system-ui, sans-serif; /* app / dense UI */
   /* Vertical "Motel" sign type uses --font-subhead rotated.   */
 
   --type-display:   clamp(2.4rem, 5vw, 4rem);
@@ -82,7 +89,10 @@
   --line-bold:  3px;   /* heavy screenprint weight */
 
   /* --- TEXTURE (halftone + grain + registration) ---------- */
-  /* Halftone is page-ground + select elements ONLY. */
+  /* App ground: the production home grain background is the GLOBAL app ground
+     (home, dashboard, onboarding). Surfaces sit opaque on top of it; cards must
+     never set their own body/page background. Halftone is NOT used as the app
+     ground — the grain background owns that layer. */
   --halftone-color: rgba(36, 31, 26, 0.10);
   --halftone-size:  8px;     /* dot cell */
   --halftone-dot:   2.1px;   /* dot radius */

@@ -62,6 +62,14 @@
     {
       "group": "Patterns",
       "path": "patterns/scan-page.html"
+    },
+    {
+      "group": "Chrome",
+      "path": "components/header.html"
+    },
+    {
+      "group": "Chrome",
+      "path": "components/footer.html"
     }
   ],
   "templates": [],

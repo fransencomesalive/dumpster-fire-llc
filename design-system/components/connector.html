@@ -1,0 +1,100 @@
+<!-- @dsCard group="Components" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Components · Source Connector</title>
+<link rel="stylesheet" href="../tokens/tokens.css" />
+<link rel="stylesheet" href="../lib/base.css" />
+<style>
+  /* Mirrors the connector preview/results in DashboardClient.tsx. Teal-forward:
+     result counts and apply summary use teal (positive), not mustard. */
+  body { margin: 0; color: var(--c-ink); font-family: var(--font-ui); }
+  .wrap { max-width: 720px; margin: 0 auto; padding: var(--space-6) var(--space-5); display: grid; gap: var(--space-5); }
+  h1.page { font-family: var(--font-display); font-size: var(--type-h1); margin: 0 0 var(--space-2); }
+  .lede { font-family: var(--font-body); color: var(--role-text-muted); margin: 0; max-width: 60ch; }
+
+  .card { background-color: var(--c-paper-deep); background-image: var(--fiber-img), var(--grain-img);
+    background-blend-mode: normal, soft-light; background-size: 170px 170px, 46px 46px;
+    border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-card); padding: var(--space-5); }
+
+  .connectorPreview { display: grid; gap: var(--space-5); }
+  .connectorStatusRow { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+  .connectorStatusRow span:not(.scanBadge) { padding: 4px 10px; font-family: var(--font-ui); font-size: 0.78rem;
+    color: var(--role-text-muted); background-color: var(--c-paper);
+    border: var(--line-hair) solid var(--c-paper-edge); border-radius: var(--radius-sm); }
+  .scanBadge { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.05em;
+    font-size: 0.78rem; color: var(--c-paper); background-color: var(--c-teal);
+    border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-pill); padding: 4px 11px; }
+
+  .connectorEndpoint, .connectorBlock { display: grid; gap: var(--space-2); padding: var(--space-4);
+    background-color: var(--c-paper); border: var(--line-hair) solid var(--c-paper-edge); border-radius: var(--radius-md); }
+  .connectorEndpoint strong { font-family: var(--font-ui); font-size: 0.85rem; line-height: 1.5; color: var(--c-ink);
+    overflow-wrap: anywhere; }
+  .lbl { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.05em;
+    font-size: 0.82rem; color: var(--c-teal); }
+  .connectorBlock ul { display: grid; gap: var(--space-2); margin: 0; padding-left: 1.1em;
+    font-family: var(--font-ui); font-size: 0.85rem; line-height: 1.5; color: var(--role-text-muted); }
+
+  .connectorResultStats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-2); }
+  .connectorResultStats span { display: grid; gap: 3px; padding: var(--space-3); text-align: left;
+    background-color: var(--c-paper); border: var(--line-hair) solid var(--c-paper-edge); border-radius: var(--radius-md); }
+  .connectorResultStats em { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.05em;
+    font-size: 0.72rem; font-style: normal; color: var(--role-text-faint); }
+  .connectorResultStats strong { font-family: var(--font-display); font-size: 1.4rem; line-height: 1; color: var(--c-teal); }
+
+  .connectorApplySummary { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; padding: var(--space-4);
+    border: var(--line-reg) solid var(--c-teal); border-radius: var(--radius-md);
+    background: color-mix(in srgb, var(--c-teal) 12%, var(--c-paper)); }
+  .connectorApplySummary strong { flex: 1 0 100%; font-family: var(--font-display); font-size: 0.95rem; color: var(--c-ink); }
+  .connectorApplySummary span { font-family: var(--font-ui); font-size: 0.82rem; color: var(--role-text-muted); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div>
+    <h1 class="page">Source Connector</h1>
+    <p class="lede">Preview and apply a job-source connector: endpoint, the rules it will run, the result counts
+    from a dry run, and a summary before sources are added. Counts use the teal positive accent.</p>
+  </div>
+
+  <section class="card">
+    <div class="connectorPreview">
+      <div class="connectorStatusRow">
+        <span class="scanBadge">Connected</span>
+        <span>Greenhouse</span>
+        <span>Last run 2m ago</span>
+      </div>
+
+      <div class="connectorEndpoint">
+        <span class="lbl">Endpoint</span>
+        <strong>https://boards-api.greenhouse.io/v1/boards/northbeam/jobs</strong>
+      </div>
+
+      <div class="connectorBlock">
+        <span class="lbl">Rules this connector runs</span>
+        <ul>
+          <li>Normalize title and seniority against the compiled profile.</li>
+          <li>Drop duplicates already seen in the last 30 days.</li>
+          <li>Flag postings missing a salary band.</li>
+        </ul>
+      </div>
+
+      <div class="connectorResultStats">
+        <span><strong>142</strong><em>Found</em></span>
+        <span><strong>38</strong><em>New</em></span>
+        <span><strong>17</strong><em>Matched</em></span>
+        <span><strong>4</strong><em>Flagged</em></span>
+      </div>
+
+      <div class="connectorApplySummary">
+        <strong>Ready to apply</strong>
+        <span>38 new roles will be added to your next scan from this source.</span>
+      </div>
+    </div>
+  </section>
+</div>
+</body>
+</html>

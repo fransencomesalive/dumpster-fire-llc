@@ -1,5 +1,40 @@
 # Current State
 
+## 2026-06-25 - Repo cleanup ownership matrix
+
+Started the standalone repo cleanup from the issue/docs queue:
+
+- Confirmed `dumpster-fire-llc` is the canonical public app repo; Lab26 is legacy read-only reference only and must not be used as a save target for public-app work.
+- Checked GitHub open issues for `fransencomesalive/dumpster-fire-llc`; none were returned, so the actionable queue remains local docs (`docs/project-todo.md`, `docs/next-session.md`, `docs/spec-review-phase-1.md`, and `docs/implementation-roadmap.md`).
+- Added `docs/repo-cleanup-migration-matrix.md` with the current inventory, classifications, migration decisions, dependency order, and guardrails.
+- Current recommended implementation order after cleanup inventory: preserve the public profile/API foundation, continue remaining onboarding forms from `docs/project-todo.md`, keep `/scans` isolated as gated legacy-active product machinery, and rebuild public landing/pricing/auth routing in the standalone repo only after the product routes stabilize.
+
+Follow-up audit completed:
+
+- Added `docs/product-roadmap-audit-2026-06-25.md` to compare current built pages and functions against the full product roadmap and feature set.
+- Summary: Phase 1 public profile foundation is largely built and validates cleanly; Phase 2 onboarding UI now has editable shells, section-level readiness/status UX, and client-side Profile Complete routing for every required and optional section; auth-provider polish, public profile management, matching, pursuits, Human Path, outreach, subscriptions, pricing, and final landing are not yet built as public workflows.
+- Validation passed: all public profile focused tests, `npx tsc --noEmit --incremental false`, `npm run lint` with five legacy warnings, and `npm run build`.
+- Built-route smoke on `127.0.0.1:3017`: `/` and `/onboarding` returned `200`, `/scans` returned the access-code login, public profile APIs rejected missing bearer tokens with `401`, and `/scans/api/dashboard` rejected missing private session with `401`.
+
+Phase 2 continuation:
+
+- Added Proof Library editing to `app/onboarding/OnboardingClient.tsx`.
+- `/onboarding` now loads `/api/public-profile/proof-library` with the existing profile bootstrap, stores proof projects in client state, supports add/remove/edit for all proof-object fields, and saves through the authenticated Proof Library `PATCH` endpoint.
+- Proof Library fields now cover name, link, confidence, candidate role, description, proof signals, capabilities, supported responsibilities/experience, industries, best/avoid use, metrics, and caveats.
+- Added Skills Inventory editing to `app/onboarding/OnboardingClient.tsx`.
+- `/onboarding` now loads `/api/public-profile/skills` with the existing profile bootstrap, stores skills in client state, supports add/remove/edit for skill evidence and guardrails, links skills to Proof Library and Work History records, and saves through the authenticated Skills Inventory `PATCH` endpoint.
+- Skills Inventory fields now cover skill name, proficiency, evidence, related proof, related work history, best role fit, and do-not-overclaim guidance.
+- Added editable shells for Why People Hire Me, Operating Style, Decision Style, Communication Style, Writing Samples, What AI Gets Wrong, Outreach Rules, and optional Leadership Profile.
+- `/onboarding` now loads and saves every public profile onboarding section endpoint. Shared quality narrative sections use the profile-quality field keys 1:1; richer sections preserve their settings/list shapes.
+- Added live section-level readiness/status UX to `/onboarding`.
+- The server hero now avoids a hardcoded incomplete state before auth. The signed-in client summary shows live complete/incomplete status, required-section count, blocker count, weak response count, and last-checked timestamp.
+- The section inventory now maps `profileQuality.incompleteReasons` and `weakFields` into per-section badges and blocker counts.
+- Added client-side Profile Complete routing around the existing local bearer-token flow.
+- `/` now checks a stored public profile token and routes complete profiles to `/dashboard` or incomplete profiles to `/onboarding`.
+- `/onboarding` redirects complete profiles to `/dashboard`; `/dashboard` sends missing-token or incomplete profiles back to `/onboarding`.
+- Added `/dashboard` as the Profile Complete destination placeholder until the public Saved Jobs/Pursuits dashboard exists.
+- Next Phase 2 hardening step is quality-scoring/remediation guidance and production auth-provider polish.
+
 ## ▶ NEXT SESSION — RESUME HERE (handoff 2026-06-24)
 
 **What this session did:** mid-century design-system reskin of `/scans`, in `design-system/` (repo root, never ships), all synced to the Claude Design project **"Dumpster Fire Design System" (`3af2f1ea-428c-49b3-8b02-c066ec0c7452`)** via the DesignSync tool. Screenshot loop: `node /tmp/ds-shot-*.mjs` (playwright-core from Lab26 + installed Chrome). Full locked conventions live in Claude auto-memory `project_dumpster_fire_design_system.md` — read it first.
@@ -19,7 +54,7 @@ Hard-won rules from this session (do NOT repeat the mistakes): build literally f
 
 **After the hero is locked:** compose the **full scan-page mock** (hero + section header + rating filter tabs + match-card stack + Overview/Config sidebar incl. `.scanNowBtn`), then port finalized tokens + component CSS into live `app/scans/scans.module.css` and verify the gated page. Secondary surfaces still undesigned: scan-progress modal, activity/scan-history list.
 
-**NOT committed (intentional):** the large pre-existing public-product migration in the working tree (`app/scans/`, `app/onboarding/`, `app/api/public-profile/`, `lib/`, `scripts/`, `supabase/`, many docs) is Randall's separate in-progress build — left untouched. This handoff commit is scoped to `design-system/` + this file only. `Design System Resources/` (reference images + licensed font specimens) is intentionally left untracked.
+**Production commit update 2026-06-25:** the public-product migration (`app/scans/`, `app/onboarding/`, `app/api/public-profile/`, `lib/`, `scripts/`, `supabase/`, and product docs) is intentionally included in the production-ready handoff. `Design System Resources/` remains local-only reference material and is intentionally ignored/untracked.
 
 ---
 

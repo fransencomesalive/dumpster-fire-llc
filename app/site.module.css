@@ -1,0 +1,70 @@
+.page {
+  min-height: 100svh;
+  background: #10170f;
+  color: #f5f0df;
+}
+
+.hero {
+  display: grid;
+  min-height: 100svh;
+  align-items: center;
+  padding: clamp(32px, 7vw, 96px);
+}
+
+.copy {
+  width: min(760px, 100%);
+}
+
+.status {
+  margin: 0 0 18px;
+  color: #d5b85a;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.copy h1 {
+  max-width: 700px;
+  margin: 0;
+  color: #fff7dc;
+  font-size: clamp(3rem, 8vw, 7.5rem);
+  line-height: 0.9;
+  letter-spacing: 0;
+}
+
+.copy p {
+  max-width: 620px;
+  margin: 28px 0 0;
+  color: #efe5bd;
+  font-size: clamp(1.1rem, 2vw, 1.45rem);
+  line-height: 1.45;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 34px;
+}
+
+.link,
+.secondaryLink {
+  display: inline-flex;
+  align-items: center;
+  min-height: 48px;
+  border: 2px solid #d5b85a;
+  border-radius: 6px;
+  padding: 0 18px;
+  font-size: 0.98rem;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.link {
+  background: #d5b85a;
+  color: #10170f;
+}
+
+.secondaryLink {
+  background: transparent;
+  color: #f5f0df;
+}

@@ -1,0 +1,301 @@
+<!-- @dsCard group="Chrome" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Chrome · Header & Nav</title>
+<link rel="stylesheet" href="../tokens/tokens.css" />
+<link rel="stylesheet" href="../lib/base.css" />
+<style>
+  /* No page background here: the live page supplies its own background element
+     that overwrites anything set on this card's body. */
+  body { margin: 0; color: var(--c-ink); font-family: var(--font-body); }
+
+  .wrap { max-width: 1080px; margin: 0 auto; padding: var(--space-6) var(--space-5); display: grid; gap: var(--space-6); }
+  h1.page { font-family: var(--font-display); font-size: var(--type-h1); margin: 0 0 var(--space-2); }
+  .lede { font-family: var(--font-body); color: var(--role-text-muted); max-width: 64ch; margin: 0; }
+  .stateLabel { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: var(--tracking-subhead);
+    font-size: 0.82rem; color: var(--c-tomato); margin: 0 0 var(--space-2); }
+
+  /* ============================ HEADER BAR ============================ */
+  /* Solid, opaque bar. A heavy inked baseline anchors it like a printed rule. */
+  .siteHeader { position: relative; background-color: var(--c-paper);
+    background-image: var(--fiber-img), var(--grain-img); background-blend-mode: normal, soft-light;
+    background-size: 170px 170px, 46px 46px;
+    border: var(--line-reg) solid var(--c-ink); border-bottom-width: var(--line-bold);
+    border-radius: var(--radius-md); box-shadow: var(--shadow-card); }
+  .headerInner { display: flex; align-items: center; gap: var(--space-5);
+    padding: var(--space-3) var(--space-5); }
+
+  /* Brand lockup · always the Home anchor (top-left identity). */
+  .brand { display: inline-flex; align-items: center; gap: var(--space-3); text-decoration: none;
+    color: var(--c-ink); flex: none; }
+  .brand img { width: 38px; height: 38px; object-fit: contain;
+    filter: drop-shadow(2px 2px 0 rgba(36,31,26,0.28)); }
+  .brandWord { display: flex; flex-direction: column; line-height: 1; }
+  .brandWord .top { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.05em;
+    font-size: 0.72rem; color: var(--c-tomato); }
+  .brandWord .name { font-family: var(--font-display); font-size: 1.2rem; letter-spacing: var(--tracking-display);
+    color: var(--c-ink); }
+
+  /* Primary browse nav · low-emphasis text links, the signature slip on hover. */
+  .navPrimary { display: flex; align-items: center; gap: var(--space-5); margin-left: var(--space-4); }
+  .navLink { font-family: var(--font-display); font-size: 1rem; }
+  /* Active page · the teal underline sits solid (no hover needed). */
+  .navLink.isActive { color: var(--c-ink); }
+  .navLink.isActive::after { box-shadow: var(--reg-shadow); }
+
+  /* Action cluster · pushed to the far right; highest-emphasis conversion last. */
+  .headerActions { margin-left: auto; display: flex; align-items: center; gap: var(--space-4); flex: none; }
+  .linkAction { font-family: var(--font-display); font-size: 1rem; }
+  .btnSm { font-size: 0.95rem; padding: var(--space-2) var(--space-4); }
+  /* Quiet secondary (Log in when a primary CTA is present) */
+  .btnGhost { font-family: var(--font-display); font-size: 0.95rem; color: var(--c-ink);
+    background-color: var(--c-paper); border: var(--line-reg) solid var(--c-ink);
+    border-radius: var(--radius-md); box-shadow: var(--shadow-card);
+    padding: var(--space-2) var(--space-4); cursor: pointer;
+    transition: background-color var(--dur-fast) var(--ease-snap), box-shadow var(--dur-fast) var(--ease-snap); }
+  .btnGhost:hover { background-color: color-mix(in srgb, var(--c-teal) 16%, var(--c-paper)); box-shadow: var(--reg-box); }
+
+  /* Profile · avatar disclosure (signed-in). Uses <details> so it opens with no JS. */
+  .profile { position: relative; }
+  .profile > summary { list-style: none; cursor: pointer; display: inline-flex; align-items: center; gap: var(--space-2);
+    font-family: var(--font-display); font-size: 0.98rem; color: var(--c-ink);
+    background-color: var(--c-paper); border: var(--line-reg) solid var(--c-ink);
+    border-radius: var(--radius-pill); box-shadow: var(--shadow-card); padding: 4px var(--space-3) 4px 4px;
+    transition: box-shadow var(--dur-fast) var(--ease-snap); }
+  .profile > summary::-webkit-details-marker { display: none; }
+  .profile > summary:hover { box-shadow: var(--reg-box); }
+  .avatar { flex: none; width: 28px; height: 28px; display: grid; place-items: center;
+    border-radius: var(--radius-pill); background-color: var(--c-teal);
+    background-image: var(--fiber-img), var(--grain-img); background-blend-mode: normal, soft-light;
+    background-size: 170px 170px, 46px 46px; border: var(--line-hair) solid var(--c-ink);
+    font-family: var(--font-subhead); font-size: 0.9rem; color: var(--c-paper); }
+  .caret { width: 12px; height: 12px; }
+  .profileMenu { position: absolute; right: 0; top: calc(100% + var(--space-2)); z-index: 5; min-width: 184px;
+    background-color: var(--c-paper-deep); background-image: var(--fiber-img), var(--grain-img);
+    background-blend-mode: normal, soft-light; background-size: 170px 170px, 46px 46px;
+    border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-md); box-shadow: var(--shadow-card);
+    padding: var(--space-2); display: grid; gap: 2px; }
+  .profileMenu a { display: block; text-decoration: none; font-family: var(--font-display); font-size: 0.95rem;
+    color: var(--c-ink); border-radius: var(--radius-sm); padding: var(--space-2) var(--space-3); }
+  .profileMenu a:hover { background-color: color-mix(in srgb, var(--c-teal) 16%, var(--c-paper-deep)); }
+  .profileMenu .sep { height: var(--line-hair); background: var(--c-paper-edge); margin: var(--space-1) 0; }
+  .profileMenu .danger { color: var(--c-tomato); }
+
+  /* ============================ RESPONSIVE FRAMES ============================
+     A design-system card can be rendered at any width by the preview pane, and
+     @media queries would key off that iframe width, not the header itself — so
+     a narrow preview frame would wrongly show the mobile hamburger on desktop.
+     Container queries fix this: each header responds to its own frame. The
+     desktop demo lives in a wide frame, the mobile demo in a phone frame, both
+     deterministic regardless of how the pane sizes the card. */
+  .scroller { overflow-x: auto; }
+  .hdrFrame { container-type: inline-size; }
+  .hdrFrame.wide { width: 100%; min-width: 820px; }
+  .hdrFrame.phone { width: 375px; max-width: 100%; margin: 0 auto; }
+
+  /* ============================ MOBILE ============================ */
+  /* Disclosure-based menu (no JS): summary is the hamburger in the bar; the
+     menu drops below the bar, toggled by <details>. Hidden above 760px. */
+  .mobileNav { margin-left: auto; }
+  .mobileNav > summary { list-style: none; cursor: pointer; display: inline-flex; align-items: center;
+    justify-content: center; width: 42px; height: 42px; color: var(--c-ink);
+    background-color: var(--c-paper); border: var(--line-reg) solid var(--c-ink);
+    border-radius: var(--radius-md); box-shadow: var(--shadow-card);
+    transition: box-shadow var(--dur-fast) var(--ease-snap); }
+  .mobileNav > summary::-webkit-details-marker { display: none; }
+  .mobileNav[open] > summary { box-shadow: var(--reg-box); }
+  .mobileMenu { position: absolute; left: -1px; right: -1px; top: calc(100% + var(--space-1)); z-index: 8;
+    display: grid; gap: var(--space-1);
+    background-color: var(--c-paper); background-image: var(--fiber-img), var(--grain-img);
+    background-blend-mode: normal, soft-light; background-size: 170px 170px, 46px 46px;
+    border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-md); box-shadow: var(--shadow-card);
+    padding: var(--space-4) var(--space-5); }
+  .mobileMenu a { font-family: var(--font-display); font-size: 1.05rem; color: var(--c-ink);
+    text-decoration: none; padding: var(--space-2) 0; }
+  .mobileMenu .divider { height: var(--line-hair); background: var(--c-paper-edge); margin: var(--space-2) 0; }
+  .mobileMenu .ds-btn, .mobileMenu .btnGhost { width: 100%; text-align: center; box-sizing: border-box; }
+  .mobileMenu .ds-btn { margin-top: var(--space-1); }
+  .mobileMenu .danger { color: var(--c-tomato); }
+
+  .mobileNav { display: none; }
+  @container (max-width: 760px) {
+    .navPrimary, .headerActions { display: none; }
+    .mobileNav { display: block; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div>
+    <h1 class="page">Header &amp; Navigation</h1>
+    <p class="lede">One bar, three session states. Browse links (Features, Pricing) stay low-emphasis on the
+    left; the highest-emphasis action sits last on the right. Because access is invite-gated, the signed-out
+    CTA is <strong>Request Access</strong>; once signup opens it becomes <strong>Create Account</strong>. When
+    signed in, auth actions collapse into the <strong>Profile</strong> menu and <strong>Home</strong> becomes
+    the active nav. Hover any link for the registration slip; the active page carries it solid. The first
+    three examples are the desktop bar; the last shows the mobile disclosure menu.</p>
+  </div>
+
+  <!-- STATE 1 · Signed out, access gated -->
+  <div>
+    <p class="stateLabel">Signed out · access gated</p>
+    <div class="scroller"><div class="hdrFrame wide">
+    <header class="siteHeader">
+      <div class="headerInner">
+        <a class="brand" href="#" aria-label="Dumpster Fire, home">
+          <img src="../dumpsterfireguy.png" alt="" aria-hidden="true" />
+          <span class="brandWord"><span class="top">The Job Market Is A</span><span class="name">Dumpster Fire</span></span>
+        </a>
+        <nav class="navPrimary" aria-label="Primary">
+          <a class="ds-link navLink" href="#">Features</a>
+          <a class="ds-link navLink" href="#">Pricing</a>
+        </nav>
+        <div class="headerActions">
+          <a class="ds-link linkAction" href="#">Log in</a>
+          <a class="ds-btn btnSm" href="#">Request Access</a>
+        </div>
+        <!-- Mobile disclosure (shown ≤760px) -->
+        <details class="mobileNav">
+          <summary aria-label="Menu">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg>
+          </summary>
+          <div class="mobileMenu">
+            <a href="#">Features</a>
+            <a href="#">Pricing</a>
+            <div class="divider"></div>
+            <a class="btnGhost" href="#">Log in</a>
+            <a class="ds-btn" href="#">Request Access</a>
+          </div>
+        </details>
+      </div>
+    </header>
+    </div></div>
+  </div>
+
+  <!-- STATE 2 · Signed out, open signup -->
+  <div>
+    <p class="stateLabel">Signed out · open signup</p>
+    <div class="scroller"><div class="hdrFrame wide">
+    <header class="siteHeader">
+      <div class="headerInner">
+        <a class="brand" href="#" aria-label="Dumpster Fire, home">
+          <img src="../dumpsterfireguy.png" alt="" aria-hidden="true" />
+          <span class="brandWord"><span class="top">The Job Market Is A</span><span class="name">Dumpster Fire</span></span>
+        </a>
+        <nav class="navPrimary" aria-label="Primary">
+          <a class="ds-link navLink" href="#">Features</a>
+          <a class="ds-link navLink" href="#">Pricing</a>
+        </nav>
+        <div class="headerActions">
+          <a class="ds-link linkAction" href="#">Log in</a>
+          <a class="ds-btn btnSm" href="#">Create Account</a>
+        </div>
+        <details class="mobileNav">
+          <summary aria-label="Menu">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg>
+          </summary>
+          <div class="mobileMenu">
+            <a href="#">Features</a>
+            <a href="#">Pricing</a>
+            <div class="divider"></div>
+            <a class="btnGhost" href="#">Log in</a>
+            <a class="ds-btn" href="#">Create Account</a>
+          </div>
+        </details>
+      </div>
+    </header>
+    </div></div>
+  </div>
+
+  <!-- STATE 3 · Signed in -->
+  <div>
+    <p class="stateLabel">Signed in</p>
+    <div class="scroller"><div class="hdrFrame wide">
+    <header class="siteHeader">
+      <div class="headerInner">
+        <a class="brand" href="#" aria-label="Dumpster Fire, home">
+          <img src="../dumpsterfireguy.png" alt="" aria-hidden="true" />
+          <span class="brandWord"><span class="top">The Job Market Is A</span><span class="name">Dumpster Fire</span></span>
+        </a>
+        <nav class="navPrimary" aria-label="Primary">
+          <a class="ds-link navLink isActive" href="#" aria-current="page">Home</a>
+          <a class="ds-link navLink" href="#">Features</a>
+          <a class="ds-link navLink" href="#">Pricing</a>
+        </nav>
+        <div class="headerActions">
+          <details class="profile" open>
+            <summary>
+              <span class="avatar">RF</span>
+              <span>Randall</span>
+              <svg class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </summary>
+            <div class="profileMenu">
+              <a href="#">Profile</a>
+              <a href="#">Settings</a>
+              <a href="#">Billing</a>
+              <div class="sep"></div>
+              <a class="danger" href="#">Log out</a>
+            </div>
+          </details>
+        </div>
+        <details class="mobileNav">
+          <summary aria-label="Menu">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg>
+          </summary>
+          <div class="mobileMenu">
+            <a href="#">Home</a>
+            <a href="#">Features</a>
+            <a href="#">Pricing</a>
+            <div class="divider"></div>
+            <a href="#">Profile</a>
+            <a href="#">Settings</a>
+            <a href="#">Billing</a>
+            <div class="divider"></div>
+            <a class="danger" href="#">Log out</a>
+          </div>
+        </details>
+      </div>
+    </header>
+    </div></div>
+  </div>
+
+  <!-- MOBILE · disclosure menu open -->
+  <div>
+    <p class="stateLabel">Mobile · menu open</p>
+    <div class="hdrFrame phone">
+    <header class="siteHeader">
+      <div class="headerInner">
+        <a class="brand" href="#" aria-label="Dumpster Fire, home">
+          <img src="../dumpsterfireguy.png" alt="" aria-hidden="true" />
+          <span class="brandWord"><span class="top">The Job Market Is A</span><span class="name">Dumpster Fire</span></span>
+        </a>
+        <nav class="navPrimary" aria-label="Primary">
+          <a class="ds-link navLink" href="#">Features</a>
+          <a class="ds-link navLink" href="#">Pricing</a>
+        </nav>
+        <div class="headerActions">
+          <a class="ds-link linkAction" href="#">Log in</a>
+          <a class="ds-btn btnSm" href="#">Request Access</a>
+        </div>
+        <details class="mobileNav" open>
+          <summary aria-label="Menu">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg>
+          </summary>
+          <div class="mobileMenu">
+            <a href="#">Features</a>
+            <a href="#">Pricing</a>
+            <div class="divider"></div>
+            <a class="btnGhost" href="#">Log in</a>
+            <a class="ds-btn" href="#">Request Access</a>
+          </div>
+        </details>
+      </div>
+    </header>
+    </div>
+  </div>
+</div>
+</body>
+</html>

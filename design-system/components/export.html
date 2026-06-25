@@ -1,0 +1,75 @@
+<!-- @dsCard group="Components" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Components · Export Panel</title>
+<link rel="stylesheet" href="../tokens/tokens.css" />
+<link rel="stylesheet" href="../lib/base.css" />
+<style>
+  /* Mirrors the export panel in DashboardClient.tsx. The original "premium"
+     marker was an eyebrow (banned) — rendered here as a mustard pill badge. */
+  body { margin: 0; color: var(--c-ink); font-family: var(--font-ui); }
+  .wrap { max-width: 480px; margin: 0 auto; padding: var(--space-6) var(--space-5); display: grid; gap: var(--space-5); }
+  h1.page { font-family: var(--font-display); font-size: var(--type-h1); margin: 0 0 var(--space-2); }
+  .lede { font-family: var(--font-body); color: var(--role-text-muted); margin: 0; max-width: 56ch; }
+  .stateLabel { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: var(--tracking-subhead);
+    font-size: 0.82rem; color: var(--c-teal); margin: 0 0 var(--space-2); }
+
+  .exportPanel { display: grid; gap: var(--space-3); padding: var(--space-5);
+    background-color: var(--c-paper-deep); background-image: var(--fiber-img), var(--grain-img);
+    background-blend-mode: normal, soft-light; background-size: 170px 170px, 46px 46px;
+    border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-lg); box-shadow: var(--shadow-card); }
+  .premiumBadge { justify-self: start; font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.05em;
+    font-size: 0.74rem; color: var(--c-ink); background-color: var(--c-mustard);
+    background-image: var(--fiber-img), var(--grain-img); background-blend-mode: normal, soft-light;
+    background-size: 170px 170px, 46px 46px;
+    border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-pill); padding: 4px 11px; }
+  .exportPanel strong { font-family: var(--font-display); font-size: 1.15rem; line-height: 1.2; color: var(--c-ink); }
+  .exportPanel p { margin: 0; font-family: var(--font-ui); font-size: 0.85rem; line-height: 1.5; color: var(--role-text-muted); }
+
+  .exportButton { width: 100%; box-sizing: border-box; cursor: pointer; margin-top: var(--space-1);
+    font-family: var(--font-display); font-size: 1rem; color: var(--role-action-text);
+    background-color: var(--role-action); background-image: var(--fiber-img), var(--grain-img);
+    background-blend-mode: normal, soft-light; background-size: 170px 170px, 46px 46px;
+    border: var(--line-bold) solid var(--c-ink); border-radius: var(--radius-md); box-shadow: var(--shadow-card);
+    padding: var(--space-3) var(--space-4);
+    transition: background-color var(--dur-fast) var(--ease-snap), box-shadow var(--dur-fast) var(--ease-snap); }
+  .exportButton:hover:not(:disabled) { background-color: var(--role-info); box-shadow: var(--reg-box);
+    text-shadow: 1px 1px 0 rgba(36,31,26,0.35); }
+  .exportButton:disabled { cursor: not-allowed; color: var(--role-text-faint);
+    background-color: var(--c-paper); background-image: none; box-shadow: 2px 2px 0 var(--c-paper-edge);
+    border-color: var(--c-paper-edge); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div>
+    <h1 class="page">Export Panel</h1>
+    <p class="lede">Exports the current match set to CSV. A gated panel: the premium marker is a badge (not an
+    eyebrow), with enabled and disabled action states.</p>
+  </div>
+
+  <section>
+    <p class="stateLabel">Available</p>
+    <div class="exportPanel">
+      <span class="premiumBadge">Premium</span>
+      <strong>Export matches to CSV</strong>
+      <p>Download the full match set with scores, sources, salary, and contact research for offline review.</p>
+      <button type="button" class="exportButton">Export 142 matches</button>
+    </div>
+  </section>
+
+  <section>
+    <p class="stateLabel">Locked</p>
+    <div class="exportPanel">
+      <span class="premiumBadge">Premium</span>
+      <strong>Export matches to CSV</strong>
+      <p>Available on the private plan. Upgrade to export the full match set.</p>
+      <button type="button" class="exportButton" disabled>Export unavailable</button>
+    </div>
+  </section>
+</div>
+</body>
+</html>

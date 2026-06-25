@@ -1,0 +1,134 @@
+<!-- @dsCard group="Components" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Components · Profile Compiler</title>
+<link rel="stylesheet" href="../tokens/tokens.css" />
+<link rel="stylesheet" href="../lib/base.css" />
+<style>
+  /* Mirrors the compiler review aside in DashboardClient.tsx. Teal-forward:
+     success = teal, "needs signal" = mustard (attention), chips = teal outline.
+     No page background; surfaces supply their own ground. */
+  body { margin: 0; color: var(--c-ink); font-family: var(--font-ui); }
+  .wrap { max-width: 760px; margin: 0 auto; padding: var(--space-6) var(--space-5);
+    display: grid; gap: var(--space-5); grid-template-columns: 1fr; }
+  h1.page { font-family: var(--font-display); font-size: var(--type-h1); margin: 0 0 var(--space-2); }
+  .lede { font-family: var(--font-body); color: var(--role-text-muted); margin: 0; max-width: 60ch; }
+  .twoUp { display: grid; gap: var(--space-5); grid-template-columns: 1fr 1fr; align-items: start; }
+  .stateLabel { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: var(--tracking-subhead);
+    font-size: 0.82rem; color: var(--c-teal); margin: 0 0 var(--space-2); }
+
+  /* Review panel · a card surface aside */
+  .compilerReviewPanel { display: grid; gap: var(--space-3);
+    background-color: var(--c-paper-deep); background-image: var(--fiber-img), var(--grain-img);
+    background-blend-mode: normal, soft-light; background-size: 170px 170px, 46px 46px;
+    border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-card); padding: var(--space-5); }
+  .compilerReviewPanel > strong { font-family: var(--font-display); font-size: 1.15rem; line-height: 1.2; color: var(--c-ink); }
+  .compilerReviewPanel p { margin: 0; font-family: var(--font-ui); font-size: 0.85rem; line-height: 1.5; color: var(--role-text-muted); }
+
+  .compilerConfidence { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3);
+    padding: var(--space-3) var(--space-4); background-color: var(--c-paper);
+    border: var(--line-hair) solid var(--c-paper-edge); border-radius: var(--radius-md); }
+  .compilerConfidence span { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.05em;
+    font-size: 0.82rem; color: var(--c-teal); }
+  .compilerConfidence strong { font-family: var(--font-display); font-size: 1.05rem; color: var(--c-ink); }
+
+  .compilerWarning, .compilerSuccess, .compilerApplied { display: grid; gap: var(--space-1);
+    padding: var(--space-3) var(--space-4); border-radius: var(--radius-md); }
+  .compilerWarning { border: var(--line-reg) solid var(--c-mustard);
+    background: color-mix(in srgb, var(--c-mustard) 14%, var(--c-paper)); }
+  .compilerSuccess, .compilerApplied { border: var(--line-reg) solid var(--c-teal);
+    background: color-mix(in srgb, var(--c-teal) 12%, var(--c-paper)); }
+  .compilerWarning strong { font-family: var(--font-display); font-size: 0.95rem; color: var(--c-ink); }
+  .compilerSuccess strong { font-family: var(--font-display); font-size: 0.95rem; color: var(--c-ink); }
+  .compilerApplied { font-family: var(--font-display); font-size: 0.95rem; color: var(--c-ink); }
+
+  .compilerPreviewGroup { display: grid; gap: var(--space-2); }
+  .compilerPreviewGroup > span { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.05em;
+    font-size: 0.82rem; color: var(--c-teal); }
+  .compilerPreviewGroup div { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+  .compilerPreviewGroup small { padding: 4px 9px; font-family: var(--font-ui); font-size: 0.78rem; line-height: 1.3;
+    color: var(--c-teal); border: var(--line-reg) solid var(--c-teal); border-radius: var(--radius-pill); }
+
+  /* Prompt card · the dashboard CTA to compile */
+  .compilerCardPrompt { display: grid; gap: var(--space-3);
+    background-color: var(--c-paper-deep); background-image: var(--fiber-img), var(--grain-img);
+    background-blend-mode: normal, soft-light; background-size: 170px 170px, 46px 46px;
+    border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-card); padding: var(--space-5); }
+  .compilerCardPrompt strong { font-family: var(--font-display); font-size: 1.15rem; color: var(--c-ink); }
+  .compilerCardPrompt p { margin: 0; font-family: var(--font-ui); font-size: 0.85rem; line-height: 1.5; color: var(--role-text-muted); }
+  .scanSecondaryBtn { width: 100%; box-sizing: border-box; text-align: center; cursor: pointer;
+    font-family: var(--font-display); font-size: 0.95rem; color: var(--c-ink);
+    background-color: var(--c-paper); border: var(--line-reg) solid var(--c-ink);
+    border-radius: var(--radius-md); box-shadow: var(--shadow-card); padding: var(--space-2) var(--space-4);
+    transition: background-color var(--dur-fast) var(--ease-snap), box-shadow var(--dur-fast) var(--ease-snap); }
+  .scanSecondaryBtn:hover { background-color: color-mix(in srgb, var(--c-teal) 16%, var(--c-paper)); box-shadow: var(--reg-box); }
+
+  @media (max-width: 640px) { .twoUp { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div>
+    <h1 class="page">Profile Compiler</h1>
+    <p class="lede">The compiler turns raw profile inputs into structured matcher rules. The review panel shows
+    confidence, a signal verdict, and a preview of titles, strengths, and industries before anything is applied.</p>
+  </div>
+
+  <div class="twoUp">
+    <!-- Reviewed · enough signal -->
+    <div>
+      <p class="stateLabel">Reviewed</p>
+      <aside class="compilerReviewPanel">
+        <strong>Compiler review</strong>
+        <div class="compilerConfidence"><span>Confidence</span><strong>High</strong></div>
+        <div class="compilerSuccess">
+          <strong>Enough signal to apply</strong>
+          <p>The compiled profile has titles, strengths, industries, and constraints.</p>
+        </div>
+        <div class="compilerPreviewGroup">
+          <span>Target titles</span>
+          <div><small>Senior Product Designer</small><small>Staff Designer</small><small>Design Lead</small></div>
+        </div>
+        <div class="compilerPreviewGroup">
+          <span>Strength signals</span>
+          <div><small>Design systems</small><small>0→1</small><small>B2B</small><small>Mentorship</small></div>
+        </div>
+        <div class="compilerPreviewGroup">
+          <span>Industries</span>
+          <div><small>Healthtech</small><small>Fintech</small><small>Dev tools</small></div>
+        </div>
+        <p class="compilerApplied">Applied to your active profile.</p>
+      </aside>
+    </div>
+
+    <!-- Needs signal + prompt -->
+    <div>
+      <p class="stateLabel">Needs signal</p>
+      <aside class="compilerReviewPanel">
+        <strong>Compiler review</strong>
+        <div class="compilerConfidence"><span>Confidence</span><strong>Low</strong></div>
+        <div class="compilerWarning">
+          <strong>Needs better signal</strong>
+          <p>Add: target salary, seniority, two strength examples.</p>
+        </div>
+        <div class="compilerPreviewGroup">
+          <span>Target titles</span>
+          <div><small>Designer</small></div>
+        </div>
+      </aside>
+
+      <div class="compilerCardPrompt" style="margin-top: var(--space-5);">
+        <strong>Compile your profile</strong>
+        <p>Preview creates the structured profile, matcher rules, confidence, and missing-input prompts before you apply anything.</p>
+        <button type="button" class="scanSecondaryBtn">Preview compiler output</button>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

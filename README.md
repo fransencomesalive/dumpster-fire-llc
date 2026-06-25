@@ -1,36 +1,48 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# The Job Market Is a Dumpster Fire
 
-## Getting Started
+Standalone public site for `www.thejobmarketisadumpsterfire.com`.
 
-First, run the development server:
+## Current Routes
+
+- `/` public holding page, ready to be replaced by the markdown-driven landing page.
+- `/onboarding` public onboarding shell wired to the public profile section manifest.
+- `/api/public-profile/bootstrap` authenticated candidate profile bootstrap endpoint.
+- `/api/public-profile/regenerate` authenticated public profile regeneration endpoint.
+- `/api/public-profile/identity-search` authenticated Identity/Search section read and autosave endpoint.
+- `/api/public-profile/role-tracks` authenticated Role Tracks section read and autosave endpoint.
+- `/api/public-profile/resumes` authenticated Resume Uploads section read and autosave endpoint.
+- `/api/public-profile/work-history` authenticated Work History section read and autosave endpoint.
+- `/api/public-profile/proof-library` authenticated Proof Library section read and autosave endpoint.
+- `/api/public-profile/skills` authenticated Skills Inventory section read and autosave endpoint.
+- `/api/public-profile/why-people-hire-me` authenticated Why People Hire Me narrative section read and autosave endpoint.
+- `/api/public-profile/operating-style` authenticated Operating Style narrative section read and autosave endpoint.
+- `/api/public-profile/decision-style` authenticated Decision Style narrative section read and autosave endpoint.
+- `/api/public-profile/communication-style` authenticated Communication Style section read and autosave endpoint.
+- `/api/public-profile/ai-misreadings` authenticated AI Misreadings narrative section read and autosave endpoint.
+- `/api/public-profile/writing-samples` authenticated Writing Samples section read and autosave endpoint.
+- `/api/public-profile/outreach-rules` authenticated Outreach Rules section read and autosave endpoint.
+- `/api/public-profile/leadership-profile` authenticated Leadership Profile section read and autosave endpoint.
+- `/scans` private scan dashboard ported from the working Dumpster Fire implementation.
+- `/scans/admin/tuning` private match tuning dashboard.
+
+## Local Development
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+For local private dashboard access, set `DUMPSTER_FIRE_ACCESS_CODE` and `DUMPSTER_FIRE_SESSION_SECRET` in `.env.local`.
+Production fails closed unless both values are configured.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+For local public profile API work, set `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, and at least one `SUPABASE_AUTH_*_ENABLED` flag. Public profile API requests use a Supabase Auth bearer token.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Data
 
-## Learn More
+Supabase schema and migrations live in `supabase/`. The scan dashboard falls back to in-memory data only when Supabase env vars are absent.
 
-To learn more about Next.js, take a look at the following resources:
+## Next Build Steps
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Resolve quality-scoring/remediation guidance for onboarding weak fields.
+- Add production auth-provider polish for Google/Apple and post-auth redirects.
+- Replace the holding page with the final public landing page after the foundation paths are stable.

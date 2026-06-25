@@ -1,0 +1,284 @@
+import assert from "node:assert/strict";
+import {
+  regenerateLoadedPublicProfileForUser,
+  type PublicProfileServiceDependencies,
+} from "../lib/public-profile/service";
+import type {
+  CandidateProfileAggregate,
+  QualityScoredTextField,
+  QualitySection,
+} from "../lib/public-profile/types";
+
+const now = "2026-06-23T15:00:00.000Z";
+
+const requiredQualityFields: Record<Exclude<QualitySection, "leadership_profile">, string[]> = {
+  why_people_hire_me: [
+    "problemsPeopleBringMe",
+    "whatBreaksIfImNotThere",
+    "messesICleanUp",
+    "teamsThatBenefitFromMe",
+    "situationsWhereIAmMostUseful",
+    "situationsWhereIAmNotUseful",
+  ],
+  operating_style: [
+    "howIApproachProblems",
+    "howIHandleAmbiguity",
+    "howIWorkWithTeams",
+    "whatIValue",
+    "whatIReject",
+  ],
+  decision_style: [
+    "howIEvaluateRoles",
+    "whatMakesRoleWorthPursuing",
+    "whatMakesRoleBadFit",
+    "whatILookForInCompanies",
+    "redFlags",
+    "greenFlags",
+  ],
+  communication_style: [
+    "voiceDescription",
+    "whatIShouldSoundLike",
+    "whatIShouldNeverSoundLike",
+  ],
+  ai_misreadings: [
+    "wrongAssumptions",
+    "badDefaultFramings",
+    "skillsNotToExaggerate",
+    "rolesNotToForceMeInto",
+    "languageThatMisrepresentsMe",
+  ],
+  outreach_rules: [
+    "hiringManagerApproach",
+    "recruiterApproach",
+    "functionalLeaderApproach",
+    "executiveSponsorApproach",
+    "noContactRoutingApproach",
+  ],
+};
+
+function qualityFields(): QualityScoredTextField[] {
+  return Object.entries(requiredQualityFields).flatMap(([section, fieldKeys]) =>
+    fieldKeys.map((fieldKey) => ({
+      id: `${section}-${fieldKey}`,
+      profileId: "profile-1",
+      section: section as QualitySection,
+      fieldKey,
+      value: `Specific answer for ${fieldKey}.`,
+      quality: "complete",
+      createdAt: now,
+      updatedAt: now,
+    })),
+  );
+}
+
+function completeAggregate(): CandidateProfileAggregate {
+  return {
+    profile: {
+      id: "profile-1",
+      userId: "user-1",
+      status: "incomplete",
+      version: 7,
+      fullName: "Avery Candidate",
+      location: "Denver, CO",
+      workAuthorization: "US authorized",
+      remotePreference: "remote_preferred",
+      availability: "Two weeks",
+      generatedMarkdown: "old markdown",
+      createdAt: "2026-06-22T00:00:00.000Z",
+      updatedAt: "2026-06-22T12:00:00.000Z",
+    },
+    preferences: {
+      id: "preferences-1",
+      profileId: "profile-1",
+      employmentTypes: ["full_time"],
+      targetIndustries: ["AI"],
+      avoidIndustries: [],
+      targetCompanyTypes: ["Product-led"],
+      avoidCompanies: [],
+      createdAt: now,
+      updatedAt: now,
+    },
+    companyWatchlist: [],
+    roleTracks: [{
+      id: "track-1",
+      profileId: "profile-1",
+      name: "Program Director",
+      description: "Leads ambiguous cross-functional delivery.",
+      corePositioning: "Turns messy strategic work into shipped systems.",
+      outreachAngle: "Workflow and stakeholder alignment.",
+      targetTitles: ["Program Director"],
+      keyResponsibilities: ["Stakeholder alignment"],
+      requiredExperiencePatterns: ["Cross-functional programs"],
+      strongJobSignals: ["Ambiguous systems work"],
+      weakJobSignals: ["Pure scrum ceremony"],
+      mismatchSignals: ["Staffing-only delivery"],
+      doNotOverclaim: ["Deep platform engineering"],
+      resumeIds: ["resume-1"],
+      createdAt: now,
+      updatedAt: now,
+    }],
+    resumes: [{
+      id: "resume-1",
+      profileId: "profile-1",
+      name: "Program Director Resume",
+      fileUrl: "https://files.example/resume.pdf",
+      parsedText: "Program leadership and workflow systems.",
+      associatedRoleTrackIds: ["track-1"],
+      strengths: ["Program leadership"],
+      gaps: ["No deep engineering management"],
+      useWhen: ["Program-heavy roles"],
+      avoidWhen: ["Pure engineering roles"],
+      parsingQuality: "complete",
+      parsingIssues: [],
+      createdAt: now,
+      updatedAt: now,
+    }],
+    workHistory: [{
+      id: "work-1",
+      profileId: "profile-1",
+      company: "Studio Co",
+      title: "Director of Programs",
+      currentRole: false,
+      responsibilities: ["Led launch operations"],
+      accomplishments: [],
+      skills: ["Stakeholder leadership"],
+      metrics: [],
+      associatedResumeIds: ["resume-1"],
+      source: "resume_parse",
+      createdAt: now,
+      updatedAt: now,
+    }],
+    projects: [{
+      id: "project-1",
+      profileId: "profile-1",
+      name: "Phred",
+      description: "Internal AI workflow system.",
+      candidateRole: "Product and program lead",
+      whatThisProves: ["Can orchestrate AI workflow"],
+      capabilitiesDemonstrated: ["Workflow design"],
+      keyResponsibilitiesSupported: ["Delivery governance"],
+      requiredExperienceSupported: ["Systems thinking"],
+      industriesRelevant: ["AI"],
+      bestUsedFor: ["AI operations roles"],
+      avoidUsingFor: ["Pure software engineering"],
+      metricsResults: [],
+      caveats: ["Not a commercial SaaS"],
+      confidence: "high",
+      createdAt: now,
+      updatedAt: now,
+    }],
+    skills: [{
+      id: "skill-1",
+      profileId: "profile-1",
+      skillName: "Program leadership",
+      proficiency: "expert",
+      evidence: ["Led launch operations"],
+      relatedProjectIds: ["project-1"],
+      relatedWorkHistoryIds: ["work-1"],
+      bestRoleFit: ["Program Director"],
+      doNotOverclaim: ["Deep platform engineering"],
+      createdAt: now,
+      updatedAt: now,
+    }],
+    qualityFields: qualityFields(),
+    communicationStyle: {
+      id: "communication-1",
+      profileId: "profile-1",
+      preferredTone: ["Direct", "Warm"],
+      formalityLevel: "medium",
+      humorLevel: "light",
+      messageLengthPreference: "short",
+      greetingPreferences: ["Hi"],
+      signoffPreferences: ["Thanks"],
+      phrasesToAvoid: ["rockstar"],
+      phrasesThatSoundLikeMe: ["clean up messy systems"],
+      createdAt: now,
+      updatedAt: now,
+    },
+    writingSamples: [{
+      id: "sample-like-1",
+      profileId: "profile-1",
+      sampleType: "like",
+      channel: "email",
+      text: "Clear and useful.",
+      whyItWorksOrFails: "Specific and human.",
+      createdAt: now,
+      updatedAt: now,
+    }, {
+      id: "sample-hate-1",
+      profileId: "profile-1",
+      sampleType: "hate",
+      channel: "linkedin",
+      text: "Excited to announce synergy.",
+      whyItWorksOrFails: "Generic and inflated.",
+      createdAt: now,
+      updatedAt: now,
+    }],
+    outreachRules: {
+      id: "outreach-1",
+      profileId: "profile-1",
+      globalRules: ["Be specific."],
+      followUpRules: ["Follow up once with new context."],
+      linkSelectionRules: ["Use relevant proof only."],
+      createdAt: now,
+      updatedAt: now,
+    },
+    roleTrackOutreachRules: [],
+  };
+}
+
+async function main() {
+  const persisted: unknown[] = [];
+  const dependencies: PublicProfileServiceDependencies = {
+    loadAggregate: async () => completeAggregate(),
+    persistGeneration: async (generation) => {
+      persisted.push(generation);
+    },
+  };
+
+  const regenerated = await regenerateLoadedPublicProfileForUser(dependencies, "user-1", {
+    generatedAt: now,
+    changeSummary: "Service test regeneration.",
+  });
+  assert.equal(regenerated.status, "regenerated");
+  if (regenerated.status === "regenerated") {
+    assert.equal(regenerated.generation.profileQuality.status, "complete");
+    assert.equal(regenerated.generation.profileVersion.version, 8);
+    assert.equal(regenerated.generation.profileVersion.changeSummary, "Service test regeneration.");
+  }
+  assert.equal(persisted.length, 1);
+
+  const incompletePersisted: unknown[] = [];
+  const incomplete = await regenerateLoadedPublicProfileForUser({
+    loadAggregate: async () => ({
+      ...completeAggregate(),
+      roleTracks: [],
+    }),
+    persistGeneration: async (generation) => {
+      incompletePersisted.push(generation);
+    },
+  }, "user-1", { generatedAt: now });
+  assert.equal(incomplete.status, "incomplete");
+  if (incomplete.status === "incomplete") {
+    assert.ok(incomplete.profileQuality.incompleteReasons.includes("At least one Role Track is required."));
+  }
+  assert.equal(incompletePersisted.length, 0);
+
+  const missing = await regenerateLoadedPublicProfileForUser({
+    loadAggregate: async () => undefined,
+    persistGeneration: async () => {
+      throw new Error("missing profiles should not persist");
+    },
+  }, "user-404", { generatedAt: now });
+  assert.deepEqual(missing, {
+    status: "not_found",
+    userId: "user-404",
+  });
+
+  console.log("public profile service: all assertions passed");
+}
+
+main().catch((error) => {
+  console.error(error);
+  process.exit(1);
+});
