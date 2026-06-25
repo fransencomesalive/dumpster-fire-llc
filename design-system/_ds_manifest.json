@@ -58,6 +58,10 @@
     {
       "path": "components/hero-atomic.html",
       "group": "Hero options"
+    },
+    {
+      "group": "Patterns",
+      "path": "patterns/scan-page.html"
     }
   ],
   "templates": [],
