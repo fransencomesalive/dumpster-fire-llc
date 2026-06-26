@@ -64,6 +64,34 @@
       "path": "patterns/scan-page.html"
     },
     {
+      "group": "Components",
+      "path": "components/feedback.html"
+    },
+    {
+      "group": "Components",
+      "path": "components/compiler.html"
+    },
+    {
+      "group": "Components",
+      "path": "components/connector.html"
+    },
+    {
+      "group": "Components",
+      "path": "components/company.html"
+    },
+    {
+      "group": "Components",
+      "path": "components/copy-generation.html"
+    },
+    {
+      "group": "Components",
+      "path": "components/detail.html"
+    },
+    {
+      "group": "Components",
+      "path": "components/export.html"
+    },
+    {
       "group": "Chrome",
       "path": "components/header.html"
     },

@@ -4,69 +4,113 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Components · Match Detail</title>
+<title>Components · Application Details</title>
 <link rel="stylesheet" href="../tokens/tokens.css" />
 <link rel="stylesheet" href="../lib/base.css" />
 <style>
-  /* Mirrors the expandable match-detail (detailGrid / detailTextBlock /
-     detailsButton) in DashboardClient.tsx. Teal-forward labels + toggle. */
+  /* The Application Details modal (setDetailJob in DashboardClient.tsx):
+     Role snapshot, Track actions, and saved Outreach drafts. Class names
+     (detailGrid / detailTextBlock / copyHeader / modal*) match for porting. */
   body { margin: 0; color: var(--c-ink); font-family: var(--font-ui); }
   .wrap { max-width: 640px; margin: 0 auto; padding: var(--space-6) var(--space-5); display: grid; gap: var(--space-5); }
   h1.page { font-family: var(--font-display); font-size: var(--type-h1); margin: 0 0 var(--space-2); }
   .lede { font-family: var(--font-body); color: var(--role-text-muted); margin: 0; max-width: 60ch; }
 
-  .card { background-color: var(--c-paper-deep); background-image: var(--fiber-img), var(--grain-img);
+  .modalBox { background-color: var(--c-paper-deep); background-image: var(--fiber-img), var(--grain-img);
     background-blend-mode: normal, soft-light; background-size: 170px 170px, 46px 46px;
-    border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-card); padding: var(--space-5); }
+    border: var(--line-bold) solid var(--c-ink); border-radius: var(--radius-lg); box-shadow: var(--shadow-card); overflow: hidden; }
+  .modalHeader { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3);
+    padding: var(--space-4) var(--space-5); border-bottom: var(--line-reg) solid var(--c-ink); }
+  .modalTitle { margin: 0; font-family: var(--font-display); font-size: 1.2rem; color: var(--c-ink); }
+  .modalClose { display: grid; place-items: center; width: 34px; height: 34px; cursor: pointer; color: var(--c-ink);
+    background-color: var(--c-paper); border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-sm); box-shadow: 2px 2px 0 var(--c-ink); }
+  .modalClose svg { width: 16px; height: 16px; }
+  .modalStack { display: grid; gap: var(--space-5); padding: var(--space-5); }
+  .modalStack section > strong { display: block; margin-bottom: var(--space-3); font-family: var(--font-subhead);
+    text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.85rem; color: var(--c-teal); }
 
-  .detailGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2);
-    margin-bottom: var(--space-4); }
-  .detailGrid span { display: grid; gap: 3px; padding: var(--space-3); font-family: var(--font-ui); font-size: 0.85rem;
-    line-height: 1.35; color: var(--c-ink);
+  .detailGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); margin-bottom: var(--space-3); }
+  .detailGrid span { padding: var(--space-3); font-family: var(--font-ui); font-size: 0.85rem; line-height: 1.35; color: var(--c-ink);
     background-color: var(--c-paper); border: var(--line-hair) solid var(--c-paper-edge); border-radius: var(--radius-md); }
-  .detailGrid b { font-family: var(--font-subhead); font-weight: 400; text-transform: uppercase; letter-spacing: 0.05em;
-    font-size: 0.72rem; color: var(--c-teal); }
+  .modalStack section > p { margin: 0; font-family: var(--font-ui); font-size: 0.9rem; line-height: 1.55; color: var(--role-text-muted); }
+  .modalStack ul { margin: var(--space-2) 0 0; padding-left: 1.1em; font-family: var(--font-ui); font-size: 0.88rem;
+    line-height: 1.5; color: var(--role-text-muted); display: grid; gap: 5px; }
 
-  .detailTextBlock { font-family: var(--font-ui); font-size: 0.9rem; line-height: 1.6; color: var(--role-text-muted); }
-  .detailTextBlock strong { display: block; margin-bottom: 4px; font-family: var(--font-subhead); text-transform: uppercase;
-    letter-spacing: 0.05em; font-size: 0.82rem; color: var(--c-teal); }
-  .detailTextBlock + .detailTextBlock { margin-top: var(--space-4); padding-top: var(--space-4);
+  .detailTextBlock + .detailTextBlock { margin-top: var(--space-3); padding-top: var(--space-3);
     border-top: var(--line-hair) solid var(--c-paper-edge); }
-
-  .detailsButton { width: 100%; margin-top: var(--space-4); padding: var(--space-3) var(--space-4); cursor: pointer;
-    font-family: var(--font-display); font-size: 0.95rem; color: var(--c-ink);
-    background-color: var(--c-paper); border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-md);
-    box-shadow: var(--shadow-card);
-    transition: background-color var(--dur-fast) var(--ease-snap), box-shadow var(--dur-fast) var(--ease-snap); }
-  .detailsButton:hover { background-color: color-mix(in srgb, var(--c-teal) 16%, var(--c-paper)); box-shadow: var(--reg-box); }
+  .copyHeader { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); margin-bottom: var(--space-2); }
+  .copyHeader strong { font-family: var(--font-display); font-size: 0.98rem; color: var(--c-ink); }
+  .detailTextBlock p { margin: 0; font-family: var(--font-ui); font-size: 0.88rem; line-height: 1.55; color: var(--role-text-muted); }
+  .copyBtn { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; font-family: var(--font-subhead);
+    text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.72rem; color: var(--c-ink);
+    background-color: var(--c-paper); border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-sm);
+    box-shadow: 2px 2px 0 var(--c-ink); padding: 4px 8px; }
+  .copyBtn svg { width: 13px; height: 13px; }
 </style>
 </head>
 <body>
 <div class="wrap">
   <div>
-    <h1 class="page">Match Detail</h1>
-    <p class="lede">The expanded view behind a match card: a two-column fact grid, stacked text blocks divided by
-    hairlines, and a full-width toggle to collapse it.</p>
+    <h1 class="page">Application Details</h1>
+    <p class="lede">Opens from a saved job. A read-back of everything tracked for one application: role snapshot,
+    track actions, and the outreach drafts that were generated and saved.</p>
   </div>
 
-  <section class="card">
-    <div class="detailGrid">
-      <span><b>Posted</b>3 days ago</span>
-      <span><b>Applicants</b>Under 25</span>
-      <span><b>Team</b>Design, 8 people</span>
-      <span><b>Reports to</b>VP Design</span>
+  <div class="modalBox">
+    <div class="modalHeader">
+      <h4 class="modalTitle">Application details: Senior Product Designer</h4>
+      <button type="button" class="modalClose" aria-label="Close">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
     </div>
-    <div class="detailTextBlock">
-      <strong>Why this surfaced</strong>
-      Strong overlap on design-systems ownership and 0→1 product work, both weighted high in your compiled profile.
+    <div class="modalStack">
+      <section>
+        <strong>Role snapshot</strong>
+        <div class="detailGrid">
+          <span>Company: Northbeam Labs</span>
+          <span>Status: Applied</span>
+          <span>Fit: Strong / 84</span>
+          <span>Comp: $140–165k</span>
+          <span>Remote: Remote (US)</span>
+          <span>Source: LinkedIn</span>
+        </div>
+        <p>Strong fit on systems and 0→1 work; salary band and remote both clear.</p>
+      </section>
+
+      <section>
+        <strong>Track actions</strong>
+        <div class="detailGrid">
+          <span>Saved: Jun 22, 8:49 PM</span>
+          <span>Mode: Warm intro</span>
+          <span>Contacts: 2</span>
+          <span>Sessions: 3</span>
+        </div>
+        <ul>
+          <li>Researched hiring manager</li>
+          <li>Drafted outreach</li>
+          <li>Sent connection request</li>
+        </ul>
+      </section>
+
+      <section>
+        <strong>Outreach drafts</strong>
+        <div class="detailTextBlock">
+          <div class="copyHeader">
+            <strong>Maya Chen</strong>
+            <button type="button" class="copyBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copy</button>
+          </div>
+          <p>Hi Maya, I saw Northbeam is hiring a Senior Product Designer to own the design system through a 0→1 launch. That's the exact shape of work I did at Atlas. Open to a short call this week?</p>
+        </div>
+        <div class="detailTextBlock">
+          <div class="copyHeader">
+            <strong>Devin Pratt</strong>
+            <button type="button" class="copyBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copy</button>
+          </div>
+          <p>Hi Devin, noticed you lead design ops at Northbeam. I've built systems from 0→1 and would love to hear how your team is scoping this role.</p>
+        </div>
+      </section>
     </div>
-    <div class="detailTextBlock">
-      <strong>What to verify</strong>
-      Salary band is inferred, not posted. Confirm the IC vs management split before pursuing.
-    </div>
-    <button type="button" class="detailsButton">Hide details</button>
-  </section>
+  </div>
 </div>
 </body>
 </html>

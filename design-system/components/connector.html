@@ -4,94 +4,115 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Components · Source Connector</title>
+<title>Components · Add a Career Page</title>
 <link rel="stylesheet" href="../tokens/tokens.css" />
 <link rel="stylesheet" href="../lib/base.css" />
 <style>
-  /* Mirrors the connector preview/results in DashboardClient.tsx. Teal-forward:
-     result counts and apply summary use teal (positive), not mustard. */
+  /* User-facing: add a company's careers page to scan. No endpoints, no rules
+     (one rule set for all scrapes, driven by profile intake). If a page can't
+     be scanned yet, the user requests support and we email the developer.
+     Accent: add = tomato (primary), compatible = teal, error = tomato. */
   body { margin: 0; color: var(--c-ink); font-family: var(--font-ui); }
-  .wrap { max-width: 720px; margin: 0 auto; padding: var(--space-6) var(--space-5); display: grid; gap: var(--space-5); }
+  .wrap { max-width: 600px; margin: 0 auto; padding: var(--space-6) var(--space-5); display: grid; gap: var(--space-5); }
   h1.page { font-family: var(--font-display); font-size: var(--type-h1); margin: 0 0 var(--space-2); }
-  .lede { font-family: var(--font-body); color: var(--role-text-muted); margin: 0; max-width: 60ch; }
+  .lede { font-family: var(--font-body); color: var(--role-text-muted); margin: 0; max-width: 58ch; }
+  .stateLabel { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: var(--tracking-subhead);
+    font-size: 0.82rem; color: var(--c-teal); margin: 0 0 var(--space-2); }
 
   .card { background-color: var(--c-paper-deep); background-image: var(--fiber-img), var(--grain-img);
     background-blend-mode: normal, soft-light; background-size: 170px 170px, 46px 46px;
     border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-card); padding: var(--space-5); }
+    box-shadow: var(--shadow-card); padding: var(--space-5); display: grid; gap: var(--space-4); }
 
-  .connectorPreview { display: grid; gap: var(--space-5); }
-  .connectorStatusRow { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
-  .connectorStatusRow span:not(.scanBadge) { padding: 4px 10px; font-family: var(--font-ui); font-size: 0.78rem;
-    color: var(--role-text-muted); background-color: var(--c-paper);
-    border: var(--line-hair) solid var(--c-paper-edge); border-radius: var(--radius-sm); }
-  .scanBadge { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.05em;
-    font-size: 0.78rem; color: var(--c-paper); background-color: var(--c-teal);
-    border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-pill); padding: 4px 11px; }
+  .field { display: grid; gap: var(--space-2); }
+  .field label { font-family: var(--font-display); font-size: 1rem; color: var(--c-ink); }
+  .field input { width: 100%; box-sizing: border-box; font-family: var(--font-ui); font-size: 0.95rem; color: var(--c-ink);
+    background-color: var(--c-paper); border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-md);
+    padding: var(--space-3) var(--space-4); }
+  .field input:focus { outline: none; border-color: var(--c-teal);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--c-teal) 28%, transparent); }
+  .field .hint { font-family: var(--font-ui); font-size: 0.8rem; color: var(--role-text-faint); }
 
-  .connectorEndpoint, .connectorBlock { display: grid; gap: var(--space-2); padding: var(--space-4);
-    background-color: var(--c-paper); border: var(--line-hair) solid var(--c-paper-edge); border-radius: var(--radius-md); }
-  .connectorEndpoint strong { font-family: var(--font-ui); font-size: 0.85rem; line-height: 1.5; color: var(--c-ink);
-    overflow-wrap: anywhere; }
-  .lbl { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.05em;
+  .btnPrimary { font-family: var(--font-display); font-size: 1rem; color: var(--role-action-text); cursor: pointer;
+    background-color: var(--role-action); background-image: var(--fiber-img), var(--grain-img);
+    background-blend-mode: normal, soft-light; background-size: 170px 170px, 46px 46px;
+    border: var(--line-bold) solid var(--c-ink); border-radius: var(--radius-md); box-shadow: var(--shadow-card);
+    padding: var(--space-3) var(--space-5); justify-self: start;
+    transition: background-color var(--dur-fast) var(--ease-snap), box-shadow var(--dur-fast) var(--ease-snap); }
+  .btnPrimary:hover { background-color: var(--role-info); box-shadow: var(--reg-box); text-shadow: 1px 1px 0 rgba(36,31,26,0.35); }
+  .btnSecondary { font-family: var(--font-display); font-size: 0.95rem; color: var(--c-ink); cursor: pointer;
+    background-color: var(--c-paper); border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-md);
+    box-shadow: var(--shadow-card); padding: var(--space-2) var(--space-4); justify-self: start;
+    transition: background-color var(--dur-fast) var(--ease-snap), box-shadow var(--dur-fast) var(--ease-snap); }
+  .btnSecondary:hover { background-color: color-mix(in srgb, var(--c-teal) 16%, var(--c-paper)); box-shadow: var(--reg-box); }
+
+  .resultRow { display: flex; align-items: flex-start; gap: var(--space-3); padding: var(--space-3) var(--space-4);
+    border-radius: var(--radius-md); }
+  .resultRow .ricon { flex: none; width: 24px; height: 24px; display: grid; place-items: center; border-radius: var(--radius-pill);
+    border: var(--line-reg) solid var(--c-ink); }
+  .resultRow .ricon svg { width: 14px; height: 14px; }
+  .resultRow strong { display: block; font-family: var(--font-display); font-size: 0.98rem; color: var(--c-ink); }
+  .resultRow p { margin: 2px 0 0; font-family: var(--font-ui); font-size: 0.85rem; line-height: 1.5; color: var(--role-text-muted); }
+  .ok { border: var(--line-reg) solid var(--c-teal); background: color-mix(in srgb, var(--c-teal) 12%, var(--c-paper)); }
+  .ok .ricon { background: var(--c-teal); color: var(--c-paper); }
+  .bad { border: var(--line-reg) solid var(--c-tomato); background: color-mix(in srgb, var(--c-tomato) 12%, var(--c-paper)); }
+  .bad .ricon { background: var(--c-tomato); color: var(--c-paper); }
+
+  .requestBlock { display: grid; gap: var(--space-3); padding: var(--space-4); background-color: var(--c-paper);
+    border: var(--line-hair) solid var(--c-paper-edge); border-radius: var(--radius-md); }
+  .requestBlock .rtitle { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.05em;
     font-size: 0.82rem; color: var(--c-teal); }
-  .connectorBlock ul { display: grid; gap: var(--space-2); margin: 0; padding-left: 1.1em;
-    font-family: var(--font-ui); font-size: 0.85rem; line-height: 1.5; color: var(--role-text-muted); }
-
-  .connectorResultStats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-2); }
-  .connectorResultStats span { display: grid; gap: 3px; padding: var(--space-3); text-align: left;
-    background-color: var(--c-paper); border: var(--line-hair) solid var(--c-paper-edge); border-radius: var(--radius-md); }
-  .connectorResultStats em { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.05em;
-    font-size: 0.72rem; font-style: normal; color: var(--role-text-faint); }
-  .connectorResultStats strong { font-family: var(--font-display); font-size: 1.4rem; line-height: 1; color: var(--c-teal); }
-
-  .connectorApplySummary { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; padding: var(--space-4);
-    border: var(--line-reg) solid var(--c-teal); border-radius: var(--radius-md);
-    background: color-mix(in srgb, var(--c-teal) 12%, var(--c-paper)); }
-  .connectorApplySummary strong { flex: 1 0 100%; font-family: var(--font-display); font-size: 0.95rem; color: var(--c-ink); }
-  .connectorApplySummary span { font-family: var(--font-ui); font-size: 0.82rem; color: var(--role-text-muted); }
+  .requestBlock p { margin: 0; font-family: var(--font-ui); font-size: 0.85rem; line-height: 1.5; color: var(--role-text-muted); }
 </style>
 </head>
 <body>
 <div class="wrap">
   <div>
-    <h1 class="page">Source Connector</h1>
-    <p class="lede">Preview and apply a job-source connector: endpoint, the rules it will run, the result counts
-    from a dry run, and a summary before sources are added. Counts use the teal positive accent.</p>
+    <h1 class="page">Add a Career Page</h1>
+    <p class="lede">Point Dumpster Fire at a company's careers page and it gets scanned with the same rules as
+    every other source, driven by your profile. If a page can't be scanned yet, you can request support.</p>
   </div>
 
-  <section class="card">
-    <div class="connectorPreview">
-      <div class="connectorStatusRow">
-        <span class="scanBadge">Connected</span>
-        <span>Greenhouse</span>
-        <span>Last run 2m ago</span>
+  <!-- 1 · input -->
+  <section>
+    <p class="stateLabel">Add</p>
+    <div class="card">
+      <div class="field">
+        <label for="cp">Paste the company's career page here</label>
+        <input id="cp" type="url" placeholder="https://company.com/careers" />
+        <span class="hint">A careers or jobs listing page works best, not a single job post.</span>
       </div>
+      <button type="button" class="btnPrimary">Add page</button>
+    </div>
+  </section>
 
-      <div class="connectorEndpoint">
-        <span class="lbl">Endpoint</span>
-        <strong>https://boards-api.greenhouse.io/v1/boards/northbeam/jobs</strong>
+  <!-- 2 · compatible -->
+  <section>
+    <p class="stateLabel">Compatible</p>
+    <div class="card">
+      <div class="resultRow ok">
+        <span class="ricon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+        <div><strong>Added, we can scan this page</strong><p>Northbeam Labs careers will be included in your next scan.</p></div>
       </div>
+    </div>
+  </section>
 
-      <div class="connectorBlock">
-        <span class="lbl">Rules this connector runs</span>
-        <ul>
-          <li>Normalize title and seniority against the compiled profile.</li>
-          <li>Drop duplicates already seen in the last 30 days.</li>
-          <li>Flag postings missing a salary band.</li>
-        </ul>
+  <!-- 3 · not compatible + request -->
+  <section>
+    <p class="stateLabel">Not compatible</p>
+    <div class="card">
+      <div class="resultRow bad">
+        <span class="ricon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span>
+        <div><strong>We can't scan this career page yet</strong><p>This site isn't supported by the current scan capability. Send a request and we'll look at adding it.</p></div>
       </div>
-
-      <div class="connectorResultStats">
-        <span><strong>142</strong><em>Found</em></span>
-        <span><strong>38</strong><em>New</em></span>
-        <span><strong>17</strong><em>Matched</em></span>
-        <span><strong>4</strong><em>Flagged</em></span>
-      </div>
-
-      <div class="connectorApplySummary">
-        <strong>Ready to apply</strong>
-        <span>38 new roles will be added to your next scan from this source.</span>
+      <div class="requestBlock">
+        <span class="rtitle">Request support for this page</span>
+        <p>We'll email the developer with this page and your address, and let you know if it's added or not possible.</p>
+        <div class="field">
+          <label for="em">Your email</label>
+          <input id="em" type="email" placeholder="you@example.com" />
+        </div>
+        <button type="button" class="btnSecondary">Send request</button>
       </div>
     </div>
   </section>
