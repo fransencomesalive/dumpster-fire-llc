@@ -1,3 +1,9 @@
+> **SUPERSEDED for design state — see `docs/design-state.md` (canonical).**
+> This doc's "App design foundation: NOT started" is STALE: the foundation (tokens, fonts,
+> `color-scheme: light`, global grain ground) is DONE in code. The "port DS cards ~1:1"
+> premise also does not apply to the public app (the cards mirror private `/scans` naming).
+> Use this doc only for the locked product rules / card intent, not for implementation state.
+
 # Design Implementation Handoff
 
 Date: 2026-06-25

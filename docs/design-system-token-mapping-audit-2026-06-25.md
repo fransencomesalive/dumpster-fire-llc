@@ -1,3 +1,8 @@
+> **SUPERSEDED for design state — see `docs/design-state.md` (canonical).**
+> The token/font foundation this audit treats as "to do" is now DONE in `app/globals.css`
+> + `app/layout.tsx`. The component-coverage matrix is measured against private `/scans`,
+> which is OUT of scope for the public-app port. Useful only as a color/token reference.
+
 # Design System → App Token & Component Mapping Audit
 
 Date: 2026-06-25

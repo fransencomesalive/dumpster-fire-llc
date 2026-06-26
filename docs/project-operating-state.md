@@ -1,3 +1,8 @@
+> **SUPERSEDED for design state / design scope — see `docs/design-state.md` (canonical).**
+> The "Hard Prohibitions" and "do not touch tokens/fonts/onboarding/dashboard CSS" sections
+> below predate Randall's approval of the design phase (2026-06-26). Those surfaces are now
+> IN scope under `docs/design-state.md`. This file remains valid for product/state protocol.
+
 # Project Operating State
 
 Date: 2026-06-26

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import localFont from "next/font/local";
 import LandingBackground from "./LandingBackground";
 import "./globals.css";
+import "./ds.css";
 
 const gotham = localFont({
   src: [

@@ -1,13 +1,23 @@
+/* ============================================================
+   Onboarding · public profile setup + editor
+   Paper design system. Tokens are global (app/globals.css).
+   Sources (DS cards): forms, panel, badges, modal, header, footer.
+   Single token-driven layer — no dark literals, no !important.
+   The page ground is the global grain (app/layout.tsx); .page is
+   transparent and surfaces sit opaque on top.
+   ============================================================ */
+
 .page {
   min-height: 100svh;
-  background:
-    radial-gradient(circle at top left, rgb(213 184 90 / 0.18), transparent 34rem),
-    linear-gradient(135deg, #10170f 0%, #162112 100%);
-  color: #f5f0df;
   padding: clamp(28px, 5vw, 72px);
+  background: transparent;
+  color: var(--c-ink);
+  font-family: var(--font-ui); /* app/dense UI = Gotham; prose opts into serif below */
 }
 
 .shell {
+  position: relative;
+  z-index: 1;
   width: min(1180px, 100%);
   margin: 0 auto;
 }
@@ -20,17 +30,38 @@
   margin-bottom: clamp(48px, 8vw, 96px);
 }
 
+/* --- Subhead-style labels (Bebas, tracked, uppercase) --------- */
+.brand,
+.homeLink,
+.statusLabel,
+.profileStatus,
+.sectionIssueSummary,
+.endpoint,
+.requiredCount,
+.formGrid label {
+  font-family: var(--font-subhead);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-subhead);
+}
+
+.brand,
+.homeLink,
+.statusLabel,
+.profileStatus,
+.sectionIssueSummary,
+.endpoint,
+.requiredCount,
+.emptyState {
+  color: var(--c-teal);
+}
+
 .brand {
-  color: #fff7dc;
   font-size: 1rem;
-  font-weight: 900;
   text-decoration: none;
 }
 
 .homeLink {
-  color: #d5b85a;
   font-size: 0.95rem;
-  font-weight: 700;
   text-decoration: none;
 }
 
@@ -41,18 +72,43 @@
   align-items: start;
 }
 
+/* --- Display headings (Bemio) -------------------------------- */
+.intro h1,
+.statusValue,
+.formHeader h2,
+.roleTrackHeader h3,
+.sectionCard h2 {
+  color: var(--c-ink);
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: var(--tracking-display);
+}
+
 .intro h1 {
   max-width: 780px;
   margin: 0;
-  color: #fff7dc;
   font-size: clamp(3rem, 8vw, 7rem);
   line-height: 0.9;
+}
+
+/* --- Prose (Plantagenet serif, soft ink) --------------------- */
+.intro p,
+.statusDetail,
+.formActions p,
+.issueCard p,
+.issueCard li,
+.sectionCard p,
+.readinessStats,
+.emptyState,
+.optional {
+  color: var(--c-ink-soft);
+  font-family: var(--font-body);
+  line-height: 1.45;
 }
 
 .intro p {
   max-width: 680px;
   margin: 26px 0 0;
-  color: #efe5bd;
   font-size: clamp(1.1rem, 2vw, 1.35rem);
   line-height: 1.5;
 }
@@ -64,35 +120,64 @@
   margin-top: 34px;
 }
 
+/* --- Buttons (inked, hard offset) ---------------------------- */
 .primaryAction,
 .secondaryAction {
   display: inline-flex;
   align-items: center;
   min-height: 48px;
-  border: 2px solid #d5b85a;
-  border-radius: 6px;
   padding: 0 18px;
   font-size: 0.98rem;
   font-weight: 800;
   text-decoration: none;
 }
 
-.primaryAction {
-  background: #d5b85a;
-  color: #10170f;
+.primaryAction,
+.primaryButton {
+  border: var(--line-bold) solid var(--c-ink);
+  border-radius: var(--radius-md);
+  background-color: var(--role-action);
+  background-image: var(--fiber-img), var(--grain-img);
+  background-blend-mode: normal, soft-light;
+  background-size: 170px 170px, 46px 46px;
+  box-shadow: var(--shadow-card);
+  color: var(--role-action-text);
+  font-family: var(--font-display);
 }
 
-.secondaryAction {
-  background: transparent;
-  color: #f5f0df;
+.secondaryAction,
+.secondaryButton {
+  border: var(--line-reg) solid var(--c-ink);
+  border-radius: var(--radius-md);
+  background: var(--c-paper);
+  box-shadow: var(--shadow-card);
+  color: var(--c-ink);
+  font-family: var(--font-display);
 }
 
+/* --- Panels / cards (paper surface, fiber+grain texture) ------ */
 .statusCard,
-.sectionCard {
-  border: 1px solid rgb(213 184 90 / 0.32);
-  border-radius: 18px;
-  background: rgb(245 240 223 / 0.08);
-  box-shadow: 0 24px 70px rgb(0 0 0 / 0.18);
+.sectionCard,
+.authPanel,
+.readinessPanel,
+.authPanelCompact,
+.readinessPanelCompact,
+.formCard,
+.issueCard,
+.roleTrackEditor {
+  border: var(--line-reg) solid var(--c-ink);
+  border-radius: var(--radius-lg);
+  background-color: var(--c-paper-deep);
+  background-image: var(--fiber-img), var(--grain-img);
+  background-blend-mode: normal, soft-light;
+  background-size: 170px 170px, 46px 46px;
+  box-shadow: var(--shadow-card);
+}
+
+.roleTrackEditor {
+  background-color: var(--c-paper);
+  border-radius: var(--radius-md);
+  padding: 16px;
 }
 
 .statusCard {
@@ -101,20 +186,15 @@
 
 .statusLabel {
   margin: 0;
-  color: #d5b85a;
-  font-weight: 800;
 }
 
 .statusValue {
   margin: 10px 0 0;
-  color: #fff7dc;
   font-size: 2rem;
-  font-weight: 900;
 }
 
 .statusDetail {
   margin: 12px 0 0;
-  color: #efe5bd;
   line-height: 1.5;
 }
 
@@ -125,31 +205,20 @@
 }
 
 .authPanel,
-.readinessPanel,
-.formCard,
-.issueCard {
-  border: 1px solid rgb(213 184 90 / 0.32);
-  border-radius: 18px;
-  background: rgb(245 240 223 / 0.08);
-  box-shadow: 0 24px 70px rgb(0 0 0 / 0.18);
-}
-
-.authPanel {
-  display: flex;
-  justify-content: space-between;
-  gap: 18px;
-  align-items: end;
-  margin-top: clamp(40px, 6vw, 72px);
-  padding: 20px;
-}
-
 .readinessPanel {
   display: flex;
   justify-content: space-between;
   gap: 18px;
   align-items: end;
-  margin-top: 18px;
   padding: 20px;
+}
+
+.authPanel {
+  margin-top: clamp(40px, 6vw, 72px);
+}
+
+.readinessPanel {
+  margin-top: 18px;
 }
 
 .profileEditorMode {
@@ -159,53 +228,44 @@
 
 .authPanelCompact,
 .readinessPanelCompact {
-  border: 1px solid rgb(213 184 90 / 0.32);
-  border-radius: 18px;
-  background: rgb(245 240 223 / 0.08);
-  box-shadow: 0 24px 70px rgb(0 0 0 / 0.18);
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  align-items: end;
   padding: 18px;
-}
-
-.authPanelCompact {
-  display: flex;
-  justify-content: space-between;
-  gap: 18px;
-  align-items: end;
-}
-
-.readinessPanelCompact {
-  display: flex;
-  justify-content: space-between;
-  gap: 18px;
-  align-items: end;
 }
 
 .readinessStats {
   display: grid;
   gap: 8px;
   justify-items: end;
-  color: #efe5bd;
   font-weight: 800;
 }
 
+/* --- Gate notice (tomato-edged callout) ---------------------- */
 .gateNotice {
   display: grid;
   gap: 8px;
   max-width: 680px;
   margin-top: 16px;
-  border: 1px solid rgb(213 184 90 / 0.5);
-  border-radius: 12px;
-  background: #10170f;
+  border: var(--line-reg) solid var(--c-ink);
+  border-left: var(--line-bold) solid var(--c-tomato);
+  border-radius: var(--radius-md);
+  background-color: var(--c-paper);
+  background-image: var(--grain-img);
+  background-size: 46px 46px;
   padding: 14px 16px;
 }
 
 .gateNotice p {
   margin: 0;
-  color: #fff7dc;
+  color: var(--c-ink);
+  font-family: var(--font-body);
   font-weight: 800;
   line-height: 1.45;
 }
 
+/* --- Form controls ------------------------------------------- */
 .authForm,
 .authActions {
   display: flex;
@@ -219,12 +279,14 @@
 .formGrid select,
 .formGrid textarea {
   min-height: 44px;
-  border: 1px solid rgb(213 184 90 / 0.28);
-  border-radius: 8px;
+  border: var(--line-reg) solid var(--c-ink);
+  border-radius: var(--radius-md);
   padding: 0 12px;
-  background: rgb(16 23 15 / 0.78);
-  color: #fff7dc;
+  background-color: var(--c-paper);
+  color: var(--c-ink);
   font: inherit;
+  font-family: var(--font-ui);
+  box-shadow: inset 1px 1px 0 rgba(36, 31, 26, 0.08);
 }
 
 .formGrid textarea {
@@ -233,29 +295,34 @@
   resize: vertical;
 }
 
+.authForm input:focus,
+.formGrid input:focus,
+.formGrid select:focus,
+.formGrid textarea:focus {
+  outline: 3px solid color-mix(in srgb, var(--c-teal) 28%, transparent);
+  outline-offset: 1px;
+}
+
+.authForm input::placeholder,
+.formGrid input::placeholder,
+.formGrid textarea::placeholder {
+  color: var(--c-ink-faint);
+}
+
 .primaryButton,
 .secondaryButton {
   min-height: 44px;
-  border: 2px solid #d5b85a;
-  border-radius: 8px;
   padding: 0 14px;
   font: inherit;
+  font-family: var(--font-display);
   font-weight: 900;
   cursor: pointer;
 }
 
-.primaryButton {
-  background: #d5b85a;
-  color: #10170f;
-}
-
-.secondaryButton {
-  background: transparent;
-  color: #f5f0df;
-}
-
-.primaryButton:disabled {
+.primaryButton:disabled,
+.secondaryButton:disabled {
   cursor: not-allowed;
+  filter: grayscale(0.3);
   opacity: 0.55;
 }
 
@@ -292,15 +359,13 @@
 
 .formHeader h2 {
   margin: 8px 0 0;
-  color: #fff7dc;
   font-size: clamp(1.6rem, 3vw, 2.4rem);
 }
 
 .profileStatus {
-  border: 1px solid rgb(213 184 90 / 0.44);
-  border-radius: 999px;
+  border: var(--line-reg) solid var(--c-teal);
+  border-radius: var(--radius-pill);
   padding: 6px 10px;
-  color: #d5b85a;
   font-weight: 900;
 }
 
@@ -313,7 +378,7 @@
 .formGrid label {
   display: grid;
   gap: 7px;
-  color: #efe5bd;
+  color: var(--c-ink);
   font-size: 0.95rem;
   font-weight: 800;
 }
@@ -334,22 +399,6 @@
   margin-top: 18px;
 }
 
-.formActions p,
-.issueCard p,
-.issueCard li,
-.requiredCount,
-.emptyState {
-  color: #efe5bd;
-  line-height: 1.45;
-}
-
-.roleTrackEditor {
-  border: 1px solid rgb(213 184 90 / 0.22);
-  border-radius: 14px;
-  padding: 16px;
-  background: rgb(16 23 15 / 0.32);
-}
-
 .roleTrackHeader {
   display: flex;
   justify-content: space-between;
@@ -360,7 +409,6 @@
 
 .roleTrackHeader h3 {
   margin: 0;
-  color: #fff7dc;
   font-size: 1.1rem;
 }
 
@@ -383,33 +431,27 @@
   gap: 10px;
 }
 
-.checkboxGrid label {
+.checkboxGrid label,
+.checkboxLabel {
   display: flex;
   gap: 8px;
   align-items: center;
-  color: #efe5bd;
+  color: var(--c-ink);
+  font-family: var(--font-ui);
   font-weight: 800;
 }
 
-.checkboxGrid input {
-  width: 18px;
-  height: 18px;
-  accent-color: #d5b85a;
-}
-
 .checkboxLabel {
-  display: flex !important;
-  flex-direction: row;
-  gap: 10px !important;
-  align-items: center;
+  gap: 10px;
   align-self: end;
   min-height: 44px;
 }
 
+.checkboxGrid input,
 .checkboxLabel input {
   width: 18px;
   height: 18px;
-  accent-color: #d5b85a;
+  accent-color: var(--c-teal);
 }
 
 .issueCard ul {
@@ -421,6 +463,7 @@
   margin: 18px 0 0;
 }
 
+/* --- Section cards (numbered list) --------------------------- */
 .sectionCard {
   display: grid;
   grid-template-columns: 40px minmax(0, 1fr) auto;
@@ -434,28 +477,29 @@
   width: 40px;
   height: 40px;
   place-items: center;
-  border-radius: 999px;
-  background: rgb(213 184 90 / 0.18);
-  color: #fff7dc;
+  border: var(--line-reg) solid var(--c-ink);
+  border-radius: var(--radius-pill);
+  background-color: var(--c-teal);
+  background-image: var(--fiber-img), var(--grain-img);
+  background-blend-mode: normal, soft-light;
+  background-size: 170px 170px, 46px 46px;
+  color: var(--c-paper);
+  font-family: var(--font-subhead);
   font-weight: 900;
 }
 
 .sectionCard h2 {
   margin: 0;
-  color: #fff7dc;
   font-size: 1.15rem;
 }
 
 .sectionCard p {
   margin: 8px 0 0;
-  color: #efe5bd;
   line-height: 1.45;
 }
 
 .endpoint {
-  color: #d5b85a;
   font-size: 0.9rem;
-  font-weight: 800;
   white-space: nowrap;
 }
 
@@ -466,40 +510,44 @@
 }
 
 .sectionIssueSummary {
-  color: #d5b85a !important;
   font-weight: 800;
 }
 
+/* --- Badges -------------------------------------------------- */
 .readinessBadge {
   display: inline-flex;
   justify-content: center;
   min-width: 86px;
-  border: 1px solid rgb(213 184 90 / 0.44);
-  border-radius: 999px;
+  border: var(--line-reg) solid var(--c-ink);
+  border-radius: var(--radius-pill);
   padding: 6px 10px;
-  color: #f5f0df;
+  background: var(--c-paper);
+  color: var(--c-ink);
+  font-family: var(--font-subhead);
+  letter-spacing: var(--tracking-subhead);
+  text-transform: uppercase;
   font-size: 0.84rem;
   font-weight: 900;
   white-space: nowrap;
 }
 
 .readiness_complete {
-  border-color: rgb(147 196 125 / 0.64);
-  color: #bfe6ac;
+  background-color: var(--c-teal);
+  color: var(--c-paper);
 }
 
 .readiness_incomplete {
-  border-color: rgb(213 184 90 / 0.64);
-  color: #d5b85a;
+  background-color: var(--c-tomato);
+  color: var(--c-paper);
 }
 
 .readiness_optional,
 .readiness_not_loaded {
-  color: #efe5bd;
+  color: var(--c-ink-soft);
 }
 
 .optional {
-  color: #efe5bd;
+  color: var(--c-ink-soft);
 }
 
 @media (max-width: 840px) {
@@ -543,321 +591,4 @@
   .formGrid {
     grid-template-columns: 1fr;
   }
-}
-
-/* Claude DS onboarding layer. Sources: tokens, forms, panel, badges, modal. */
-.page {
-  min-height: 100svh;
-  background: transparent;
-  color: var(--c-ink);
-  font-family: var(--font-ui);
-}
-
-.shell {
-  position: relative;
-  z-index: 1;
-}
-
-.brand,
-.homeLink,
-.statusLabel,
-.profileStatus,
-.sectionIssueSummary,
-.endpoint,
-.requiredCount,
-.emptyState,
-.formGrid label {
-  font-family: var(--font-subhead);
-  text-transform: uppercase;
-  letter-spacing: var(--tracking-subhead);
-}
-
-.brand,
-.homeLink,
-.statusLabel,
-.profileStatus,
-.sectionIssueSummary,
-.endpoint {
-  color: var(--c-teal);
-}
-
-.intro h1,
-.statusValue,
-.formHeader h2,
-.roleTrackHeader h3,
-.sectionCard h2 {
-  color: var(--c-ink);
-  font-family: var(--font-display);
-  font-weight: 400;
-  letter-spacing: var(--tracking-display);
-}
-
-.intro p,
-.statusDetail,
-.formActions p,
-.issueCard p,
-.issueCard li,
-.sectionCard p,
-.readinessStats,
-.emptyState,
-.optional {
-  color: var(--c-ink-soft);
-  font-family: var(--font-body);
-}
-
-.statusCard,
-.sectionCard,
-.authPanel,
-.readinessPanel,
-.authPanelCompact,
-.readinessPanelCompact,
-.formCard,
-.issueCard,
-.roleTrackEditor {
-  border: var(--line-reg) solid var(--c-ink);
-  border-radius: var(--radius-lg);
-  background-color: var(--c-paper-deep);
-  background-image: var(--fiber-img), var(--grain-img);
-  background-blend-mode: normal, soft-light;
-  background-size: 170px 170px, 46px 46px;
-  box-shadow: var(--shadow-card);
-}
-
-.roleTrackEditor {
-  background-color: var(--c-paper);
-}
-
-.gateNotice {
-  border: var(--line-reg) solid var(--c-ink);
-  border-left: var(--line-bold) solid var(--c-tomato);
-  border-radius: var(--radius-md);
-  background-color: var(--c-paper);
-  background-image: var(--grain-img);
-  background-size: 46px 46px;
-}
-
-.gateNotice p {
-  color: var(--c-ink);
-  font-family: var(--font-body);
-}
-
-.authForm input,
-.formGrid input,
-.formGrid select,
-.formGrid textarea {
-  border: var(--line-reg) solid var(--c-ink);
-  border-radius: var(--radius-md);
-  background-color: var(--c-paper);
-  color: var(--c-ink);
-  box-shadow: inset 1px 1px 0 rgba(36, 31, 26, 0.08);
-}
-
-.authForm input:focus,
-.formGrid input:focus,
-.formGrid select:focus,
-.formGrid textarea:focus {
-  outline: 3px solid color-mix(in srgb, var(--c-teal) 28%, transparent);
-  outline-offset: 1px;
-}
-
-.primaryAction,
-.primaryButton {
-  border: var(--line-bold) solid var(--c-ink);
-  border-radius: var(--radius-md);
-  background-color: var(--role-action);
-  background-image: var(--fiber-img), var(--grain-img);
-  background-blend-mode: normal, soft-light;
-  background-size: 170px 170px, 46px 46px;
-  box-shadow: var(--shadow-card);
-  color: var(--role-action-text);
-  font-family: var(--font-display);
-}
-
-.secondaryAction,
-.secondaryButton {
-  border: var(--line-reg) solid var(--c-ink);
-  border-radius: var(--radius-md);
-  background: var(--c-paper);
-  box-shadow: var(--shadow-card);
-  color: var(--c-ink);
-  font-family: var(--font-display);
-}
-
-.primaryButton:disabled,
-.secondaryButton:disabled {
-  filter: grayscale(0.3);
-  opacity: 0.55;
-}
-
-.index {
-  border: var(--line-reg) solid var(--c-ink);
-  background-color: var(--c-teal);
-  background-image: var(--fiber-img), var(--grain-img);
-  background-blend-mode: normal, soft-light;
-  background-size: 170px 170px, 46px 46px;
-  color: var(--c-paper);
-  font-family: var(--font-subhead);
-}
-
-.readinessBadge {
-  border: var(--line-reg) solid var(--c-ink);
-  border-radius: var(--radius-pill);
-  background: var(--c-paper);
-  color: var(--c-ink);
-  font-family: var(--font-subhead);
-  letter-spacing: var(--tracking-subhead);
-  text-transform: uppercase;
-}
-
-.readiness_complete {
-  background-color: var(--c-teal);
-  color: var(--c-paper);
-}
-
-.readiness_incomplete {
-  background-color: var(--c-mustard);
-  color: var(--c-ink);
-}
-
-.readiness_optional,
-.readiness_not_loaded {
-  color: var(--c-ink-soft);
-}
-
-.checkboxGrid label,
-.checkboxLabel {
-  color: var(--c-ink);
-  font-family: var(--font-ui);
-}
-
-.checkboxGrid input,
-.checkboxLabel input {
-  accent-color: var(--c-teal);
-}
-
-/* DS mapped correction: onboarding uses hero + forms + panel + badges primitives. */
-.page,
-.page * {
-  text-shadow: none;
-}
-
-.page {
-  background: transparent !important;
-  color: var(--c-ink) !important;
-}
-
-.brand,
-.homeLink,
-.intro h1,
-.intro p,
-.statusLabel,
-.statusValue,
-.statusDetail,
-.formHeader h2,
-.profileStatus,
-.formGrid label,
-.roleTrackHeader h3,
-.checkboxGrid label,
-.checkboxLabel,
-.formActions p,
-.issueCard p,
-.issueCard li,
-.requiredCount,
-.emptyState,
-.sectionCard h2,
-.sectionCard p,
-.endpoint,
-.sectionIssueSummary,
-.readinessStats,
-.optional {
-  color: var(--c-ink) !important;
-}
-
-.intro p,
-.statusDetail,
-.formActions p,
-.issueCard p,
-.issueCard li,
-.sectionCard p,
-.readinessStats,
-.optional {
-  color: var(--c-ink-soft) !important;
-}
-
-.brand,
-.homeLink,
-.statusLabel,
-.profileStatus,
-.endpoint,
-.sectionIssueSummary,
-.requiredCount,
-.emptyState {
-  color: var(--c-teal) !important;
-}
-
-.statusCard,
-.sectionCard,
-.authPanel,
-.readinessPanel,
-.authPanelCompact,
-.readinessPanelCompact,
-.formCard,
-.issueCard,
-.roleTrackEditor {
-  border-color: var(--c-ink) !important;
-  background-color: var(--c-paper-deep) !important;
-  background-image: var(--fiber-img), var(--grain-img) !important;
-  background-blend-mode: normal, soft-light;
-  background-size: 170px 170px, 46px 46px;
-  box-shadow: var(--shadow-card);
-}
-
-.authForm input,
-.formGrid input,
-.formGrid select,
-.formGrid textarea {
-  border-color: var(--c-ink) !important;
-  background: var(--c-paper) !important;
-  color: var(--c-ink) !important;
-}
-
-.authForm input::placeholder,
-.formGrid input::placeholder,
-.formGrid textarea::placeholder {
-  color: var(--c-ink-faint);
-}
-
-.primaryAction,
-.primaryButton {
-  border-color: var(--c-ink) !important;
-  background-color: var(--role-action) !important;
-  color: var(--role-action-text) !important;
-}
-
-.secondaryAction,
-.secondaryButton {
-  border-color: var(--c-ink) !important;
-  background: var(--c-paper) !important;
-  color: var(--c-ink) !important;
-}
-
-.readinessBadge {
-  border-color: var(--c-ink) !important;
-  background: var(--c-paper) !important;
-  color: var(--c-ink) !important;
-}
-
-.readiness_complete {
-  background-color: var(--c-teal) !important;
-  color: var(--c-paper) !important;
-}
-
-.readiness_incomplete {
-  background-color: var(--c-tomato) !important;
-  color: var(--c-paper) !important;
-}
-
-.readiness_optional,
-.readiness_not_loaded {
-  color: var(--c-ink-soft) !important;
 }

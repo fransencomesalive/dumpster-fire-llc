@@ -1,8 +1,86 @@
+> **SUPERSEDED for design state — see `docs/design-state.md` (canonical).**
+> The "Failed Codex Design Pass" history below is retained as a record. For the current
+> design state, scope, and sequence, read `docs/design-state.md`, not this file.
+
 # Restart Handoff — Dumpster Fire Recovery
 
 Date: 2026-06-26
 Repo: `/Users/randallfransen/Sites/dumpster-fire-llc`
 Status: recovery work captured in git; start every resumed session by checking the actual repository state.
+
+## 2026-06-26 (PM) — Claude design-build session: STOPPED, continue on MacBook Air
+
+**Randall halted this session. The design build is WRONG and not approved.** Two blocking
+problems reported by Randall while reviewing in-browser:
+
+1. **Fonts are not loading.** The custom faces (Bemio / Bebas / Plantagenet) do not render —
+   text falls back to system/serif, so the whole design collapses.
+2. **All styles are wrong.** With fonts failing and the treatment off, the surfaces look
+   broken, not designed.
+
+Do not treat anything built this session as approved design. Continue on the MacBook Air
+from this section.
+
+### Root-cause status of the font problem (IMPORTANT — not yet solved)
+
+Server-side checks say the pipeline *should* work, which means the failure is browser-side
+or a cascade override that was not isolated. Verified this session:
+
+- Font files exist and are non-zero: `app/fonts/{Bemio.otf,Bemio-Italic.otf,BebasNeue-Regular.woff2,PlantagenetCherokee.ttf,OriginalSurfer-Regular.ttf}`, `app/scans/fonts/Gotham-*.otf`.
+- `next/font/local` is configured in `app/layout.tsx`; the generated variable classes
+  (`bemio_… bebas_… plantagenet_… gotham_…`) **are** applied to `<body>` in the rendered HTML.
+- The `@font-face` media files **are** served (e.g. `/_next/static/media/Bemio-s.p.*.otf`,
+  `BebasNeue_Regular-s.p.*.woff2`, `PlantagenetCherokee-s.p.*.ttf`).
+- `app/globals.css :root` maps `--font-display → var(--font-bemio)`, `--font-subhead →
+  var(--font-bebas)`, `--font-body → var(--font-plantagenet)`. `--font-bemio` etc. are
+  defined on `<body>` (via the className), inherited by descendants — standard pattern.
+
+**NOT confirmed (do this first on MacBook Air, in real browser DevTools):**
+
+1. Inspect a heading (e.g. `.ds-display` on `/styleguide`) → **Computed → font-family**.
+   Is it the next/font Bemio family, or a fallback? This tells you if the var chain resolves.
+2. Network tab → reload → are the font files **200** (not 404/blocked)? Any CORS/`crossorigin`?
+3. Suspect **Tailwind v4 Preflight**: `app/globals.css` starts with `@import "tailwindcss"`.
+   Preflight sets a default `font-family` and may win over the token chain on some elements.
+   Test by temporarily hard-setting `font-family: "Bemio"` (the raw `@font-face` family that
+   next/font also exposes) on a heading — if that renders, the issue is the var chain/cascade,
+   not the font file.
+4. Confirm the specific OTFs actually contain renderable glyphs (open Bemio.otf locally).
+
+### Exactly what changed this session (uncommitted unless the commit below succeeded)
+
+- `docs/design-state.md` — NEW canonical design source-of-truth (keep).
+- SUPERSEDED banners added to: `docs/design-implementation-handoff.md`,
+  `docs/design-system-token-mapping-audit-2026-06-25.md`, `docs/project-operating-state.md`,
+  this file (keep).
+- `app/onboarding/onboarding.module.css` — collapsed THREE conflicting CSS layers (dark
+  original + two paper override layers with `!important`) into ONE clean token layer
+  (863→594 lines, 0 dark literals). Renders same as before; this is a cleanup worth keeping.
+- `app/ds.css` — NEW shared component layer (buttons/cards/forms/badges/type) built from the
+  DS cards. **Part of the rejected design build — review/revert as needed.**
+- `app/layout.tsx` — added `import "./ds.css";`.
+- `app/styleguide/page.tsx` — NEW internal review page (`/styleguide`). **Rejected build artifact.**
+- Memory: `no-eyebrow-headlines` saved (standing rule, below).
+
+### Standing design rule captured this session
+
+- **No eyebrow headlines** anywhere (no kicker label above a heading). Recorded in
+  `docs/design-state.md` and in agent memory.
+
+### Recommended restart sequence (MacBook Air)
+
+1. `git pull` first (this session's commit should be on `origin/main`).
+2. **Fix fonts before any more styling.** Use the DevTools steps above; nothing about the
+   visual design can be judged until Bemio/Bebas/Plantagenet actually render.
+3. Decide keep-vs-revert on the rejected build (`app/ds.css`, `app/styleguide/page.tsx`, and
+   the onboarding wiring). The canonical doc, the superseded banners, and the onboarding CSS
+   consolidation are independent of the rejected visual treatment and can stay.
+4. Re-run `npm run build` (it was NOT re-run after `ds.css` was added).
+5. `docs/design-state.md` is the canonical design doc; read it, not the older superseded ones.
+
+### Environment note
+
+- A `next dev` server was left running on `http://localhost:3000` (background). Safe to kill.
 
 ## 2026-06-26 Failed Codex Design Pass
 

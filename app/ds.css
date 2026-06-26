@@ -1,0 +1,140 @@
+/* ============================================================
+   Dumpster Fire · Shared component layer (GLOBAL)
+   Reproduces the design-system cards as reusable classes so every
+   public surface inherits the same treatment. Consumes tokens from
+   globals.css. Source cards: lib/base.css, foundations/type,
+   components/{forms,panel,badges,header}.
+
+   These are GLOBAL classes (not CSS-module scoped). Use them in JSX
+   directly: className={`${styles.local} ds-card`}.
+   Rule: NO eyebrow/kicker labels above headlines (see design-state.md).
+   ============================================================ */
+
+/* ---------- Type ------------------------------------------------ */
+.ds-display { font-family: var(--font-display); font-size: var(--type-display);
+  line-height: var(--leading-tight); letter-spacing: var(--tracking-display); color: var(--c-ink); }
+.ds-h1 { font-family: var(--font-display); font-size: var(--type-h1);
+  line-height: var(--leading-tight); letter-spacing: var(--tracking-display); color: var(--c-ink); }
+.ds-h2 { font-family: var(--font-display); font-size: var(--type-h2);
+  line-height: var(--leading-tight); letter-spacing: var(--tracking-display); color: var(--c-ink); }
+.ds-subhead { font-family: var(--font-subhead); text-transform: uppercase;
+  letter-spacing: var(--tracking-subhead); line-height: 1; color: var(--c-ink); }
+.ds-body { font-family: var(--font-body); font-size: var(--type-body);
+  line-height: var(--leading-body); color: var(--c-ink); }
+.ds-lede { font-family: var(--font-body); font-size: 1.1rem; line-height: var(--leading-body);
+  color: var(--role-text-muted); max-width: 64ch; }
+
+/* ---------- Texture utility ------------------------------------- */
+.ds-surface { background-image: var(--fiber-img), var(--grain-img);
+  background-blend-mode: normal, soft-light; background-size: 170px 170px, 46px 46px; }
+
+/* ---------- Links · registration slip on hover ------------------ */
+.ds-link { position: relative; color: var(--role-text); text-decoration: none;
+  padding-bottom: 3px; font-family: var(--font-display); cursor: pointer; }
+.ds-link::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0;
+  height: var(--line-reg); background: var(--role-accent); mix-blend-mode: multiply;
+  transition: box-shadow var(--dur-fast) var(--ease-snap); }
+.ds-link:hover::after, .ds-link.is-active::after { box-shadow: var(--reg-shadow); }
+.ds-link.is-active { color: var(--c-ink); }
+
+/* ---------- Buttons --------------------------------------------- */
+.ds-btn { display: inline-flex; align-items: center; justify-content: center;
+  font-family: var(--font-display); font-size: 1.05rem; color: var(--role-action-text);
+  background-color: var(--role-action); background-image: var(--fiber-img), var(--grain-img);
+  background-blend-mode: normal, soft-light; background-size: 170px 170px, 46px 46px;
+  border: var(--line-bold) solid var(--c-ink); border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card); padding: var(--space-3) var(--space-5); cursor: pointer;
+  text-decoration: none; transition: background-color var(--dur-fast) var(--ease-snap),
+    box-shadow var(--dur-fast) var(--ease-snap), text-shadow var(--dur-fast) var(--ease-snap); }
+.ds-btn:hover { background-color: var(--role-info); box-shadow: var(--reg-box);
+  text-shadow: 1px 1px 0 rgba(36, 31, 26, 0.35); }
+.ds-btn:disabled { cursor: not-allowed; filter: grayscale(0.3); opacity: 0.55;
+  box-shadow: var(--shadow-card); text-shadow: none; background-color: var(--role-action); }
+.ds-btn-sm { font-size: 0.95rem; padding: var(--space-2) var(--space-4); }
+
+/* Secondary / ghost · paper with ink outline */
+.ds-btn-ghost { display: inline-flex; align-items: center; justify-content: center;
+  font-family: var(--font-display); font-size: 0.98rem; color: var(--c-ink);
+  background-color: var(--c-paper); border: var(--line-reg) solid var(--c-ink);
+  border-radius: var(--radius-md); box-shadow: var(--shadow-card);
+  padding: var(--space-3) var(--space-5); cursor: pointer; text-decoration: none;
+  transition: background-color var(--dur-fast) var(--ease-snap), box-shadow var(--dur-fast) var(--ease-snap); }
+.ds-btn-ghost:hover { background-color: color-mix(in srgb, var(--c-teal) 16%, var(--c-paper));
+  box-shadow: var(--reg-box); }
+.ds-btn-ghost:disabled { cursor: not-allowed; filter: grayscale(0.3); opacity: 0.55; }
+
+/* ---------- Panel / card ---------------------------------------- */
+.ds-card { background-color: var(--c-paper-deep); background-image: var(--fiber-img), var(--grain-img);
+  background-blend-mode: normal, soft-light; background-size: 170px 170px, 46px 46px;
+  border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card); padding: var(--space-5); }
+.ds-panel-header { display: flex; align-items: center; justify-content: space-between;
+  gap: var(--space-4); padding-bottom: var(--space-3);
+  border-bottom: var(--line-reg) solid var(--c-ink); margin-bottom: var(--space-4); }
+.ds-panel-title { font-family: var(--font-subhead); text-transform: uppercase;
+  letter-spacing: 0.04em; font-size: 1.45rem; color: var(--c-ink); }
+.ds-panel-body { font-family: var(--font-body); color: var(--role-text-muted); }
+.ds-panel-body p { margin: 0 0 var(--space-3); }
+.ds-panel-body p:last-child { margin: 0; }
+
+/* ---------- Forms ----------------------------------------------- */
+/* Wrap a form region in .ds-form; descendant controls get the treatment. */
+.ds-label, .ds-form label { display: block; font-family: var(--font-display);
+  font-size: 1.1rem; color: var(--c-ink); margin-bottom: var(--space-2); }
+.ds-field,
+.ds-form input[type="text"], .ds-form input[type="email"], .ds-form input[type="url"],
+.ds-form input[type="tel"], .ds-form input[type="number"], .ds-form input:not([type]),
+.ds-form select, .ds-form textarea {
+  width: 100%; box-sizing: border-box; font-family: var(--font-body); font-size: 1rem;
+  color: var(--c-ink); background-color: var(--c-paper); border: var(--line-reg) solid var(--c-ink);
+  border-radius: var(--radius-md); padding: var(--space-3) var(--space-4); }
+.ds-form textarea { min-height: 96px; resize: vertical; }
+.ds-form select, .ds-field-select { appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23241F1A' stroke-width='2.5' stroke-linecap='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right var(--space-4) center; padding-right: var(--space-7); }
+.ds-field:focus,
+.ds-form input:focus, .ds-form select:focus, .ds-form textarea:focus {
+  outline: none; border-color: var(--c-teal);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--c-teal) 28%, transparent); }
+.ds-field::placeholder, .ds-form input::placeholder, .ds-form textarea::placeholder {
+  color: var(--c-ink-faint); }
+
+/* Segmented filter tabs */
+.ds-filter-row { display: inline-flex; border: var(--line-reg) solid var(--c-ink);
+  border-radius: var(--radius-md); overflow: hidden; }
+.ds-filter-tab { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.04em;
+  font-size: 0.85rem; color: var(--c-ink); background: var(--c-paper); border: none;
+  border-right: var(--line-reg) solid var(--c-ink); padding: var(--space-2) var(--space-4); cursor: pointer; }
+.ds-filter-tab:last-child { border-right: none; }
+.ds-filter-tab.is-active { color: var(--c-paper); background-color: var(--c-tomato); }
+
+/* ---------- Badges & tags --------------------------------------- */
+.ds-badge { display: inline-flex; align-items: center; justify-content: center;
+  font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.05em;
+  font-size: 0.82rem; line-height: 1; border: var(--line-reg) solid var(--c-ink);
+  border-radius: var(--radius-pill); padding: 6px 13px;
+  background-image: var(--fiber-img), var(--grain-img); background-blend-mode: normal, soft-light;
+  background-size: 170px 170px, 46px 46px; }
+.ds-badge--saved   { background-color: var(--c-teal);     color: var(--c-paper); }
+.ds-badge--applied { background-color: var(--c-bluebird); color: var(--c-paper); }
+.ds-badge--new     { background-color: var(--c-mustard);  color: var(--c-ink); }
+.ds-badge--skipped { background-color: var(--c-paper);    color: var(--role-text-muted); }
+.ds-badge--scan    { background-color: var(--c-teal);     color: var(--c-paper); }
+.ds-badge--warn    { background-color: var(--c-mustard);  color: var(--c-ink); }
+.ds-badge--alert   { background-color: var(--c-tomato);   color: var(--c-paper); }
+
+.ds-keyword { font-family: var(--font-display); font-size: 0.9rem; color: var(--c-ink);
+  border-bottom: 2.5px dotted var(--c-teal); padding-bottom: 1px; }
+.ds-industry { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.04em;
+  font-size: 0.8rem; color: var(--c-bluebird); border: var(--line-reg) solid var(--c-bluebird);
+  border-radius: var(--radius-pill); padding: 4px 11px; }
+.ds-missing { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.04em;
+  font-size: 0.8rem; color: var(--c-tomato); border: var(--line-reg) dashed var(--c-tomato);
+  border-radius: var(--radius-pill); padding: 4px 11px; }
+
+/* ---------- Callout (gate / success) ---------------------------- */
+.ds-callout { font-family: var(--font-body); color: var(--c-ink); background-color: var(--c-paper);
+  background-image: var(--grain-img); background-size: 46px 46px;
+  border: var(--line-reg) solid var(--c-ink); border-left: var(--line-bold) solid var(--c-tomato);
+  border-radius: var(--radius-md); padding: var(--space-3) var(--space-4); }
+.ds-callout--positive { border-left-color: var(--c-teal); }
