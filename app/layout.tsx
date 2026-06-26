@@ -58,8 +58,8 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en">
-      <body className={`${gotham.variable} ${bemio.variable} ${bebas.variable} ${plantagenet.variable} ${originalSurfer.variable}`}>
+    <html lang="en" className={`${gotham.variable} ${bemio.variable} ${bebas.variable} ${plantagenet.variable} ${originalSurfer.variable}`}>
+      <body>
         <div className="appGrainGround" aria-hidden="true">
           <LandingBackground />
         </div>
