@@ -1,5 +1,29 @@
 # Current State
 
+## 2026-06-25 - Design system complete; implementation handoff ready
+
+The mid-century design system is essentially complete and synced to Claude Design (`3af2f1ea`). Read **`docs/design-implementation-handoff.md`** before any design-implementation work — it has the locked decisions (full paper, body-font split with `--font-ui`=Gotham, grain ground app-wide, teal-forward accents), the product rules baked into the cards (profile pass/fail gate, "Add a Career Page", export = profile+history not matches, Application Details, tuning removed as admin-only), three code gaps to reconcile (compiler hard gate, career-page request email, export backend), and the A–E port sequence.
+
+- App design foundation is NOT started: `globals.css` is still the dark theme, only Gotham loaded, no DS tokens. Step A (tokens + fonts into `globals.css`/`layout.tsx`, flip to light) is the first move and is additive/non-destructive.
+- Grain carryover: `app/LandingBackground.tsx` becomes the app-wide ground. Homepage content-only lock still applies; confirm with Randall before generalizing the grain onto home.
+- Do not start the port until Randall greenlights it.
+
+## 2026-06-26 - Public homepage content cleanup kick-start
+
+Started recovery from the failed public-homepage copy pass without changing the approved animated grain background or homepage layout.
+
+- `app/page.tsx` now routes public users toward `/onboarding` for profile setup instead of sending the public nav login path to the private `/scans` app.
+- Homepage copy now frames the active public foundation accurately: structured Career Operating System profile first; matching, Saved Jobs, Pursuits, Human Path, outreach, subscriptions, and exports build from that profile.
+- Replaced premature pricing-plan language with an `Access` section that distinguishes beta profile setup, gated private scan workspace, and future public pursuit workflow.
+- Removed internal/implementation handoff language from public onboarding copy and made `/dashboard` honest that it is a profile-complete placeholder, not the finished public matching dashboard.
+- Updated root metadata to describe the public product around structured profile and pursuit workflow instead of private scan workflows.
+- Validation passed: `npx tsc --noEmit --incremental false`, `npm run lint` with the five known legacy warnings, `git diff --check`, and local route checks for `/`, `/onboarding`, and `/dashboard` on the already-running standalone dev server at `127.0.0.1:3020`.
+- Visual checks captured: `/private/tmp/dumpster-fire-llc-home-cleanup-desktop.png`, `/private/tmp/dumpster-fire-llc-home-cleanup-mobile.png`, `/private/tmp/dumpster-fire-llc-onboarding-cleanup-desktop.png`, and `/private/tmp/dumpster-fire-llc-dashboard-cleanup-desktop.png`.
+
+Follow-up:
+
+- Continue auditing public surfaces for private `/scans`, Lab26-era, implementation-roadmap, pricing, or not-yet-built workflow claims before adding new product copy.
+
 ## 2026-06-25 - Public homepage recovery checkpoint
 
 Recovered the public homepage animated grain background from the live production implementation and marked this as the reversion point for future homepage work.
