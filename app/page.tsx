@@ -27,23 +27,23 @@ const operatingLoop = [
 const onboardingFlow = [
   {
     title: "Intake",
-    copy: "Add resume material, profile notes, target titles, applying-as tracks, constraints, wants, avoids, and work examples.",
+    copy: "Add identity, search constraints, role tracks, resumes, work history, proof, skills, writing, and outreach rules.",
   },
   {
     title: "Compile",
-    copy: "Turn the intake into a structured candidate profile, matching rules, proof signals, and missing-input prompts.",
+    copy: "Turn those inputs into a structured Career Operating System profile.",
   },
   {
     title: "Review",
-    copy: "Check strengths, weak-fit signals, proof objects, target titles, and missing details before the matcher starts using them.",
+    copy: "Resolve incomplete or weak sections before the product uses the profile downstream.",
   },
   {
     title: "Activate",
-    copy: "Use the profile to scope scans, source checks, contact research, outreach, feedback, and application history.",
+    copy: "Use the completed profile as the basis for matching, proof selection, Human Path, and outreach.",
   },
   {
     title: "Improve",
-    copy: "Keep tuning the search with ratings and better evidence instead of letting the system guess.",
+    copy: "Keep the profile current as your search, proof, and role targets change.",
   },
 ];
 
@@ -103,43 +103,43 @@ const humanPathSteps = ["Review", "Contacts", "Outreach", "Track"];
 
 const featureSets = [
   {
-    title: "Profile and fit engine",
-    items: ["Resume/profile compiler", "Candidate dossier support", "Applying-as modes", "Wrong-lane evidence", "Profile-scoped matching"],
+    title: "Profile foundation",
+    items: ["Identity and search basics", "Role Tracks", "Resume and work history review", "Proof Library", "Voice and outreach rules"],
   },
   {
-    title: "Search coverage",
-    items: ["Broad job-source scans", "Target company watchlist", "ATS source normalization", "Duplicate cleanup", "Source health reporting"],
+    title: "Pursuit intelligence",
+    items: ["Match labels", "Role Track recommendation", "Resume recommendation", "Proof-object selection", "Risk explanation"],
   },
   {
-    title: "Application workflow",
-    items: ["Contact research", "Proof-object selection", "Tailored outreach", "Application checklist", "Previous applications"],
+    title: "Human Path workflow",
+    items: ["Hiring path research", "Contact selection", "Contact-specific outreach", "Pursuit tracking", "Usage-aware generation"],
   },
 ];
 
-const pricingTiers = [
+const accessStates = [
   {
-    title: "Private beta",
-    price: "Access by invite",
-    copy: "For active searches that need hands-on setup, profile calibration, source QA, and feedback before self-serve opens.",
+    title: "Profile setup",
+    price: "Available in beta",
+    copy: "Create the structured Career Operating System profile that future matching, proof selection, and outreach depend on.",
   },
   {
-    title: "Solo search",
-    price: "Self-serve waitlist",
-    copy: "For one candidate profile with compiled matching, broad scans, target-company sources, application workspace, and saved history.",
+    title: "Private scan workspace",
+    price: "Access-code gated",
+    copy: "The mature search and tuning machinery remains private while public Saved Jobs, Pursuits, and Human Path are rebuilt against public profiles.",
   },
   {
-    title: "Power search",
-    price: "Upgrade path",
-    copy: "For higher scan volume, exportable activity history, richer source monitoring, and metered integrations once the core profile works.",
+    title: "Public pursuit workflow",
+    price: "Coming next",
+    copy: "Saved Jobs, Pursuits, matching, Human Path, outreach, and subscription limits will open after the profile foundation is stable.",
   },
 ];
 
 const guardrails = [
   "No mass apply automation.",
-  "No public default profile or private candidate leakage.",
-  "No raw resume storage unless the user chooses it.",
-  "No scan writes until onboarding creates a real matcher.",
-  "No confusing review labels beyond Match, Good, Stretch, and Not a Match.",
+  "No private scan defaults in public profiles.",
+  "No raw resume storage without a deliberate user-facing flow.",
+  "No pursuit or outreach generation until a profile is complete.",
+  "No hiding weak-fit or excluded roles without explanation.",
 ];
 
 export default function HomePage() {
@@ -155,9 +155,9 @@ export default function HomePage() {
         <nav className={styles.publicLandingNavLinks} aria-label="Public sections">
           <a href="#features">Features</a>
           <a href="#human-path">Human Path</a>
-          <a href="#pricing">Pricing</a>
-          <Link href="/scans">Log in</Link>
-          <a href="mailto:randall@randallfransen.com?subject=Dumpster%20Fire%20access">Request access</a>
+          <a href="#access">Access</a>
+          <Link href="/onboarding">Build profile</Link>
+          <a href="mailto:randall@randallfransen.com?subject=Dumpster%20Fire%20beta">Contact</a>
         </nav>
       </header>
 
@@ -214,7 +214,7 @@ export default function HomePage() {
         <div className={styles.publicLandingSectionIntro}>
           <h2 id="onboarding-title">Onboarding</h2>
           <p>
-            New users need a clean first pass through profile setup. Returning users need fast access to scanning, source management, saved roles, outreach, and application history.
+            The first public workflow is profile creation. The current onboarding path covers the profile sections that matching, proof selection, Human Path, and outreach will depend on.
           </p>
         </div>
         <div className={styles.publicLandingOnboardingFlow} aria-label="Onboarding flow">
@@ -295,9 +295,9 @@ export default function HomePage() {
 
       <section className={styles.publicLandingSection} aria-labelledby="feature-set-title">
         <div className={styles.publicLandingSectionIntro}>
-          <p className={styles.publicLandingKicker}>Feature sets</p>
-          <h2 id="feature-set-title">Match cards are only the first decision point.</h2>
-          <p>The product combines profile compilation, source coverage, contact research, outreach generation, application tracking, feedback, and export-ready history.</p>
+          <p className={styles.publicLandingKicker}>Product map</p>
+          <h2 id="feature-set-title">The profile is the first product surface.</h2>
+          <p>Public onboarding is the foundation. Matching, Saved Jobs, Pursuits, Human Path, outreach, subscriptions, and pursued-jobs export build from the same structured profile.</p>
         </div>
         <div className={styles.publicLandingFeatureSetGrid}>
           {featureSets.map((featureSet) => (
@@ -313,14 +313,14 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section id="pricing" className={styles.publicLandingSection} aria-labelledby="pricing-title">
+      <section id="access" className={styles.publicLandingSection} aria-labelledby="access-title">
         <div className={styles.publicLandingSectionIntro}>
-          <p className={styles.publicLandingKicker}>Pricing and access</p>
-          <h2 id="pricing-title">Access follows the maturity of the search.</h2>
-          <p>The current public model separates hands-on beta users, solo self-serve searches, and higher-volume power users.</p>
+          <p className={styles.publicLandingKicker}>Access</p>
+          <h2 id="access-title">The public app opens in layers.</h2>
+          <p>Profile setup is the active public foundation. The private scan workspace stays gated while public pursuit workflows are rebuilt on the new profile model.</p>
         </div>
         <div className={styles.publicLandingPricingGrid}>
-          {pricingTiers.map((tier) => (
+          {accessStates.map((tier) => (
             <article className={styles.publicLandingPricingCard} key={tier.title}>
               <h3>{tier.title}</h3>
               <strong>{tier.price}</strong>
@@ -345,10 +345,10 @@ export default function HomePage() {
 
       <section className={styles.publicLandingFinal} aria-label="Request Dumpster Fire access">
         <h2>When the market is noisy, the workflow has to be calmer.</h2>
-        <p>Dumpster Fire keeps the search, the evidence, and the follow-through in one place.</p>
-        <a className={styles.publicLandingPrimary} href="mailto:randall@randallfransen.com?subject=Dumpster%20Fire%20access">
-          Request access
-        </a>
+        <p>Start with the profile. Every better pursuit needs a better source of truth.</p>
+        <Link className={styles.publicLandingPrimary} href="/onboarding">
+          Build my profile
+        </Link>
       </section>
     </main>
   );

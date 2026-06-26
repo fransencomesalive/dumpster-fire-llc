@@ -226,7 +226,7 @@ Metered.
 Outreach Generation:
 Metered.
 
-Profile Export:
+Pursued Jobs Export:
 Metered by plan.
 
 ## Dashboard Columns

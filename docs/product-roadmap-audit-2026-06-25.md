@@ -87,7 +87,7 @@ What is not yet built:
 ### P1 - Public App Workflows Not Built
 
 1. Profile management modal.
-2. Public generated profile export and Pro gate.
+2. Pursued Jobs Export and Pro gate.
 3. Public jobs ingestion/search service.
 4. Public Saved Jobs.
 5. Public Pursuits.

@@ -647,7 +647,7 @@ Pro:
 - unlimited search
 - higher or unlimited pursuits
 - higher or unlimited outreach
-- export profile
+- pursued jobs export
 
 Premium:
 - future tier

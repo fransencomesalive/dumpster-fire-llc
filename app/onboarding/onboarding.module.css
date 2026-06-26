@@ -152,12 +152,58 @@
   padding: 20px;
 }
 
+.profileEditorMode {
+  display: grid;
+  gap: 18px;
+}
+
+.authPanelCompact,
+.readinessPanelCompact {
+  border: 1px solid rgb(213 184 90 / 0.32);
+  border-radius: 18px;
+  background: rgb(245 240 223 / 0.08);
+  box-shadow: 0 24px 70px rgb(0 0 0 / 0.18);
+  padding: 18px;
+}
+
+.authPanelCompact {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  align-items: end;
+}
+
+.readinessPanelCompact {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  align-items: end;
+}
+
 .readinessStats {
   display: grid;
   gap: 8px;
   justify-items: end;
   color: #efe5bd;
   font-weight: 800;
+}
+
+.gateNotice {
+  display: grid;
+  gap: 8px;
+  max-width: 680px;
+  margin-top: 16px;
+  border: 1px solid rgb(213 184 90 / 0.5);
+  border-radius: 12px;
+  background: #10170f;
+  padding: 14px 16px;
+}
+
+.gateNotice p {
+  margin: 0;
+  color: #fff7dc;
+  font-weight: 800;
+  line-height: 1.45;
 }
 
 .authForm,
@@ -220,9 +266,14 @@
   margin-top: 18px;
 }
 
+.profileEditorGrid {
+  margin-top: 0;
+}
+
 .formCard,
 .issueCard {
   padding: 20px;
+  scroll-margin-top: 24px;
 }
 
 .formStack,
@@ -311,6 +362,13 @@
   margin: 0;
   color: #fff7dc;
   font-size: 1.1rem;
+}
+
+.itemActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
 }
 
 .attachmentBlock {
@@ -465,9 +523,15 @@
   }
 
   .authPanel,
-  .readinessPanel {
+  .authPanelCompact,
+  .readinessPanel,
+  .readinessPanelCompact {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .profileEditorGrid {
+    grid-template-columns: 1fr;
   }
 
   .readinessStats,

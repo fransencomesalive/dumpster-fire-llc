@@ -14,7 +14,7 @@ The Candidate Profile is the source of truth for:
 - hiring manager messaging
 - recruiter messaging
 - pursuit tracking
-- profile export
+- pursued jobs export context
 
 Dumpster Fire should not operate from an incomplete profile.
 

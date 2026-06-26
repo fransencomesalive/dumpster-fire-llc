@@ -309,7 +309,7 @@ At the end of onboarding:
 - Generate internal `candidate_profile.md`
 - Store profile in database
 - Use this profile for matching and outreach
-- Allow export only for eligible subscription tier
+- Do not export the profile
 
 ---
 
@@ -412,29 +412,25 @@ Store:
 - generated markdown
 - restore option
 
-## Export Profile
+## Export Boundary
 
-Button should always be visible.
+Profile export is not a product feature.
 
-If user plan does not include export, clicking shows upgrade message.
+Exports belong to pursued jobs/pursuit history, not the Career Profile editor.
 
-Error/upgrade copy:
+Pursued Jobs Export should include:
 
-"Your Career Profile is the operating manual behind your matches and outreach.
+- job pursued
+- Applying As Role Track/narrative
+- message sent
+- recipient/contact
+- pursuit status
+- timestamps
 
-Export lets you take it outside Dumpster Fire and use it in ChatGPT, Claude, Gemini, Cursor, Perplexity, or anywhere else you work with AI.
+Naming:
 
-Export is included in Pro."
-
-CTA:
-
-**Upgrade to Pro**
-
-Secondary:
-
-**Keep Editing Profile**
-
-This is not a dark pattern. The button is visible because the feature exists. The user should understand what they are missing.
+- `Role Track` is the maintained profile narrative, such as Executive Producer or Product Manager.
+- `Applying As` is the pursuit-level label for the selected Role Track/narrative used for a specific job.
 
 ---
 
@@ -499,7 +495,7 @@ Application stage should include only:
 - Unlimited search
 - Limited pursuits
 - Limited outreach messages
-- No export profile
+- No Pursued Jobs Export
 - Feedback capture enabled
 
 ### Basic Paid
@@ -518,7 +514,7 @@ Includes:
 - pursuit tracking
 - limited Human Paths / pursuits per month
 - limited outreach messages per month
-- no profile export
+- no Pursued Jobs Export
 
 Suggested limits:
 
@@ -534,7 +530,7 @@ Includes:
 - everything in Basic
 - higher or unlimited pursuits
 - higher or unlimited outreach
-- export Career Profile `.md`
+- Pursued Jobs Export
 - advanced profile version history
 - stronger hiring manager/contact research
 - advanced proof-object selection
@@ -568,7 +564,7 @@ Do not build this first unless needed.
 
 Gate these features:
 
-### Profile Export
+### Pursued Jobs Export
 
 Basic: locked
 Pro: unlocked

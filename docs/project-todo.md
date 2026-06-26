@@ -18,7 +18,7 @@ Canonical planning sources remain:
 
 ## Current Priority
 
-Finish the remaining Phase 2 onboarding forms now that the Phase 1 API foundation is live.
+Finish the Step 2 Profile Management follow-ups, then clarify and build Step 3 Jobs and Saved Jobs.
 
 ## Phase 1 — Foundation
 
@@ -145,14 +145,17 @@ Finish the remaining Phase 2 onboarding forms now that the Phase 1 API foundatio
 
 ## Phase 3 — Profile Management
 
-- [ ] Build the `Edit Career Profile` modal shell.
-- [ ] Support editing all onboarding-created profile sections.
-- [ ] Support Role Track add, edit, duplicate, archive, and delete.
+- [x] Build the `Edit Career Profile` modal shell.
+- [x] Support editing all onboarding-created profile sections through the existing section payloads.
+- [x] Support Role Track add, edit, duplicate, and archive through replacement/archive semantics.
 - [ ] Support Proof Library add, edit, archive, and delete.
 - [ ] Support resume and proof attachment to Role Tracks.
-- [ ] Regenerate markdown after structured edits.
-- [ ] Store profile version history.
-- [ ] Add export affordance with subscription gate.
+- [ ] Add debounced autosave or explicitly standardize manual section-save behavior.
+- [ ] Add profile version and last-updated metadata to the editor header.
+- [ ] Add explicit profile regeneration action/status after structured edits.
+- [ ] Store and display profile version history with restore behavior.
+- [ ] Add desktop and mobile screenshot validation for the profile editor.
+- [x] Remove profile export from Profile Management scope.
 
 ## Phase 4 — Matching Engine
 
@@ -166,7 +169,11 @@ Finish the remaining Phase 2 onboarding forms now that the Phase 1 API foundatio
 
 ## Phase 5 — Pursuit Workflow
 
-- [ ] Add Saved Jobs.
+- [x] Add user-scoped Jobs scan-result API/UI using current profile search requirements.
+- [x] Add Saved Jobs as "pursue later" only, separate from pursuit creation.
+- [x] Add save/unsave route for active user scan results.
+- [ ] Apply public job scan results migration to Supabase.
+- [ ] Wire external/public connector ingestion into `/api/jobs/scan`; current provider scans the normalized public `jobs` table.
 - [ ] Add Pursuits.
 - [ ] Add pursuit stages for review, Human Path, contacts, outreach, and tracking.
 - [ ] Keep Saved Jobs free and separate from metered Pursuits.
@@ -194,8 +201,8 @@ Finish the remaining Phase 2 onboarding forms now that the Phase 1 API foundatio
 - [ ] Enforce pursuit limits.
 - [ ] Enforce Human Path limits.
 - [ ] Enforce outreach limits.
-- [ ] Enforce export gate.
-- [ ] Add upgrade states for limit reached and export locked.
+- [ ] Enforce Pursued Jobs Export gate.
+- [ ] Add upgrade states for limit reached and Pursued Jobs Export locked.
 - [ ] Add webhook processing after billing provider is chosen.
 
 ## Phase 9 — Public Site

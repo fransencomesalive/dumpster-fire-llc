@@ -158,38 +158,29 @@ Last Updated
 
 Version
 
-Export Profile button
+Quality issues
 
-## Export Profile
+Do not show a profile export button.
 
-Always visible.
+Profile export is not a product feature.
 
-### Basic Plan
+## Export Boundary
 
-Clicking Export shows:
+Exports belong to pursued jobs/pursuit history, not the Career Profile editor.
 
-Your Career Profile can be exported as a portable markdown file and used in:
+Pursued Jobs Export should include:
 
-- ChatGPT
-- Claude
-- Gemini
-- Cursor
-- Perplexity
-- future AI tools
+- job pursued
+- Applying As Role Track/narrative
+- message sent
+- recipient/contact
+- pursuit status
+- timestamps
 
-Profile Export is included with Pro.
+Naming:
 
-Buttons:
-
-Upgrade to Pro
-
-Keep Editing
-
-### Pro Plan
-
-Downloads:
-
-candidate_profile.md
+- `Role Track` is the maintained profile narrative, such as Executive Producer or Product Manager.
+- `Applying As` is the pursuit-level label for the selected Role Track/narrative used for a specific job.
 
 ## Identity Section
 

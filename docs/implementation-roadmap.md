@@ -117,7 +117,7 @@ Requirements:
 
 - regenerate on changes
 - version history
-- export support
+- no profile export support
 
 Completion:
 
@@ -412,7 +412,7 @@ Build:
 
 - outreach limit reached
 - human path limit reached
-- export locked
+- pursued jobs export locked
 
 Completion:
 

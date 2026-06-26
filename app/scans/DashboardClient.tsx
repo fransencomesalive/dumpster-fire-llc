@@ -2648,7 +2648,7 @@ function JobCard({
       <div className={styles.descriptionBox}>
         <p className={styles.descriptionText}>{excerptText(job.descriptionText)}</p>
         {job.descriptionText.length > 420 && (
-          <small className={styles.descriptionMeta}>Full posting text saved for Apply details and export.</small>
+          <small className={styles.descriptionMeta}>Full posting text saved for pursuit details and pursued-jobs export.</small>
         )}
         {job.whyItMatches.length > 0 && (
           <div className={styles.keywordPills}>

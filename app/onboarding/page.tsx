@@ -28,8 +28,8 @@ export default function OnboardingPage() {
             <h1 id="onboarding-title">Build the profile once. Use it everywhere.</h1>
             <p>
               This onboarding flow creates the structured Career Operating System behind matching, proof selection,
-              and outreach. The backend autosave routes are now in place; the next pass turns each section into an
-              editable form.
+              Human Path, and outreach. Complete the sections once, then keep improving the profile as your search
+              changes.
             </p>
             <div className={styles.actions}>
               <Link className={styles.primaryAction} href="#sections">

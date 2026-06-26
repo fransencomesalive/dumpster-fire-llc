@@ -31,7 +31,7 @@ Meter:
 
 - Human Path generation
 - Outreach generation
-- Profile export
+- Pursued Jobs Export
 
 Search is discovery.
 
@@ -55,7 +55,7 @@ Features:
 - Unlimited saved jobs
 - Limited Human Paths
 - Limited Outreach
-- No Profile Export
+- No Pursued Jobs Export
 
 Suggested limits:
 
@@ -91,7 +91,7 @@ Limits:
 
 Locked:
 
-- Profile Export
+- Pursued Jobs Export
 
 ### Pro
 
@@ -107,7 +107,7 @@ Features:
 
 Everything in Basic plus:
 
-- Profile Export
+- Pursued Jobs Export
 - Expanded version history
 - Higher limits
 - Priority processing
@@ -185,11 +185,11 @@ Consumes:
 
 because two messages are produced.
 
-### Profile Export
+### Pursued Jobs Export
 
 Definition:
 
-Exporting Career Profile markdown.
+Exporting pursued jobs with the selected `Applying As` Role Track/narrative, message sent, recipient/contact, pursuit status, and timestamps.
 
 Only available on Pro.
 
@@ -205,7 +205,7 @@ Only available on Pro.
 | Project Library | yes | yes | yes |
 | Human Path | Limited | Limited | Expanded |
 | Outreach | Limited | Limited | Expanded |
-| Profile Export | no | no | yes |
+| Pursued Jobs Export | no | no | yes |
 | Version Restore | Basic | Basic | Advanced |
 
 ## Limit Reached States
@@ -250,19 +250,19 @@ Upgrade
 
 Keep Searching
 
-### Export Locked
+### Pursued Jobs Export Locked
 
 Trigger:
 
-Basic plan user clicks Export Profile.
+Basic plan user clicks Pursued Jobs Export.
 
 Message:
 
-Your Career Profile is the operating manual behind every match, recommendation, and outreach message.
+Your pursuit history is the record of what you acted on, who you contacted, what you sent, and which narrative you used.
 
-Export lets you use it in ChatGPT, Claude, Gemini, Cursor, Perplexity, and future AI tools.
+Export lets you keep that record portable outside Dumpster Fire.
 
-Profile Export is included with Pro.
+Pursued Jobs Export is included with Pro.
 
 Buttons:
 
@@ -336,7 +336,7 @@ Freeze:
 
 - Human Path generation
 - Outreach generation
-- Export
+- Pursued Jobs Export
 
 Allow:
 

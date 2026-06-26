@@ -1,19 +1,70 @@
 # Current State
 
+## 2026-06-26 - MacBook Air restart handoff
+
+Added `docs/macbook-air-restart-handoff-2026-06-26.md` as the restart source for the next session.
+
+- Current recovery state: Step 1 profile gate copy is implemented; Step 2 Edit Career Profile is functionally kick-started; Step 3 Jobs/Saved Jobs is functionally kick-started.
+- Do not proceed to Step 4 Matching before design normalization.
+- Randall approved moving into design implementation now, but it must use the Claude design system primitives and must not add more ad hoc layout/styling.
+- Treat the current dashboard/profile/jobs UI as functional scaffolding, not approved design.
+- `docs/design-implementation-handoff.md` was corrected to preserve the current export decision: pursued-jobs/pursuit-history export only, no profile export.
+
 ## 2026-06-25 - Design system complete; implementation handoff ready
 
-The mid-century design system is essentially complete and synced to Claude Design (`3af2f1ea`). Read **`docs/design-implementation-handoff.md`** before any design-implementation work; it has the locked decisions (full paper, body-font split with `--font-ui`=Gotham, grain ground app-wide, teal-forward accents), the product rules baked into the cards (profile pass/fail gate, "Add a Career Page", export = profile+history not matches, Application Details, tuning removed as admin-only), three code gaps to reconcile (compiler hard gate, career-page request email, export backend), and the A-to-E port sequence.
+The mid-century design system is essentially complete and synced to Claude Design (`3af2f1ea`). Read **`docs/design-implementation-handoff.md`** before any design-implementation work; it has the locked decisions (full paper, body-font split with `--font-ui`=Gotham, grain ground app-wide, teal-forward accents), the product rules baked into the cards (profile pass/fail gate, "Add a Career Page", pursued-jobs export instead of match export, Application Details, tuning removed as admin-only), three code gaps to reconcile (compiler hard gate, career-page request email, pursued-jobs export backend), and the A-to-E port sequence.
 
 - App design foundation is NOT started: `globals.css` is still the dark theme, only Gotham loaded, no DS tokens. Step A (tokens + fonts into `globals.css`/`layout.tsx`, flip to light) is the first move and is additive/non-destructive.
 - Grain carryover: `app/LandingBackground.tsx` becomes the app-wide ground. Homepage content-only lock still applies; confirm with Randall before generalizing the grain onto home.
 - Do not start the port until Randall greenlights it.
 
+## 2026-06-26 - Public product gap build plan
+
+Added `docs/public-product-gap-build-plan-2026-06-26.md` to turn the product-roadmap audit into an execution plan for the current standalone site.
+
+- Confirmed the current public site has `/`, `/onboarding`, `/dashboard`, and public profile APIs, while `/scans` remains private legacy machinery and should not be counted as public-product completion.
+- Mapped missing public work by product area: auth/account entry, onboarding quality, profile management, public jobs/saved jobs, matching, pursuits, Human Path, outreach, subscriptions, and final public landing/pricing.
+- Recommended build sequence: stabilize profile completion, build `Edit Career Profile`, add public jobs and Saved Jobs, add public matching, add Pursuits, add Human Path, add outreach, add subscription enforcement, then finalize public launch/pricing copy.
+- Restored the approved homepage header, `Is the Job Market a Dumpster Fire?` section/cards, and Human Path intro copy after an over-broad first cleanup pass. Those areas should remain unchanged until Randall explicitly revises them or the forthcoming Claude Design cards replace the Human Path mock visuals.
+
+Step 1 clarification and implementation:
+
+- Profile completion remains operationally pass/fail: incomplete profiles cannot scan; if Scan is unavailable, Matching, Saved Jobs, Pursuits, Human Path, Outreach, and Pursued Jobs Export are unavailable too.
+- Weak/Good/Strong-style guidance remains allowed inside questionnaire/ingest UX, but it does not create a partial operating state.
+- `/onboarding` now shows the agreed incomplete-profile justification: "Without the full picture, outreach won't be good. And if outreach isn't good, your chances drop. Finish your profile."
+- `/dashboard` complete-state copy now uses the product terms without the public/private semantic split.
+- Profile export is not a feature. Export means pursued jobs/pursuit history only: job pursued, selected Applying As Role Track/narrative, message sent, recipient/contact, status, and timestamps.
+- Terminology: `Role Track` is the maintained profile narrative; `Applying As` is the pursuit-level selected Role Track/narrative, such as Executive Producer or Product Manager.
+
+Step 2 implementation kick-start:
+
+- `/dashboard` now opens a full-screen `Edit Career Profile` modal after the complete-profile gate passes.
+- The modal has left-side navigation for every onboarding-created profile section and embeds the existing section editor in `profile-editor` mode, so completed profiles no longer redirect out of editing.
+- `app/onboarding/OnboardingClient.tsx` now supports `mode="profile-editor"`, section anchors, compact editor styling, and Role Track duplicate/archive controls.
+- The first Step 2 slice intentionally reuses the existing section save handlers and API payloads; full debounced autosave, profile version-history UI, and regeneration controls remain follow-up work.
+
+Step 3 clarification:
+
+- Step 3 means the roadmap phase for Jobs and Saved Jobs, not the Human Path modal steps.
+- Jobs are user-scoped scan results, not a shared/global pool.
+- The existing scan button should use the user's current profile search requirements/constraints; changing scan parameters happens by editing those profile search requirements.
+- Each new scan should merge with unsaved and unactioned prior scan results so jobs are not lost.
+- Saved Jobs means "pursue later" only; saving does not create a pursuit.
+- Repeated scan results should dedupe by source URL/company/title, and expired/stale jobs should disappear automatically.
+
+Step 3 implementation kick-start:
+
+- Added `job_scan_results` migration as the user-owned bridge between global normalized `jobs` and per-user scan results.
+- Added public Jobs APIs: `GET /api/jobs`, `POST /api/jobs/scan`, and `POST /api/jobs/save`.
+- `/api/jobs/scan` now uses the complete public profile's search requirements/constraints to merge matching normalized public jobs into the user's active scan results; external connector ingestion remains a follow-up provider seam.
+- `/dashboard` now shows a Run scan button, active Jobs list, Saved Jobs panel, v1 job card fields, and save/unsave actions.
+- Saved Jobs remain "pursue later" only and do not create pursuits.
+
 ## 2026-06-26 - Public homepage content cleanup kick-start
 
 Started recovery from the failed public-homepage copy pass without changing the approved animated grain background or homepage layout.
 
-- `app/page.tsx` now routes public users toward `/onboarding` for profile setup instead of sending the public nav login path to the private `/scans` app.
-- Homepage copy now frames the active public foundation accurately: structured Career Operating System profile first; matching, Saved Jobs, Pursuits, Human Path, outreach, subscriptions, and exports build from that profile.
+- `app/page.tsx` briefly received over-broad copy cleanup, then the approved homepage header, `Is the Job Market a Dumpster Fire?` section/cards, and Human Path intro were restored per Randall's correction.
 - Replaced premature pricing-plan language with an `Access` section that distinguishes beta profile setup, gated private scan workspace, and future public pursuit workflow.
 - Removed internal/implementation handoff language from public onboarding copy and made `/dashboard` honest that it is a profile-complete placeholder, not the finished public matching dashboard.
 - Updated root metadata to describe the public product around structured profile and pursuit workflow instead of private scan workflows.
@@ -579,7 +630,7 @@ Route contract:
 - Missing server config: `503`.
 
 Important boundary:
-- The route does not return generated markdown. Markdown remains internal and export-gated by future subscription enforcement.
+- The route does not return generated markdown. Markdown remains internal and is not a profile export surface.
 
 ## 2026-06-23 - Phase 1 TODO and regeneration service boundary
 
@@ -691,12 +742,12 @@ Added the public Subscription Enforcement Matrix as `docs/subscription-enforceme
 
 Key decisions captured:
 - Do not meter search, browsing, profile viewing, saved jobs, or dashboard usage.
-- Meter Human Path generation, outreach generation, and profile export.
+- Meter Human Path generation, outreach generation, and Pursued Jobs Export.
 - Human Path usage is consumed only when Generate Human Path is clicked.
 - Outreach usage is consumed per generated message for selected contacts.
-- Profile export is Pro-only.
+- Pursued Jobs Export is Pro-only.
 - Upgrade prompts should be benefit-led and avoid fake urgency, countdowns, hidden limits, and dark patterns.
-- Failed billing freezes generation/export actions but preserves login, search, saved jobs, dashboard, and profile editing.
+- Failed billing freezes generation and Pursued Jobs Export actions but preserves login, search, saved jobs, dashboard, and profile editing.
 
 ## 2026-06-23 - Matching engine spec ingested
 
@@ -720,7 +771,7 @@ Key decisions captured:
 - Onboarding creates the profile; Profile Management maintains it.
 - The editor is a full-screen modal with left section navigation and right-side editor content.
 - Users edit structured fields only; generated markdown regenerates automatically.
-- Profile status, last updated, version, export action, and quality issues remain visible.
+- Profile status, last updated, version, and quality issues remain visible.
 - Every edit autosaves; no Save button.
 - Regeneration is debounced and triggered by meaningful profile changes, not every keystroke.
 - Future hooks are reserved for interview prep, company research, response tracking, outreach performance, and profile analytics, but not built for launch.
@@ -732,7 +783,7 @@ Added the public Candidate Profile schema brief as `docs/candidate-profile-schem
 Key decisions captured:
 - Candidate Profile status is binary: `incomplete` or `complete`.
 - Incomplete profiles block pursuit generation, outreach generation, contact research, role fit messaging, and proof selection.
-- Structured profile data is the source of truth; markdown is generated internally and export-gated.
+- Structured profile data is the source of truth; markdown is generated internally and is not exported as a profile artifact.
 - Projects are capability-driven proof objects, not title-bound proof objects.
 - Resume parsing generates work history; users correct parsed work history instead of entering it from scratch.
 - Launch schema excludes cover letters, deep company research, interview prep, generic chat coaching, speaking engagements, and side-project categories.

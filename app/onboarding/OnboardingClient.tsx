@@ -241,6 +241,8 @@ type TokenResponse = {
 };
 
 const notLoadedReadinessLabel = "Not loaded";
+const incompleteProfileJustification = "Without the full picture, outreach won't be good. And if outreach isn't good, your chances drop. Finish your profile.";
+const incompleteProfileLockout = "Scanning is locked until the profile is complete. Matching, Saved Jobs, Pursuits, Human Path, Outreach, and Pursued Jobs Export stay locked with it.";
 
 const qualitySectionByOnboardingKey: Partial<Record<PublicProfileOnboardingSectionKey, QualitySection>> = {
   whyPeopleHireMe: "why_people_hire_me",
@@ -571,10 +573,13 @@ function readinessLabel(status: SectionReadinessStatus) {
 
 export default function OnboardingClient({
   sections,
+  mode = "onboarding",
 }: {
   sections: PublicProfileOnboardingSection[];
+  mode?: "onboarding" | "profile-editor";
 }) {
   const router = useRouter();
+  const isProfileEditor = mode === "profile-editor";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [accessToken, setAccessToken] = useState("");
@@ -595,7 +600,7 @@ export default function OnboardingClient({
   const [profileStatus, setProfileStatus] = useState<"incomplete" | "complete">("incomplete");
   const [profileQuality, setProfileQuality] = useState<ProfileQualitySummary | null>(null);
   const [issues, setIssues] = useState<string[]>([]);
-  const [message, setMessage] = useState("Sign in to bootstrap your candidate profile.");
+  const [message, setMessage] = useState(isProfileEditor ? "Loading your Career Profile." : "Sign in to bootstrap your candidate profile.");
   const [busy, setBusy] = useState(false);
   const requiredSections = useMemo(() => sections.filter((section) => section.required), [sections]);
 
@@ -724,7 +729,7 @@ export default function OnboardingClient({
     setOutreachRules(completeOutreachRulesSection(outreachRulesResponse.section));
     setLeadershipProfile(completeLeadershipProfileSection(leadershipProfileResponse.section));
     applyProfileQuality(identityResponse.profileQuality.status ? identityResponse.profileQuality : bootstrap.profileQuality);
-    setMessage("Profile sections loaded. Autosave is ready.");
+    setMessage("Profile sections loaded. Section saves are ready.");
   }, [applyProfileQuality]);
 
   const updateRoleTrack = useCallback((id: string, patch: Partial<RoleTrackSectionItem>) => {
@@ -805,10 +810,10 @@ export default function OnboardingClient({
   }, [loadProfile]);
 
   useEffect(() => {
-    if (profileQuality?.status === "complete") {
+    if (!isProfileEditor && profileQuality?.status === "complete") {
       router.replace("/dashboard");
     }
-  }, [profileQuality?.status, router]);
+  }, [isProfileEditor, profileQuality?.status, router]);
 
   async function signIn() {
     setBusy(true);
@@ -1104,6 +1109,27 @@ export default function OnboardingClient({
     setRoleTracks((tracks) => tracks.filter((track) => track.id !== id));
   }
 
+  function duplicateRoleTrack(track: RoleTrackSectionItem) {
+    setRoleTracks((tracks) => {
+      const duplicate: RoleTrackSectionItem = {
+        ...track,
+        id: createClientId(),
+        name: track.name ? `${track.name} copy` : "",
+        targetTitles: [...track.targetTitles],
+        keyResponsibilities: [...track.keyResponsibilities],
+        requiredExperiencePatterns: [...track.requiredExperiencePatterns],
+        strongJobSignals: [...track.strongJobSignals],
+        weakJobSignals: [...track.weakJobSignals],
+        mismatchSignals: [...track.mismatchSignals],
+        doNotOverclaim: [...track.doNotOverclaim],
+        resumeIds: [...track.resumeIds],
+      };
+      const index = tracks.findIndex((item) => item.id === track.id);
+      if (index < 0) return [...tracks, duplicate];
+      return [...tracks.slice(0, index + 1), duplicate, ...tracks.slice(index + 1)];
+    });
+  }
+
   function removeResume(id: string) {
     setResumes((items) => items.filter((resume) => resume.id !== id));
   }
@@ -1172,13 +1198,14 @@ export default function OnboardingClient({
   }
 
   function renderQualityNarrativeCard(
+    sectionKey: PublicProfileOnboardingSectionKey,
     label: string,
     path: string,
     section: QualityNarrativeSection,
     setSection: Dispatch<SetStateAction<QualityNarrativeSection>>,
   ) {
     return (
-      <article className={styles.formCard}>
+      <article className={styles.formCard} id={`career-profile-${sectionKey}`}>
         <div className={styles.formHeader}>
           <div>
             <p className={styles.statusLabel}>Editable Section</p>
@@ -1247,8 +1274,8 @@ export default function OnboardingClient({
   }
 
   return (
-    <>
-      <section className={styles.authPanel} aria-label="Supabase sign in">
+    <div className={isProfileEditor ? styles.profileEditorMode : undefined}>
+      <section className={isProfileEditor ? styles.authPanelCompact : styles.authPanel} aria-label="Supabase sign in">
         <div>
           <p className={styles.statusLabel}>Live Auth</p>
           <p className={styles.statusDetail}>
@@ -1260,7 +1287,7 @@ export default function OnboardingClient({
               <button className={styles.secondaryButton} disabled={busy} onClick={reloadProfile} type="button">
                 Reload
               </button>
-              {profileQuality?.status === "complete" ? (
+              {!isProfileEditor && profileQuality?.status === "complete" ? (
                 <button className={styles.secondaryButton} disabled={busy} onClick={() => router.push("/dashboard")} type="button">
                   Go to dashboard
                 </button>
@@ -1280,7 +1307,7 @@ export default function OnboardingClient({
         )}
       </section>
 
-      <section className={styles.readinessPanel} aria-label="Profile readiness summary">
+      <section className={isProfileEditor ? styles.readinessPanelCompact : styles.readinessPanel} aria-label="Profile readiness summary">
         <div>
           <p className={styles.statusLabel}>Profile Readiness</p>
           <p className={styles.statusValue}>{profileQuality ? (profileStatus === "complete" ? "Complete" : "Incomplete") : notLoadedReadinessLabel}</p>
@@ -1289,6 +1316,12 @@ export default function OnboardingClient({
               ? `${completeRequiredSections} of ${requiredSections.length} required sections currently clear. ${issues.length} blocker${issues.length === 1 ? "" : "s"} remain.`
               : "Sign in to load section readiness, blocker counts, and weak profile fields."}
           </p>
+          {profileQuality?.status === "incomplete" ? (
+            <div className={styles.gateNotice} role="status">
+              <p>{incompleteProfileJustification}</p>
+              <p>{incompleteProfileLockout}</p>
+            </div>
+          ) : null}
         </div>
         <div className={styles.readinessStats}>
           <span>{profileQuality?.weakResponseCount ?? 0} weak response{(profileQuality?.weakResponseCount ?? 0) === 1 ? "" : "s"}</span>
@@ -1296,9 +1329,9 @@ export default function OnboardingClient({
         </div>
       </section>
 
-      <section className={styles.editorGrid} aria-label="Editable onboarding form">
+      <section className={`${styles.editorGrid} ${isProfileEditor ? styles.profileEditorGrid : ""}`} aria-label="Editable onboarding form">
         <div className={styles.formStack}>
-          <article className={styles.formCard}>
+          <article className={styles.formCard} id="career-profile-identitySearch">
             <div className={styles.formHeader}>
               <div>
                 <p className={styles.statusLabel}>Editable Section</p>
@@ -1338,7 +1371,7 @@ export default function OnboardingClient({
             </div>
           </article>
 
-          <article className={styles.formCard}>
+          <article className={styles.formCard} id="career-profile-roleTracks">
             <div className={styles.formHeader}>
               <div>
                 <p className={styles.statusLabel}>Editable Section</p>
@@ -1356,9 +1389,14 @@ export default function OnboardingClient({
                   <div className={styles.roleTrackEditor} key={track.id}>
                     <div className={styles.roleTrackHeader}>
                       <h3>Track {index + 1}</h3>
-                      <button className={styles.secondaryButton} disabled={busy} onClick={() => removeRoleTrack(track.id)} type="button">
-                        Remove
-                      </button>
+                      <div className={styles.itemActions}>
+                        <button className={styles.secondaryButton} disabled={busy} onClick={() => duplicateRoleTrack(track)} type="button">
+                          Duplicate
+                        </button>
+                        <button className={styles.secondaryButton} disabled={busy} onClick={() => removeRoleTrack(track.id)} type="button">
+                          Archive
+                        </button>
+                      </div>
                     </div>
                     <div className={styles.formGrid}>
                       <label>Name<input value={track.name} onChange={(event) => updateRoleTrack(track.id, { name: event.target.value })} /></label>
@@ -1386,7 +1424,7 @@ export default function OnboardingClient({
             </div>
           </article>
 
-          <article className={styles.formCard}>
+          <article className={styles.formCard} id="career-profile-resumes">
             <div className={styles.formHeader}>
               <div>
                 <p className={styles.statusLabel}>Editable Section</p>
@@ -1454,7 +1492,7 @@ export default function OnboardingClient({
             </div>
           </article>
 
-          <article className={styles.formCard}>
+          <article className={styles.formCard} id="career-profile-workHistory">
             <div className={styles.formHeader}>
               <div>
                 <p className={styles.statusLabel}>Editable Section</p>
@@ -1525,7 +1563,7 @@ export default function OnboardingClient({
             </div>
           </article>
 
-          <article className={styles.formCard}>
+          <article className={styles.formCard} id="career-profile-proofLibrary">
             <div className={styles.formHeader}>
               <div>
                 <p className={styles.statusLabel}>Editable Section</p>
@@ -1579,7 +1617,7 @@ export default function OnboardingClient({
             </div>
           </article>
 
-          <article className={styles.formCard}>
+          <article className={styles.formCard} id="career-profile-skills">
             <div className={styles.formHeader}>
               <div>
                 <p className={styles.statusLabel}>Editable Section</p>
@@ -1662,12 +1700,12 @@ export default function OnboardingClient({
             </div>
           </article>
 
-          {renderQualityNarrativeCard("Why People Hire Me", "/api/public-profile/why-people-hire-me", whyPeopleHireMe, setWhyPeopleHireMe)}
-          {renderQualityNarrativeCard("Operating Style", "/api/public-profile/operating-style", operatingStyle, setOperatingStyle)}
-          {renderQualityNarrativeCard("Decision Style", "/api/public-profile/decision-style", decisionStyle, setDecisionStyle)}
-          {renderQualityNarrativeCard("What AI Gets Wrong", "/api/public-profile/ai-misreadings", aiMisreadings, setAiMisreadings)}
+          {renderQualityNarrativeCard("whyPeopleHireMe", "Why People Hire Me", "/api/public-profile/why-people-hire-me", whyPeopleHireMe, setWhyPeopleHireMe)}
+          {renderQualityNarrativeCard("operatingStyle", "Operating Style", "/api/public-profile/operating-style", operatingStyle, setOperatingStyle)}
+          {renderQualityNarrativeCard("decisionStyle", "Decision Style", "/api/public-profile/decision-style", decisionStyle, setDecisionStyle)}
+          {renderQualityNarrativeCard("aiMisreadings", "What AI Gets Wrong", "/api/public-profile/ai-misreadings", aiMisreadings, setAiMisreadings)}
 
-          <article className={styles.formCard}>
+          <article className={styles.formCard} id="career-profile-communicationStyle">
             <div className={styles.formHeader}>
               <div>
                 <p className={styles.statusLabel}>Editable Section</p>
@@ -1705,7 +1743,7 @@ export default function OnboardingClient({
             </div>
           </article>
 
-          <article className={styles.formCard}>
+          <article className={styles.formCard} id="career-profile-writingSamples">
             <div className={styles.formHeader}>
               <div>
                 <p className={styles.statusLabel}>Editable Section</p>
@@ -1754,7 +1792,7 @@ export default function OnboardingClient({
             </div>
           </article>
 
-          <article className={styles.formCard}>
+          <article className={styles.formCard} id="career-profile-outreachRules">
             <div className={styles.formHeader}>
               <div>
                 <p className={styles.statusLabel}>Editable Section</p>
@@ -1805,7 +1843,7 @@ export default function OnboardingClient({
             </div>
           </article>
 
-          <article className={styles.formCard}>
+          <article className={styles.formCard} id="career-profile-leadershipProfile">
             <div className={styles.formHeader}>
               <div>
                 <p className={styles.statusLabel}>Optional Section</p>
@@ -1829,7 +1867,7 @@ export default function OnboardingClient({
         <aside className={styles.issueCard}>
           <p className={styles.statusLabel}>Current blockers</p>
           {issues.length === 0 ? (
-            <p>No profile blockers loaded yet.</p>
+            <p>{profileQuality?.status === "complete" ? "Profile complete. Scan and downstream workflow gates can open." : "No profile blockers loaded yet."}</p>
           ) : (
             <ul>
               {issues.slice(0, 8).map((issue) => (
@@ -1840,40 +1878,44 @@ export default function OnboardingClient({
         </aside>
       </section>
 
-      <section id="sections" className={styles.sectionList} aria-label="Onboarding sections">
-        {sections.map((section, index) => {
-          const readiness = readinessBySection.get(section.key);
-          const status = readiness?.status ?? "not_loaded";
-          const blockerCount = readiness?.blockers.length ?? 0;
-          const weakFieldCount = readiness?.weakFields.length ?? 0;
+      {!isProfileEditor ? (
+        <>
+          <section id="sections" className={styles.sectionList} aria-label="Onboarding sections">
+            {sections.map((section, index) => {
+              const readiness = readinessBySection.get(section.key);
+              const status = readiness?.status ?? "not_loaded";
+              const blockerCount = readiness?.blockers.length ?? 0;
+              const weakFieldCount = readiness?.weakFields.length ?? 0;
 
-          return (
-            <article className={styles.sectionCard} key={section.key}>
-              <span className={styles.index}>{index + 1}</span>
-              <div>
-                <h2>{section.label}</h2>
-                <p>{section.description}</p>
-                <p className={styles.sectionIssueSummary}>
-                  {profileQuality
-                    ? section.required
-                      ? `${blockerCount} blocker${blockerCount === 1 ? "" : "s"}${weakFieldCount > 0 ? ` · ${weakFieldCount} weak field${weakFieldCount === 1 ? "" : "s"}` : ""}`
-                      : "Optional section, not required for completion"
-                    : "Sign in to load readiness"}
-                </p>
-              </div>
-              <div className={styles.sectionMeta}>
-                <span className={`${styles.readinessBadge} ${styles[`readiness_${status}`]}`}>
-                  {readinessLabel(status)}
-                </span>
-                <span className={`${styles.endpoint} ${section.required ? "" : styles.optional}`}>
-                  {section.required ? section.path : "Optional"}
-                </span>
-              </div>
-            </article>
-          );
-        })}
-      </section>
-      <p className={styles.requiredCount}>Required sections: {requiredSections.length}</p>
-    </>
+              return (
+                <article className={styles.sectionCard} key={section.key}>
+                  <span className={styles.index}>{index + 1}</span>
+                  <div>
+                    <h2>{section.label}</h2>
+                    <p>{section.description}</p>
+                    <p className={styles.sectionIssueSummary}>
+                      {profileQuality
+                        ? section.required
+                          ? `${blockerCount} blocker${blockerCount === 1 ? "" : "s"}${weakFieldCount > 0 ? ` · ${weakFieldCount} weak field${weakFieldCount === 1 ? "" : "s"}` : ""}`
+                          : "Optional section, not required for completion"
+                        : "Sign in to load readiness"}
+                    </p>
+                  </div>
+                  <div className={styles.sectionMeta}>
+                    <span className={`${styles.readinessBadge} ${styles[`readiness_${status}`]}`}>
+                      {readinessLabel(status)}
+                    </span>
+                    <span className={`${styles.endpoint} ${section.required ? "" : styles.optional}`}>
+                      {section.required ? section.path : "Optional"}
+                    </span>
+                  </div>
+                </article>
+              );
+            })}
+          </section>
+          <p className={styles.requiredCount}>Required sections: {requiredSections.length}</p>
+        </>
+      ) : null}
+    </div>
   );
 }
