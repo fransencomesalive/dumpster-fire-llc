@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test:public-jobs": "node scripts/test-public-jobs-repository.mjs"
   },
   "dependencies": {
     "@vercel/analytics": "^2.0.1",

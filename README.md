@@ -4,8 +4,12 @@ Standalone public site for `www.thejobmarketisadumpsterfire.com`.
 
 ## Current Routes
 
-- `/` public holding page, ready to be replaced by the markdown-driven landing page.
-- `/onboarding` public onboarding shell wired to the public profile section manifest.
+- `/` public landing page with profile-first beta access, Human Path preview, and recovered animated grain background.
+- `/onboarding` public onboarding and profile editor shell wired to the public profile section manifest.
+- `/dashboard` profile-complete dashboard with profile editing, scan results, and Saved Jobs.
+- `/api/jobs` authenticated public Jobs read endpoint.
+- `/api/jobs/scan` authenticated profile-gated Jobs scan endpoint over the current normalized jobs table.
+- `/api/jobs/save` authenticated Saved Jobs toggle endpoint.
 - `/api/public-profile/bootstrap` authenticated candidate profile bootstrap endpoint.
 - `/api/public-profile/regenerate` authenticated public profile regeneration endpoint.
 - `/api/public-profile/identity-search` authenticated Identity/Search section read and autosave endpoint.
@@ -45,4 +49,4 @@ Supabase schema and migrations live in `supabase/`. The scan dashboard falls bac
 
 - Resolve quality-scoring/remediation guidance for onboarding weak fields.
 - Add production auth-provider polish for Google/Apple and post-auth redirects.
-- Replace the holding page with the final public landing page after the foundation paths are stable.
+- Normalize dashboard/profile/jobs design against the design system before adding more workflow depth.

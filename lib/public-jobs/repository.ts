@@ -1,9 +1,9 @@
-import { evaluateCandidateProfileQuality } from "@/lib/public-profile/profile-quality";
+import { evaluateCandidateProfileQuality } from "../public-profile/profile-quality";
 import {
   loadCandidateProfileAggregate,
   type PublicProfileRepositoryRequest,
-} from "@/lib/public-profile/repository";
-import type { CandidateProfileAggregate } from "@/lib/public-profile/types";
+} from "../public-profile/repository";
+import type { CandidateProfileAggregate } from "../public-profile/types";
 import type { PublicJobRecord, PublicJobsResponse, PublicJobsScanResponse, PublicJobsSummary } from "./types";
 
 type JobRow = {

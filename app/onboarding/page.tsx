@@ -5,7 +5,7 @@ import styles from "./onboarding.module.css";
 
 export const metadata = {
   title: "Onboarding",
-  description: "Build the Career Operating System profile used by The Job Market Is a Dumpster Fire.",
+  description: "Build the career profile used by The Job Market Is a Dumpster Fire.",
 };
 
 export default function OnboardingPage() {
@@ -27,9 +27,9 @@ export default function OnboardingPage() {
           <div className={styles.intro}>
             <h1 id="onboarding-title">Build the profile once. Use it everywhere.</h1>
             <p>
-              This onboarding flow creates the structured Career Operating System behind matching, proof selection,
-              Human Path, and outreach. Complete the sections once, then keep improving the profile as your search
-              changes.
+              This flow turns your experience, proof, preferences, and writing style into a profile Dumpster Fire can
+              use for matching, Human Path, and outreach. Complete the sections once, then keep improving the profile
+              as your search changes.
             </p>
             <div className={styles.actions}>
               <Link className={styles.primaryAction} href="#sections">
@@ -45,7 +45,7 @@ export default function OnboardingPage() {
             <p className={styles.statusLabel}>Profile Completion</p>
             <p className={styles.statusValue}>Sign in</p>
             <p className={styles.statusDetail}>
-              Required sections: {requiredSections.length}. Live completion status appears after profile sign-in.
+              Required sections: {requiredSections.length}. Completion status appears after you sign in.
             </p>
           </aside>
         </section>

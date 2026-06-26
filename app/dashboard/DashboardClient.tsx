@@ -100,7 +100,7 @@ export default function DashboardClient() {
     }
 
     setJobsBusy(true);
-    setJobsState((state) => state.status === "ready" ? { ...state, message: "Scanning from your current profile search requirements…" } : { status: "loading" });
+    setJobsState((state) => state.status === "ready" ? { ...state, message: "Scanning from your current profile targets..." } : { status: "loading" });
     try {
       const response = await requestPublicProfileApi<PublicJobsScanResponse>("/api/jobs/scan", {
         method: "POST",
@@ -109,7 +109,7 @@ export default function DashboardClient() {
       setJobsState({
         status: "ready",
         response,
-        message: `${response.scan.matchedJobs} matched job${response.scan.matchedJobs === 1 ? "" : "s"} scanned. ${response.scan.mergedResults} active job${response.scan.mergedResults === 1 ? "" : "s"} available.`,
+        message: `${response.scan.matchedJobs} matched job${response.scan.matchedJobs === 1 ? "" : "s"} found. ${response.scan.mergedResults} active job${response.scan.mergedResults === 1 ? "" : "s"} available.`,
       });
     } catch (error) {
       setJobsState({
@@ -138,7 +138,7 @@ export default function DashboardClient() {
       setJobsState({
         status: "ready",
         response,
-        message: saved ? "Saved for pursue later." : "Removed from Saved Jobs.",
+        message: saved ? "Saved for later." : "Removed from Saved Jobs.",
       });
     } catch (error) {
       setJobsState({
@@ -159,19 +159,19 @@ export default function DashboardClient() {
       <section className={styles.hero} aria-labelledby="dashboard-title">
         <div className={styles.copy}>
           <p className={styles.status}>Profile Complete</p>
-          <h1 id="dashboard-title">Your Career Operating System is active.</h1>
+          <h1 id="dashboard-title">Your career profile is active.</h1>
           {guardState.status === "checking" ? (
             <p>Checking profile readiness before opening the dashboard.</p>
           ) : null}
           {guardState.status === "complete" ? (
             <>
               <p>
-                Dumpster Fire has the full picture it needs. Scan, Matching, Saved Jobs, Pursuits, Human Path,
-                Outreach, and Pursued Jobs Export can build from this profile.
+                Dumpster Fire has enough of the picture to start working from your profile. You can keep refining it
+                as your search changes.
               </p>
               <p>
-                Profile gate clear: {guardState.blockerCount} blockers and {guardState.weakResponseCount} weak
-                responses remain in the current completion check.
+                Profile check: {guardState.blockerCount} blocker{guardState.blockerCount === 1 ? "" : "s"} and{" "}
+                {guardState.weakResponseCount} weak response{guardState.weakResponseCount === 1 ? "" : "s"}.
               </p>
               <div className={styles.actions}>
                 <button className={styles.linkButton} onClick={() => setIsProfileEditorOpen(true)} type="button">
@@ -202,8 +202,8 @@ export default function DashboardClient() {
               <p className={styles.status}>Jobs</p>
               <h2 id="jobs-title">Scan results and Saved Jobs.</h2>
               <p>
-                Scan uses your current Career Profile search requirements. New scans merge with unsaved and
-                unactioned prior results so nothing useful disappears.
+                Scan uses your current profile targets and constraints. New scans merge with unsaved and
+                unactioned prior results so useful jobs do not disappear between sessions.
               </p>
             </div>
             <button className={styles.linkButton} disabled={jobsBusy} onClick={runScan} type="button">
@@ -218,7 +218,7 @@ export default function DashboardClient() {
             </div>
             <div>
               <span>{jobsResponse?.summary.savedJobs ?? 0}</span>
-              <small>Saved for pursue later</small>
+              <small>Saved for later</small>
             </div>
             <div>
               <span>{jobsResponse?.summary.lastScanAt ? formatJobDate(jobsResponse.summary.lastScanAt) : "Not scanned"}</span>
@@ -271,7 +271,7 @@ export default function DashboardClient() {
             <aside className={styles.jobsColumn}>
               <h3>Saved Jobs</h3>
               {savedJobs.length === 0 ? (
-                <p className={styles.jobsEmpty}>Saved Jobs are only for pursue later. They do not create pursuits yet.</p>
+                <p className={styles.jobsEmpty}>Save jobs you want to revisit before deciding whether to pursue them.</p>
               ) : (
                 <div className={styles.jobCardList}>
                   {savedJobs.map((job) => (
@@ -280,7 +280,7 @@ export default function DashboardClient() {
                         <p>{job.companyName}</p>
                         <h4>{job.title}</h4>
                       </div>
-                      <p className={styles.jobMetaText}>Saved for pursue later. Pursuit creation comes in the next workflow step.</p>
+                      <p className={styles.jobMetaText}>Saved for later review.</p>
                       <div className={styles.jobActions}>
                         <a href={job.sourceUrl} rel="noreferrer" target="_blank">Open posting</a>
                         <button disabled={jobsBusy} onClick={() => setJobSaved(job, false)} type="button">
@@ -303,8 +303,8 @@ export default function DashboardClient() {
                 <p className={styles.profileEditorLabel}>Career Profile</p>
                 <h2 id="profile-editor-title">Edit Career Profile</h2>
                 <p>
-                  Maintain the structured profile behind Scan, Matching, Saved Jobs, Pursuits, Human Path,
-                  Outreach, and Pursued Jobs Export. No profile export lives here.
+                  Keep the profile current so scans, saved jobs, Human Path, and outreach can stay grounded in what
+                  you actually want.
                 </p>
               </div>
               <button className={styles.profileEditorClose} onClick={() => setIsProfileEditorOpen(false)} type="button">

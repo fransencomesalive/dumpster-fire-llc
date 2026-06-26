@@ -242,7 +242,7 @@ type TokenResponse = {
 
 const notLoadedReadinessLabel = "Not loaded";
 const incompleteProfileJustification = "Without the full picture, outreach won't be good. And if outreach isn't good, your chances drop. Finish your profile.";
-const incompleteProfileLockout = "Scanning is locked until the profile is complete. Matching, Saved Jobs, Pursuits, Human Path, Outreach, and Pursued Jobs Export stay locked with it.";
+const incompleteProfileLockout = "Scanning is locked until the profile is complete. Matching, Saved Jobs, Pursuits, Human Path, and outreach stay locked with it.";
 
 const qualitySectionByOnboardingKey: Partial<Record<PublicProfileOnboardingSectionKey, QualitySection>> = {
   whyPeopleHireMe: "why_people_hire_me",
@@ -600,7 +600,7 @@ export default function OnboardingClient({
   const [profileStatus, setProfileStatus] = useState<"incomplete" | "complete">("incomplete");
   const [profileQuality, setProfileQuality] = useState<ProfileQualitySummary | null>(null);
   const [issues, setIssues] = useState<string[]>([]);
-  const [message, setMessage] = useState(isProfileEditor ? "Loading your Career Profile." : "Sign in to bootstrap your candidate profile.");
+  const [message, setMessage] = useState(isProfileEditor ? "Loading your Career Profile." : "Sign in to start your profile.");
   const [busy, setBusy] = useState(false);
   const requiredSections = useMemo(() => sections.filter((section) => section.required), [sections]);
 
@@ -729,7 +729,7 @@ export default function OnboardingClient({
     setOutreachRules(completeOutreachRulesSection(outreachRulesResponse.section));
     setLeadershipProfile(completeLeadershipProfileSection(leadershipProfileResponse.section));
     applyProfileQuality(identityResponse.profileQuality.status ? identityResponse.profileQuality : bootstrap.profileQuality);
-    setMessage("Profile sections loaded. Section saves are ready.");
+    setMessage("Profile sections loaded.");
   }, [applyProfileQuality]);
 
   const updateRoleTrack = useCallback((id: string, patch: Partial<RoleTrackSectionItem>) => {
@@ -821,7 +821,7 @@ export default function OnboardingClient({
     try {
       const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, "");
       const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-      if (!supabaseUrl || !anonKey) throw new Error("Supabase public env is missing.");
+      if (!supabaseUrl || !anonKey) throw new Error("Sign-in is not configured yet.");
       const response = await fetch(`${supabaseUrl}/auth/v1/token?grant_type=password`, {
         method: "POST",
         headers: {
@@ -1228,7 +1228,7 @@ export default function OnboardingClient({
               </div>
               <div className={styles.formGrid}>
                 <label className={styles.fullWidth}>Response<textarea value={field.value} onChange={(event) => updateQualityNarrativeField(setSection, field.id, { value: event.target.value })} /></label>
-                <label className={styles.fullWidth}>Feedback or notes<textarea value={field.feedback ?? ""} onChange={(event) => updateQualityNarrativeField(setSection, field.id, { feedback: event.target.value })} /></label>
+                <label className={styles.fullWidth}>Notes for improvement<textarea value={field.feedback ?? ""} onChange={(event) => updateQualityNarrativeField(setSection, field.id, { feedback: event.target.value })} /></label>
               </div>
             </div>
           ))}
@@ -1237,7 +1237,7 @@ export default function OnboardingClient({
           <button className={styles.primaryButton} disabled={!accessToken || busy} onClick={() => saveQualityNarrative(label, path, section, setSection)} type="button">
             Save {label}
           </button>
-          <p>Mark complete only when the response is specific enough to support matching and outreach.</p>
+          <p>Mark complete only when the response is specific enough to support useful matching and outreach.</p>
         </div>
       </article>
     );
@@ -1265,7 +1265,7 @@ export default function OnboardingClient({
             </div>
             <div className={styles.formGrid}>
               <label className={styles.fullWidth}>Response<textarea value={field.value} onChange={(event) => updateField(field.id, { value: event.target.value })} /></label>
-              <label className={styles.fullWidth}>Feedback or notes<textarea value={field.feedback ?? ""} onChange={(event) => updateField(field.id, { feedback: event.target.value })} /></label>
+              <label className={styles.fullWidth}>Notes for improvement<textarea value={field.feedback ?? ""} onChange={(event) => updateField(field.id, { feedback: event.target.value })} /></label>
             </div>
           </div>
         ))}
@@ -1275,11 +1275,11 @@ export default function OnboardingClient({
 
   return (
     <div className={isProfileEditor ? styles.profileEditorMode : undefined}>
-      <section className={isProfileEditor ? styles.authPanelCompact : styles.authPanel} aria-label="Supabase sign in">
+      <section className={isProfileEditor ? styles.authPanelCompact : styles.authPanel} aria-label="Profile sign in">
         <div>
-          <p className={styles.statusLabel}>Live Auth</p>
+          <p className={styles.statusLabel}>Account</p>
           <p className={styles.statusDetail}>
-            {accessToken ? "Signed in with a local bearer token." : "Use an existing Supabase email/password user."}
+            {accessToken ? "Signed in." : "Sign in with your beta account to continue."}
           </p>
         </div>
         {accessToken ? (
@@ -1301,7 +1301,7 @@ export default function OnboardingClient({
             <input aria-label="Email" autoComplete="email" onChange={(event) => setEmail(event.target.value)} placeholder="email@example.com" type="email" value={email} />
             <input aria-label="Password" autoComplete="current-password" onChange={(event) => setPassword(event.target.value)} placeholder="Password" type="password" value={password} />
             <button className={styles.primaryButton} disabled={busy || !email || !password} onClick={signIn} type="button">
-              Sign in and bootstrap
+              Sign in
             </button>
           </div>
         )}
@@ -1420,7 +1420,7 @@ export default function OnboardingClient({
               <button className={styles.primaryButton} disabled={!accessToken || busy} onClick={saveRoleTracks} type="button">
                 Save Role Tracks
               </button>
-              <p>Comma-separate list fields. Resume attachments stay connected by stable Role Track IDs.</p>
+              <p>Comma-separate list fields. Resume connections stay linked to the selected Role Tracks.</p>
             </div>
           </article>
 
@@ -1428,14 +1428,14 @@ export default function OnboardingClient({
             <div className={styles.formHeader}>
               <div>
                 <p className={styles.statusLabel}>Editable Section</p>
-                <h2>Resume Uploads</h2>
+                <h2>Resumes</h2>
               </div>
               <button className={styles.secondaryButton} disabled={!accessToken || busy} onClick={() => setResumes((items) => [...items, emptyResume()])} type="button">
                 Add Resume
               </button>
             </div>
             {resumes.length === 0 ? (
-              <p className={styles.emptyState}>No resumes yet. Add a parsed resume record and attach it to at least one Role Track.</p>
+              <p className={styles.emptyState}>No resumes yet. Add a resume record and attach it to at least one Role Track.</p>
             ) : (
               <div className={styles.roleTrackList}>
                 {resumes.map((resume, index) => (
@@ -1448,18 +1448,18 @@ export default function OnboardingClient({
                     </div>
                     <div className={styles.formGrid}>
                       <label>Name<input value={resume.name} onChange={(event) => updateResume(resume.id, { name: event.target.value })} /></label>
-                      <label>File URL<input value={resume.fileUrl} onChange={(event) => updateResume(resume.id, { fileUrl: event.target.value })} /></label>
-                      <label>Parsing quality<select value={resume.parsingQuality} onChange={(event) => updateResume(resume.id, { parsingQuality: event.target.value as ParsingQuality })}>
-                        <option value="failed">Failed</option>
-                        <option value="weak">Weak</option>
-                        <option value="complete">Complete</option>
+                      <label>Resume link<input value={resume.fileUrl} onChange={(event) => updateResume(resume.id, { fileUrl: event.target.value })} /></label>
+                      <label>Resume readiness<select value={resume.parsingQuality} onChange={(event) => updateResume(resume.id, { parsingQuality: event.target.value as ParsingQuality })}>
+                        <option value="failed">Needs rebuild</option>
+                        <option value="weak">Needs cleanup</option>
+                        <option value="complete">Ready</option>
                       </select></label>
                       <label>Strengths<textarea value={listToText(resume.strengths)} onChange={(event) => updateResume(resume.id, { strengths: textToList(event.target.value) })} /></label>
                       <label>Gaps<textarea value={listToText(resume.gaps)} onChange={(event) => updateResume(resume.id, { gaps: textToList(event.target.value) })} /></label>
                       <label>Use when<textarea value={listToText(resume.useWhen)} onChange={(event) => updateResume(resume.id, { useWhen: textToList(event.target.value) })} /></label>
                       <label>Avoid when<textarea value={listToText(resume.avoidWhen)} onChange={(event) => updateResume(resume.id, { avoidWhen: textToList(event.target.value) })} /></label>
-                      <label>Parsing issues<textarea value={listToText(resume.parsingIssues)} onChange={(event) => updateResume(resume.id, { parsingIssues: textToList(event.target.value) })} /></label>
-                      <label className={styles.fullWidth}>Parsed text<textarea value={resume.parsedText} onChange={(event) => updateResume(resume.id, { parsedText: event.target.value })} /></label>
+                      <label>Cleanup notes<textarea value={listToText(resume.parsingIssues)} onChange={(event) => updateResume(resume.id, { parsingIssues: textToList(event.target.value) })} /></label>
+                      <label className={styles.fullWidth}>Resume text<textarea value={resume.parsedText} onChange={(event) => updateResume(resume.id, { parsedText: event.target.value })} /></label>
                     </div>
                     <div className={styles.attachmentBlock}>
                       <p className={styles.statusLabel}>Attach to Role Tracks</p>
@@ -1486,9 +1486,9 @@ export default function OnboardingClient({
             )}
             <div className={styles.formActions}>
               <button className={styles.primaryButton} disabled={!accessToken || busy} onClick={saveResumes} type="button">
-                Save Resume Uploads
+                Save Resumes
               </button>
-              <p>Resume records currently store parsed text and metadata; file upload plumbing comes after storage/provider decisions.</p>
+              <p>Add resume text or a link here, then connect the resume to the Role Tracks it supports.</p>
             </div>
           </article>
 
@@ -1503,7 +1503,7 @@ export default function OnboardingClient({
               </button>
             </div>
             {workHistory.length === 0 ? (
-              <p className={styles.emptyState}>No work history yet. Add one role or import parsed resume experience into this structured format.</p>
+              <p className={styles.emptyState}>No work history yet. Add one role or bring in experience from a resume.</p>
             ) : (
               <div className={styles.roleTrackList}>
                 {workHistory.map((item, index) => (
