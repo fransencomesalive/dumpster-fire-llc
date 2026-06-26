@@ -1,5 +1,23 @@
 # Current State
 
+## 2026-06-25 - Public homepage recovery checkpoint
+
+Recovered the public homepage animated grain background from the live production implementation and marked this as the reversion point for future homepage work.
+
+- `app/LandingBackground.tsx` now owns the approved background implementation: two canvases, `publicLandingMesh` and `publicLandingStatic`.
+- The mesh canvas uses drifting radial blooms; the static canvas redraws animated brown grain at `1.5x` viewport size.
+- `app/site.module.css` keeps the approved canvas treatment: fixed canvases, mesh `blur(90px)`, static `mix-blend-mode: multiply`.
+- Validation passed: `npm run lint` with the same five legacy warnings, `npx tsc --noEmit --incremental false`, and `npm run build`.
+- Browser-level canvas proof passed: both canvases present and the static canvas changed frame-to-frame (`staticChanged: true`).
+- Local visual proof captured at `/private/tmp/dumpster-recovered-production-grain.png`.
+
+Next session warning:
+
+- The next homepage session is for **CONTENT updates only** unless Randall explicitly expands scope.
+- Content means public-facing words: headline, nav labels, section copy, pricing labels, feature descriptions, CTA copy.
+- Do not copy internal process notes, recommendations, roadmap sequencing, audit language, implementation order, or “recommended next step” text into public homepage content unless Randall explicitly approves that exact text.
+- Do not replace the animated canvas background, remove `LandingBackground`, swap it for CSS noise, or restructure the page while making content edits.
+
 ## 2026-06-25 - Repo cleanup ownership matrix
 
 Started the standalone repo cleanup from the issue/docs queue:

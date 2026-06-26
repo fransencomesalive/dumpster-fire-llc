@@ -1,5 +1,26 @@
 # Next Session Handoff
 
+## RESUME HERE — PUBLIC HOME CONTENT ONLY
+
+Current recovery checkpoint: the public home at `/` has the previously approved animated grain background restored from the live production implementation. Treat this checkpoint as the reversion point if future homepage work damages the background, layout, or approved sections.
+
+Next session scope is **CONTENT updates only** unless Randall explicitly expands scope.
+
+Do not confuse these categories:
+
+- **Content** means the words that should appear on the public homepage: headlines, section copy, pricing labels, CTA copy, feature descriptions, and navigation labels.
+- **Process notes** are not content: implementation recommendations, product-roadmap sequencing, “recommended next step” language, audit notes, or internal reasoning should not be copied into the public page.
+- **Recommendation language** is not content unless Randall explicitly says to publish it. If a note says “recommended,” “next step,” “phase,” “guardrail,” or “implementation order,” treat it as internal planning unless approved as public copy.
+- **Background and layout are locked for recovery purposes.** Do not replace `LandingBackground`, remove the two canvas layers, swap the animated grain for CSS noise, or restructure homepage sections while doing content edits.
+
+Recovery details to preserve:
+
+- `app/LandingBackground.tsx` owns the approved animated background: `publicLandingMesh` canvas plus `publicLandingStatic` canvas.
+- The mesh uses drifting radial blooms; the static canvas redraws animated brown grain at `1.5x` viewport size.
+- `app/site.module.css` keeps the canvas styles minimal: fixed, `z-index: 0`, mesh `blur(90px)`, static `mix-blend-mode: multiply`.
+- Verified locally on `2026-06-25`: lint/typecheck/build pass; browser-level canvas proof returned `staticChanged: true`.
+- Visual proof: `/private/tmp/dumpster-recovered-production-grain.png`.
+
 ## Status
 
 The standalone public repo has been provisioned and Phase 1 foundation work has started.
