@@ -2,7 +2,7 @@
 
 ## 2026-06-25 - Design system complete; implementation handoff ready
 
-The mid-century design system is essentially complete and synced to Claude Design (`3af2f1ea`). Read **`docs/design-implementation-handoff.md`** before any design-implementation work — it has the locked decisions (full paper, body-font split with `--font-ui`=Gotham, grain ground app-wide, teal-forward accents), the product rules baked into the cards (profile pass/fail gate, "Add a Career Page", export = profile+history not matches, Application Details, tuning removed as admin-only), three code gaps to reconcile (compiler hard gate, career-page request email, export backend), and the A–E port sequence.
+The mid-century design system is essentially complete and synced to Claude Design (`3af2f1ea`). Read **`docs/design-implementation-handoff.md`** before any design-implementation work; it has the locked decisions (full paper, body-font split with `--font-ui`=Gotham, grain ground app-wide, teal-forward accents), the product rules baked into the cards (profile pass/fail gate, "Add a Career Page", export = profile+history not matches, Application Details, tuning removed as admin-only), three code gaps to reconcile (compiler hard gate, career-page request email, export backend), and the A-to-E port sequence.
 
 - App design foundation is NOT started: `globals.css` is still the dark theme, only Gotham loaded, no DS tokens. Step A (tokens + fonts into `globals.css`/`layout.tsx`, flip to light) is the first move and is additive/non-destructive.
 - Grain carryover: `app/LandingBackground.tsx` becomes the app-wide ground. Homepage content-only lock still applies; confirm with Randall before generalizing the grain onto home.
