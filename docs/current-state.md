@@ -1,5 +1,22 @@
 # Current State
 
+## 2026-06-26 - Active restart correction
+
+Active restart source is `docs/macbook-air-restart-handoff-2026-06-26.md` in the standalone `dumpster-fire-llc` repo. Older `NEXT SESSION`, `RESUME HERE`, or dated markers in this file are historical notes only and must not be treated as the active resume point unless Randall explicitly names one.
+
+- The repo was pulled from git and is clean at `6090b9b` (`Document recovery and add public jobs scaffold`).
+- Work only in `/Users/randallfransen/Sites/dumpster-fire-llc`; Lab26 is legacy/reference only and must not be used unless Randall explicitly asks for it.
+- Before implementation, report git status and any sync task that was skipped, unavailable, or intentionally not done.
+- Do not proceed to Step 4 Matching before design normalization.
+- Do not start design implementation until the guardrails below are verified.
+
+Homepage guardrail correction:
+
+- Preserve the production animated grain texture exactly.
+- Do not generalize `LandingBackground`, replace it, remove its canvas layers, or touch homepage structure without explicit Randall confirmation.
+- Homepage content is not final, but approved sections preserve copy only.
+- Ignore eyebrow/headline layout treatments as design direction unless Randall explicitly approves them.
+
 ## 2026-06-26 - MacBook Air restart handoff
 
 Added `docs/macbook-air-restart-handoff-2026-06-26.md` as the restart source for the next session.

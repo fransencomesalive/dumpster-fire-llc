@@ -2,7 +2,18 @@
 
 Date: 2026-06-26
 Repo: `/Users/randallfransen/Sites/dumpster-fire-llc`
-Status: in-progress recovery work with uncommitted changes.
+Status: synced from git at commit `6090b9b` with a clean working tree after the MacBook Air pull.
+
+## Active Restart Source
+
+This file is the active restart source for the next session. Older `NEXT SESSION`, `RESUME HERE`, or dated handoff markers in `docs/current-state.md` are historical notes only and must not be treated as active instructions unless Randall explicitly says to resume one of them.
+
+Before doing work:
+
+- Work only in `/Users/randallfransen/Sites/dumpster-fire-llc`.
+- Do not use Lab26 unless Randall explicitly asks for it.
+- Run `git status --short --branch` and report whether the tree is clean or dirty.
+- If a requested sync/pull/push/check is skipped, unavailable, or intentionally not done, tell Randall plainly in the response. Do not silently decide not to do a simple sync task.
 
 ## Why This Exists
 
@@ -17,6 +28,13 @@ Leave these alone until Randall explicitly changes them or the forthcoming Claud
 - Homepage header/hero copy.
 - `Is the Job Market a Dumpster Fire?` section and four cards.
 - Human Path intro and slideshow intent.
+
+Homepage protection correction:
+
+- Preserve the production animated grain texture exactly. It took a long time to get right.
+- Do not generalize `LandingBackground`, replace it, remove its canvas layers, or touch homepage structure without explicit Randall confirmation.
+- Current homepage content is not final, but approved sections should preserve copy only. Do not preserve or infer approval from eyebrow/headline layout treatments.
+- Ignore any design instruction that depends on eyebrow/headline layouts unless Randall explicitly approves that layout direction.
 
 ### Profile Gate
 
@@ -149,7 +167,7 @@ Primary design source:
 - Do not invent new visual systems.
 - Reuse Claude design-system primitives: app shell, panel/card, buttons, section headers, lists, forms, modal, badges.
 - Normalize existing public app surfaces before adding new product workflows.
-- Homepage protected areas stay untouched except for explicitly approved Claude replacement cards.
+- Homepage protected areas stay untouched. Do not generalize `LandingBackground` or touch homepage structure without explicit Randall confirmation.
 - Human Path slideshow is intentional and should not be removed.
 - Do not port private `/scans` defaults or private copy into public app product surfaces.
 - Do not resurrect profile export.
@@ -158,7 +176,7 @@ Primary design source:
 
 1. Read `AGENTS.md` and the required design docs.
 2. Re-open this handoff, `docs/current-state.md`, and `docs/design-implementation-handoff.md`.
-3. Audit current uncommitted diffs.
+3. Audit git status/diffs and report whether the working tree is clean.
 4. Do a design-normalization pass before Step 4 Matching:
    - Port tokens/fonts baseline from Claude design system.
    - Establish shared public app primitives.

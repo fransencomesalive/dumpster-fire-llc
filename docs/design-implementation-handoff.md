@@ -9,15 +9,15 @@ Audience: whoever ports the design system into the app (Codex). Read with `docs/
 
 - **Design system: COMPLETE** in `design-system/` (repo root, never ships), synced to Claude Design project `3af2f1ea`. Foundations (color/type/texture), components (match-card, panel, login, badges, forms, modal, apply-wizard, scan-progress, scan-history, **feedback, compiler, connector, company, copy-generation, detail, export**), chrome (**header, footer**), and the full `scan-page` pattern. Class names mirror `app/scans/DashboardClient.tsx` so `/scans` CSS ports back ~1:1.
 - **App design foundation: NOT started.** `app/globals.css` is still the dark theme (`color-scheme: dark`, `#10170f`, only `--font-gotham` loaded). No DS tokens (`--c-paper`, `--font-ui`, etc.) exist in the app. Bemio / Bebas Neue / Plantagenet are not loaded.
-- **Grain background already exists** at `app/LandingBackground.tsx` (home only). This is the ONE carryover and the source for the app-wide grain ground.
+- **Grain background already exists** at `app/LandingBackground.tsx` (home only). This production animated grain texture is protected and must be preserved exactly.
 - The `Ship public app foundation` commit was the **product** foundation (profile/API/onboarding), not the design one. They are separate workstreams that converge here.
 
 ## Locked design decisions (apply on port)
 
-1. **The design system OVERWRITES all existing app styles.** Sole exception: the production home grain background (`LandingBackground.tsx`) is preserved and becomes the global app ground.
+1. **The design system OVERWRITES all existing app styles.** Sole exception: the production home grain background (`LandingBackground.tsx`) is preserved exactly. Do not generalize it or touch homepage structure without explicit Randall confirmation.
 2. **Full paper theme, no dark shell.** Flip `color-scheme` to light. Dark-green grounds invert to paper; warm-off-white text inverts to ink.
 3. **Body font is split:** `--font-body` = Plantagenet (serif, marketing/long-form); `--font-ui` = **Gotham** (sans, app/dense UI: dashboard, tables, forms). Bemio = display/headlines, Bebas = subheads/labels. Load Bemio/Bebas/Plantagenet via `next/font/local` (Gotham is already loaded; `tokens.css` sets `--font-ui: var(--font-gotham), ...`).
-4. **Grain ground app-wide** (home/dashboard/onboarding/scans). Surfaces sit opaque on top. **Cards/components must never set a body/page background**; the grain owns that layer, and halftone is not used as the app ground.
+4. **Grain ground direction is blocked pending explicit confirmation.** The current production homepage grain stays exactly as-is. Dashboard/onboarding/scans may be normalized to the Claude design primitives, but do not generalize `LandingBackground` or change the homepage ground/structure without Randall explicitly approving that move.
 5. **Teal-forward accents:** teal = dominant UI accent (links/active/positive); tomato = primary CTA + destructive only; mustard = new/weird flags only; bluebird sparingly. Red + yellow never co-star.
 
 ## Product rules baked into the cards (some differ from current code; reconcile during the port)
@@ -32,13 +32,13 @@ Audience: whoever ports the design system into the app (Codex). Read with `docs/
 ## Implementation sequence
 
 - **A. Foundation (additive, non-destructive).** Port `design-system/tokens/tokens.css` → `app/globals.css :root`; load Bemio/Bebas/Plantagenet via `next/font/local`; flip `color-scheme` to light; drop the dark `#10170f` defaults. Keep Gotham (it is `--font-ui`). No visual change to surfaces yet.
-- **B. Grain ground app-wide.** Generalize `LandingBackground.tsx` so the grain is the ground on all app routes (home keeps it; extend to dashboard/onboarding/scans). Surfaces opaque; no body background on components. **Confirm with Randall before touching home** (see guardrail below).
+- **B. Grain/background handling.** Preserve the production homepage grain exactly. Do not generalize `LandingBackground.tsx`, replace it, remove canvas layers, or touch homepage structure without explicit Randall confirmation. Continue design normalization on non-home public app surfaces using Claude primitives.
 - **C. Port `/scans` surfaces against the DS cards** (class-name parity ≈ 1:1): login → hero → match-card → sidebar/panels → badges/forms → modals/wizard → scan-progress → the long-tail (feedback / compiler / connector / company / copy / detail / export). Replace dark literals and remove `.meshBg` per surface. Screenshot each against its card.
-- **D. Apply the DS to the NEW public surfaces** (no 1:1 cards yet): home (hero per the hero card; grain already present), onboarding (`OnboardingClient.tsx`, large; build from the forms/panel/badges cards + tokens), `/dashboard` placeholder. Token + component driven, not 1:1 ports.
+- **D. Apply the DS to the NEW public surfaces** (no 1:1 cards yet): onboarding (`OnboardingClient.tsx`, large; build from the forms/panel/badges cards + tokens) and `/dashboard` placeholder first. Do not alter homepage structure or layout unless Randall explicitly confirms that scope. Token + component driven, not 1:1 ports.
 - **E. Reconcile the three code gaps** (compiler hard gate, career-page request email, export backend) as product work alongside the visual port.
 
 ## Coordination / guardrails
 
-- **Respect the homepage content-only lock** (`docs/current-state.md`, `docs/next-session.md`): do not replace `LandingBackground`, remove the canvas layers, or restructure the home while doing design work, except the sanctioned move of generalizing the grain into the global ground, which Randall should confirm before home is touched.
+- **Respect the homepage content-only lock** (`docs/current-state.md`, `docs/next-session.md`): do not replace `LandingBackground`, remove the canvas layers, generalize the background, or restructure the home while doing design work unless Randall explicitly confirms that scope. Approved homepage sections preserve copy only; eyebrow/headline layouts are not approved design direction by default.
 - **Canonical repo = `dumpster-fire-llc`. Lab26 is legacy/reference only, never a token source.**
 - The component coverage was measured against `/scans` (120 of 269 classes already match the DS cards). The new public surfaces (onboarding/dashboard) are large and have no 1:1 cards; they get the foundation + components, not a wholesale port.
