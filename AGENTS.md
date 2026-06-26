@@ -16,8 +16,11 @@ When the user says `handoff`, Codex must:
 - Commit the staged changes.
 - Report the commit hash.
 - Report any remaining dirty or untracked files.
+- Update the appropriate handoff doc with the next immediate starting point for the following session.
 
 Do not say or imply that a handoff is complete unless `git commit` succeeded and produced a commit hash. If there is a reason not to commit, say so before deviating and report the exact repository state.
+
+Every handoff doc must include enough next steps for the following session to start immediately without reconstructing context. If no next steps have been determined, the handoff doc must say that explicitly and still identify the starting point/status the next session should verify first.
 
 ### Sync
 
@@ -37,6 +40,10 @@ Do not say or imply that work is synced unless the commit and push both succeede
 - Never silently decide not to commit after a `handoff` or `sync` request.
 - Never use vague completion language such as "wrapped", "saved", "done", "handoff complete", or "synced" when the git facts do not prove it.
 
+### Project Operating State
+
+Before doing implementation work after a restart, handoff, sync, or "pick up where we left off" request, Codex must read `docs/project-operating-state.md` and follow its Session Start Protocol. Handoff, roadmap, audit, and design docs are context, not authorization to edit. If the requested next step is ambiguous, Codex must report the ambiguity and wait for explicit scope instead of choosing creatively.
+
 ### Durable Rule Changes
 
 When user feedback implies a new standing workflow rule, Codex must:
@@ -50,3 +57,28 @@ Chat acknowledgement is not durable memory. If a behavioral rule matters, it mus
 ### Public Product Copy Boundary
 
 Do not put internal implementation reasoning, roadmap sequencing, backend terminology, provider details, agent/tool notes, or recovery-session commentary into public-facing app copy. Translate internal product logic into user-facing language before editing UI text, metadata, onboarding text, dashboard text, or marketing sections.
+
+### Design Authority
+
+Codex must not invent UI, layout, CSS, visual hierarchy, component structure, or public-facing presentation from its own judgment.
+
+Before touching any UI, CSS, design, layout, component, copy-bearing, or visual presentation file, Codex must:
+- Identify the exact approved design source being followed.
+- Identify the exact existing component, card, or primitive being mapped.
+- List the exact files proposed for editing.
+- Wait for explicit approval for that design scope.
+
+Product behavior approval is not design approval. A request to add behavior, remediation, validation, guidance, or data wiring does not authorize new layout, new CSS, new cards, new panels, new visual treatments, new component structure, or public copy changes.
+
+If no approved design source exists for the requested UI change, Codex must stop and ask for design direction instead of creating a reasonable-looking interface.
+
+Docs, roadmaps, audits, handoffs, and recommended-next-step notes are context only. They are never authorization to make design changes.
+
+For protected surfaces, Codex may inspect and report, but must not edit without explicit scoped approval:
+- Homepage layout or copy.
+- Onboarding layout or CSS.
+- Dashboard layout or CSS.
+- Global CSS, design tokens, fonts, or design-system foundations.
+- Public product copy.
+
+If a needed implementation touches any protected surface, Codex must report the conflict and wait.

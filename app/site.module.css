@@ -11,7 +11,7 @@
   position: relative;
   min-height: 100svh;
   overflow: hidden;
-  background: #dfc9a6;
+  background: transparent;
   color: var(--landing-ink);
   isolation: isolate;
 }
@@ -1114,4 +1114,521 @@
   .jobCard dl {
     grid-template-columns: 1fr;
   }
+}
+
+/* Claude DS public-surface layer. Sources: tokens, header/footer, panel, forms, badges, modal, scan-page cards. */
+.publicLandingPage,
+.page {
+  color: var(--c-ink);
+  background: transparent;
+}
+
+.publicLandingPage {
+  --landing-ink: var(--c-ink);
+  --landing-copy: var(--c-ink-soft);
+  --landing-muted: var(--c-ink-faint);
+  --landing-line: var(--c-ink);
+  --landing-paper: var(--c-paper);
+  --landing-sand: var(--c-paper-deep);
+  --landing-panel: color-mix(in srgb, var(--c-paper-deep) 86%, transparent);
+  --landing-panel-strong: color-mix(in srgb, var(--c-paper-deep) 94%, transparent);
+}
+
+.publicLandingNavBrand,
+.publicLandingNavLinks a,
+.status,
+.publicLandingKicker,
+.publicLandingLoopItem span,
+.publicLandingOnboardingStep span,
+.jobsSummaryGrid span,
+.jobCard dt,
+.jobCard p:first-child {
+  font-family: var(--font-subhead);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-subhead);
+}
+
+.publicLandingHeroCopy h1,
+.publicLandingSection h2,
+.publicLandingBand h2,
+.publicLandingFinal h2,
+.copy h1,
+.jobsPanel h2,
+.jobsColumn h3,
+.jobCard h4,
+.publicLandingLoopItem h3,
+.publicLandingFeature h3,
+.publicLandingOnboardingStep h3,
+.publicLandingFeatureSet h3,
+.publicLandingPricingCard h3,
+.publicLandingHumanModalHeader h3 {
+  color: var(--c-ink);
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: var(--tracking-display);
+}
+
+.publicLandingIntro,
+.publicLandingSectionIntro p,
+.publicLandingBandCopy p,
+.publicLandingFinal p,
+.copy p,
+.jobsPanel p,
+.jobsEmpty,
+.jobsMessage,
+.jobMetaText,
+.publicLandingHumanModalStack p,
+.publicLandingHumanModalStack li {
+  color: var(--c-ink-soft);
+  font-family: var(--font-body);
+}
+
+.publicLandingPrimary,
+.linkButton,
+.jobActions button,
+.publicLandingHumanModalFooter strong {
+  border: var(--line-bold) solid var(--c-ink);
+  border-radius: var(--radius-md);
+  background-color: var(--role-action);
+  background-image: var(--fiber-img), var(--grain-img);
+  background-blend-mode: normal, soft-light;
+  background-size: 170px 170px, 46px 46px;
+  box-shadow: var(--shadow-card);
+  color: var(--role-action-text);
+  font-family: var(--font-display);
+}
+
+.publicLandingSecondary,
+.secondaryLink,
+.link,
+.jobActions a,
+.publicLandingHumanModalFooter span {
+  border: var(--line-reg) solid var(--c-ink);
+  border-radius: var(--radius-md);
+  background: var(--c-paper);
+  box-shadow: var(--shadow-card);
+  color: var(--c-ink);
+  font-family: var(--font-display);
+}
+
+.publicLandingHeroStrip,
+.publicLandingLoopGrid,
+.publicLandingFeatureGrid,
+.publicLandingBand,
+.publicLandingOnboardingStep,
+.publicLandingFeatureSet,
+.publicLandingPricingCard,
+.jobsPanel,
+.jobsSummaryGrid > div,
+.jobsColumn,
+.jobCard,
+.profileEditorShell,
+.publicLandingHumanModal,
+.publicLandingHumanModalStack section {
+  border: var(--line-reg) solid var(--c-ink);
+  border-radius: var(--radius-lg);
+  background-color: var(--c-paper-deep);
+  background-image: var(--fiber-img), var(--grain-img);
+  background-blend-mode: normal, soft-light;
+  background-size: 170px 170px, 46px 46px;
+  box-shadow: var(--shadow-card);
+}
+
+.publicLandingHeroStrip {
+  border-radius: 0;
+}
+
+.publicLandingHeroStrip span,
+.publicLandingLoopItem,
+.publicLandingFeature {
+  border-color: var(--c-ink);
+}
+
+.publicLandingLoopItem span,
+.publicLandingOnboardingStep span,
+.jobsSummaryGrid span,
+.jobCard dt,
+.jobCard p:first-child,
+.publicLandingHumanWizardSteps .publicLandingHumanWizardStepActive {
+  color: var(--c-teal);
+}
+
+.publicLandingMascot {
+  filter:
+    drop-shadow(2.5px 0 0 var(--c-paper))
+    drop-shadow(-2.5px 0 0 var(--c-paper))
+    drop-shadow(0 2.5px 0 var(--c-paper))
+    drop-shadow(0 -2.5px 0 var(--c-paper))
+    drop-shadow(6px 7px 0 rgba(36, 31, 26, 0.32));
+}
+
+.publicLandingHumanModalHeader h3,
+.publicLandingHumanModalStack strong {
+  color: var(--c-ink);
+}
+
+.publicLandingHumanWizardSteps span {
+  border-color: var(--c-paper-edge);
+  color: var(--c-ink-soft);
+}
+
+.page {
+  min-height: 100svh;
+  padding: clamp(28px, 5vw, 72px);
+}
+
+/* DS mapped correction: public home uses header + hero + panel/card primitives, dashboard uses panel/forms/cards. */
+.publicLandingPage,
+.publicLandingPage *,
+.page,
+.page * {
+  text-shadow: none;
+}
+
+.publicLandingPage {
+  color: var(--c-ink) !important;
+}
+
+.publicLandingNav {
+  border: var(--line-reg) solid var(--c-ink);
+  border-bottom-width: var(--line-bold);
+  border-radius: var(--radius-md);
+  background-color: var(--c-paper);
+  background-image: var(--fiber-img), var(--grain-img);
+  background-blend-mode: normal, soft-light;
+  background-size: 170px 170px, 46px 46px;
+  box-shadow: var(--shadow-card);
+  padding: var(--space-3) var(--space-5);
+}
+
+.publicLandingNavBrand,
+.publicLandingNavLinks a,
+.publicLandingLabel,
+.publicLandingHeroCopy h1,
+.publicLandingIntro,
+.publicLandingSection h2,
+.publicLandingBand h2,
+.publicLandingFinal h2,
+.publicLandingLoopItem h3,
+.publicLandingFeature h3,
+.publicLandingOnboardingStep h3,
+.publicLandingFeatureSet h3,
+.publicLandingPricingCard h3,
+.publicLandingFeatureSet li,
+.publicLandingPricingCard p,
+.publicLandingGuardrailList li {
+  color: var(--c-ink) !important;
+}
+
+.publicLandingSectionIntro p,
+.publicLandingBandCopy p,
+.publicLandingFinal p,
+.publicLandingLoopItem p,
+.publicLandingFeature p,
+.publicLandingOnboardingStep p,
+.publicLandingHumanModalStack p,
+.publicLandingHumanModalStack li {
+  color: var(--c-ink-soft) !important;
+}
+
+.publicLandingLabel,
+.publicLandingKicker,
+.publicLandingHeroStrip span,
+.publicLandingLoopItem span,
+.publicLandingOnboardingStep span,
+.publicLandingPricingCard strong {
+  color: var(--c-teal) !important;
+}
+
+.publicLandingHeroSection {
+  padding-top: var(--space-6);
+}
+
+.publicLandingHeroInner {
+  border: var(--line-bold) solid var(--c-ink);
+  background-color: var(--c-paper-deep);
+  background-image: var(--grain-img);
+  background-blend-mode: soft-light;
+  background-size: 46px 46px;
+  padding: clamp(var(--space-6), 6vw, var(--space-8));
+}
+
+.publicLandingHeroCopy h1 {
+  max-width: 760px;
+  font-size: clamp(3.6rem, 8vw, 6rem);
+  letter-spacing: var(--tracking-display);
+}
+
+.publicLandingIntro {
+  font-weight: 400;
+}
+
+.publicLandingPrimary,
+.linkButton,
+.jobActions button {
+  border-color: var(--c-ink) !important;
+  background-color: var(--role-action) !important;
+  color: var(--role-action-text) !important;
+}
+
+.publicLandingSecondary,
+.secondaryLink,
+.link,
+.jobActions a {
+  border-color: var(--c-ink) !important;
+  background: var(--c-paper) !important;
+  color: var(--c-ink) !important;
+}
+
+.copy h1,
+.copy p,
+.status,
+.jobsPanelHeader h2,
+.jobsPanelHeader p,
+.jobsSummaryGrid span,
+.jobsSummaryGrid small,
+.jobsMessage,
+.jobsError,
+.jobsEmpty,
+.jobsColumn h3,
+.jobCard p,
+.jobCard h4,
+.jobCard dd,
+.profileEditorHeader h2,
+.profileEditorHeader p,
+.profileEditorLabel,
+.profileEditorClose,
+.profileEditorNav a,
+.profileEditorNav small {
+  color: var(--c-ink) !important;
+}
+
+.copy p,
+.jobsPanelHeader p,
+.jobsMessage,
+.jobsEmpty,
+.jobCard p,
+.jobMetaText,
+.profileEditorHeader p,
+.profileEditorNav small {
+  color: var(--c-ink-soft) !important;
+}
+
+.status,
+.jobsColumn h3,
+.jobCard dt,
+.profileEditorLabel {
+  color: var(--c-teal) !important;
+}
+
+.page {
+  background: transparent !important;
+  color: var(--c-ink) !important;
+}
+
+.profileEditorOverlay {
+  background: rgba(36, 31, 26, 0.62) !important;
+}
+
+.profileEditorShell,
+.jobsPanel,
+.jobsSummaryGrid div,
+.jobsColumn,
+.jobCard {
+  border-color: var(--c-ink) !important;
+  background-color: var(--c-paper-deep) !important;
+  background-image: var(--fiber-img), var(--grain-img) !important;
+  background-blend-mode: normal, soft-light;
+  background-size: 170px 170px, 46px 46px;
+  box-shadow: var(--shadow-card);
+  color: var(--c-ink) !important;
+}
+
+.profileEditorNav,
+.profileEditorHeader {
+  border-color: var(--c-ink) !important;
+}
+
+/* Direct hero-matchbook map for public home. */
+.publicLandingHeroSection {
+  min-height: auto;
+  padding: var(--space-6) 0 var(--space-7) !important;
+}
+
+.publicLandingHeroInner {
+  width: min(1080px, calc(100% - 48px));
+  display: flex !important;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(var(--space-5), 4vw, var(--space-6));
+  margin: 0 auto;
+  border: var(--line-bold) solid var(--c-ink);
+  background-color: var(--c-paper-deep);
+  background-image: var(--grain-img);
+  background-blend-mode: soft-light;
+  background-size: 46px 46px;
+  padding: clamp(var(--space-6), 6vw, var(--space-8)) clamp(var(--space-5), 5vw, var(--space-7));
+}
+
+.publicLandingHeroInner::before {
+  content: "";
+  position: absolute;
+  inset: 8px;
+  border: var(--line-hair) solid var(--c-ink);
+  pointer-events: none;
+}
+
+.publicLandingMascotWrap {
+  display: none;
+}
+
+.publicLandingMascot {
+  width: clamp(220px, 26vw, 320px);
+  height: auto;
+  object-fit: contain;
+  filter:
+    drop-shadow(2.5px 0 0 var(--c-paper))
+    drop-shadow(-2.5px 0 0 var(--c-paper))
+    drop-shadow(0 2.5px 0 var(--c-paper))
+    drop-shadow(0 -2.5px 0 var(--c-paper))
+    drop-shadow(6px 7px 0 rgba(36, 31, 26, 0.32));
+}
+
+.publicLandingHeroCopy {
+  width: fit-content;
+  max-width: 100%;
+  min-width: 0;
+  text-align: center;
+}
+
+.publicLandingLabel {
+  margin: 0;
+  color: var(--c-ink) !important;
+  font-family: var(--font-display);
+  font-size: clamp(1.44rem, 2.88vw, 2.24rem);
+  line-height: 1.04;
+  letter-spacing: var(--tracking-display);
+  text-transform: none;
+}
+
+.publicLandingWordmark {
+  position: relative;
+  display: inline-block;
+  margin: 0.04em 0 0;
+  color: var(--c-teal) !important;
+  font-family: var(--font-original-surfer), cursive !important;
+  font-size: clamp(3rem, 7.2vw, 5.4rem) !important;
+  font-weight: 400 !important;
+  line-height: 0.9 !important;
+  letter-spacing: 0 !important;
+}
+
+.publicLandingWordmarkBase,
+.publicLandingWordmarkSlip {
+  display: block;
+  margin: 0;
+}
+
+.publicLandingWordmarkSlip {
+  position: absolute;
+  top: 0;
+  left: 0;
+  color: var(--c-tomato);
+  transform: translate(3.6px, 4.05px);
+  mix-blend-mode: multiply;
+}
+
+.publicLandingHeroRule {
+  width: 0;
+  min-width: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin: var(--space-5) 0 0;
+}
+
+.publicLandingHeroRule::before,
+.publicLandingHeroRule::after {
+  content: "";
+  flex: 1 1 auto;
+  height: var(--line-reg);
+  background: var(--c-ink);
+}
+
+.publicLandingHeroRule span {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  border: var(--line-hair) solid var(--c-ink);
+  background: var(--c-teal);
+  transform: rotate(45deg);
+}
+
+.publicLandingSubhead,
+.publicLandingIntro {
+  width: 0;
+  min-width: 100%;
+  text-align: left;
+  font-family: var(--font-body);
+  font-weight: 400;
+}
+
+.publicLandingSubhead {
+  margin: var(--space-5) 0 0;
+  color: var(--c-ink) !important;
+  font-size: clamp(1.25rem, 2.5vw, 1.95rem);
+  line-height: 1.2;
+  text-wrap: pretty;
+}
+
+.publicLandingIntro {
+  margin: var(--space-3) 0 0;
+  color: var(--role-text-muted) !important;
+  font-size: clamp(1rem, 1.35vw, 1.14rem);
+  line-height: var(--leading-body);
+  text-wrap: pretty;
+}
+
+.publicLandingHeroSigns {
+  width: fit-content;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: var(--space-6) auto 0;
+}
+
+.publicLandingSignTomato,
+.publicLandingSignTeal {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: var(--line-bold) solid var(--c-ink);
+  border-radius: var(--radius-sm);
+  background-image: var(--fiber-img), var(--grain-img);
+  background-blend-mode: normal, soft-light;
+  background-size: 170px 170px, 46px 46px;
+  box-shadow: var(--shadow-card);
+  padding: 9px 18px;
+  color: var(--c-paper);
+  font-family: var(--font-subhead);
+  font-size: clamp(1.05rem, 1.6vw, 1.35rem);
+  letter-spacing: var(--tracking-subhead);
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.publicLandingSignTomato {
+  align-self: flex-start;
+  background-color: var(--c-tomato);
+}
+
+.publicLandingSignTeal {
+  align-self: flex-end;
+  margin-left: var(--space-7);
+  background-color: var(--c-teal);
+}
+
+.publicLandingActions {
+  justify-content: center;
+  margin-top: var(--space-6);
 }

@@ -21,6 +21,12 @@ Homepage guardrail correction:
 
 The temporary MacBook Air handoff file was only for transfer between machines and should not remain an active restart source. Its durable instructions have been folded into this top section, and the handoff file was removed to prevent future sessions from treating it as another resume marker.
 
+Added `docs/restart-handoff.md` as the machine-agnostic restart source for the next session.
+
+## 2026-06-26 - Failed Codex design pass
+
+The latest Codex design implementation should not be treated as approved design work. Codex guessed at CSS/UI mappings instead of using the exact Claude Design items/cards. The next session must use Claude Design as implementation authority and should rebuild or correct the design pass from the exact cards, not from this Codex CSS.
+
 - Current recovery state: Step 1 profile gate copy is implemented; Step 2 Edit Career Profile is functionally kick-started; Step 3 Jobs/Saved Jobs is functionally kick-started.
 - Do not proceed to Step 4 Matching before design normalization.
 - Randall approved moving into design implementation now, but it must use the Claude design system primitives and must not add more ad hoc layout/styling.

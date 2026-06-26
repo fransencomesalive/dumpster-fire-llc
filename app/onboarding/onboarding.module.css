@@ -544,3 +544,320 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Claude DS onboarding layer. Sources: tokens, forms, panel, badges, modal. */
+.page {
+  min-height: 100svh;
+  background: transparent;
+  color: var(--c-ink);
+  font-family: var(--font-ui);
+}
+
+.shell {
+  position: relative;
+  z-index: 1;
+}
+
+.brand,
+.homeLink,
+.statusLabel,
+.profileStatus,
+.sectionIssueSummary,
+.endpoint,
+.requiredCount,
+.emptyState,
+.formGrid label {
+  font-family: var(--font-subhead);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-subhead);
+}
+
+.brand,
+.homeLink,
+.statusLabel,
+.profileStatus,
+.sectionIssueSummary,
+.endpoint {
+  color: var(--c-teal);
+}
+
+.intro h1,
+.statusValue,
+.formHeader h2,
+.roleTrackHeader h3,
+.sectionCard h2 {
+  color: var(--c-ink);
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: var(--tracking-display);
+}
+
+.intro p,
+.statusDetail,
+.formActions p,
+.issueCard p,
+.issueCard li,
+.sectionCard p,
+.readinessStats,
+.emptyState,
+.optional {
+  color: var(--c-ink-soft);
+  font-family: var(--font-body);
+}
+
+.statusCard,
+.sectionCard,
+.authPanel,
+.readinessPanel,
+.authPanelCompact,
+.readinessPanelCompact,
+.formCard,
+.issueCard,
+.roleTrackEditor {
+  border: var(--line-reg) solid var(--c-ink);
+  border-radius: var(--radius-lg);
+  background-color: var(--c-paper-deep);
+  background-image: var(--fiber-img), var(--grain-img);
+  background-blend-mode: normal, soft-light;
+  background-size: 170px 170px, 46px 46px;
+  box-shadow: var(--shadow-card);
+}
+
+.roleTrackEditor {
+  background-color: var(--c-paper);
+}
+
+.gateNotice {
+  border: var(--line-reg) solid var(--c-ink);
+  border-left: var(--line-bold) solid var(--c-tomato);
+  border-radius: var(--radius-md);
+  background-color: var(--c-paper);
+  background-image: var(--grain-img);
+  background-size: 46px 46px;
+}
+
+.gateNotice p {
+  color: var(--c-ink);
+  font-family: var(--font-body);
+}
+
+.authForm input,
+.formGrid input,
+.formGrid select,
+.formGrid textarea {
+  border: var(--line-reg) solid var(--c-ink);
+  border-radius: var(--radius-md);
+  background-color: var(--c-paper);
+  color: var(--c-ink);
+  box-shadow: inset 1px 1px 0 rgba(36, 31, 26, 0.08);
+}
+
+.authForm input:focus,
+.formGrid input:focus,
+.formGrid select:focus,
+.formGrid textarea:focus {
+  outline: 3px solid color-mix(in srgb, var(--c-teal) 28%, transparent);
+  outline-offset: 1px;
+}
+
+.primaryAction,
+.primaryButton {
+  border: var(--line-bold) solid var(--c-ink);
+  border-radius: var(--radius-md);
+  background-color: var(--role-action);
+  background-image: var(--fiber-img), var(--grain-img);
+  background-blend-mode: normal, soft-light;
+  background-size: 170px 170px, 46px 46px;
+  box-shadow: var(--shadow-card);
+  color: var(--role-action-text);
+  font-family: var(--font-display);
+}
+
+.secondaryAction,
+.secondaryButton {
+  border: var(--line-reg) solid var(--c-ink);
+  border-radius: var(--radius-md);
+  background: var(--c-paper);
+  box-shadow: var(--shadow-card);
+  color: var(--c-ink);
+  font-family: var(--font-display);
+}
+
+.primaryButton:disabled,
+.secondaryButton:disabled {
+  filter: grayscale(0.3);
+  opacity: 0.55;
+}
+
+.index {
+  border: var(--line-reg) solid var(--c-ink);
+  background-color: var(--c-teal);
+  background-image: var(--fiber-img), var(--grain-img);
+  background-blend-mode: normal, soft-light;
+  background-size: 170px 170px, 46px 46px;
+  color: var(--c-paper);
+  font-family: var(--font-subhead);
+}
+
+.readinessBadge {
+  border: var(--line-reg) solid var(--c-ink);
+  border-radius: var(--radius-pill);
+  background: var(--c-paper);
+  color: var(--c-ink);
+  font-family: var(--font-subhead);
+  letter-spacing: var(--tracking-subhead);
+  text-transform: uppercase;
+}
+
+.readiness_complete {
+  background-color: var(--c-teal);
+  color: var(--c-paper);
+}
+
+.readiness_incomplete {
+  background-color: var(--c-mustard);
+  color: var(--c-ink);
+}
+
+.readiness_optional,
+.readiness_not_loaded {
+  color: var(--c-ink-soft);
+}
+
+.checkboxGrid label,
+.checkboxLabel {
+  color: var(--c-ink);
+  font-family: var(--font-ui);
+}
+
+.checkboxGrid input,
+.checkboxLabel input {
+  accent-color: var(--c-teal);
+}
+
+/* DS mapped correction: onboarding uses hero + forms + panel + badges primitives. */
+.page,
+.page * {
+  text-shadow: none;
+}
+
+.page {
+  background: transparent !important;
+  color: var(--c-ink) !important;
+}
+
+.brand,
+.homeLink,
+.intro h1,
+.intro p,
+.statusLabel,
+.statusValue,
+.statusDetail,
+.formHeader h2,
+.profileStatus,
+.formGrid label,
+.roleTrackHeader h3,
+.checkboxGrid label,
+.checkboxLabel,
+.formActions p,
+.issueCard p,
+.issueCard li,
+.requiredCount,
+.emptyState,
+.sectionCard h2,
+.sectionCard p,
+.endpoint,
+.sectionIssueSummary,
+.readinessStats,
+.optional {
+  color: var(--c-ink) !important;
+}
+
+.intro p,
+.statusDetail,
+.formActions p,
+.issueCard p,
+.issueCard li,
+.sectionCard p,
+.readinessStats,
+.optional {
+  color: var(--c-ink-soft) !important;
+}
+
+.brand,
+.homeLink,
+.statusLabel,
+.profileStatus,
+.endpoint,
+.sectionIssueSummary,
+.requiredCount,
+.emptyState {
+  color: var(--c-teal) !important;
+}
+
+.statusCard,
+.sectionCard,
+.authPanel,
+.readinessPanel,
+.authPanelCompact,
+.readinessPanelCompact,
+.formCard,
+.issueCard,
+.roleTrackEditor {
+  border-color: var(--c-ink) !important;
+  background-color: var(--c-paper-deep) !important;
+  background-image: var(--fiber-img), var(--grain-img) !important;
+  background-blend-mode: normal, soft-light;
+  background-size: 170px 170px, 46px 46px;
+  box-shadow: var(--shadow-card);
+}
+
+.authForm input,
+.formGrid input,
+.formGrid select,
+.formGrid textarea {
+  border-color: var(--c-ink) !important;
+  background: var(--c-paper) !important;
+  color: var(--c-ink) !important;
+}
+
+.authForm input::placeholder,
+.formGrid input::placeholder,
+.formGrid textarea::placeholder {
+  color: var(--c-ink-faint);
+}
+
+.primaryAction,
+.primaryButton {
+  border-color: var(--c-ink) !important;
+  background-color: var(--role-action) !important;
+  color: var(--role-action-text) !important;
+}
+
+.secondaryAction,
+.secondaryButton {
+  border-color: var(--c-ink) !important;
+  background: var(--c-paper) !important;
+  color: var(--c-ink) !important;
+}
+
+.readinessBadge {
+  border-color: var(--c-ink) !important;
+  background: var(--c-paper) !important;
+  color: var(--c-ink) !important;
+}
+
+.readiness_complete {
+  background-color: var(--c-teal) !important;
+  color: var(--c-paper) !important;
+}
+
+.readiness_incomplete {
+  background-color: var(--c-tomato) !important;
+  color: var(--c-paper) !important;
+}
+
+.readiness_optional,
+.readiness_not_loaded {
+  color: var(--c-ink-soft) !important;
+}

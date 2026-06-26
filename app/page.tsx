@@ -1,7 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
 import HomeAuthRouter from "./HomeAuthRouter";
-import LandingBackground from "./LandingBackground";
 import mascotImg from "./scans/dumpsterfireguy.png";
 import styles from "./site.module.css";
 
@@ -146,7 +145,6 @@ export default function HomePage() {
   return (
     <main className={styles.publicLandingPage}>
       <HomeAuthRouter />
-      <LandingBackground />
 
       <header className={styles.publicLandingNav} aria-label="Dumpster Fire navigation">
         <Link className={styles.publicLandingNavBrand} href="/">
@@ -163,24 +161,31 @@ export default function HomePage() {
 
       <section className={styles.publicLandingHeroSection} aria-labelledby="home-title">
         <div className={styles.publicLandingHeroInner}>
+          <Image className={styles.publicLandingMascot} src={mascotImg} alt="" priority sizes="(max-width: 820px) 210px, 320px" />
           <div className={styles.publicLandingHeroCopy}>
-            <p className={styles.publicLandingLabel}>Dumpster Fire</p>
-            <h1 id="home-title">The Job Market Is A Dumpster Fire</h1>
-            <p className={styles.publicLandingIntro}>
+            <p className={styles.publicLandingLabel}>The Job Market Is A</p>
+            <h1 className={styles.publicLandingWordmark} id="home-title">
+              <span className={styles.publicLandingWordmarkBase}>Dumpster Fire</span>
+              <span className={styles.publicLandingWordmarkSlip} aria-hidden="true">Dumpster Fire</span>
+            </h1>
+            <div className={styles.publicLandingHeroRule} aria-hidden="true">
+              <span />
+            </div>
+            <p className={styles.publicLandingSubhead}>
               A job-search operating system for people who are done feeding the machine.
             </p>
             <p className={styles.publicLandingIntro}>
               Job boards and ATS&apos;s are where good candidates disappear. Dumpster Fire scans boards, company pages, and targeted sources, surfaces likely hiring contacts, and helps you reach out with your proof and voice.
             </p>
-            <p className={styles.publicLandingIntro}>Stop applying. Start pursuing.</p>
+            <div className={styles.publicLandingHeroSigns} aria-label="Search posture">
+              <span className={styles.publicLandingSignTomato}>Stop applying</span>
+              <span className={styles.publicLandingSignTeal}>Start pursuing</span>
+            </div>
             <div className={styles.publicLandingActions} aria-label="Dumpster Fire actions">
               <a className={styles.publicLandingPrimary} href="mailto:randall@randallfransen.com?subject=Dumpster%20Fire%20access">
                 Request access
               </a>
             </div>
-          </div>
-          <div className={styles.publicLandingMascotWrap} aria-hidden="true">
-            <Image className={styles.publicLandingMascot} src={mascotImg} alt="" priority sizes="(max-width: 820px) 180px, 280px" />
           </div>
         </div>
 
