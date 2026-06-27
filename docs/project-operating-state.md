@@ -76,12 +76,28 @@ Not yet built as public workflows:
 
 ## Canonical Next Product Task
 
-> **SUPERSEDED 2026-06-26.** The onboarding quality-remediation task below is no longer the next
-> task. The 2026-06-26 generator design session redefined the entire input architecture.
+> **UPDATED 2026-06-27.** The generator-redesign **backend spine (Phases A–E) is COMPLETE and
+> tested** — see `docs/generator-redesign-implementation-plan-2026-06-26.md` (A1–A5, B1–B4, C, E all
+> checked off). Test suite 11/11 green; `tsc` clean except `app/onboarding/OnboardingClient.tsx`.
 
-**Next session kicks off here:** `docs/generator-redesign-implementation-plan-2026-06-26.md`,
-**Phase A1** — refactor `lib/public-profile/types.ts` to the new shapes. Read that plan plus the
-canonical design doc `docs/generator-and-inputs-design-2026-06-26.md` first.
+**Next session kicks off Phase D — onboarding UI — and starts with Claude design / design-system
+updates (Randall).** Phase D is **design-gated** (AGENTS.md Design Authority): D0 (design direction)
+must be resolved before any onboarding/dashboard UI, CSS, token, or public-copy edit. `OnboardingClient.tsx`
+still uses the old section shapes and must be rebuilt to the new ~7-section IA (Voice & Personality:
+Q1/Q4 + 3-bucket samples + word counter + tone tags; Work Examples: title/oneHitter/link/context).
+
+**Randall's answers (2026-06-27), to honor next session:**
+- Phase D will begin with the Claude design system updates.
+- **D3 catalogue research is already done & approved** (`onboarding-redesign-spec-2026-06-26.md` §7:
+  Lightcast skills, industries, GeoNames locations). Leverage it. The data/lib/API layer can be
+  delegated to Codex (see below) to free Claude for the UI/design work.
+- **ANTHROPIC_API_KEY (Phase C1):** Randall has it; will provide safely on request (env only). Until
+  set, voice fingerprint + outreach generator degrade gracefully.
+- **A4 migration:** not yet run against a DB; delegate the local-only validation to Codex.
+
+**Delegated to Codex:** see `docs/codex-tasks-sync-2026-06-27.md` for two tightly-scoped, guardrailed
+tasks — (1) validate the A4 migration against a LOCAL db (no SQL edits, never prod), and (2) build the
+D3 catalogue data + lookup lib + read-only search API (no onboarding UI). Both are backend/data only.
 
 Summary of the approved redesign: legacy 14 onboarding sections collapse to ~7; the 5-section
 personality cluster collapses into one **Voice & Personality** section (Q1 + Q4 + writing samples
