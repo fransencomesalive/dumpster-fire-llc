@@ -80,9 +80,14 @@ Protocol (`git status`, read this plan + the two design docs).
   skill_work_examples join; voice_personality + fit_signals singleton upserts; writing_samples
   bucket/tags; identity persist drops work_auth/availability. Remaining red in `api.ts` (route
   wiring) is **B2**, not B1.
-- [ ] B2. Routes: rename `proof-library` → `work-examples`; remove `work-history`; add
-  `fit-signals`; trim `identity-search`; consolidate the narrative routes into one
-  `voice-personality` route (Q1/Q4/samples/tags). Remove dead routes.
+- [x] B2. Routes — DONE 2026-06-27. `api.ts` handler/option/result wiring updated (0 in-file tsc
+  errors). Created routes: `work-examples`, `voice-personality`, `fit-signals`. Deleted:
+  `proof-library`, `communication-style`, `work-history`, and the 4 dead narrative routes
+  (`why-people-hire-me`, `operating-style`, `decision-style`, `ai-misreadings`). The generic
+  QualityNarrative handler/service fns are retained (still valid for outreach_rules/leadership_profile,
+  used by tests) but no route mounts them anymore. NOTE: stale `.next/types/validator.ts` errors
+  reference deleted routes — they regenerate on next build (`.next` is gitignored). Remaining red:
+  profile-markdown (B3), profile-quality (B4), OnboardingClient (D2), tests (with their phases).
 - [ ] B3. `profile-markdown.ts` → new structure: **Voice Profile slot** → Substance
   (Identity/Fit, Role Tracks, Resume summary, Skills, Work Examples one-hitters) → Guardrails.
 - [ ] B4. `profile-quality.ts` — update binary complete/incomplete rules for the new required set.

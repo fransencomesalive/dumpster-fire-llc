@@ -13,38 +13,40 @@ import {
   type PublicProfileRegenerationResult,
 } from "./service";
 import {
-  readCommunicationStyleSectionForUser,
+  readVoicePersonalitySectionForUser,
+  readFitSignalsSectionForUser,
   readIdentitySearchSectionForUser,
   readLeadershipProfileSectionForUser,
   readOutreachRulesSectionForUser,
-  readProofLibrarySectionForUser,
+  readWorkExamplesSectionForUser,
   readQualityNarrativeSectionForUser,
   readResumeUploadsSectionForUser,
   readRoleTracksSectionForUser,
   readSkillsInventorySectionForUser,
-  readWorkHistorySectionForUser,
   readWritingSamplesSectionForUser,
-  updateCommunicationStyleSectionForUser,
+  updateVoicePersonalitySectionForUser,
+  updateFitSignalsSectionForUser,
   updateIdentitySearchSectionForUser,
   updateLeadershipProfileSectionForUser,
   updateOutreachRulesSectionForUser,
-  updateProofLibrarySectionForUser,
+  updateWorkExamplesSectionForUser,
   updateQualityNarrativeSectionForUser,
   updateResumeUploadsSectionForUser,
   updateRoleTracksSectionForUser,
   updateSkillsInventorySectionForUser,
-  updateWorkHistorySectionForUser,
   updateWritingSamplesSectionForUser,
-  type PublicProfileCommunicationStyleReadResult,
-  type PublicProfileCommunicationStyleUpdateResult,
+  type PublicProfileVoicePersonalityReadResult,
+  type PublicProfileVoicePersonalityUpdateResult,
+  type PublicProfileFitSignalsReadResult,
+  type PublicProfileFitSignalsUpdateResult,
   type PublicProfileIdentitySearchReadResult,
   type PublicProfileIdentitySearchUpdateResult,
   type PublicProfileLeadershipProfileReadResult,
   type PublicProfileLeadershipProfileUpdateResult,
   type PublicProfileOutreachRulesReadResult,
   type PublicProfileOutreachRulesUpdateResult,
-  type PublicProfileProofLibraryReadResult,
-  type PublicProfileProofLibraryUpdateResult,
+  type PublicProfileWorkExamplesReadResult,
+  type PublicProfileWorkExamplesUpdateResult,
   type PublicProfileQualityNarrativeReadResult,
   type PublicProfileQualityNarrativeUpdateResult,
   type PublicProfileResumeUploadsReadResult,
@@ -53,8 +55,6 @@ import {
   type PublicProfileRoleTracksUpdateResult,
   type PublicProfileSkillsInventoryReadResult,
   type PublicProfileSkillsInventoryUpdateResult,
-  type PublicProfileWorkHistoryReadResult,
-  type PublicProfileWorkHistoryUpdateResult,
   type PublicProfileWritingSamplesReadResult,
   type PublicProfileWritingSamplesUpdateResult,
 } from "./section-service";
@@ -150,44 +150,44 @@ export type PublicProfileResumeUploadsHandlerOptions = {
   ) => Promise<PublicProfileResumeUploadsUpdateResult>;
 };
 
-export type PublicProfileWorkHistoryHandlerOptions = {
+export type PublicProfileFitSignalsHandlerOptions = {
   env?: NodeJS.ProcessEnv;
   now?: () => string;
   getSession?: (request: Request) => Promise<PublicAuthSession>;
   repositoryRequest?: PublicProfileRepositoryRequest;
-  readWorkHistory?: (
+  readFitSignals?: (
     request: PublicProfileRepositoryRequest,
     userId: string,
     checkedAt: string,
-  ) => Promise<PublicProfileWorkHistoryReadResult>;
-  updateWorkHistory?: (
+  ) => Promise<PublicProfileFitSignalsReadResult>;
+  updateFitSignals?: (
     request: PublicProfileRepositoryRequest,
     userId: string,
     input: unknown,
     options: {
       updatedAt: string;
     },
-  ) => Promise<PublicProfileWorkHistoryUpdateResult>;
+  ) => Promise<PublicProfileFitSignalsUpdateResult>;
 };
 
-export type PublicProfileProofLibraryHandlerOptions = {
+export type PublicProfileWorkExamplesHandlerOptions = {
   env?: NodeJS.ProcessEnv;
   now?: () => string;
   getSession?: (request: Request) => Promise<PublicAuthSession>;
   repositoryRequest?: PublicProfileRepositoryRequest;
-  readProofLibrary?: (
+  readWorkExamples?: (
     request: PublicProfileRepositoryRequest,
     userId: string,
     checkedAt: string,
-  ) => Promise<PublicProfileProofLibraryReadResult>;
-  updateProofLibrary?: (
+  ) => Promise<PublicProfileWorkExamplesReadResult>;
+  updateWorkExamples?: (
     request: PublicProfileRepositoryRequest,
     userId: string,
     input: unknown,
     options: {
       updatedAt: string;
     },
-  ) => Promise<PublicProfileProofLibraryUpdateResult>;
+  ) => Promise<PublicProfileWorkExamplesUpdateResult>;
 };
 
 export type PublicProfileSkillsInventoryHandlerOptions = {
@@ -232,24 +232,24 @@ export type PublicProfileQualityNarrativeHandlerOptions = {
   ) => Promise<PublicProfileQualityNarrativeUpdateResult>;
 };
 
-export type PublicProfileCommunicationStyleHandlerOptions = {
+export type PublicProfileVoicePersonalityHandlerOptions = {
   env?: NodeJS.ProcessEnv;
   now?: () => string;
   getSession?: (request: Request) => Promise<PublicAuthSession>;
   repositoryRequest?: PublicProfileRepositoryRequest;
-  readCommunicationStyle?: (
+  readVoicePersonality?: (
     request: PublicProfileRepositoryRequest,
     userId: string,
     checkedAt: string,
-  ) => Promise<PublicProfileCommunicationStyleReadResult>;
-  updateCommunicationStyle?: (
+  ) => Promise<PublicProfileVoicePersonalityReadResult>;
+  updateVoicePersonality?: (
     request: PublicProfileRepositoryRequest,
     userId: string,
     input: unknown,
     options: {
       updatedAt: string;
     },
-  ) => Promise<PublicProfileCommunicationStyleUpdateResult>;
+  ) => Promise<PublicProfileVoicePersonalityUpdateResult>;
 };
 
 export type PublicProfileWritingSamplesHandlerOptions = {
@@ -673,9 +673,9 @@ export async function handleResumeUploadsSectionPatchRequest(
   });
 }
 
-export async function handleWorkHistorySectionGetRequest(
+export async function handleFitSignalsSectionGetRequest(
   request: Request,
-  options: PublicProfileWorkHistoryHandlerOptions = {},
+  options: PublicProfileFitSignalsHandlerOptions = {},
 ) {
   const session = await sessionForRequest(request, options);
   if (session.status !== "authenticated") return authErrorResponse(session);
@@ -684,8 +684,8 @@ export async function handleWorkHistorySectionGetRequest(
   if (!repositoryRequest) return repositoryConfigErrorResponse();
 
   const checkedAt = options.now?.() ?? new Date().toISOString();
-  const readWorkHistory = options.readWorkHistory ?? readWorkHistorySectionForUser;
-  const result = await readWorkHistory(repositoryRequest, session.userId, checkedAt);
+  const readFitSignals = options.readFitSignals ?? readFitSignalsSectionForUser;
+  const result = await readFitSignals(repositoryRequest, session.userId, checkedAt);
 
   if (result.status === "not_found") {
     return json({
@@ -703,9 +703,9 @@ export async function handleWorkHistorySectionGetRequest(
   });
 }
 
-export async function handleWorkHistorySectionPatchRequest(
+export async function handleFitSignalsSectionPatchRequest(
   request: Request,
-  options: PublicProfileWorkHistoryHandlerOptions = {},
+  options: PublicProfileFitSignalsHandlerOptions = {},
 ) {
   const session = await sessionForRequest(request, options);
   if (session.status !== "authenticated") return authErrorResponse(session);
@@ -715,12 +715,12 @@ export async function handleWorkHistorySectionPatchRequest(
 
   const input = await request.json().catch(() => null);
   const updatedAt = options.now?.() ?? new Date().toISOString();
-  const updateWorkHistory = options.updateWorkHistory ?? updateWorkHistorySectionForUser;
-  const result = await updateWorkHistory(repositoryRequest, session.userId, input, { updatedAt });
+  const updateFitSignals = options.updateFitSignals ?? updateFitSignalsSectionForUser;
+  const result = await updateFitSignals(repositoryRequest, session.userId, input, { updatedAt });
 
   if (result.status === "validation_error") {
     return json({
-      error: "Invalid Work History update.",
+      error: "Invalid Fit Signals update.",
       status: result.status,
       issues: result.issues,
     }, { status: 400 });
@@ -742,9 +742,9 @@ export async function handleWorkHistorySectionPatchRequest(
   });
 }
 
-export async function handleProofLibrarySectionGetRequest(
+export async function handleWorkExamplesSectionGetRequest(
   request: Request,
-  options: PublicProfileProofLibraryHandlerOptions = {},
+  options: PublicProfileWorkExamplesHandlerOptions = {},
 ) {
   const session = await sessionForRequest(request, options);
   if (session.status !== "authenticated") return authErrorResponse(session);
@@ -753,8 +753,8 @@ export async function handleProofLibrarySectionGetRequest(
   if (!repositoryRequest) return repositoryConfigErrorResponse();
 
   const checkedAt = options.now?.() ?? new Date().toISOString();
-  const readProofLibrary = options.readProofLibrary ?? readProofLibrarySectionForUser;
-  const result = await readProofLibrary(repositoryRequest, session.userId, checkedAt);
+  const readWorkExamples = options.readWorkExamples ?? readWorkExamplesSectionForUser;
+  const result = await readWorkExamples(repositoryRequest, session.userId, checkedAt);
 
   if (result.status === "not_found") {
     return json({
@@ -772,9 +772,9 @@ export async function handleProofLibrarySectionGetRequest(
   });
 }
 
-export async function handleProofLibrarySectionPatchRequest(
+export async function handleWorkExamplesSectionPatchRequest(
   request: Request,
-  options: PublicProfileProofLibraryHandlerOptions = {},
+  options: PublicProfileWorkExamplesHandlerOptions = {},
 ) {
   const session = await sessionForRequest(request, options);
   if (session.status !== "authenticated") return authErrorResponse(session);
@@ -784,12 +784,12 @@ export async function handleProofLibrarySectionPatchRequest(
 
   const input = await request.json().catch(() => null);
   const updatedAt = options.now?.() ?? new Date().toISOString();
-  const updateProofLibrary = options.updateProofLibrary ?? updateProofLibrarySectionForUser;
-  const result = await updateProofLibrary(repositoryRequest, session.userId, input, { updatedAt });
+  const updateWorkExamples = options.updateWorkExamples ?? updateWorkExamplesSectionForUser;
+  const result = await updateWorkExamples(repositoryRequest, session.userId, input, { updatedAt });
 
   if (result.status === "validation_error") {
     return json({
-      error: "Invalid Proof Library update.",
+      error: "Invalid Work Examples update.",
       status: result.status,
       issues: result.issues,
     }, { status: 400 });
@@ -951,9 +951,9 @@ export async function handleQualityNarrativeSectionPatchRequest(
   });
 }
 
-export async function handleCommunicationStyleSectionGetRequest(
+export async function handleVoicePersonalitySectionGetRequest(
   request: Request,
-  options: PublicProfileCommunicationStyleHandlerOptions = {},
+  options: PublicProfileVoicePersonalityHandlerOptions = {},
 ) {
   const session = await sessionForRequest(request, options);
   if (session.status !== "authenticated") return authErrorResponse(session);
@@ -962,8 +962,8 @@ export async function handleCommunicationStyleSectionGetRequest(
   if (!repositoryRequest) return repositoryConfigErrorResponse();
 
   const checkedAt = options.now?.() ?? new Date().toISOString();
-  const readCommunicationStyle = options.readCommunicationStyle ?? readCommunicationStyleSectionForUser;
-  const result = await readCommunicationStyle(repositoryRequest, session.userId, checkedAt);
+  const readVoicePersonality = options.readVoicePersonality ?? readVoicePersonalitySectionForUser;
+  const result = await readVoicePersonality(repositoryRequest, session.userId, checkedAt);
 
   if (result.status === "not_found") {
     return json({
@@ -981,9 +981,9 @@ export async function handleCommunicationStyleSectionGetRequest(
   });
 }
 
-export async function handleCommunicationStyleSectionPatchRequest(
+export async function handleVoicePersonalitySectionPatchRequest(
   request: Request,
-  options: PublicProfileCommunicationStyleHandlerOptions = {},
+  options: PublicProfileVoicePersonalityHandlerOptions = {},
 ) {
   const session = await sessionForRequest(request, options);
   if (session.status !== "authenticated") return authErrorResponse(session);
@@ -993,12 +993,12 @@ export async function handleCommunicationStyleSectionPatchRequest(
 
   const input = await request.json().catch(() => null);
   const updatedAt = options.now?.() ?? new Date().toISOString();
-  const updateCommunicationStyle = options.updateCommunicationStyle ?? updateCommunicationStyleSectionForUser;
-  const result = await updateCommunicationStyle(repositoryRequest, session.userId, input, { updatedAt });
+  const updateVoicePersonality = options.updateVoicePersonality ?? updateVoicePersonalitySectionForUser;
+  const result = await updateVoicePersonality(repositoryRequest, session.userId, input, { updatedAt });
 
   if (result.status === "validation_error") {
     return json({
-      error: "Invalid Communication Style update.",
+      error: "Invalid Voice & Personality update.",
       status: result.status,
       issues: result.issues,
     }, { status: 400 });
