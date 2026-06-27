@@ -9,6 +9,14 @@ This is the approved-spec-first artifact for the onboarding IA/UX redesign. Noth
 implemented. Each numbered item is a discrete change. Implementation happens in the slices in
 §9 only after Randall signs off, one slice at a time.
 
+> **SUPERSEDED for input architecture — see `docs/generator-and-inputs-design-2026-06-26.md`
+> (canonical).** As of the 2026-06-26 generator design session, the legacy 14 sections collapse
+> to ~7, and the personality cluster (Why People Hire Me, Operating Style, Communication Style,
+> Writing Samples, AI Misreadings) collapses into one **Voice & Personality** section with just
+> **two questions (Q1 value, Q4 opinion-hook)** + writing samples + tone tags. This overrides §4
+> and §5 below (including "keep all six WPHM questions" / D5) and the quality-narrative pattern.
+> §1-§3 (header, sign-in, Identity field changes, terminology) and Slice 1 still stand.
+
 ## 0. Decisions already made (this session)
 
 - **Scope is global** for the two terminology fixes (beta + Human Path): editing the

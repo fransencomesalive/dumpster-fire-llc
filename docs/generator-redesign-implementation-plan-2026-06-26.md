@@ -1,0 +1,89 @@
+# Generator Redesign — Implementation Plan
+
+Date: 2026-06-26
+Status: **APPROVED DESIGN, NOT YET IMPLEMENTED.** Build-ready.
+Design source (canonical): `docs/generator-and-inputs-design-2026-06-26.md`.
+Companion: `docs/onboarding-redesign-spec-2026-06-26.md` (§1-§3 field/copy mechanics still valid;
+§4-§5 superseded by the generator design doc for input architecture).
+
+Goal: rebuild the profile inputs into the lean, generator-aligned ~7-section architecture, make
+profile.md powerful via a Claude voice-fingerprint pre-pass, and build the outreach generator.
+
+Build order follows the project rule: **data model first → services/API → UI → AI features.**
+
+## KICK OFF NEXT SESSION HERE → Phase A1 (types.ts refactor)
+
+First concrete action, zero ambiguity: edit `lib/public-profile/types.ts` to the new shapes in
+A1 below. Everything else cascades from the types. Before editing, re-run the Session Start
+Protocol (`git status`, read this plan + the two design docs).
+
+## Phase A — Data model / schema (UI-independent)
+
+- [ ] **A1. `lib/public-profile/types.ts`**
+  - Remove `workAuthorization`, `availability` from `CandidateProfileRecord`. (Comp min/preferred
+    already exist — keep.)
+  - Remove `WorkHistoryItem` and its references.
+  - Replace `ProjectProof` → **`WorkExample`**: `{ id, profileId, title, oneHitter, link?, context,
+    createdAt, updatedAt }`. Drop all other legacy proof fields.
+  - Rewrite `WritingSample`: replace `sampleType: like|hate` with **`bucket: sounds_like_me |
+    want_to_sound | never_sound`**; add `tags: string[]`; keep `text` (≤120 words, enforced in
+    validation); drop required `whyItWorksOrFails` (optional or removed).
+  - Add **Fit Signals**: `{ goodSignals: string[], poorFitSignals: string[] }` (soft scoring).
+  - Add **Voice & Personality** profile fields: `q1Value`, `q4Opinion`, `toneTags: string[]`.
+  - Collapse `CommunicationStyleSettings` into `toneTags` + writing samples (decide: drop the
+    table, or keep only `phrasesToAvoid` if still wanted — see Open Decisions).
+  - Trim `QualitySection`: drop `operating_style`, `communication_style`, `ai_misreadings`,
+    `why_people_hire_me` (replaced by Q1/Q4); move `decision_style` → Fit Signals.
+- [ ] **A2. `lib/public-profile/sections.ts`** — update validation, allowlists, mappers, and the
+  `CandidateProfileAggregate` for every A1 change.
+- [ ] **A3. `lib/public-profile/onboarding.ts`** — rewrite the manifest to the ~7 sections:
+  Identity & Search (+Fit Signals), Role Tracks, Resumes, Work Examples, Skills,
+  Voice & Personality, Outreach Rules, Leadership (optional).
+- [ ] **A4. Migration** in `supabase/migrations/` — drop work_auth/availability columns, drop
+  work_history, rename/restructure proof → work_examples, add fit_signals, add voice fields
+  (q1/q4/tone_tags), restructure writing_samples (bucket, tags), trim communication_style.
+- [ ] **A5. Fixtures + tests** — update `scripts/fixtures/public-profile.ts` and the affected
+  `scripts/test-*` scripts to the new shapes. Keep them green.
+
+## Phase B — Services / API
+- [ ] B1. `section-service.ts` + `repository.ts` for the new shapes.
+- [ ] B2. Routes: rename `proof-library` → `work-examples`; remove `work-history`; add
+  `fit-signals`; trim `identity-search`; consolidate the narrative routes into one
+  `voice-personality` route (Q1/Q4/samples/tags). Remove dead routes.
+- [ ] B3. `profile-markdown.ts` → new structure: **Voice Profile slot** → Substance
+  (Identity/Fit, Role Tracks, Resume summary, Skills, Work Examples one-hitters) → Guardrails.
+- [ ] B4. `profile-quality.ts` — update binary complete/incomplete rules for the new required set.
+
+## Phase C — Claude voice-fingerprint pre-pass
+- [ ] C1. Provision Anthropic API key in env (Randall has it ready).
+- [ ] C2. Add Anthropic SDK + `lib/public-profile/voice-fingerprint.ts`: input Q1/Q4/samples/tags →
+  output compact Voice Profile (tone description + do/don't + 1-2 exemplar lines). Use the
+  `claude-api` reference for model id + call shape; default to the latest Claude model.
+- [ ] C3. Wire into profile save → regenerate markdown with the fingerprint at the top.
+- [ ] C4. Fixtures/tests for the pre-pass (mock the model in tests).
+
+## Phase D — Onboarding UI (GATED on design direction)
+- [ ] D0. Resolve design direction for the lean IA (prior design build was rejected — needs an
+  approved design source before any UI edit; see Design Authority in AGENTS.md).
+- [ ] D1. Persistent header + sign-in card/button (onboarding-redesign-spec §2).
+- [ ] D2. Rebuild the ~7 sections to the new IA, incl. Voice & Personality (Q1/Q4 + 3-bucket
+  samples + word counter + tone tags) and Work Examples (4 fields + one-hitter).
+- [ ] D3. Catalogue wiring: NA locations (GeoNames), industries (LinkedIn V2), skills (Lightcast).
+
+## Phase E — Outreach generator
+- [ ] E1. Generator route: profile.md + job + contact → message; model selects one relevant
+  Work Example one-hitter (+ link), obeys Voice Profile + per-track/per-skill do-not-overclaim +
+  never-sound-like-this. User can delete the inserted example.
+
+## Open decisions to confirm before/within the relevant phase
+- OD1 (A1): Does `CommunicationStyleSettings` fully dissolve into tone tags + samples, or keep
+  `phrasesToAvoid` as one explicit field?
+- OD2 (A4): D4 from the redesign spec — drop removed columns now via migration vs. leave orphaned.
+- OD3 (D0): The onboarding design direction (the still-unresolved rejected-build question).
+- OD4 (tone tags): final set is `punchy, warm, funny, blunt, no-fluff, specific, casual, brief`
+  unless changed.
+
+## Sequencing notes
+- Phases A→B→C are the spine and are mostly UI-independent; they can proceed before D0 is
+  resolved. D (UI) is the one blocked on design direction. E depends on B3 + C.
+- Slice 1 (terminology/beta/proof copy) already shipped: commit `65037d8`.

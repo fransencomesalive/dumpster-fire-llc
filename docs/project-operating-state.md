@@ -76,17 +76,22 @@ Not yet built as public workflows:
 
 ## Canonical Next Product Task
 
-The safest next product task from the current docs is:
+> **SUPERSEDED 2026-06-26.** The onboarding quality-remediation task below is no longer the next
+> task. The 2026-06-26 generator design session redefined the entire input architecture.
 
-Add quality-remediation guidance for weak or missing onboarding fields.
+**Next session kicks off here:** `docs/generator-redesign-implementation-plan-2026-06-26.md`,
+**Phase A1** — refactor `lib/public-profile/types.ts` to the new shapes. Read that plan plus the
+canonical design doc `docs/generator-and-inputs-design-2026-06-26.md` first.
 
-Why:
+Summary of the approved redesign: legacy 14 onboarding sections collapse to ~7; the 5-section
+personality cluster collapses into one **Voice & Personality** section (Q1 + Q4 + writing samples
++ tone tags); Proof Library → **Work Examples** (4 fields + insertable one-hitter); Work History
+removed (from resumes); Fit Signals are soft scoring (no hard filters); profile.md gains a
+**Claude voice-fingerprint pre-pass**; then the outreach generator. Build order: data model →
+services/API → UI (gated on design direction) → AI features.
 
-- `docs/product-roadmap-audit-2026-06-25.md` recommends resolving quality-scoring/remediation first.
-- `docs/public-product-gap-build-plan-2026-06-26.md` lists onboarding quality remediation as Immediate Next Work.
-- This task can be scoped without inventing a design system or touching protected homepage copy.
-
-Do not implement it until Randall explicitly approves that task and the target files.
+(Historical, superseded) The prior "safest next task" was: add quality-remediation guidance for
+weak or missing onboarding fields. Do not pursue this; it predates the redesign.
 
 ## Next Session To-Do
 
