@@ -3,21 +3,12 @@ export type RemotePreference = "remote_only" | "remote_preferred" | "hybrid_ok" 
 export type EmploymentType = "full_time" | "contract" | "freelance" | "part_time";
 export type Priority = "low" | "medium" | "high";
 export type ParsingQuality = "failed" | "weak" | "complete";
-export type ProofConfidence = "low" | "medium" | "high";
 export type SkillProficiency = "working" | "strong" | "expert";
 export type Quality = "weak" | "complete";
-export type WritingSampleType = "like" | "hate";
+export type WritingSampleBucket = "sounds_like_me" | "want_to_sound" | "never_sound";
 export type WritingChannel = "linkedin" | "email" | "dm" | "social_post" | "other";
-export type FormalityLevel = "low" | "medium" | "high";
-export type HumorLevel = "none" | "light" | "medium";
-export type MessageLengthPreference = "short" | "medium" | "long";
 
 export type QualitySection =
-  | "why_people_hire_me"
-  | "operating_style"
-  | "decision_style"
-  | "communication_style"
-  | "ai_misreadings"
   | "outreach_rules"
   | "leadership_profile";
 
@@ -29,7 +20,6 @@ export type CandidateProfileRecord = {
   fullName: string;
   preferredName?: string;
   location: string;
-  workAuthorization: string;
   linkedInUrl?: string;
   portfolioUrl?: string;
   personalWebsiteUrl?: string;
@@ -37,7 +27,6 @@ export type CandidateProfileRecord = {
   remotePreference: RemotePreference;
   targetCompensationMin?: number;
   targetCompensationPreferred?: number;
-  availability: string;
   generatedMarkdown: string;
   markdownGeneratedAt?: string;
   createdAt: string;
@@ -104,41 +93,16 @@ export type Resume = {
   updatedAt: string;
 };
 
-export type WorkHistoryItem = {
+// Text-only outreach portfolio. The generator inserts one relevant example per
+// message (its `oneHitter` + optional `link`); the model decides which example
+// to use from context, so no relevance tagging is stored here.
+export type WorkExample = {
   id: string;
   profileId: string;
-  company: string;
   title: string;
-  startDate?: string;
-  endDate?: string;
-  currentRole: boolean;
-  responsibilities: string[];
-  accomplishments: string[];
-  skills: string[];
-  metrics: string[];
-  associatedResumeIds: string[];
-  source: "resume_parse" | "user_corrected";
-  createdAt: string;
-  updatedAt: string;
-};
-
-export type ProjectProof = {
-  id: string;
-  profileId: string;
-  name: string;
+  oneHitter: string;
   link?: string;
-  description: string;
-  candidateRole: string;
-  whatThisProves: string[];
-  capabilitiesDemonstrated: string[];
-  keyResponsibilitiesSupported: string[];
-  requiredExperienceSupported: string[];
-  industriesRelevant: string[];
-  bestUsedFor: string[];
-  avoidUsingFor: string[];
-  metricsResults: string[];
-  caveats: string[];
-  confidence: ProofConfidence;
+  context: string;
   createdAt: string;
   updatedAt: string;
 };
@@ -149,8 +113,7 @@ export type SkillProfile = {
   skillName: string;
   proficiency: SkillProficiency;
   evidence: string[];
-  relatedProjectIds: string[];
-  relatedWorkHistoryIds: string[];
+  relatedWorkExampleIds: string[];
   bestRoleFit: string[];
   doNotOverclaim: string[];
   createdAt: string;
@@ -169,17 +132,33 @@ export type QualityScoredTextField = {
   updatedAt: string;
 };
 
-export type CommunicationStyleSettings = {
+// Soft scoring only — no hard filters. Poor-fit jobs still surface, rated lower,
+// with the poor-fit signal shown as context. Feeds job rating, never the message.
+export type FitSignals = {
   id: string;
   profileId: string;
-  preferredTone: string[];
-  formalityLevel: FormalityLevel;
-  humorLevel: HumorLevel;
-  messageLengthPreference: MessageLengthPreference;
-  greetingPreferences: string[];
-  signoffPreferences: string[];
-  phrasesToAvoid: string[];
-  phrasesThatSoundLikeMe: string[];
+  goodSignals: string[];
+  poorFitSignals: string[];
+  createdAt: string;
+  updatedAt: string;
+};
+
+// Consolidated Voice & Personality section (replaces the legacy 5-section
+// personality cluster + CommunicationStyleSettings). Writing samples live in
+// their own table (WritingSample[]).
+export type VoicePersonality = {
+  id: string;
+  profileId: string;
+  // Q1 — "What do people come to you for — what are you the person for?"
+  q1Value: string;
+  // Q4 — "What's a take about your field you'll defend?"
+  q4Opinion: string;
+  // Positive tone tags (e.g. punchy, warm, no-fluff, blunt, funny, specific, casual, brief).
+  toneTags: string[];
+  // Anti-pattern tone tags to avoid (e.g. "LinkedIn malarky", "Corporate Jargon", "Biz Formal").
+  avoidTags: string[];
+  // Free-text "what to avoid" note (<=25 words, enforced in validation).
+  avoidNote: string;
   createdAt: string;
   updatedAt: string;
 };
@@ -187,10 +166,11 @@ export type CommunicationStyleSettings = {
 export type WritingSample = {
   id: string;
   profileId: string;
-  sampleType: WritingSampleType;
+  bucket: WritingSampleBucket;
   channel: WritingChannel;
+  // <=120 words, enforced in validation.
   text: string;
-  whyItWorksOrFails: string;
+  tags: string[];
   createdAt: string;
   updatedAt: string;
 };
@@ -254,11 +234,11 @@ export type CandidateProfileAggregate = {
   companyWatchlist: CompanyWatchlistItem[];
   roleTracks: RoleTrack[];
   resumes: Resume[];
-  workHistory: WorkHistoryItem[];
-  projects: ProjectProof[];
+  fitSignals?: FitSignals;
+  workExamples: WorkExample[];
   skills: SkillProfile[];
   qualityFields: QualityScoredTextField[];
-  communicationStyle?: CommunicationStyleSettings;
+  voicePersonality?: VoicePersonality;
   writingSamples: WritingSample[];
   outreachRules?: OutreachRuleSet;
   roleTrackOutreachRules: RoleTrackOutreachRule[];

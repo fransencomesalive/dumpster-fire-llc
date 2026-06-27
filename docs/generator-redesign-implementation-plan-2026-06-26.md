@@ -19,7 +19,11 @@ Protocol (`git status`, read this plan + the two design docs).
 
 ## Phase A — Data model / schema (UI-independent)
 
-- [ ] **A1. `lib/public-profile/types.ts`**
+- [x] **A1. `lib/public-profile/types.ts`** — DONE 2026-06-27 (types-only; A2–A5 cascade pending,
+  so `tsc`/`build` intentionally red until then). OD1 resolved (Randall): `phrasesToAvoid` dropped;
+  replaced by `avoidTags[]` (anti-pattern tone tags, e.g. "LinkedIn malarky", "Corporate Jargon",
+  "Biz Formal") + `avoidNote` (≤25-word free text). Voice fields modeled as a `VoicePersonality`
+  record (q1Value, q4Opinion, toneTags, avoidTags, avoidNote) rather than loose profile columns.
   - Remove `workAuthorization`, `availability` from `CandidateProfileRecord`. (Comp min/preferred
     already exist — keep.)
   - Remove `WorkHistoryItem` and its references.
