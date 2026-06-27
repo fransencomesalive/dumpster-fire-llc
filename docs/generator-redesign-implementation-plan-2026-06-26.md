@@ -54,9 +54,15 @@ Protocol (`git status`, read this plan + the two design docs).
   - rewrite the manifest to the ~7 sections:
   Identity & Search (+Fit Signals), Role Tracks, Resumes, Work Examples, Skills,
   Voice & Personality, Outreach Rules, Leadership (optional).
-- [ ] **A4. Migration** in `supabase/migrations/` — drop work_auth/availability columns, drop
-  work_history, rename/restructure proof → work_examples, add fit_signals, add voice fields
-  (q1/q4/tone_tags), restructure writing_samples (bucket, tags), trim communication_style.
+- [x] **A4. Migration** in `supabase/migrations/` — DONE (written) 2026-06-27:
+  `20260627000100_generator_redesign_profile_schema.sql`. **NOT VERIFIED against a DB** (live-data
+  status unknown per Randall; do not run blind). To verify: review SQL, then `supabase db reset`
+  (or run against a dev DB) and confirm no errors. OD2 resolved → drop now (defensive if-exists
+  guards; preserves mappable rows). Covers: drop work_auth/availability; drop work_history (+joins);
+  project_proofs→work_examples (+ skill_work_examples, renamed index/policy); add fit_signals;
+  communication_style_settings→voice_personality (recreated); writing_samples sample_type→bucket
+  (backfilled like→sounds_like_me / hate→never_sound) + tags, drop why_it_works_or_fails; trim
+  quality_scored_text_fields section check to outreach_rules|leadership_profile.
 - [ ] **A5. Fixtures + tests** — update `scripts/fixtures/public-profile.ts` and the affected
   `scripts/test-*` scripts to the new shapes. Keep them green.
 
@@ -93,7 +99,7 @@ Protocol (`git status`, read this plan + the two design docs).
 ## Open decisions to confirm before/within the relevant phase
 - OD1 (A1): Does `CommunicationStyleSettings` fully dissolve into tone tags + samples, or keep
   `phrasesToAvoid` as one explicit field?
-- OD2 (A4): D4 from the redesign spec — drop removed columns now via migration vs. leave orphaned.
+- OD2 (A4): RESOLVED 2026-06-27 (Randall) — drop removed columns/tables now (defensive guards).
 - OD3 (D0): The onboarding design direction (the still-unresolved rejected-build question).
 - OD4 (tone tags): final set is `punchy, warm, funny, blunt, no-fluff, specific, casual, brief`
   unless changed.
