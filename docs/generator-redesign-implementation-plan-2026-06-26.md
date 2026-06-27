@@ -38,7 +38,12 @@ Protocol (`git status`, read this plan + the two design docs).
     table, or keep only `phrasesToAvoid` if still wanted — see Open Decisions).
   - Trim `QualitySection`: drop `operating_style`, `communication_style`, `ai_misreadings`,
     `why_people_hire_me` (replaced by Q1/Q4); move `decision_style` → Fit Signals.
-- [ ] **A2. `lib/public-profile/sections.ts`** — update validation, allowlists, mappers, and the
+- [x] **A2. `lib/public-profile/sections.ts`** — DONE 2026-06-27. sections.ts compiles clean (0 tsc
+  errors in-file); downstream (B1 repository/section-service, B3 markdown, B4 quality, A5 fixtures/
+  tests, B2 dead routes) still red as planned. New section plumbing: FitSignals (new), WorkExamples
+  (was ProofLibrary), VoicePersonality (was CommunicationStyle); WorkHistory section removed; Writing
+  Samples now bucket+tags; Identity dropped workAuth/availability; Skills use relatedWorkExampleIds.
+  - update validation, allowlists, mappers, and the
   `CandidateProfileAggregate` for every A1 change.
 - [ ] **A3. `lib/public-profile/onboarding.ts`** — rewrite the manifest to the ~7 sections:
   Identity & Search (+Fit Signals), Role Tracks, Resumes, Work Examples, Skills,

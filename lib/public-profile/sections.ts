@@ -6,17 +6,12 @@ import {
 import type {
   CandidateProfileAggregate,
   CandidateProfilePreferences,
-  CommunicationStyleSettings,
   EmploymentType,
-  FormalityLevel,
-  HumorLevel,
+  FitSignals,
   LeadershipProfile,
-  MessageLengthPreference,
   OutreachRuleSet,
   ParsingQuality,
   ProfileQuality,
-  ProjectProof,
-  ProofConfidence,
   Quality,
   QualityScoredTextField,
   QualitySection,
@@ -26,17 +21,17 @@ import type {
   RoleTrackOutreachRule,
   SkillProfile,
   SkillProficiency,
-  WorkHistoryItem,
+  VoicePersonality,
+  WorkExample,
   WritingChannel,
   WritingSample,
-  WritingSampleType,
+  WritingSampleBucket,
 } from "./types";
 
 export type IdentitySearchSection = {
   fullName: string;
   preferredName?: string;
   location: string;
-  workAuthorization: string;
   linkedInUrl?: string;
   portfolioUrl?: string;
   personalWebsiteUrl?: string;
@@ -44,7 +39,6 @@ export type IdentitySearchSection = {
   remotePreference: RemotePreference;
   targetCompensationMin?: number;
   targetCompensationPreferred?: number;
-  availability: string;
   employmentTypes: EmploymentType[];
   targetIndustries: string[];
   avoidIndustries: string[];
@@ -53,6 +47,14 @@ export type IdentitySearchSection = {
 };
 
 export type IdentitySearchSectionPatch = Partial<IdentitySearchSection>;
+
+export type FitSignalsSection = {
+  id?: string;
+  goodSignals: string[];
+  poorFitSignals: string[];
+};
+
+export type FitSignalsSectionPatch = FitSignalsSection;
 
 export type SectionValidationIssue = {
   field: string;
@@ -102,58 +104,26 @@ export type ResumeUploadsSection = {
 
 export type ResumeUploadsSectionPatch = ResumeUploadsSection;
 
-export type WorkHistorySectionItem = {
+export type WorkExampleSectionItem = {
   id: string;
-  company: string;
   title: string;
-  startDate?: string;
-  endDate?: string;
-  currentRole: boolean;
-  responsibilities: string[];
-  accomplishments: string[];
-  skills: string[];
-  metrics: string[];
-  associatedResumeIds: string[];
-  source: WorkHistoryItem["source"];
-};
-
-export type WorkHistorySection = {
-  workHistory: WorkHistorySectionItem[];
-};
-
-export type WorkHistorySectionPatch = WorkHistorySection;
-
-export type ProofLibrarySectionItem = {
-  id: string;
-  name: string;
+  oneHitter: string;
   link?: string;
-  description: string;
-  candidateRole: string;
-  whatThisProves: string[];
-  capabilitiesDemonstrated: string[];
-  keyResponsibilitiesSupported: string[];
-  requiredExperienceSupported: string[];
-  industriesRelevant: string[];
-  bestUsedFor: string[];
-  avoidUsingFor: string[];
-  metricsResults: string[];
-  caveats: string[];
-  confidence: ProofConfidence;
+  context: string;
 };
 
-export type ProofLibrarySection = {
-  projects: ProofLibrarySectionItem[];
+export type WorkExamplesSection = {
+  workExamples: WorkExampleSectionItem[];
 };
 
-export type ProofLibrarySectionPatch = ProofLibrarySection;
+export type WorkExamplesSectionPatch = WorkExamplesSection;
 
 export type SkillsInventorySectionItem = {
   id: string;
   skillName: string;
   proficiency: SkillProficiency;
   evidence: string[];
-  relatedProjectIds: string[];
-  relatedWorkHistoryIds: string[];
+  relatedWorkExampleIds: string[];
   bestRoleFit: string[];
   doNotOverclaim: string[];
 };
@@ -179,34 +149,23 @@ export type QualityNarrativeSection = {
 
 export type QualityNarrativeSectionPatch = QualityNarrativeSection;
 
-export type CommunicationStyleSettingsSection = {
+export type VoicePersonalitySection = {
   id?: string;
-  preferredTone: string[];
-  formalityLevel: FormalityLevel;
-  humorLevel: HumorLevel;
-  messageLengthPreference: MessageLengthPreference;
-  greetingPreferences: string[];
-  signoffPreferences: string[];
-  phrasesToAvoid: string[];
-  phrasesThatSoundLikeMe: string[];
+  q1Value: string;
+  q4Opinion: string;
+  toneTags: string[];
+  avoidTags: string[];
+  avoidNote: string;
 };
 
-export type CommunicationStyleSection = {
-  settings?: CommunicationStyleSettingsSection;
-  fields: QualityNarrativeSectionField[];
-};
-
-export type CommunicationStyleSectionPatch = {
-  settings: CommunicationStyleSettingsSection;
-  fields: QualityNarrativeSectionField[];
-};
+export type VoicePersonalitySectionPatch = VoicePersonalitySection;
 
 export type WritingSamplesSectionItem = {
   id: string;
-  sampleType: WritingSampleType;
+  bucket: WritingSampleBucket;
   channel: WritingChannel;
   text: string;
-  whyItWorksOrFails: string;
+  tags: string[];
 };
 
 export type WritingSamplesSection = {
@@ -297,35 +256,35 @@ export type ApplyResumeUploadsSectionResult = {
   profileQuality: ProfileQuality;
 };
 
-export type ParseWorkHistorySectionPatchResult =
+export type ParseFitSignalsSectionPatchResult =
   | {
       ok: true;
-      patch: WorkHistorySectionPatch;
+      patch: FitSignalsSectionPatch;
     }
   | {
       ok: false;
       issues: SectionValidationIssue[];
     };
 
-export type ApplyWorkHistorySectionResult = {
+export type ApplyFitSignalsSectionResult = {
   aggregate: CandidateProfileAggregate;
-  section: WorkHistorySection;
+  section: FitSignalsSection;
   profileQuality: ProfileQuality;
 };
 
-export type ParseProofLibrarySectionPatchResult =
+export type ParseWorkExamplesSectionPatchResult =
   | {
       ok: true;
-      patch: ProofLibrarySectionPatch;
+      patch: WorkExamplesSectionPatch;
     }
   | {
       ok: false;
       issues: SectionValidationIssue[];
     };
 
-export type ApplyProofLibrarySectionResult = {
+export type ApplyWorkExamplesSectionResult = {
   aggregate: CandidateProfileAggregate;
-  section: ProofLibrarySection;
+  section: WorkExamplesSection;
   profileQuality: ProfileQuality;
 };
 
@@ -361,19 +320,19 @@ export type ApplyQualityNarrativeSectionResult = {
   profileQuality: ProfileQuality;
 };
 
-export type ParseCommunicationStyleSectionPatchResult =
+export type ParseVoicePersonalitySectionPatchResult =
   | {
       ok: true;
-      patch: CommunicationStyleSectionPatch;
+      patch: VoicePersonalitySectionPatch;
     }
   | {
       ok: false;
       issues: SectionValidationIssue[];
     };
 
-export type ApplyCommunicationStyleSectionResult = {
+export type ApplyVoicePersonalitySectionResult = {
   aggregate: CandidateProfileAggregate;
-  section: CommunicationStyleSection;
+  section: VoicePersonalitySection;
   profileQuality: ProfileQuality;
 };
 
@@ -443,12 +402,10 @@ const stringFields = [
   "fullName",
   "preferredName",
   "location",
-  "workAuthorization",
   "linkedInUrl",
   "portfolioUrl",
   "personalWebsiteUrl",
   "email",
-  "availability",
 ] as const;
 
 const stringListFields = [
@@ -511,58 +468,21 @@ const parsingQualities = new Set<ParsingQuality>([
   "complete",
 ]);
 
-const workHistoryStringFields = [
+const workExampleStringFields = [
   "id",
-  "company",
   "title",
+  "oneHitter",
+  "context",
 ] as const;
 
-const workHistoryOptionalStringFields = [
-  "startDate",
-  "endDate",
-] as const;
-
-const workHistoryListFields = [
-  "responsibilities",
-  "accomplishments",
-  "skills",
-  "metrics",
-  "associatedResumeIds",
-] as const;
-
-const workHistorySources = new Set<WorkHistoryItem["source"]>([
-  "resume_parse",
-  "user_corrected",
-]);
-
-const proofStringFields = [
-  "id",
-  "name",
-  "description",
-  "candidateRole",
-] as const;
-
-const proofOptionalStringFields = [
+const workExampleOptionalStringFields = [
   "link",
 ] as const;
 
-const proofListFields = [
-  "whatThisProves",
-  "capabilitiesDemonstrated",
-  "keyResponsibilitiesSupported",
-  "requiredExperienceSupported",
-  "industriesRelevant",
-  "bestUsedFor",
-  "avoidUsingFor",
-  "metricsResults",
-  "caveats",
+const fitSignalsListFields = [
+  "goodSignals",
+  "poorFitSignals",
 ] as const;
-
-const proofConfidences = new Set<ProofConfidence>([
-  "low",
-  "medium",
-  "high",
-]);
 
 const skillStringFields = [
   "id",
@@ -571,8 +491,7 @@ const skillStringFields = [
 
 const skillListFields = [
   "evidence",
-  "relatedProjectIds",
-  "relatedWorkHistoryIds",
+  "relatedWorkExampleIds",
   "bestRoleFit",
   "doNotOverclaim",
 ] as const;
@@ -588,35 +507,21 @@ const qualityRatings = new Set<Quality>([
   "complete",
 ]);
 
-const communicationStyleListFields = [
-  "preferredTone",
-  "greetingPreferences",
-  "signoffPreferences",
-  "phrasesToAvoid",
-  "phrasesThatSoundLikeMe",
+const voicePersonalityStringFields = [
+  "q1Value",
+  "q4Opinion",
+  "avoidNote",
 ] as const;
 
-const formalityLevels = new Set<FormalityLevel>([
-  "low",
-  "medium",
-  "high",
-]);
+const voicePersonalityListFields = [
+  "toneTags",
+  "avoidTags",
+] as const;
 
-const humorLevels = new Set<HumorLevel>([
-  "none",
-  "light",
-  "medium",
-]);
-
-const messageLengthPreferences = new Set<MessageLengthPreference>([
-  "short",
-  "medium",
-  "long",
-]);
-
-const writingSampleTypes = new Set<WritingSampleType>([
-  "like",
-  "hate",
+const writingSampleBuckets = new Set<WritingSampleBucket>([
+  "sounds_like_me",
+  "want_to_sound",
+  "never_sound",
 ]);
 
 const writingChannels = new Set<WritingChannel>([
@@ -688,7 +593,6 @@ export function identitySearchSection(aggregate: CandidateProfileAggregate): Ide
     fullName: aggregate.profile.fullName,
     preferredName: aggregate.profile.preferredName,
     location: aggregate.profile.location,
-    workAuthorization: aggregate.profile.workAuthorization,
     linkedInUrl: aggregate.profile.linkedInUrl,
     portfolioUrl: aggregate.profile.portfolioUrl,
     personalWebsiteUrl: aggregate.profile.personalWebsiteUrl,
@@ -696,12 +600,19 @@ export function identitySearchSection(aggregate: CandidateProfileAggregate): Ide
     remotePreference: aggregate.profile.remotePreference,
     targetCompensationMin: aggregate.profile.targetCompensationMin,
     targetCompensationPreferred: aggregate.profile.targetCompensationPreferred,
-    availability: aggregate.profile.availability,
     employmentTypes: aggregate.preferences?.employmentTypes ?? [],
     targetIndustries: aggregate.preferences?.targetIndustries ?? [],
     avoidIndustries: aggregate.preferences?.avoidIndustries ?? [],
     targetCompanyTypes: aggregate.preferences?.targetCompanyTypes ?? [],
     avoidCompanies: aggregate.preferences?.avoidCompanies ?? [],
+  };
+}
+
+export function fitSignalsSection(aggregate: CandidateProfileAggregate): FitSignalsSection {
+  return {
+    id: aggregate.fitSignals?.id,
+    goodSignals: aggregate.fitSignals?.goodSignals ?? [],
+    poorFitSignals: aggregate.fitSignals?.poorFitSignals ?? [],
   };
 }
 
@@ -744,43 +655,14 @@ export function resumeUploadsSection(aggregate: CandidateProfileAggregate): Resu
   };
 }
 
-export function workHistorySection(aggregate: CandidateProfileAggregate): WorkHistorySection {
+export function workExamplesSection(aggregate: CandidateProfileAggregate): WorkExamplesSection {
   return {
-    workHistory: aggregate.workHistory.map((item): WorkHistorySectionItem => ({
-      id: item.id,
-      company: item.company,
-      title: item.title,
-      startDate: item.startDate,
-      endDate: item.endDate,
-      currentRole: item.currentRole,
-      responsibilities: item.responsibilities,
-      accomplishments: item.accomplishments,
-      skills: item.skills,
-      metrics: item.metrics,
-      associatedResumeIds: item.associatedResumeIds,
-      source: item.source,
-    })),
-  };
-}
-
-export function proofLibrarySection(aggregate: CandidateProfileAggregate): ProofLibrarySection {
-  return {
-    projects: aggregate.projects.map((project): ProofLibrarySectionItem => ({
-      id: project.id,
-      name: project.name,
-      link: project.link,
-      description: project.description,
-      candidateRole: project.candidateRole,
-      whatThisProves: project.whatThisProves,
-      capabilitiesDemonstrated: project.capabilitiesDemonstrated,
-      keyResponsibilitiesSupported: project.keyResponsibilitiesSupported,
-      requiredExperienceSupported: project.requiredExperienceSupported,
-      industriesRelevant: project.industriesRelevant,
-      bestUsedFor: project.bestUsedFor,
-      avoidUsingFor: project.avoidUsingFor,
-      metricsResults: project.metricsResults,
-      caveats: project.caveats,
-      confidence: project.confidence,
+    workExamples: aggregate.workExamples.map((example): WorkExampleSectionItem => ({
+      id: example.id,
+      title: example.title,
+      oneHitter: example.oneHitter,
+      link: example.link,
+      context: example.context,
     })),
   };
 }
@@ -792,8 +674,7 @@ export function skillsInventorySection(aggregate: CandidateProfileAggregate): Sk
       skillName: skill.skillName,
       proficiency: skill.proficiency,
       evidence: skill.evidence,
-      relatedProjectIds: skill.relatedProjectIds,
-      relatedWorkHistoryIds: skill.relatedWorkHistoryIds,
+      relatedWorkExampleIds: skill.relatedWorkExampleIds,
       bestRoleFit: skill.bestRoleFit,
       doNotOverclaim: skill.doNotOverclaim,
     })),
@@ -827,20 +708,14 @@ export function qualityNarrativeSection(
   };
 }
 
-export function communicationStyleSection(aggregate: CandidateProfileAggregate): CommunicationStyleSection {
+export function voicePersonalitySection(aggregate: CandidateProfileAggregate): VoicePersonalitySection {
   return {
-    settings: aggregate.communicationStyle ? {
-      id: aggregate.communicationStyle.id,
-      preferredTone: aggregate.communicationStyle.preferredTone,
-      formalityLevel: aggregate.communicationStyle.formalityLevel,
-      humorLevel: aggregate.communicationStyle.humorLevel,
-      messageLengthPreference: aggregate.communicationStyle.messageLengthPreference,
-      greetingPreferences: aggregate.communicationStyle.greetingPreferences,
-      signoffPreferences: aggregate.communicationStyle.signoffPreferences,
-      phrasesToAvoid: aggregate.communicationStyle.phrasesToAvoid,
-      phrasesThatSoundLikeMe: aggregate.communicationStyle.phrasesThatSoundLikeMe,
-    } : undefined,
-    fields: qualityNarrativeSection(aggregate, "communication_style").fields,
+    id: aggregate.voicePersonality?.id,
+    q1Value: aggregate.voicePersonality?.q1Value ?? "",
+    q4Opinion: aggregate.voicePersonality?.q4Opinion ?? "",
+    toneTags: aggregate.voicePersonality?.toneTags ?? [],
+    avoidTags: aggregate.voicePersonality?.avoidTags ?? [],
+    avoidNote: aggregate.voicePersonality?.avoidNote ?? "",
   };
 }
 
@@ -848,10 +723,10 @@ export function writingSamplesSection(aggregate: CandidateProfileAggregate): Wri
   return {
     writingSamples: aggregate.writingSamples.map((sample): WritingSamplesSectionItem => ({
       id: sample.id,
-      sampleType: sample.sampleType,
+      bucket: sample.bucket,
       channel: sample.channel,
       text: sample.text,
-      whyItWorksOrFails: sample.whyItWorksOrFails,
+      tags: sample.tags,
     })),
   };
 }
@@ -989,6 +864,62 @@ export function parseIdentitySearchSectionPatch(input: unknown): ParseIdentitySe
   return {
     ok: true,
     patch,
+  };
+}
+
+export function parseFitSignalsSectionPatch(input: unknown): ParseFitSignalsSectionPatchResult {
+  if (!input || typeof input !== "object" || Array.isArray(input)) {
+    return {
+      ok: false,
+      issues: [{
+        field: "body",
+        message: "Expected a Fit Signals JSON object.",
+      }],
+    };
+  }
+
+  const source = input as Record<string, unknown>;
+  const patch: Partial<FitSignalsSectionPatch> = {};
+  const issues: SectionValidationIssue[] = [];
+
+  if ("id" in source) {
+    const id = cleanString(source.id);
+    if (source.id !== null && source.id !== undefined && !id) {
+      issues.push({
+        field: "id",
+        message: "id must be a string.",
+      });
+    } else {
+      patch.id = id;
+    }
+  }
+
+  for (const field of fitSignalsListFields) {
+    const values = cleanStringList(source[field]);
+    if (!values) {
+      issues.push({
+        field,
+        message: `${field} must be an array of strings.`,
+      });
+    } else {
+      patch[field] = values;
+    }
+  }
+
+  if (issues.length > 0) {
+    return {
+      ok: false,
+      issues,
+    };
+  }
+
+  return {
+    ok: true,
+    patch: {
+      id: patch.id,
+      goodSignals: patch.goodSignals ?? [],
+      poorFitSignals: patch.poorFitSignals ?? [],
+    },
   };
 }
 
@@ -1204,25 +1135,25 @@ export function parseResumeUploadsSectionPatch(input: unknown): ParseResumeUploa
   };
 }
 
-function parseWorkHistoryItem(input: unknown, index: number) {
+function parseWorkExampleItem(input: unknown, index: number) {
   const issues: SectionValidationIssue[] = [];
   if (!input || typeof input !== "object" || Array.isArray(input)) {
     return {
       issues: [{
-        field: `workHistory.${index}`,
-        message: "Work History item must be an object.",
+        field: `workExamples.${index}`,
+        message: "Work Example must be an object.",
       }],
     };
   }
 
   const source = input as Record<string, unknown>;
-  const item: Partial<WorkHistorySectionItem> = {};
+  const item: Partial<WorkExampleSectionItem> = {};
 
-  for (const field of workHistoryStringFields) {
+  for (const field of workExampleStringFields) {
     const value = cleanString(source[field]);
     if (!value) {
       issues.push({
-        field: `workHistory.${index}.${field}`,
+        field: `workExamples.${index}.${field}`,
         message: `${field} is required.`,
       });
     } else {
@@ -1230,84 +1161,54 @@ function parseWorkHistoryItem(input: unknown, index: number) {
     }
   }
 
-  for (const field of workHistoryOptionalStringFields) {
+  for (const field of workExampleOptionalStringFields) {
     if (!(field in source)) continue;
     item[field] = optionalString(cleanString(source[field]));
   }
 
-  if (typeof source.currentRole !== "boolean") {
-    issues.push({
-      field: `workHistory.${index}.currentRole`,
-      message: "currentRole must be a boolean.",
-    });
-  } else {
-    item.currentRole = source.currentRole;
-  }
-
-  for (const field of workHistoryListFields) {
-    const values = cleanStringList(source[field]);
-    if (!values) {
-      issues.push({
-        field: `workHistory.${index}.${field}`,
-        message: `${field} must be an array of strings.`,
-      });
-    } else {
-      item[field] = values;
-    }
-  }
-
-  if (!workHistorySources.has(source.source as WorkHistoryItem["source"])) {
-    issues.push({
-      field: `workHistory.${index}.source`,
-      message: "source must be resume_parse or user_corrected.",
-    });
-  } else {
-    item.source = source.source as WorkHistoryItem["source"];
-  }
-
   if (issues.length > 0) return { issues };
   return {
-    item: item as WorkHistorySectionItem,
+    item: item as WorkExampleSectionItem,
     issues,
   };
 }
 
-export function parseWorkHistorySectionPatch(input: unknown): ParseWorkHistorySectionPatchResult {
+export function parseWorkExamplesSectionPatch(input: unknown): ParseWorkExamplesSectionPatchResult {
   if (!input || typeof input !== "object" || Array.isArray(input)) {
     return {
       ok: false,
       issues: [{
         field: "body",
-        message: "Expected a Work History JSON object.",
+        message: "Expected a Work Examples JSON object.",
       }],
     };
   }
 
   const source = input as Record<string, unknown>;
-  if (!Array.isArray(source.workHistory)) {
+  if (!Array.isArray(source.workExamples)) {
     return {
       ok: false,
       issues: [{
-        field: "workHistory",
-        message: "workHistory must be an array.",
+        field: "workExamples",
+        message: "workExamples must be an array.",
       }],
     };
   }
 
   const issues: SectionValidationIssue[] = [];
-  const workHistory = source.workHistory.flatMap((item, index) => {
-    const parsed = parseWorkHistoryItem(item, index);
+  const workExamples = source.workExamples.flatMap((item, index) => {
+    const parsed = parseWorkExampleItem(item, index);
     issues.push(...parsed.issues);
     return parsed.item ? [parsed.item] : [];
   });
-  const duplicatedIds = workHistory
-    .map((item) => item.id)
+  const duplicatedIds = workExamples
+    .map((example) => example.id)
     .filter((id, index, ids) => ids.indexOf(id) !== index);
 
   for (const id of Array.from(new Set(duplicatedIds))) {
     issues.push({
-      field: "workHistory",
-      message: `Duplicate Work History id: ${id}.`,
+      field: "workExamples",
+      message: `Duplicate Work Example id: ${id}.`,
     });
   }
 
@@ -1321,120 +1222,7 @@ export function parseWorkHistorySectionPatch(input: unknown): ParseWorkHistorySe
   return {
     ok: true,
     patch: {
-      workHistory,
-    },
-  };
-}
-
-function parseProofItem(input: unknown, index: number) {
-  const issues: SectionValidationIssue[] = [];
-  if (!input || typeof input !== "object" || Array.isArray(input)) {
-    return {
-      issues: [{
-        field: `projects.${index}`,
-        message: "Proof object must be an object.",
-      }],
-    };
-  }
-
-  const source = input as Record<string, unknown>;
-  const item: Partial<ProofLibrarySectionItem> = {};
-
-  for (const field of proofStringFields) {
-    const value = cleanString(source[field]);
-    if (!value) {
-      issues.push({
-        field: `projects.${index}.${field}`,
-        message: `${field} is required.`,
-      });
-    } else {
-      item[field] = value;
-    }
-  }
-
-  for (const field of proofOptionalStringFields) {
-    if (!(field in source)) continue;
-    item[field] = optionalString(cleanString(source[field]));
-  }
-
-  for (const field of proofListFields) {
-    const values = cleanStringList(source[field]);
-    if (!values) {
-      issues.push({
-        field: `projects.${index}.${field}`,
-        message: `${field} must be an array of strings.`,
-      });
-    } else {
-      item[field] = values;
-    }
-  }
-
-  if (!proofConfidences.has(source.confidence as ProofConfidence)) {
-    issues.push({
-      field: `projects.${index}.confidence`,
-      message: "confidence must be low, medium, or high.",
-    });
-  } else {
-    item.confidence = source.confidence as ProofConfidence;
-  }
-
-  if (issues.length > 0) return { issues };
-  return {
-    item: item as ProofLibrarySectionItem,
-    issues,
-  };
-}
-
-export function parseProofLibrarySectionPatch(input: unknown): ParseProofLibrarySectionPatchResult {
-  if (!input || typeof input !== "object" || Array.isArray(input)) {
-    return {
-      ok: false,
-      issues: [{
-        field: "body",
-        message: "Expected a Proof Library JSON object.",
-      }],
-    };
-  }
-
-  const source = input as Record<string, unknown>;
-  if (!Array.isArray(source.projects)) {
-    return {
-      ok: false,
-      issues: [{
-        field: "projects",
-        message: "projects must be an array.",
-      }],
-    };
-  }
-
-  const issues: SectionValidationIssue[] = [];
-  const projects = source.projects.flatMap((item, index) => {
-    const parsed = parseProofItem(item, index);
-    issues.push(...parsed.issues);
-    return parsed.item ? [parsed.item] : [];
-  });
-  const duplicatedIds = projects
-    .map((project) => project.id)
-    .filter((id, index, ids) => ids.indexOf(id) !== index);
-
-  for (const id of Array.from(new Set(duplicatedIds))) {
-    issues.push({
-      field: "projects",
-      message: `Duplicate Proof object id: ${id}.`,
-    });
-  }
-
-  if (issues.length > 0) {
-    return {
-      ok: false,
-      issues,
-    };
-  }
-
-  return {
-    ok: true,
-    patch: {
-      projects,
+      workExamples,
     },
   };
 }
@@ -1685,100 +1473,57 @@ export function parseQualityNarrativeSectionPatch(
   };
 }
 
-function parseCommunicationStyleSettings(input: unknown) {
-  const issues: SectionValidationIssue[] = [];
-  if (!input || typeof input !== "object" || Array.isArray(input)) {
-    return {
-      issues: [{
-        field: "settings",
-        message: "settings must be an object.",
-      }],
-    };
-  }
-
-  const source = input as Record<string, unknown>;
-  const settings: Partial<CommunicationStyleSettingsSection> = {};
-
-  if ("id" in source) {
-    const id = cleanString(source.id);
-    if (source.id !== null && source.id !== undefined && !id) {
-      issues.push({
-        field: "settings.id",
-        message: "id must be a string.",
-      });
-    } else {
-      settings.id = id;
-    }
-  }
-
-  for (const field of communicationStyleListFields) {
-    const values = cleanStringList(source[field]);
-    if (!values) {
-      issues.push({
-        field: `settings.${field}`,
-        message: `${field} must be an array of strings.`,
-      });
-    } else {
-      settings[field] = values;
-    }
-  }
-
-  if (!formalityLevels.has(source.formalityLevel as FormalityLevel)) {
-    issues.push({
-      field: "settings.formalityLevel",
-      message: "formalityLevel must be low, medium, or high.",
-    });
-  } else {
-    settings.formalityLevel = source.formalityLevel as FormalityLevel;
-  }
-
-  if (!humorLevels.has(source.humorLevel as HumorLevel)) {
-    issues.push({
-      field: "settings.humorLevel",
-      message: "humorLevel must be none, light, or medium.",
-    });
-  } else {
-    settings.humorLevel = source.humorLevel as HumorLevel;
-  }
-
-  if (!messageLengthPreferences.has(source.messageLengthPreference as MessageLengthPreference)) {
-    issues.push({
-      field: "settings.messageLengthPreference",
-      message: "messageLengthPreference must be short, medium, or long.",
-    });
-  } else {
-    settings.messageLengthPreference = source.messageLengthPreference as MessageLengthPreference;
-  }
-
-  if (issues.length > 0) return { issues };
-  return {
-    settings: settings as CommunicationStyleSettingsSection,
-    issues,
-  };
-}
-
-export function parseCommunicationStyleSectionPatch(input: unknown): ParseCommunicationStyleSectionPatchResult {
+export function parseVoicePersonalitySectionPatch(input: unknown): ParseVoicePersonalitySectionPatchResult {
   if (!input || typeof input !== "object" || Array.isArray(input)) {
     return {
       ok: false,
       issues: [{
         field: "body",
-        message: "Expected a Communication Style JSON object.",
+        message: "Expected a Voice & Personality JSON object.",
       }],
     };
   }
 
   const source = input as Record<string, unknown>;
-  const parsedSettings = parseCommunicationStyleSettings(source.settings);
-  const parsedFields = parseQualityNarrativeSectionPatch("communication_style", {
-    fields: source.fields,
-  });
-  const issues = [...parsedSettings.issues];
-  if (parsedFields.ok === false) {
-    issues.push(...parsedFields.issues);
+  const patch: Partial<VoicePersonalitySectionPatch> = {};
+  const issues: SectionValidationIssue[] = [];
+
+  if ("id" in source) {
+    const id = cleanString(source.id);
+    if (source.id !== null && source.id !== undefined && !id) {
+      issues.push({
+        field: "id",
+        message: "id must be a string.",
+      });
+    } else {
+      patch.id = id;
+    }
   }
 
-  if (issues.length > 0 || !parsedSettings.settings || parsedFields.ok === false) {
+  for (const field of voicePersonalityStringFields) {
+    if (source[field] !== null && source[field] !== undefined && typeof source[field] !== "string") {
+      issues.push({
+        field,
+        message: `${field} must be a string.`,
+      });
+      continue;
+    }
+    patch[field] = cleanString(source[field]) ?? "";
+  }
+
+  for (const field of voicePersonalityListFields) {
+    const values = cleanStringList(source[field]);
+    if (!values) {
+      issues.push({
+        field,
+        message: `${field} must be an array of strings.`,
+      });
+    } else {
+      patch[field] = values;
+    }
+  }
+
+  if (issues.length > 0) {
     return {
       ok: false,
       issues,
@@ -1788,8 +1533,12 @@ export function parseCommunicationStyleSectionPatch(input: unknown): ParseCommun
   return {
     ok: true,
     patch: {
-      settings: parsedSettings.settings,
-      fields: parsedFields.patch.fields,
+      id: patch.id,
+      q1Value: patch.q1Value ?? "",
+      q4Opinion: patch.q4Opinion ?? "",
+      toneTags: patch.toneTags ?? [],
+      avoidTags: patch.avoidTags ?? [],
+      avoidNote: patch.avoidNote ?? "",
     },
   };
 }
@@ -1809,7 +1558,6 @@ function parseWritingSampleItem(input: unknown, index: number) {
   const item: Partial<WritingSamplesSectionItem> = {};
   const id = cleanString(source.id);
   const text = cleanString(source.text);
-  const whyItWorksOrFails = cleanString(source.whyItWorksOrFails);
 
   if (!id) {
     issues.push({
@@ -1820,13 +1568,13 @@ function parseWritingSampleItem(input: unknown, index: number) {
     item.id = id;
   }
 
-  if (!writingSampleTypes.has(source.sampleType as WritingSampleType)) {
+  if (!writingSampleBuckets.has(source.bucket as WritingSampleBucket)) {
     issues.push({
-      field: `writingSamples.${index}.sampleType`,
-      message: "sampleType must be like or hate.",
+      field: `writingSamples.${index}.bucket`,
+      message: "bucket must be sounds_like_me, want_to_sound, or never_sound.",
     });
   } else {
-    item.sampleType = source.sampleType as WritingSampleType;
+    item.bucket = source.bucket as WritingSampleBucket;
   }
 
   if (!writingChannels.has(source.channel as WritingChannel)) {
@@ -1847,13 +1595,14 @@ function parseWritingSampleItem(input: unknown, index: number) {
     item.text = text;
   }
 
-  if (!whyItWorksOrFails) {
+  const tags = cleanStringList(source.tags);
+  if (!tags) {
     issues.push({
-      field: `writingSamples.${index}.whyItWorksOrFails`,
-      message: "whyItWorksOrFails is required.",
+      field: `writingSamples.${index}.tags`,
+      message: "tags must be an array of strings.",
     });
   } else {
-    item.whyItWorksOrFails = whyItWorksOrFails;
+    item.tags = tags;
   }
 
   if (issues.length > 0) return { issues };
@@ -2153,46 +1902,18 @@ export function validateResumeUploadsSectionPatch(
   return issues;
 }
 
-export function validateWorkHistorySectionPatch(
-  aggregate: CandidateProfileAggregate,
-  patch: WorkHistorySectionPatch,
-): SectionValidationIssue[] {
-  const resumeIds = new Set(aggregate.resumes.map((resume) => resume.id));
-  const issues: SectionValidationIssue[] = [];
-
-  patch.workHistory.forEach((item, index) => {
-    const invalidResumeIds = item.associatedResumeIds.filter((resumeId) => !resumeIds.has(resumeId));
-    for (const resumeId of invalidResumeIds) {
-      issues.push({
-        field: `workHistory.${index}.associatedResumeIds`,
-        message: `Unknown Resume id: ${resumeId}.`,
-      });
-    }
-  });
-
-  return issues;
-}
-
 export function validateSkillsInventorySectionPatch(
   aggregate: CandidateProfileAggregate,
   patch: SkillsInventorySectionPatch,
 ): SectionValidationIssue[] {
-  const projectIds = new Set(aggregate.projects.map((project) => project.id));
-  const workHistoryIds = new Set(aggregate.workHistory.map((item) => item.id));
+  const workExampleIds = new Set(aggregate.workExamples.map((example) => example.id));
   const issues: SectionValidationIssue[] = [];
 
   patch.skills.forEach((skill, index) => {
-    for (const projectId of skill.relatedProjectIds.filter((id) => !projectIds.has(id))) {
+    for (const workExampleId of skill.relatedWorkExampleIds.filter((id) => !workExampleIds.has(id))) {
       issues.push({
-        field: `skills.${index}.relatedProjectIds`,
-        message: `Unknown Proof object id: ${projectId}.`,
-      });
-    }
-
-    for (const workHistoryId of skill.relatedWorkHistoryIds.filter((id) => !workHistoryIds.has(id))) {
-      issues.push({
-        field: `skills.${index}.relatedWorkHistoryIds`,
-        message: `Unknown Work History id: ${workHistoryId}.`,
+        field: `skills.${index}.relatedWorkExampleIds`,
+        message: `Unknown Work Example id: ${workExampleId}.`,
       });
     }
   });
@@ -2213,7 +1934,6 @@ export function applyIdentitySearchSectionPatch(
       fullName: patch.fullName ?? aggregate.profile.fullName,
       preferredName: "preferredName" in patch ? patch.preferredName : aggregate.profile.preferredName,
       location: patch.location ?? aggregate.profile.location,
-      workAuthorization: patch.workAuthorization ?? aggregate.profile.workAuthorization,
       linkedInUrl: "linkedInUrl" in patch ? patch.linkedInUrl : aggregate.profile.linkedInUrl,
       portfolioUrl: "portfolioUrl" in patch ? patch.portfolioUrl : aggregate.profile.portfolioUrl,
       personalWebsiteUrl: "personalWebsiteUrl" in patch ? patch.personalWebsiteUrl : aggregate.profile.personalWebsiteUrl,
@@ -2221,7 +1941,6 @@ export function applyIdentitySearchSectionPatch(
       remotePreference: patch.remotePreference ?? aggregate.profile.remotePreference,
       targetCompensationMin: "targetCompensationMin" in patch ? patch.targetCompensationMin : aggregate.profile.targetCompensationMin,
       targetCompensationPreferred: "targetCompensationPreferred" in patch ? patch.targetCompensationPreferred : aggregate.profile.targetCompensationPreferred,
-      availability: patch.availability ?? aggregate.profile.availability,
       updatedAt,
     },
     preferences: {
@@ -2246,6 +1965,43 @@ export function applyIdentitySearchSectionPatch(
       profileQuality,
     },
     section: identitySearchSection(nextAggregate),
+    profileQuality,
+  };
+}
+
+export function applyFitSignalsSectionPatch(
+  aggregate: CandidateProfileAggregate,
+  patch: FitSignalsSectionPatch,
+  updatedAt = new Date().toISOString(),
+): ApplyFitSignalsSectionResult {
+  const nextFitSignals: FitSignals = {
+    id: patch.id ?? aggregate.fitSignals?.id ?? `fit-signals-${aggregate.profile.id}`,
+    profileId: aggregate.profile.id,
+    goodSignals: patch.goodSignals,
+    poorFitSignals: patch.poorFitSignals,
+    createdAt: aggregate.fitSignals?.createdAt ?? updatedAt,
+    updatedAt,
+  };
+  const nextAggregate: CandidateProfileAggregate = {
+    ...aggregate,
+    fitSignals: nextFitSignals,
+    profile: {
+      ...aggregate.profile,
+      updatedAt,
+    },
+  };
+  const profileQuality = evaluateCandidateProfileQuality(nextAggregate, updatedAt);
+
+  return {
+    aggregate: {
+      ...nextAggregate,
+      profile: {
+        ...nextAggregate.profile,
+        status: profileQuality.status,
+      },
+      profileQuality,
+    },
+    section: fitSignalsSection(nextAggregate),
     profileQuality,
   };
 }
@@ -2305,11 +2061,6 @@ export function applyResumeUploadsSectionPatch(
       resumeIds: track.resumeIds.filter((resumeId) => activeResumeIds.has(resumeId)),
       updatedAt,
     })),
-    workHistory: aggregate.workHistory.map((item) => ({
-      ...item,
-      associatedResumeIds: item.associatedResumeIds.filter((resumeId) => activeResumeIds.has(resumeId)),
-      updatedAt,
-    })),
     profile: {
       ...aggregate.profile,
       updatedAt,
@@ -2331,24 +2082,24 @@ export function applyResumeUploadsSectionPatch(
   };
 }
 
-export function applyWorkHistorySectionPatch(
+export function applyWorkExamplesSectionPatch(
   aggregate: CandidateProfileAggregate,
-  patch: WorkHistorySectionPatch,
+  patch: WorkExamplesSectionPatch,
   updatedAt = new Date().toISOString(),
-): ApplyWorkHistorySectionResult {
-  const nextWorkHistory: WorkHistoryItem[] = patch.workHistory.map((item) => ({
-    ...item,
+): ApplyWorkExamplesSectionResult {
+  const nextWorkExamples: WorkExample[] = patch.workExamples.map((example) => ({
+    ...example,
     profileId: aggregate.profile.id,
-    createdAt: aggregate.workHistory.find((existing) => existing.id === item.id)?.createdAt ?? updatedAt,
+    createdAt: aggregate.workExamples.find((existing) => existing.id === example.id)?.createdAt ?? updatedAt,
     updatedAt,
   }));
-  const activeWorkHistoryIds = new Set(nextWorkHistory.map((item) => item.id));
+  const activeWorkExampleIds = new Set(nextWorkExamples.map((example) => example.id));
   const nextAggregate: CandidateProfileAggregate = {
     ...aggregate,
-    workHistory: nextWorkHistory,
+    workExamples: nextWorkExamples,
     skills: aggregate.skills.map((skill) => ({
       ...skill,
-      relatedWorkHistoryIds: skill.relatedWorkHistoryIds.filter((workHistoryId) => activeWorkHistoryIds.has(workHistoryId)),
+      relatedWorkExampleIds: skill.relatedWorkExampleIds.filter((exampleId) => activeWorkExampleIds.has(exampleId)),
       updatedAt,
     })),
     profile: {
@@ -2367,48 +2118,7 @@ export function applyWorkHistorySectionPatch(
       },
       profileQuality,
     },
-    section: workHistorySection(nextAggregate),
-    profileQuality,
-  };
-}
-
-export function applyProofLibrarySectionPatch(
-  aggregate: CandidateProfileAggregate,
-  patch: ProofLibrarySectionPatch,
-  updatedAt = new Date().toISOString(),
-): ApplyProofLibrarySectionResult {
-  const nextProjects: ProjectProof[] = patch.projects.map((project) => ({
-    ...project,
-    profileId: aggregate.profile.id,
-    createdAt: aggregate.projects.find((existing) => existing.id === project.id)?.createdAt ?? updatedAt,
-    updatedAt,
-  }));
-  const activeProjectIds = new Set(nextProjects.map((project) => project.id));
-  const nextAggregate: CandidateProfileAggregate = {
-    ...aggregate,
-    projects: nextProjects,
-    skills: aggregate.skills.map((skill) => ({
-      ...skill,
-      relatedProjectIds: skill.relatedProjectIds.filter((projectId) => activeProjectIds.has(projectId)),
-      updatedAt,
-    })),
-    profile: {
-      ...aggregate.profile,
-      updatedAt,
-    },
-  };
-  const profileQuality = evaluateCandidateProfileQuality(nextAggregate, updatedAt);
-
-  return {
-    aggregate: {
-      ...nextAggregate,
-      profile: {
-        ...nextAggregate.profile,
-        status: profileQuality.status,
-      },
-      profileQuality,
-    },
-    section: proofLibrarySection(nextAggregate),
+    section: workExamplesSection(nextAggregate),
     profileQuality,
   };
 }
@@ -2494,39 +2204,25 @@ export function applyQualityNarrativeSectionPatch(
   };
 }
 
-export function applyCommunicationStyleSectionPatch(
+export function applyVoicePersonalitySectionPatch(
   aggregate: CandidateProfileAggregate,
-  patch: CommunicationStyleSectionPatch,
+  patch: VoicePersonalitySectionPatch,
   updatedAt = new Date().toISOString(),
-): ApplyCommunicationStyleSectionResult {
-  const section = "communication_style";
-  const existingFields = new Map(
-    aggregate.qualityFields
-      .filter((field) => field.section === section)
-      .map((field) => [field.id, field]),
-  );
-  const nextSectionFields: QualityScoredTextField[] = patch.fields.map((field) => ({
-    ...field,
+): ApplyVoicePersonalitySectionResult {
+  const nextVoicePersonality: VoicePersonality = {
+    id: patch.id ?? aggregate.voicePersonality?.id ?? `voice-personality-${aggregate.profile.id}`,
     profileId: aggregate.profile.id,
-    section,
-    feedback: field.feedback,
-    createdAt: existingFields.get(field.id)?.createdAt ?? updatedAt,
-    updatedAt,
-  }));
-  const nextCommunicationStyle: CommunicationStyleSettings = {
-    ...patch.settings,
-    id: patch.settings.id ?? aggregate.communicationStyle?.id ?? `communication-style-${aggregate.profile.id}`,
-    profileId: aggregate.profile.id,
-    createdAt: aggregate.communicationStyle?.createdAt ?? updatedAt,
+    q1Value: patch.q1Value,
+    q4Opinion: patch.q4Opinion,
+    toneTags: patch.toneTags,
+    avoidTags: patch.avoidTags,
+    avoidNote: patch.avoidNote,
+    createdAt: aggregate.voicePersonality?.createdAt ?? updatedAt,
     updatedAt,
   };
   const nextAggregate: CandidateProfileAggregate = {
     ...aggregate,
-    communicationStyle: nextCommunicationStyle,
-    qualityFields: [
-      ...aggregate.qualityFields.filter((field) => field.section !== section),
-      ...nextSectionFields,
-    ],
+    voicePersonality: nextVoicePersonality,
     profile: {
       ...aggregate.profile,
       updatedAt,
@@ -2543,7 +2239,7 @@ export function applyCommunicationStyleSectionPatch(
       },
       profileQuality,
     },
-    section: communicationStyleSection(nextAggregate),
+    section: voicePersonalitySection(nextAggregate),
     profileQuality,
   };
 }
