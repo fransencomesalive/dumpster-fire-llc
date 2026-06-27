@@ -127,9 +127,17 @@ Protocol (`git status`, read this plan + the two design docs).
 - [ ] D3. Catalogue wiring: NA locations (GeoNames), industries (LinkedIn V2), skills (Lightcast).
 
 ## Phase E — Outreach generator
-- [ ] E1. Generator route: profile.md + job + contact → message; model selects one relevant
-  Work Example one-hitter (+ link), obeys Voice Profile + per-track/per-skill do-not-overclaim +
-  never-sound-like-this. User can delete the inserted example.
+- [x] E1. DONE 2026-06-27. `lib/public-profile/outreach-generator.ts`: `generateOutreachMessage(input,
+  {callModel?})` → `{message, insertedExample: {oneHitter, link?} | null}`; system prompt = write-as-this-
+  person + obey the profile.md Voice Profile + Guardrails (never-sound / do-not-overclaim), select ≤1
+  relevant Work Example and weave in its one-hitter (+link). `insertedExample` is returned so the UI can
+  let the user delete it. `parseOutreachRequest` validates job(title/company/description)+contact(role,
+  name?/seniority?). `generateOutreachMessageForUser` (DI loadAggregate + callModel) maps
+  not_found/profile_incomplete/model_unavailable/generated. HTTP: `handleOutreachGeneratorRequest` (POST,
+  injectable `generateOutreach`) + route `app/api/public-profile/outreach`. claude-opus-4-8, lazy SDK,
+  graceful when no key. Tests: `test-public-profile-outreach.mjs` (mocked model: parse/fences/degrade/
+  validation/service-status) + api handler statuses (400/404/409/503/200). 0 in-file tsc errors; full
+  suite green.
 
 ## Open decisions to confirm before/within the relevant phase
 - OD1 (A1): Does `CommunicationStyleSettings` fully dissolve into tone tags + samples, or keep

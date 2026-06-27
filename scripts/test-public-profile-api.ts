@@ -8,6 +8,7 @@ import {
   handleLeadershipProfileSectionPatchRequest,
   handleOutreachRulesSectionGetRequest,
   handleOutreachRulesSectionPatchRequest,
+  handleOutreachGeneratorRequest,
   handlePublicProfileBootstrapRequest,
   handlePublicProfileRegenerationRequest,
   handleResumeUploadsSectionGetRequest,
@@ -442,6 +443,67 @@ async function main() {
     now: () => now, getSession: async () => authed(), repositoryRequest,
     updateLeadershipProfile: async () => ({ status: "updated", userId: "user-1", section: leadershipView, profileQuality: completeQuality(), aggregate: agg }),
   }), leadershipView);
+
+  // ---- Outreach generator ----
+  const outreachBody = {
+    job: { title: "Program Director", company: "Useful Studio", description: "Lead delivery." },
+    contact: { name: "Dana", role: "Hiring Manager" },
+  };
+
+  const outreachValidation = await handleOutreachGeneratorRequest(patchRequest("outreach", { job: {}, contact: {} }), {
+    getSession: async () => authed(),
+    repositoryRequest,
+    generateOutreach: async () => { throw new Error("should not generate on validation error"); },
+  });
+  assert.equal(outreachValidation.status, 400);
+  assert.equal((await body(outreachValidation)).status, "validation_error");
+
+  const outreachNotFound = await handleOutreachGeneratorRequest(patchRequest("outreach", outreachBody), {
+    getSession: async () => authed(),
+    repositoryRequest,
+    generateOutreach: async (_request, userId) => ({ status: "not_found", userId }),
+  });
+  assert.equal(outreachNotFound.status, 404);
+
+  const outreachIncomplete = await handleOutreachGeneratorRequest(patchRequest("outreach", outreachBody), {
+    getSession: async () => authed(),
+    repositoryRequest,
+    generateOutreach: async (_request, userId) => ({ status: "profile_incomplete", userId }),
+  });
+  assert.equal(outreachIncomplete.status, 409);
+
+  const outreachUnavailable = await handleOutreachGeneratorRequest(patchRequest("outreach", outreachBody), {
+    getSession: async () => authed(),
+    repositoryRequest,
+    generateOutreach: async (_request, userId) => ({ status: "model_unavailable", userId }),
+  });
+  assert.equal(outreachUnavailable.status, 503);
+
+  let outreachReceived: unknown;
+  const outreachGenerated = await handleOutreachGeneratorRequest(patchRequest("outreach", outreachBody), {
+    getSession: async () => authed(),
+    repositoryRequest,
+    generateOutreach: async (_request, userId, parsedBody) => {
+      outreachReceived = parsedBody;
+      return {
+        status: "generated",
+        userId,
+        outreach: {
+          message: "Hi Dana — excited about the Program Director role.",
+          insertedExample: { oneHitter: "Cut turnaround 40%.", link: "https://example.com/x" },
+        },
+      };
+    },
+  });
+  assert.equal(outreachGenerated.status, 200);
+  assert.deepEqual(outreachReceived, {
+    job: { title: "Program Director", company: "Useful Studio", description: "Lead delivery." },
+    contact: { name: "Dana", role: "Hiring Manager", seniority: undefined },
+  });
+  const outreachJson = await body(outreachGenerated);
+  assert.equal(outreachJson.status, "generated");
+  assert.match(outreachJson.message as string, /Program Director role/);
+  assert.deepEqual(outreachJson.insertedExample, { oneHitter: "Cut turnaround 40%.", link: "https://example.com/x" });
 
   console.log("public profile api: all assertions passed");
 }

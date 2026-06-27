@@ -6,8 +6,14 @@ import {
   createPublicProfileRepositoryRequest,
   ensureCandidateProfileAggregate,
   getPublicProfileRepositoryConfig,
+  loadCandidateProfileAggregate,
   type PublicProfileRepositoryRequest,
 } from "./repository";
+import {
+  generateOutreachMessageForUser,
+  parseOutreachRequest,
+  type OutreachGenerationResult,
+} from "./outreach-generator";
 import {
   regeneratePublicProfileForUser,
   type PublicProfileRegenerationResult,
@@ -1155,6 +1161,66 @@ export async function handleOutreachRulesSectionPatchRequest(
     profileStatus: result.profileQuality.status,
     section: result.section,
     profileQuality: profileQualitySummary(result.profileQuality),
+  });
+}
+
+export type PublicProfileOutreachHandlerOptions = {
+  env?: NodeJS.ProcessEnv;
+  getSession?: (request: Request) => Promise<PublicAuthSession>;
+  repositoryRequest?: PublicProfileRepositoryRequest;
+  generateOutreach?: (
+    request: PublicProfileRepositoryRequest,
+    userId: string,
+    body: Extract<ReturnType<typeof parseOutreachRequest>, { ok: true }>["value"],
+  ) => Promise<OutreachGenerationResult>;
+};
+
+export async function handleOutreachGeneratorRequest(
+  request: Request,
+  options: PublicProfileOutreachHandlerOptions = {},
+) {
+  const session = await sessionForRequest(request, options);
+  if (session.status !== "authenticated") return authErrorResponse(session);
+
+  const repositoryRequest = repositoryRequestForOptions(options);
+  if (!repositoryRequest) return repositoryConfigErrorResponse();
+
+  const input = await request.json().catch(() => null);
+  const parsed = parseOutreachRequest(input);
+  if (parsed.ok === false) {
+    return json({
+      error: "Invalid outreach request.",
+      status: "validation_error",
+      issues: parsed.issues,
+    }, { status: 400 });
+  }
+
+  const generateOutreach = options.generateOutreach
+    ?? ((repoRequest, userId, body) => generateOutreachMessageForUser({
+      loadAggregate: (requestedUserId) => loadCandidateProfileAggregate(repoRequest, requestedUserId),
+    }, userId, body));
+  const result = await generateOutreach(repositoryRequest, session.userId, parsed.value);
+
+  if (result.status === "not_found") {
+    return json({ error: "Candidate profile not found.", status: result.status }, { status: 404 });
+  }
+  if (result.status === "profile_incomplete") {
+    return json({
+      error: "Complete and generate your profile before generating outreach.",
+      status: result.status,
+    }, { status: 409 });
+  }
+  if (result.status === "model_unavailable") {
+    return json({
+      error: "Outreach generation is not configured.",
+      status: result.status,
+    }, { status: 503 });
+  }
+
+  return json({
+    status: result.status,
+    message: result.outreach.message,
+    insertedExample: result.outreach.insertedExample,
   });
 }
 
