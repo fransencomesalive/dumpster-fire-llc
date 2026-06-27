@@ -45,7 +45,13 @@ Protocol (`git status`, read this plan + the two design docs).
   Samples now bucket+tags; Identity dropped workAuth/availability; Skills use relatedWorkExampleIds.
   - update validation, allowlists, mappers, and the
   `CandidateProfileAggregate` for every A1 change.
-- [ ] **A3. `lib/public-profile/onboarding.ts`** — rewrite the manifest to the ~7 sections:
+- [x] **A3. `lib/public-profile/onboarding.ts`** — DONE 2026-06-27. Manifest keys now: identitySearch,
+  fitSignals, roleTracks, resumes, workExamples, skills, voicePersonality, outreachRules,
+  leadershipProfile. Fit Signals is its own data section/route (parenthetical-under-Identity is a UI
+  grouping for D). New route paths: fit-signals, work-examples, voice-personality (B2 will add/rename
+  the actual route handlers). fitSignals + leadershipProfile required:false; rest required:true
+  (B4 owns final completion rules). onboarding.ts compiles clean; consumers (D2 UI, B1) still red.
+  - rewrite the manifest to the ~7 sections:
   Identity & Search (+Fit Signals), Role Tracks, Resumes, Work Examples, Skills,
   Voice & Personality, Outreach Rules, Leadership (optional).
 - [ ] **A4. Migration** in `supabase/migrations/` — drop work_auth/availability columns, drop
