@@ -550,6 +550,15 @@ function cleanString(value: unknown) {
   return value.trim();
 }
 
+function countWords(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return 0;
+  return trimmed.split(/\s+/).length;
+}
+
+const writingSampleWordCap = 120;
+const avoidNoteWordCap = 25;
+
 function cleanStringList(value: unknown) {
   if (!Array.isArray(value)) return undefined;
   return Array.from(new Set(
@@ -1511,6 +1520,13 @@ export function parseVoicePersonalitySectionPatch(input: unknown): ParseVoicePer
     patch[field] = cleanString(source[field]) ?? "";
   }
 
+  if (patch.avoidNote && countWords(patch.avoidNote) > avoidNoteWordCap) {
+    issues.push({
+      field: "avoidNote",
+      message: `avoidNote must be ${avoidNoteWordCap} words or fewer.`,
+    });
+  }
+
   for (const field of voicePersonalityListFields) {
     const values = cleanStringList(source[field]);
     if (!values) {
@@ -1590,6 +1606,11 @@ function parseWritingSampleItem(input: unknown, index: number) {
     issues.push({
       field: `writingSamples.${index}.text`,
       message: "text is required.",
+    });
+  } else if (countWords(text) > writingSampleWordCap) {
+    issues.push({
+      field: `writingSamples.${index}.text`,
+      message: `text must be ${writingSampleWordCap} words or fewer.`,
     });
   } else {
     item.text = text;
