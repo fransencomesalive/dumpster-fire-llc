@@ -169,18 +169,16 @@ const request: PublicProfileRepositoryRequest = async <T>(
   if ([
     "company_watchlist_items",
     "resumes",
-    "work_history_items",
-    "project_proofs",
+    "fit_signals",
+    "work_examples",
     "skill_profiles",
     "quality_scored_text_fields",
-    "communication_style_settings",
+    "voice_personality",
     "writing_samples",
     "outreach_rule_sets",
     "leadership_profiles",
     "resume_role_tracks",
-    "work_history_resumes",
-    "skill_project_proofs",
-    "skill_work_history_items",
+    "skill_work_examples",
     "role_track_outreach_rules",
   ].includes(table)) {
     return [] as T;

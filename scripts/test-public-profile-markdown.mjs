@@ -1,224 +1,23 @@
 import assert from "node:assert/strict";
 import { generateCandidateProfileMarkdown } from "../lib/public-profile/profile-markdown.ts";
+import { completeCandidateProfileAggregate } from "./fixtures/public-profile.ts";
 
 const now = "2026-06-23T00:00:00.000Z";
-const aggregate = {
-  profile: {
-    id: "profile-1",
-    userId: "user-1",
-    status: "complete",
-    version: 3,
-    fullName: "Avery Candidate",
-    preferredName: "Avery",
-    location: "Denver, CO",
-    workAuthorization: "US authorized",
-    linkedInUrl: "https://linkedin.example/avery",
-    portfolioUrl: "https://portfolio.example",
-    personalWebsiteUrl: "https://avery.example",
-    email: "avery@example.com",
-    remotePreference: "remote_preferred",
-    targetCompensationMin: 140000,
-    targetCompensationPreferred: 175000,
-    availability: "Two weeks",
-    generatedMarkdown: "",
-    createdAt: now,
-    updatedAt: now,
-  },
-  preferences: {
-    id: "preferences-1",
-    profileId: "profile-1",
-    employmentTypes: ["full_time", "contract"],
-    targetIndustries: ["AI", "Creative technology"],
-    avoidIndustries: ["Gambling"],
-    targetCompanyTypes: ["Product-led"],
-    avoidCompanies: ["Example Bad Co"],
-    createdAt: now,
-    updatedAt: now,
-  },
-  companyWatchlist: [{
-    id: "company-1",
-    profileId: "profile-1",
-    companyName: "Useful Studio",
-    reason: "Strong fit for workflow systems",
-    priority: "high",
-    createdAt: now,
-    updatedAt: now,
-  }],
-  roleTracks: [{
-    id: "track-1",
-    profileId: "profile-1",
-    name: "Program Director",
-    description: "Leads ambiguous cross-functional delivery.",
-    corePositioning: "Turns messy strategic work into shipped systems.",
-    outreachAngle: "Workflow and stakeholder alignment.",
-    targetTitles: ["Program Director", "AI Workflow Lead"],
-    keyResponsibilities: ["Stakeholder alignment", "Delivery governance"],
-    requiredExperiencePatterns: ["Cross-functional programs"],
-    strongJobSignals: ["Ambiguous systems work"],
-    weakJobSignals: ["Pure scrum ceremony"],
-    mismatchSignals: ["Staffing-only delivery"],
-    doNotOverclaim: ["Deep platform engineering"],
-    resumeIds: ["resume-1"],
-    createdAt: now,
-    updatedAt: now,
-  }],
-  resumes: [{
-    id: "resume-1",
-    profileId: "profile-1",
-    name: "Program Director Resume",
-    fileUrl: "https://files.example/resume.pdf",
-    parsedText: "Program leadership and workflow systems.",
-    associatedRoleTrackIds: ["track-1"],
-    strengths: ["Program leadership"],
-    gaps: ["No deep engineering management"],
-    useWhen: ["Program-heavy roles"],
-    avoidWhen: ["Pure engineering roles"],
-    parsingQuality: "complete",
-    parsingIssues: [],
-    createdAt: now,
-    updatedAt: now,
-  }],
-  workHistory: [{
-    id: "work-1",
-    profileId: "profile-1",
-    company: "Studio Co",
-    title: "Director of Programs",
-    currentRole: false,
-    responsibilities: ["Led launch operations"],
-    accomplishments: ["Reduced handoff churn"],
-    skills: ["Stakeholder leadership"],
-    metrics: ["30% faster intake"],
-    associatedResumeIds: ["resume-1"],
-    source: "resume_parse",
-    createdAt: now,
-    updatedAt: now,
-  }],
-  projects: [{
-    id: "project-1",
-    profileId: "profile-1",
-    name: "Phred",
-    link: "https://phred.example",
-    description: "Internal AI workflow system.",
-    candidateRole: "Product and program lead",
-    whatThisProves: ["Can orchestrate AI workflow"],
-    capabilitiesDemonstrated: ["Workflow design", "Stakeholder coordination"],
-    keyResponsibilitiesSupported: ["Delivery governance"],
-    requiredExperienceSupported: ["Systems thinking"],
-    industriesRelevant: ["AI"],
-    bestUsedFor: ["AI operations roles"],
-    avoidUsingFor: ["Pure software engineering"],
-    metricsResults: ["Production-ready prototype"],
-    caveats: ["Not a commercial SaaS"],
-    confidence: "high",
-    createdAt: now,
-    updatedAt: now,
-  }],
-  skills: [{
-    id: "skill-1",
-    profileId: "profile-1",
-    skillName: "Workflow Strategy",
-    proficiency: "expert",
-    evidence: ["Phred", "Studio Co"],
-    relatedProjectIds: ["project-1"],
-    relatedWorkHistoryIds: ["work-1"],
-    bestRoleFit: ["Program Director"],
-    doNotOverclaim: ["Backend architecture"],
-    createdAt: now,
-    updatedAt: now,
-  }],
-  qualityFields: [{
-    id: "quality-1",
-    profileId: "profile-1",
-    section: "why_people_hire_me",
-    fieldKey: "problemsPeopleBringMe",
-    value: "Teams bring me ambiguous workflow problems that need operational shape.",
-    quality: "complete",
-    createdAt: now,
-    updatedAt: now,
-  }, {
-    id: "quality-2",
-    profileId: "profile-1",
-    section: "communication_style",
-    fieldKey: "whatIShouldNeverSoundLike",
-    value: "Do not turn me into polished corporate mush.",
-    quality: "complete",
-    createdAt: now,
-    updatedAt: now,
-  }, {
-    id: "quality-3",
-    profileId: "profile-1",
-    section: "outreach_rules",
-    fieldKey: "hiringManagerApproach",
-    value: "Lead with the operational problem and a specific proof object.",
-    quality: "complete",
-    createdAt: now,
-    updatedAt: now,
-  }],
-  communicationStyle: {
-    id: "communication-1",
-    profileId: "profile-1",
-    preferredTone: ["direct", "specific"],
-    formalityLevel: "medium",
-    humorLevel: "light",
-    messageLengthPreference: "short",
-    greetingPreferences: ["Hi first-name"],
-    signoffPreferences: ["Thanks"],
-    phrasesToAvoid: ["I am excited to apply"],
-    phrasesThatSoundLikeMe: ["Here is the useful bit"],
-    createdAt: now,
-    updatedAt: now,
-  },
-  writingSamples: [{
-    id: "sample-1",
-    profileId: "profile-1",
-    sampleType: "like",
-    channel: "email",
-    text: "Short, direct, useful.",
-    whyItWorksOrFails: "It gets to the point.",
-    createdAt: now,
-    updatedAt: now,
-  }, {
-    id: "sample-2",
-    profileId: "profile-1",
-    sampleType: "hate",
-    channel: "linkedin",
-    text: "I am thrilled to submit my candidacy.",
-    whyItWorksOrFails: "It sounds generic.",
-    createdAt: now,
-    updatedAt: now,
-  }],
-  outreachRules: {
-    id: "rules-1",
-    profileId: "profile-1",
-    globalRules: ["No cover-letter posture"],
-    followUpRules: ["One useful follow-up"],
-    linkSelectionRules: ["Use Phred for AI workflow roles"],
-    createdAt: now,
-    updatedAt: now,
-  },
-  roleTrackOutreachRules: [],
-  profileQuality: {
-    id: "quality-profile-1",
-    profileId: "profile-1",
-    status: "complete",
-    incompleteReasons: [],
-    weakFields: [],
-    completeFields: ["identity"],
-    weakResponseCount: 0,
-    lastCheckedAt: now,
-  },
-};
-
-const generated = generateCandidateProfileMarkdown(aggregate, now);
+const generated = generateCandidateProfileMarkdown(completeCandidateProfileAggregate(now), now);
 
 assert.equal(generated.generatedAt, now);
-assert.equal(generated.profileVersion, 3);
+assert.equal(generated.profileVersion, 7);
 assert.match(generated.markdown, /# Candidate Profile/);
+assert.match(generated.markdown, /## Voice Profile/);
+assert.match(generated.markdown, /## Identity & Search/);
+assert.match(generated.markdown, /## Fit Signals/);
 assert.match(generated.markdown, /Program Director/);
+assert.match(generated.markdown, /## Work Examples/);
 assert.match(generated.markdown, /Phred/);
-assert.match(generated.markdown, /Do not turn me into polished corporate mush/);
-assert.match(generated.markdown, /No cover-letter posture/);
-assert.match(generated.markdown, /What I Should Never Sound Like/);
+assert.match(generated.markdown, /Cut internal workflow turnaround 40% in two quarters\./);
+assert.match(generated.markdown, /## Guardrails/);
+assert.match(generated.markdown, /Never sound like this/);
+assert.match(generated.markdown, /Excited to announce synergy\./);
 assert.doesNotMatch(generated.markdown, /undefined|null|\[object Object\]/);
 
 console.log("public profile markdown generation: all assertions passed");

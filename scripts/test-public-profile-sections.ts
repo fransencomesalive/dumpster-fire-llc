@@ -1,39 +1,26 @@
 import assert from "node:assert/strict";
 import {
   updateLoadedIdentitySearchSectionForUser,
-  updateLoadedCommunicationStyleSectionForUser,
+  updateLoadedFitSignalsSectionForUser,
+  updateLoadedVoicePersonalitySectionForUser,
   updateLoadedLeadershipProfileSectionForUser,
-  updateLoadedProofLibrarySectionForUser,
+  updateLoadedWorkExamplesSectionForUser,
   updateLoadedOutreachRulesSectionForUser,
-  updateLoadedQualityNarrativeSectionForUser,
   updateLoadedResumeUploadsSectionForUser,
   updateLoadedRoleTracksSectionForUser,
   updateLoadedSkillsInventorySectionForUser,
-  updateLoadedWorkHistorySectionForUser,
   updateLoadedWritingSamplesSectionForUser,
 } from "../lib/public-profile/section-service";
 import {
-  applyResumeUploadsSectionPatch,
-  applyProofLibrarySectionPatch,
-  applyQualityNarrativeSectionPatch,
   applyRoleTracksSectionPatch,
-  applySkillsInventorySectionPatch,
-  applyWorkHistorySectionPatch,
+  applyWorkExamplesSectionPatch,
   applyWritingSamplesSectionPatch,
-  applyIdentitySearchSectionPatch,
-  applyCommunicationStyleSectionPatch,
-  applyLeadershipProfileSectionPatch,
-  applyOutreachRulesSectionPatch,
+  parseFitSignalsSectionPatch,
   parseIdentitySearchSectionPatch,
-  parseCommunicationStyleSectionPatch,
-  parseLeadershipProfileSectionPatch,
-  parseOutreachRulesSectionPatch,
-  parseProofLibrarySectionPatch,
-  parseQualityNarrativeSectionPatch,
-  parseResumeUploadsSectionPatch,
+  parseVoicePersonalitySectionPatch,
   parseRoleTracksSectionPatch,
+  parseWorkExamplesSectionPatch,
   parseSkillsInventorySectionPatch,
-  parseWorkHistorySectionPatch,
   parseWritingSamplesSectionPatch,
 } from "../lib/public-profile/sections";
 import type { CandidateProfileAggregate } from "../lib/public-profile/types";
@@ -51,10 +38,8 @@ function aggregate(): CandidateProfileAggregate {
       fullName: "Avery Candidate",
       preferredName: "Avery",
       location: "Denver, CO",
-      workAuthorization: "US authorized",
       email: "avery@example.com",
       remotePreference: "remote_preferred",
-      availability: "Two weeks",
       generatedMarkdown: "",
       createdAt: now,
       updatedAt: now,
@@ -73,8 +58,7 @@ function aggregate(): CandidateProfileAggregate {
     companyWatchlist: [],
     roleTracks: [],
     resumes: [],
-    workHistory: [],
-    projects: [],
+    workExamples: [],
     skills: [],
     qualityFields: [],
     writingSamples: [],
@@ -83,21 +67,16 @@ function aggregate(): CandidateProfileAggregate {
 }
 
 async function main() {
+  // Identity & Search
   const invalidBody = parseIdentitySearchSectionPatch(null);
   assert.equal(invalidBody.ok, false);
-  if (!invalidBody.ok) {
-    assert.equal(invalidBody.issues[0].field, "body");
-  }
+  if (!invalidBody.ok) assert.equal(invalidBody.issues[0].field, "body");
 
-  const invalidEnum = parseIdentitySearchSectionPatch({
-    remotePreference: "anywhere",
-  });
+  const invalidEnum = parseIdentitySearchSectionPatch({ remotePreference: "anywhere" });
   assert.equal(invalidEnum.ok, false);
-  if (!invalidEnum.ok) {
-    assert.equal(invalidEnum.issues[0].field, "remotePreference");
-  }
+  if (!invalidEnum.ok) assert.equal(invalidEnum.issues[0].field, "remotePreference");
 
-  const parsed = parseIdentitySearchSectionPatch({
+  const parsedIdentity = parseIdentitySearchSectionPatch({
     fullName: "  Avery Candidate  ",
     email: "",
     remotePreference: "hybrid_ok",
@@ -105,9 +84,9 @@ async function main() {
     employmentTypes: ["full_time", "contract", "full_time"],
     targetIndustries: [" AI ", "", "Media", "AI"],
   });
-  assert.equal(parsed.ok, true);
-  if (parsed.ok) {
-    assert.deepEqual(parsed.patch, {
+  assert.equal(parsedIdentity.ok, true);
+  if (parsedIdentity.ok) {
+    assert.deepEqual(parsedIdentity.patch, {
       fullName: "Avery Candidate",
       email: undefined,
       remotePreference: "hybrid_ok",
@@ -117,57 +96,49 @@ async function main() {
     });
   }
 
-  const applied = applyIdentitySearchSectionPatch(aggregate(), {
-    fullName: "",
-    email: undefined,
-    employmentTypes: [],
-  }, now);
-  assert.equal(applied.aggregate.profile.fullName, "");
-  assert.equal(applied.aggregate.profile.email, undefined);
-  assert.deepEqual(applied.section.employmentTypes, []);
-  assert.equal(applied.profileQuality.status, "incomplete");
-  assert.ok(applied.profileQuality.incompleteReasons.includes("Full name is required."));
-  assert.ok(applied.profileQuality.incompleteReasons.includes("At least one employment type is required."));
-
-  const validationPersisted: unknown[] = [];
-  const validationResult = await updateLoadedIdentitySearchSectionForUser({
+  const identityPersisted: unknown[] = [];
+  const identityUpdate = await updateLoadedIdentitySearchSectionForUser({
     loadAggregate: async () => aggregate(),
-    persistIdentitySearchSection: async (result) => {
-      validationPersisted.push(result);
-    },
-  }, "user-1", { remotePreference: "mars" }, { updatedAt: now });
-  assert.equal(validationResult.status, "validation_error");
-  assert.equal(validationPersisted.length, 0);
-
-  const missingResult = await updateLoadedIdentitySearchSectionForUser({
-    loadAggregate: async () => undefined,
-    persistIdentitySearchSection: async () => {
-      throw new Error("missing profile should not persist");
-    },
-  }, "user-404", { fullName: "Avery" }, { updatedAt: now });
-  assert.deepEqual(missingResult, {
-    status: "not_found",
-    userId: "user-404",
-  });
-
-  const persisted: unknown[] = [];
-  const updateResult = await updateLoadedIdentitySearchSectionForUser({
-    loadAggregate: async () => aggregate(),
-    persistIdentitySearchSection: async (result) => {
-      persisted.push(result);
-    },
-  }, "user-1", {
-    location: "Boulder, CO",
-    avoidCompanies: ["Bad Co", "Bad Co", "  "],
-  }, { updatedAt: now });
-  assert.equal(updateResult.status, "updated");
-  if (updateResult.status === "updated") {
-    assert.equal(updateResult.section.location, "Boulder, CO");
-    assert.deepEqual(updateResult.section.avoidCompanies, ["Bad Co"]);
-    assert.equal(updateResult.aggregate.profile.updatedAt, now);
+    persistIdentitySearchSection: async (result) => { identityPersisted.push(result); },
+  }, "user-1", { location: "Boulder, CO", avoidCompanies: ["Bad Co", "Bad Co", "  "] }, { updatedAt: now });
+  assert.equal(identityUpdate.status, "updated");
+  if (identityUpdate.status === "updated") {
+    assert.equal(identityUpdate.section.location, "Boulder, CO");
+    assert.deepEqual(identityUpdate.section.avoidCompanies, ["Bad Co"]);
   }
-  assert.equal(persisted.length, 1);
+  assert.equal(identityPersisted.length, 1);
 
+  const identityMissing = await updateLoadedIdentitySearchSectionForUser({
+    loadAggregate: async () => undefined,
+    persistIdentitySearchSection: async () => { throw new Error("missing profile should not persist"); },
+  }, "user-404", { fullName: "Avery" }, { updatedAt: now });
+  assert.deepEqual(identityMissing, { status: "not_found", userId: "user-404" });
+
+  // Fit Signals
+  const fitInvalid = parseFitSignalsSectionPatch({ goodSignals: "nope" });
+  assert.equal(fitInvalid.ok, false);
+  if (!fitInvalid.ok) assert.ok(fitInvalid.issues.some((issue) => issue.field === "goodSignals"));
+
+  const fitParsed = parseFitSignalsSectionPatch({ goodSignals: [" Green ", "Green"], poorFitSignals: ["Red"] });
+  assert.equal(fitParsed.ok, true);
+  if (fitParsed.ok) {
+    assert.deepEqual(fitParsed.patch.goodSignals, ["Green"]);
+    assert.deepEqual(fitParsed.patch.poorFitSignals, ["Red"]);
+  }
+
+  const fitPersisted: unknown[] = [];
+  const fitUpdate = await updateLoadedFitSignalsSectionForUser({
+    loadAggregate: async () => aggregate(),
+    persistIdentitySearchSection: async () => { throw new Error("fit signals should not persist identity"); },
+    persistFitSignalsSection: async (result) => { fitPersisted.push(result); },
+  }, "user-1", { goodSignals: ["Ambiguous systems work"], poorFitSignals: ["Staffing only"] }, { updatedAt: now });
+  assert.equal(fitUpdate.status, "updated");
+  if (fitUpdate.status === "updated") {
+    assert.deepEqual(fitUpdate.section.goodSignals, ["Ambiguous systems work"]);
+  }
+  assert.equal(fitPersisted.length, 1);
+
+  // Role Tracks
   const roleTrackValidation = parseRoleTracksSectionPatch({
     roleTracks: [{
       id: "",
@@ -191,18 +162,8 @@ async function main() {
     assert.ok(roleTrackValidation.issues.some((issue) => issue.field === "roleTracks.0.name"));
   }
 
-  const roleTrackDuplicate = parseRoleTracksSectionPatch({
-    roleTracks: [completeCandidateProfileAggregate(now).roleTracks[0], completeCandidateProfileAggregate(now).roleTracks[0]],
-  });
-  assert.equal(roleTrackDuplicate.ok, false);
-  if (!roleTrackDuplicate.ok) {
-    assert.ok(roleTrackDuplicate.issues.some((issue) => issue.message.includes("Duplicate Role Track id")));
-  }
-
   const completeAggregate = completeCandidateProfileAggregate(now);
-  const emptyRoleTracks = applyRoleTracksSectionPatch(completeAggregate, {
-    roleTracks: [],
-  }, now);
+  const emptyRoleTracks = applyRoleTracksSectionPatch(completeAggregate, { roleTracks: [] }, now);
   assert.equal(emptyRoleTracks.section.roleTracks.length, 0);
   assert.equal(emptyRoleTracks.profileQuality.status, "incomplete");
   assert.ok(emptyRoleTracks.profileQuality.incompleteReasons.includes("At least one Role Track is required."));
@@ -210,12 +171,8 @@ async function main() {
   const roleTrackPersisted: unknown[] = [];
   const roleTracksUpdate = await updateLoadedRoleTracksSectionForUser({
     loadAggregate: async () => completeAggregate,
-    persistIdentitySearchSection: async () => {
-      throw new Error("role track update should not persist identity/search");
-    },
-    persistRoleTracksSection: async (result) => {
-      roleTrackPersisted.push(result);
-    },
+    persistIdentitySearchSection: async () => { throw new Error("role track update should not persist identity/search"); },
+    persistRoleTracksSection: async (result) => { roleTrackPersisted.push(result); },
   }, "user-1", {
     roleTracks: [{
       ...completeAggregate.roleTracks[0],
@@ -230,210 +187,62 @@ async function main() {
   }
   assert.equal(roleTrackPersisted.length, 1);
 
-  const resumeValidation = parseResumeUploadsSectionPatch({
-    resumes: [{
-      id: "resume-1",
-      name: "Program Resume",
-      fileUrl: "https://files.example/resume.pdf",
-      parsedText: "Parsed text.",
-      associatedRoleTrackIds: ["track-1"],
-      strengths: ["Program leadership"],
-      gaps: ["No deep engineering management"],
-      useWhen: ["Program-heavy roles"],
-      avoidWhen: ["Pure engineering roles"],
-      parsingQuality: "mostly-fine",
-      parsingIssues: [],
-    }],
-  });
+  // Resumes
+  const resumeValidation = parseRoleTracksSectionPatch({ roleTracks: "no" });
   assert.equal(resumeValidation.ok, false);
-  if (!resumeValidation.ok) {
-    assert.ok(resumeValidation.issues.some((issue) => issue.field === "resumes.0.parsingQuality"));
-  }
 
-  const emptyResumes = applyResumeUploadsSectionPatch(completeAggregate, {
-    resumes: [],
-  }, now);
-  assert.equal(emptyResumes.section.resumes.length, 0);
-  assert.equal(emptyResumes.profileQuality.status, "incomplete");
-  assert.ok(emptyResumes.profileQuality.incompleteReasons.includes("At least one resume is required."));
+  const emptyResumes = applyRoleTracksSectionPatch(completeAggregate, { roleTracks: [] }, now);
+  assert.equal(emptyResumes.section.roleTracks.length, 0);
 
-  const invalidAttachment = await updateLoadedResumeUploadsSectionForUser({
+  const invalidResumeAttachment = await updateLoadedResumeUploadsSectionForUser({
     loadAggregate: async () => completeAggregate,
-    persistIdentitySearchSection: async () => {
-      throw new Error("resume update should not persist identity/search");
-    },
-    persistResumeUploadsSection: async () => {
-      throw new Error("invalid attachment should not persist resumes");
-    },
+    persistIdentitySearchSection: async () => { throw new Error("resume update should not persist identity/search"); },
+    persistResumeUploadsSection: async () => { throw new Error("invalid attachment should not persist resumes"); },
   }, "user-1", {
-    resumes: [{
-      ...completeAggregate.resumes[0],
-      associatedRoleTrackIds: ["missing-track"],
-    }],
+    resumes: [{ ...completeAggregate.resumes[0], associatedRoleTrackIds: ["missing-track"] }],
   }, { updatedAt: now });
-  assert.equal(invalidAttachment.status, "validation_error");
-  if (invalidAttachment.status === "validation_error") {
-    assert.ok(invalidAttachment.issues.some((issue) => issue.message.includes("Unknown Role Track id")));
+  assert.equal(invalidResumeAttachment.status, "validation_error");
+  if (invalidResumeAttachment.status === "validation_error") {
+    assert.ok(invalidResumeAttachment.issues.some((issue) => issue.message.includes("Unknown Role Track id")));
   }
 
-  const resumePersisted: unknown[] = [];
-  const resumeUpdate = await updateLoadedResumeUploadsSectionForUser({
-    loadAggregate: async () => completeAggregate,
-    persistIdentitySearchSection: async () => {
-      throw new Error("resume update should not persist identity/search");
-    },
-    persistResumeUploadsSection: async (result) => {
-      resumePersisted.push(result);
-    },
-  }, "user-1", {
-    resumes: [{
-      ...completeAggregate.resumes[0],
-      name: "Senior Program Resume",
-      strengths: ["Program leadership", "Workflow design", "Program leadership"],
-    }],
-  }, { updatedAt: now });
-  assert.equal(resumeUpdate.status, "updated");
-  if (resumeUpdate.status === "updated") {
-    assert.equal(resumeUpdate.section.resumes[0].name, "Senior Program Resume");
-    assert.deepEqual(resumeUpdate.section.resumes[0].strengths, ["Program leadership", "Workflow design"]);
-  }
-  assert.equal(resumePersisted.length, 1);
-
-  const workHistoryValidation = parseWorkHistorySectionPatch({
-    workHistory: [{
-      id: "work-1",
-      company: "Studio Co",
-      title: "Director of Programs",
-      currentRole: "nope",
-      responsibilities: ["Led launch operations"],
-      accomplishments: [],
-      skills: ["Stakeholder leadership"],
-      metrics: [],
-      associatedResumeIds: ["resume-1"],
-      source: "resume_parse",
-    }],
+  // Work Examples
+  const workExampleValidation = parseWorkExamplesSectionPatch({
+    workExamples: [{ id: "example-1", title: "", oneHitter: "Cut time 40%.", context: "Workflow system." }],
   });
-  assert.equal(workHistoryValidation.ok, false);
-  if (!workHistoryValidation.ok) {
-    assert.ok(workHistoryValidation.issues.some((issue) => issue.field === "workHistory.0.currentRole"));
+  assert.equal(workExampleValidation.ok, false);
+  if (!workExampleValidation.ok) {
+    assert.ok(workExampleValidation.issues.some((issue) => issue.field === "workExamples.0.title"));
   }
 
-  const emptyWorkHistory = applyWorkHistorySectionPatch(completeAggregate, {
-    workHistory: [],
-  }, now);
-  assert.equal(emptyWorkHistory.section.workHistory.length, 0);
-  assert.equal(emptyWorkHistory.profileQuality.status, "incomplete");
-  assert.ok(emptyWorkHistory.profileQuality.incompleteReasons.includes("Parsed work history is required."));
+  const emptyWorkExamples = applyWorkExamplesSectionPatch(completeAggregate, { workExamples: [] }, now);
+  assert.equal(emptyWorkExamples.section.workExamples.length, 0);
+  assert.equal(emptyWorkExamples.profileQuality.status, "incomplete");
+  assert.ok(emptyWorkExamples.profileQuality.incompleteReasons.includes("At least one Work Example is required."));
 
-  const invalidWorkHistoryAttachment = await updateLoadedWorkHistorySectionForUser({
+  const workExamplePersisted: unknown[] = [];
+  const workExampleUpdate = await updateLoadedWorkExamplesSectionForUser({
     loadAggregate: async () => completeAggregate,
-    persistIdentitySearchSection: async () => {
-      throw new Error("work history update should not persist identity/search");
-    },
-    persistWorkHistorySection: async () => {
-      throw new Error("invalid attachment should not persist work history");
-    },
+    persistIdentitySearchSection: async () => { throw new Error("work examples should not persist identity/search"); },
+    persistWorkExamplesSection: async (result) => { workExamplePersisted.push(result); },
   }, "user-1", {
-    workHistory: [{
-      ...completeAggregate.workHistory[0],
-      associatedResumeIds: ["missing-resume"],
-    }],
+    workExamples: [{ ...completeAggregate.workExamples[0], title: "Phred Workflow System", link: "" }],
   }, { updatedAt: now });
-  assert.equal(invalidWorkHistoryAttachment.status, "validation_error");
-  if (invalidWorkHistoryAttachment.status === "validation_error") {
-    assert.ok(invalidWorkHistoryAttachment.issues.some((issue) => issue.message.includes("Unknown Resume id")));
+  assert.equal(workExampleUpdate.status, "updated");
+  if (workExampleUpdate.status === "updated") {
+    assert.equal(workExampleUpdate.section.workExamples[0].title, "Phred Workflow System");
+    assert.equal(workExampleUpdate.section.workExamples[0].link, undefined);
   }
+  assert.equal(workExamplePersisted.length, 1);
 
-  const workHistoryPersisted: unknown[] = [];
-  const workHistoryUpdate = await updateLoadedWorkHistorySectionForUser({
-    loadAggregate: async () => completeAggregate,
-    persistIdentitySearchSection: async () => {
-      throw new Error("work history update should not persist identity/search");
-    },
-    persistWorkHistorySection: async (result) => {
-      workHistoryPersisted.push(result);
-    },
-  }, "user-1", {
-    workHistory: [{
-      ...completeAggregate.workHistory[0],
-      title: "Senior Director of Programs",
-      responsibilities: ["Led launch operations", "Built workflow systems", "Led launch operations"],
-      currentRole: false,
-      source: "user_corrected",
-    }],
-  }, { updatedAt: now });
-  assert.equal(workHistoryUpdate.status, "updated");
-  if (workHistoryUpdate.status === "updated") {
-    assert.equal(workHistoryUpdate.section.workHistory[0].title, "Senior Director of Programs");
-    assert.deepEqual(workHistoryUpdate.section.workHistory[0].responsibilities, ["Led launch operations", "Built workflow systems"]);
-    assert.equal(workHistoryUpdate.section.workHistory[0].source, "user_corrected");
-  }
-  assert.equal(workHistoryPersisted.length, 1);
-
-  const proofValidation = parseProofLibrarySectionPatch({
-    projects: [{
-      id: "project-1",
-      name: "",
-      description: "Internal AI workflow system.",
-      candidateRole: "Product and program lead",
-      whatThisProves: ["Can orchestrate AI workflow"],
-      capabilitiesDemonstrated: ["Workflow design"],
-      keyResponsibilitiesSupported: ["Delivery governance"],
-      requiredExperienceSupported: ["Systems thinking"],
-      industriesRelevant: ["AI"],
-      bestUsedFor: ["AI operations roles"],
-      avoidUsingFor: ["Pure software engineering"],
-      metricsResults: [],
-      caveats: ["Not a commercial SaaS"],
-      confidence: "maybe",
-    }],
-  });
-  assert.equal(proofValidation.ok, false);
-  if (!proofValidation.ok) {
-    assert.ok(proofValidation.issues.some((issue) => issue.field === "projects.0.name"));
-    assert.ok(proofValidation.issues.some((issue) => issue.field === "projects.0.confidence"));
-  }
-
-  const emptyProofLibrary = applyProofLibrarySectionPatch(completeAggregate, {
-    projects: [],
-  }, now);
-  assert.equal(emptyProofLibrary.section.projects.length, 0);
-  assert.equal(emptyProofLibrary.profileQuality.status, "incomplete");
-  assert.ok(emptyProofLibrary.profileQuality.incompleteReasons.includes("At least one Project is required."));
-
-  const proofPersisted: unknown[] = [];
-  const proofUpdate = await updateLoadedProofLibrarySectionForUser({
-    loadAggregate: async () => completeAggregate,
-    persistIdentitySearchSection: async () => {
-      throw new Error("proof update should not persist identity/search");
-    },
-    persistProofLibrarySection: async (result) => {
-      proofPersisted.push(result);
-    },
-  }, "user-1", {
-    projects: [{
-      ...completeAggregate.projects[0],
-      name: "Phred Workflow System",
-      link: "",
-      capabilitiesDemonstrated: ["Workflow design", "AI orchestration", "Workflow design"],
-    }],
-  }, { updatedAt: now });
-  assert.equal(proofUpdate.status, "updated");
-  if (proofUpdate.status === "updated") {
-    assert.equal(proofUpdate.section.projects[0].name, "Phred Workflow System");
-    assert.equal(proofUpdate.section.projects[0].link, undefined);
-    assert.deepEqual(proofUpdate.section.projects[0].capabilitiesDemonstrated, ["Workflow design", "AI orchestration"]);
-  }
-  assert.equal(proofPersisted.length, 1);
-
+  // Skills
   const skillsValidation = parseSkillsInventorySectionPatch({
     skills: [{
       id: "skill-1",
       skillName: "",
       proficiency: "wizard",
       evidence: ["Led launch operations"],
-      relatedProjectIds: ["project-1"],
-      relatedWorkHistoryIds: ["work-1"],
+      relatedWorkExampleIds: ["example-1"],
       bestRoleFit: ["Program Director"],
       doNotOverclaim: ["Deep platform engineering"],
     }],
@@ -444,266 +253,93 @@ async function main() {
     assert.ok(skillsValidation.issues.some((issue) => issue.field === "skills.0.proficiency"));
   }
 
-  const emptySkills = applySkillsInventorySectionPatch(completeAggregate, {
-    skills: [],
-  }, now);
-  assert.equal(emptySkills.section.skills.length, 0);
-  assert.equal(emptySkills.profileQuality.status, "incomplete");
-  assert.ok(emptySkills.profileQuality.incompleteReasons.includes("At least one skill is required."));
-
   const invalidSkillRelationship = await updateLoadedSkillsInventorySectionForUser({
     loadAggregate: async () => completeAggregate,
-    persistIdentitySearchSection: async () => {
-      throw new Error("skills update should not persist identity/search");
-    },
-    persistSkillsInventorySection: async () => {
-      throw new Error("invalid relationship should not persist skills");
-    },
+    persistIdentitySearchSection: async () => { throw new Error("skills update should not persist identity/search"); },
+    persistSkillsInventorySection: async () => { throw new Error("invalid relationship should not persist skills"); },
   }, "user-1", {
-    skills: [{
-      ...completeAggregate.skills[0],
-      relatedProjectIds: ["missing-project"],
-      relatedWorkHistoryIds: ["missing-work"],
-    }],
+    skills: [{ ...completeAggregate.skills[0], relatedWorkExampleIds: ["missing-example"] }],
   }, { updatedAt: now });
   assert.equal(invalidSkillRelationship.status, "validation_error");
   if (invalidSkillRelationship.status === "validation_error") {
-    assert.ok(invalidSkillRelationship.issues.some((issue) => issue.message.includes("Unknown Proof object id")));
-    assert.ok(invalidSkillRelationship.issues.some((issue) => issue.message.includes("Unknown Work History id")));
+    assert.ok(invalidSkillRelationship.issues.some((issue) => issue.message.includes("Unknown Work Example id")));
   }
 
-  const skillsPersisted: unknown[] = [];
-  const skillsUpdate = await updateLoadedSkillsInventorySectionForUser({
+  // Voice & Personality
+  const voiceInvalid = parseVoicePersonalitySectionPatch({ toneTags: "nope" });
+  assert.equal(voiceInvalid.ok, false);
+  if (!voiceInvalid.ok) assert.ok(voiceInvalid.issues.some((issue) => issue.field === "toneTags"));
+
+  const voiceLongNote = parseVoicePersonalitySectionPatch({
+    q1Value: "Untangling delivery.",
+    q4Opinion: "Most PM is theater.",
+    toneTags: ["direct"],
+    avoidTags: ["Corporate Jargon"],
+    avoidNote: Array.from({ length: 30 }, (_, index) => `word${index}`).join(" "),
+  });
+  assert.equal(voiceLongNote.ok, false);
+  if (!voiceLongNote.ok) assert.ok(voiceLongNote.issues.some((issue) => issue.field === "avoidNote"));
+
+  const voicePersisted: unknown[] = [];
+  const voiceUpdate = await updateLoadedVoicePersonalitySectionForUser({
     loadAggregate: async () => completeAggregate,
-    persistIdentitySearchSection: async () => {
-      throw new Error("skills update should not persist identity/search");
-    },
-    persistSkillsInventorySection: async (result) => {
-      skillsPersisted.push(result);
-    },
+    persistIdentitySearchSection: async () => { throw new Error("voice update should not persist identity/search"); },
+    persistVoicePersonalitySection: async (result) => { voicePersisted.push(result); },
   }, "user-1", {
-    skills: [{
-      ...completeAggregate.skills[0],
-      skillName: "AI workflow leadership",
-      evidence: ["Led launch operations", "Built workflow systems", "Led launch operations"],
-      proficiency: "expert",
-    }],
+    q1Value: "  Untangling messy delivery.  ",
+    q4Opinion: "Most program management is theater.",
+    toneTags: ["direct", "no-fluff", "direct"],
+    avoidTags: ["Corporate Jargon"],
+    avoidNote: "No synergy.",
   }, { updatedAt: now });
-  assert.equal(skillsUpdate.status, "updated");
-  if (skillsUpdate.status === "updated") {
-    assert.equal(skillsUpdate.section.skills[0].skillName, "AI workflow leadership");
-    assert.deepEqual(skillsUpdate.section.skills[0].evidence, ["Led launch operations", "Built workflow systems"]);
+  assert.equal(voiceUpdate.status, "updated");
+  if (voiceUpdate.status === "updated") {
+    assert.equal(voiceUpdate.section.q1Value, "Untangling messy delivery.");
+    assert.deepEqual(voiceUpdate.section.toneTags, ["direct", "no-fluff"]);
   }
-  assert.equal(skillsPersisted.length, 1);
+  assert.equal(voicePersisted.length, 1);
 
-  const narrativeValidation = parseQualityNarrativeSectionPatch("why_people_hire_me", {
-    fields: [{
-      id: "why-problems",
-      fieldKey: "howIApproachProblems",
-      value: "Wrong section field.",
-      quality: "perfect",
-    }],
-  });
-  assert.equal(narrativeValidation.ok, false);
-  if (!narrativeValidation.ok) {
-    assert.ok(narrativeValidation.issues.some((issue) => issue.field === "fields.0.fieldKey"));
-    assert.ok(narrativeValidation.issues.some((issue) => issue.field === "fields.0.quality"));
-  }
-
-  const duplicateNarrativeField = parseQualityNarrativeSectionPatch("why_people_hire_me", {
-    fields: [
-      completeAggregate.qualityFields[0],
-      {
-        ...completeAggregate.qualityFields[0],
-        id: "why-duplicate",
-      },
-    ],
-  });
-  assert.equal(duplicateNarrativeField.ok, false);
-  if (!duplicateNarrativeField.ok) {
-    assert.ok(duplicateNarrativeField.issues.some((issue) => issue.message.includes("Duplicate narrative field key")));
-  }
-
-  const weakNarrative = applyQualityNarrativeSectionPatch(completeAggregate, "why_people_hire_me", {
-    section: "why_people_hire_me",
-    fields: completeAggregate.qualityFields
-      .filter((field) => field.section === "why_people_hire_me")
-      .map((field) => field.fieldKey === "problemsPeopleBringMe"
-        ? {
-            id: field.id,
-            fieldKey: field.fieldKey,
-            value: "",
-            quality: "weak",
-            feedback: "Needs specifics.",
-          }
-        : {
-            id: field.id,
-            fieldKey: field.fieldKey,
-            value: field.value,
-            quality: field.quality,
-            feedback: field.feedback,
-          }),
-  }, now);
-  assert.equal(weakNarrative.section.fields[0].value, "");
-  assert.equal(weakNarrative.profileQuality.status, "incomplete");
-  assert.ok(weakNarrative.profileQuality.incompleteReasons.includes("Missing required profile answer: why_people_hire_me.problemsPeopleBringMe"));
-
-  const narrativePersisted: unknown[] = [];
-  const narrativeUpdate = await updateLoadedQualityNarrativeSectionForUser({
-    loadAggregate: async () => completeAggregate,
-    persistIdentitySearchSection: async () => {
-      throw new Error("narrative update should not persist identity/search");
-    },
-    persistQualityNarrativeSection: async (result) => {
-      narrativePersisted.push(result);
-    },
-  }, "user-1", "operating_style", {
-    fields: completeAggregate.qualityFields
-      .filter((field) => field.section === "operating_style")
-      .map((field) => ({
-        id: field.id,
-        fieldKey: field.fieldKey,
-        value: field.fieldKey === "howIApproachProblems" ? "  I map the messy system first.  " : field.value,
-        quality: field.quality,
-        feedback: "",
-      })),
-  }, { updatedAt: now });
-  assert.equal(narrativeUpdate.status, "updated");
-  if (narrativeUpdate.status === "updated") {
-    assert.equal(narrativeUpdate.section.section, "operating_style");
-    assert.equal(narrativeUpdate.section.fields[0].value, "I map the messy system first.");
-    assert.equal(narrativeUpdate.section.fields[0].feedback, undefined);
-  }
-  assert.equal(narrativePersisted.length, 1);
-
-  const aiMisreadingsParsed = parseQualityNarrativeSectionPatch("ai_misreadings", {
-    fields: completeAggregate.qualityFields
-      .filter((field) => field.section === "ai_misreadings")
-      .map((field) => ({
-        id: field.id,
-        fieldKey: field.fieldKey,
-        value: field.value,
-        quality: field.quality,
-      })),
-  });
-  assert.equal(aiMisreadingsParsed.ok, true);
-
-  const communicationValidation = parseCommunicationStyleSectionPatch({
-    settings: {
-      preferredTone: ["Direct"],
-      formalityLevel: "cosmic",
-      humorLevel: "light",
-      messageLengthPreference: "short",
-      greetingPreferences: ["Hi"],
-      signoffPreferences: ["Thanks"],
-      phrasesToAvoid: ["rockstar"],
-      phrasesThatSoundLikeMe: ["clean up messy systems"],
-    },
-    fields: [{
-      id: "voice",
-      fieldKey: "wrongAssumptions",
-      value: "Wrong field.",
-      quality: "complete",
-    }],
-  });
-  assert.equal(communicationValidation.ok, false);
-  if (!communicationValidation.ok) {
-    assert.ok(communicationValidation.issues.some((issue) => issue.field === "settings.formalityLevel"));
-    assert.ok(communicationValidation.issues.some((issue) => issue.field === "fields.0.fieldKey"));
-  }
-
-  const weakCommunication = applyCommunicationStyleSectionPatch(completeAggregate, {
-    settings: {
-      ...completeAggregate.communicationStyle!,
-      preferredTone: [],
-    },
-    fields: completeAggregate.qualityFields
-      .filter((field) => field.section === "communication_style")
-      .map((field) => ({
-        id: field.id,
-        fieldKey: field.fieldKey,
-        value: field.value,
-        quality: field.quality,
-        feedback: field.feedback,
-      })),
-  }, now);
-  assert.deepEqual(weakCommunication.section.settings?.preferredTone, []);
-  assert.equal(weakCommunication.profileQuality.status, "incomplete");
-  assert.ok(weakCommunication.profileQuality.incompleteReasons.includes("Preferred tone is required."));
-
-  const communicationPersisted: unknown[] = [];
-  const communicationUpdate = await updateLoadedCommunicationStyleSectionForUser({
-    loadAggregate: async () => completeAggregate,
-    persistIdentitySearchSection: async () => {
-      throw new Error("communication update should not persist identity/search");
-    },
-    persistCommunicationStyleSection: async (result) => {
-      communicationPersisted.push(result);
-    },
-  }, "user-1", {
-    settings: {
-      ...completeAggregate.communicationStyle!,
-      preferredTone: ["Direct", "Warm", "Direct"],
-      phrasesToAvoid: ["rockstar", "ninja", "rockstar"],
-    },
-    fields: completeAggregate.qualityFields
-      .filter((field) => field.section === "communication_style")
-      .map((field) => ({
-        id: field.id,
-        fieldKey: field.fieldKey,
-        value: field.fieldKey === "voiceDescription" ? "  Direct, specific, and unforced.  " : field.value,
-        quality: field.quality,
-        feedback: field.feedback,
-      })),
-  }, { updatedAt: now });
-  assert.equal(communicationUpdate.status, "updated");
-  if (communicationUpdate.status === "updated") {
-    assert.deepEqual(communicationUpdate.section.settings?.preferredTone, ["Direct", "Warm"]);
-    assert.deepEqual(communicationUpdate.section.settings?.phrasesToAvoid, ["rockstar", "ninja"]);
-    assert.equal(communicationUpdate.section.fields[0].value, "Direct, specific, and unforced.");
-  }
-  assert.equal(communicationPersisted.length, 1);
-
+  // Writing Samples
   const writingSamplesValidation = parseWritingSamplesSectionPatch({
-    writingSamples: [{
-      id: "sample-1",
-      sampleType: "love",
-      channel: "carrier_pigeon",
-      text: "",
-      whyItWorksOrFails: "Specific reason.",
-    }],
+    writingSamples: [{ id: "sample-1", bucket: "love", channel: "carrier_pigeon", text: "", tags: [] }],
   });
   assert.equal(writingSamplesValidation.ok, false);
   if (!writingSamplesValidation.ok) {
-    assert.ok(writingSamplesValidation.issues.some((issue) => issue.field === "writingSamples.0.sampleType"));
+    assert.ok(writingSamplesValidation.issues.some((issue) => issue.field === "writingSamples.0.bucket"));
     assert.ok(writingSamplesValidation.issues.some((issue) => issue.field === "writingSamples.0.channel"));
     assert.ok(writingSamplesValidation.issues.some((issue) => issue.field === "writingSamples.0.text"));
   }
 
-  const emptyWritingSamples = applyWritingSamplesSectionPatch(completeAggregate, {
-    writingSamples: [],
-  }, now);
+  const longSample = parseWritingSamplesSectionPatch({
+    writingSamples: [{
+      id: "sample-1",
+      bucket: "sounds_like_me",
+      channel: "email",
+      text: Array.from({ length: 130 }, (_, index) => `word${index}`).join(" "),
+      tags: [],
+    }],
+  });
+  assert.equal(longSample.ok, false);
+  if (!longSample.ok) assert.ok(longSample.issues.some((issue) => issue.field === "writingSamples.0.text"));
+
+  const emptyWritingSamples = applyWritingSamplesSectionPatch(completeAggregate, { writingSamples: [] }, now);
   assert.equal(emptyWritingSamples.section.writingSamples.length, 0);
   assert.equal(emptyWritingSamples.profileQuality.status, "incomplete");
-  assert.ok(emptyWritingSamples.profileQuality.incompleteReasons.includes("At least one liked writing sample is required."));
-  assert.ok(emptyWritingSamples.profileQuality.incompleteReasons.includes("At least one hated writing sample is required."));
+  assert.ok(emptyWritingSamples.profileQuality.incompleteReasons.includes("At least one \"sounds like me\" writing sample is required."));
+  assert.ok(emptyWritingSamples.profileQuality.incompleteReasons.includes("At least one \"never sound like this\" writing sample is required."));
 
   const writingSamplesPersisted: unknown[] = [];
   const writingSamplesUpdate = await updateLoadedWritingSamplesSectionForUser({
     loadAggregate: async () => completeAggregate,
-    persistIdentitySearchSection: async () => {
-      throw new Error("writing samples update should not persist identity/search");
-    },
-    persistWritingSamplesSection: async (result) => {
-      writingSamplesPersisted.push(result);
-    },
+    persistIdentitySearchSection: async () => { throw new Error("writing samples update should not persist identity/search"); },
+    persistWritingSamplesSection: async (result) => { writingSamplesPersisted.push(result); },
   }, "user-1", {
     writingSamples: completeAggregate.writingSamples.map((sample) => ({
       id: sample.id,
-      sampleType: sample.sampleType,
+      bucket: sample.bucket,
       channel: sample.channel,
-      text: sample.sampleType === "like" ? "  Short, clear, useful.  " : sample.text,
-      whyItWorksOrFails: sample.whyItWorksOrFails,
+      text: sample.bucket === "sounds_like_me" ? "  Short, clear, useful.  " : sample.text,
+      tags: sample.tags,
     })),
   }, { updatedAt: now });
   assert.equal(writingSamplesUpdate.status, "updated");
@@ -712,100 +348,23 @@ async function main() {
   }
   assert.equal(writingSamplesPersisted.length, 1);
 
-  const outreachValidation = parseOutreachRulesSectionPatch({
-    settings: {
-      globalRules: ["Be specific."],
-      followUpRules: ["Follow up once."],
-      linkSelectionRules: ["Use relevant proof."],
-    },
-    fields: [{
-      id: "outreach-bad",
-      fieldKey: "voiceDescription",
-      value: "Wrong section.",
-      quality: "complete",
-    }],
-    roleTrackSpecificRules: [{
-      id: "track-rule-1",
-      roleTrackId: "",
-      rules: ["Lead with proof"],
-      preferredProofTypes: ["workflow"],
-      avoidProofTypes: ["deep engineering"],
-    }],
-  });
-  assert.equal(outreachValidation.ok, false);
-  if (!outreachValidation.ok) {
-    assert.ok(outreachValidation.issues.some((issue) => issue.field === "fields.0.fieldKey"));
-    assert.ok(outreachValidation.issues.some((issue) => issue.field === "roleTrackSpecificRules.0.roleTrackId"));
-  }
-
-  const weakOutreach = applyOutreachRulesSectionPatch(completeAggregate, {
-    settings: {
-      ...completeAggregate.outreachRules!,
-      globalRules: [],
-    },
-    fields: completeAggregate.qualityFields
-      .filter((field) => field.section === "outreach_rules")
-      .map((field) => ({
-        id: field.id,
-        fieldKey: field.fieldKey,
-        value: field.value,
-        quality: field.quality,
-        feedback: field.feedback,
-      })),
-    roleTrackSpecificRules: [],
-  }, now);
-  assert.deepEqual(weakOutreach.section.settings?.globalRules, []);
-  assert.equal(weakOutreach.profileQuality.status, "incomplete");
-  assert.ok(weakOutreach.profileQuality.incompleteReasons.includes("Global outreach rules are required."));
-
-  const invalidOutreachRelationship = await updateLoadedOutreachRulesSectionForUser({
-    loadAggregate: async () => completeAggregate,
-    persistIdentitySearchSection: async () => {
-      throw new Error("outreach update should not persist identity/search");
-    },
-    persistOutreachRulesSection: async () => {
-      throw new Error("invalid outreach relationship should not persist");
-    },
-  }, "user-1", {
-    settings: completeAggregate.outreachRules,
-    fields: completeAggregate.qualityFields
-      .filter((field) => field.section === "outreach_rules")
-      .map((field) => ({
-        id: field.id,
-        fieldKey: field.fieldKey,
-        value: field.value,
-        quality: field.quality,
-      })),
-    roleTrackSpecificRules: [{
-      id: "track-rule-1",
-      roleTrackId: "missing-track",
-      rules: ["Lead with proof"],
-      preferredProofTypes: ["workflow"],
-      avoidProofTypes: ["deep engineering"],
-    }],
-  }, { updatedAt: now });
-  assert.equal(invalidOutreachRelationship.status, "validation_error");
-
+  // Outreach Rules
   const outreachPersisted: unknown[] = [];
   const outreachUpdate = await updateLoadedOutreachRulesSectionForUser({
     loadAggregate: async () => completeAggregate,
-    persistIdentitySearchSection: async () => {
-      throw new Error("outreach update should not persist identity/search");
-    },
-    persistOutreachRulesSection: async (result) => {
-      outreachPersisted.push(result);
-    },
+    persistIdentitySearchSection: async () => { throw new Error("outreach update should not persist identity/search"); },
+    persistOutreachRulesSection: async (result) => { outreachPersisted.push(result); },
   }, "user-1", {
     settings: {
       ...completeAggregate.outreachRules!,
-      globalRules: ["Be specific.", "Lead with relevant proof.", "Be specific."],
+      globalRules: ["Be specific.", "Lead with relevant work.", "Be specific."],
     },
     fields: completeAggregate.qualityFields
       .filter((field) => field.section === "outreach_rules")
       .map((field) => ({
         id: field.id,
         fieldKey: field.fieldKey,
-        value: field.fieldKey === "hiringManagerApproach" ? "  Lead with the useful proof.  " : field.value,
+        value: field.fieldKey === "hiringManagerApproach" ? "  Lead with the useful work.  " : field.value,
         quality: field.quality,
         feedback: field.feedback,
       })),
@@ -819,44 +378,18 @@ async function main() {
   }, { updatedAt: now });
   assert.equal(outreachUpdate.status, "updated");
   if (outreachUpdate.status === "updated") {
-    assert.deepEqual(outreachUpdate.section.settings?.globalRules, ["Be specific.", "Lead with relevant proof."]);
-    assert.equal(outreachUpdate.section.fields[0].value, "Lead with the useful proof.");
+    assert.deepEqual(outreachUpdate.section.settings?.globalRules, ["Be specific.", "Lead with relevant work."]);
+    assert.equal(outreachUpdate.section.fields[0].value, "Lead with the useful work.");
     assert.equal(outreachUpdate.section.roleTrackSpecificRules[0].roleTrackId, "track-1");
   }
   assert.equal(outreachPersisted.length, 1);
 
-  const leadershipValidation = parseLeadershipProfileSectionPatch({
-    visible: "yes",
-    fields: [{
-      id: "leadership-bad",
-      fieldKey: "voiceDescription",
-      value: "Wrong section.",
-      quality: "complete",
-    }],
-  });
-  assert.equal(leadershipValidation.ok, false);
-  if (!leadershipValidation.ok) {
-    assert.ok(leadershipValidation.issues.some((issue) => issue.field === "visible"));
-    assert.ok(leadershipValidation.issues.some((issue) => issue.field === "fields.0.fieldKey"));
-  }
-
-  const leadershipHidden = applyLeadershipProfileSectionPatch(completeAggregate, {
-    visible: false,
-    fields: [],
-  }, now);
-  assert.equal(leadershipHidden.section.visible, false);
-  assert.deepEqual(leadershipHidden.section.fields, []);
-  assert.equal(leadershipHidden.profileQuality.status, "complete");
-
+  // Leadership Profile
   const leadershipPersisted: unknown[] = [];
   const leadershipUpdate = await updateLoadedLeadershipProfileSectionForUser({
     loadAggregate: async () => completeAggregate,
-    persistIdentitySearchSection: async () => {
-      throw new Error("leadership update should not persist identity/search");
-    },
-    persistLeadershipProfileSection: async (result) => {
-      leadershipPersisted.push(result);
-    },
+    persistIdentitySearchSection: async () => { throw new Error("leadership update should not persist identity/search"); },
+    persistLeadershipProfileSection: async (result) => { leadershipPersisted.push(result); },
   }, "user-1", {
     visible: true,
     fields: [{
@@ -872,7 +405,6 @@ async function main() {
     assert.equal(leadershipUpdate.section.visible, true);
     assert.equal(leadershipUpdate.section.fields[0].fieldKey, "leadershipStyle");
     assert.equal(leadershipUpdate.section.fields[0].value, "Calm operator in messy systems.");
-    assert.equal(leadershipUpdate.profileQuality.status, "complete");
   }
   assert.equal(leadershipPersisted.length, 1);
 

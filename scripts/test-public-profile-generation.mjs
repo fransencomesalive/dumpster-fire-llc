@@ -16,6 +16,7 @@ const compileArgs = [
   "--outDir",
   outDir,
   "scripts/test-public-profile-generation.ts",
+  "scripts/fixtures/public-profile.ts",
   "lib/public-profile/profile-generation.ts",
   "lib/public-profile/profile-markdown.ts",
   "lib/public-profile/profile-quality.ts",

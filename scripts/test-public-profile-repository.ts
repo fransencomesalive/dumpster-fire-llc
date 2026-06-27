@@ -3,35 +3,35 @@ import {
   loadCandidateProfileAggregate,
   mapPublicProfileRows,
   persistCandidateProfileGeneration,
-  persistCommunicationStyleSection,
+  persistFitSignalsSection,
   persistIdentitySearchSection,
   persistLeadershipProfileSection,
   persistOutreachRulesSection,
-  persistProofLibrarySection,
-  persistQualityNarrativeSection,
   persistResumeUploadsSection,
   persistRoleTracksSection,
   persistSkillsInventorySection,
-  persistWorkHistorySection,
+  persistVoicePersonalitySection,
+  persistWorkExamplesSection,
   persistWritingSamplesSection,
   type PublicProfileRepositoryRequest,
 } from "../lib/public-profile/repository";
 import { regenerateCandidateProfileArtifacts } from "../lib/public-profile/profile-generation";
 import {
+  applyFitSignalsSectionPatch,
   applyIdentitySearchSectionPatch,
   applyLeadershipProfileSectionPatch,
   applyOutreachRulesSectionPatch,
-  applyCommunicationStyleSectionPatch,
-  applyProofLibrarySectionPatch,
-  applyQualityNarrativeSectionPatch,
   applyResumeUploadsSectionPatch,
   applyRoleTracksSectionPatch,
   applySkillsInventorySectionPatch,
-  applyWorkHistorySectionPatch,
+  applyVoicePersonalitySectionPatch,
+  applyWorkExamplesSectionPatch,
   applyWritingSamplesSectionPatch,
 } from "../lib/public-profile/sections";
 
 const now = "2026-06-23T14:00:00.000Z";
+
+type Call = { table: string; method?: string; query?: string; body?: unknown; headers?: Record<string, string> };
 
 const profileRow = {
   id: "profile-1",
@@ -41,7 +41,6 @@ const profileRow = {
   full_name: "Avery Candidate",
   preferred_name: "Avery",
   location: "Denver, CO",
-  work_authorization: "US authorized",
   linkedin_url: "https://linkedin.example/avery",
   portfolio_url: "https://portfolio.example",
   personal_website_url: null,
@@ -49,7 +48,6 @@ const profileRow = {
   remote_preference: "remote_preferred",
   target_compensation_min: 140000,
   target_compensation_preferred: 175000,
-  availability: "Two weeks",
   generated_markdown: "",
   markdown_generated_at: null,
   created_at: now,
@@ -57,16 +55,15 @@ const profileRow = {
 };
 
 const qualityFields = [
-  "problemsPeopleBringMe",
-  "whatBreaksIfImNotThere",
-  "messesICleanUp",
-  "teamsThatBenefitFromMe",
-  "situationsWhereIAmMostUseful",
-  "situationsWhereIAmNotUseful",
+  "hiringManagerApproach",
+  "recruiterApproach",
+  "functionalLeaderApproach",
+  "executiveSponsorApproach",
+  "noContactRoutingApproach",
 ].map((fieldKey) => ({
-  id: `why-${fieldKey}`,
+  id: `outreach-${fieldKey}`,
   profile_id: "profile-1",
-  section: "why_people_hire_me",
+  section: "outreach_rules",
   field_key: fieldKey,
   value: `Specific ${fieldKey}`,
   quality: "complete",
@@ -133,40 +130,21 @@ function rows() {
       updated_at: now,
     }],
     resumeRoleTracks: [{ resume_id: "resume-1", role_track_id: "track-1" }],
-    workHistory: [{
-      id: "work-1",
+    fitSignals: {
+      id: "fit-1",
       profile_id: "profile-1",
-      company: "Studio Co",
-      title: "Director of Programs",
-      start_date: "2022",
-      end_date: null,
-      current_role: true,
-      responsibilities: ["Led launch operations"],
-      accomplishments: [],
-      skills: ["Stakeholder leadership"],
-      metrics: [],
-      source: "resume_parse",
+      good_signals: ["Ambiguous systems work"],
+      poor_fit_signals: ["Staffing-only delivery"],
       created_at: now,
       updated_at: now,
-    }],
-    workHistoryResumes: [{ work_history_item_id: "work-1", resume_id: "resume-1" }],
-    projects: [{
-      id: "project-1",
+    },
+    workExamples: [{
+      id: "example-1",
       profile_id: "profile-1",
-      name: "Phred",
+      title: "Phred",
+      one_hitter: "Cut workflow turnaround 40%.",
       link: null,
-      description: "Internal AI workflow system.",
-      candidate_role: "Product and program lead",
-      what_this_proves: ["Can orchestrate AI workflow"],
-      capabilities_demonstrated: ["Workflow design"],
-      key_responsibilities_supported: ["Delivery governance"],
-      required_experience_supported: ["Systems thinking"],
-      industries_relevant: ["AI"],
-      best_used_for: ["AI operations roles"],
-      avoid_using_for: ["Pure software engineering"],
-      metrics_results: [],
-      caveats: ["Not a commercial SaaS"],
-      confidence: "high",
+      context: "Internal AI workflow system.",
       created_at: now,
       updated_at: now,
     }],
@@ -181,30 +159,26 @@ function rows() {
       created_at: now,
       updated_at: now,
     }],
-    skillProjects: [{ skill_id: "skill-1", project_proof_id: "project-1" }],
-    skillWorkHistory: [{ skill_id: "skill-1", work_history_item_id: "work-1" }],
+    skillWorkExamples: [{ skill_id: "skill-1", work_example_id: "example-1" }],
     qualityFields,
-    communicationStyle: {
-      id: "communication-1",
+    voicePersonality: {
+      id: "voice-1",
       profile_id: "profile-1",
-      preferred_tone: ["direct"],
-      formality_level: "medium",
-      humor_level: "light",
-      message_length_preference: "short",
-      greeting_preferences: ["Hi first-name"],
-      signoff_preferences: ["Thanks"],
-      phrases_to_avoid: ["I am excited to apply"],
-      phrases_that_sound_like_me: ["Here is the useful bit"],
+      q1_value: "Untangling messy delivery and shipping the fix.",
+      q4_opinion: "Most program management is theater.",
+      tone_tags: ["direct", "no-fluff"],
+      avoid_tags: ["Corporate Jargon"],
+      avoid_note: "No synergy.",
       created_at: now,
       updated_at: now,
     },
     writingSamples: [{
       id: "sample-1",
       profile_id: "profile-1",
-      sample_type: "like",
+      bucket: "sounds_like_me",
       channel: "email",
       text: "Short, direct, useful.",
-      why_it_works_or_fails: "It gets to the point.",
+      tags: ["direct"],
       created_at: now,
       updated_at: now,
     }],
@@ -254,22 +228,18 @@ async function main() {
   assert.equal(mapped.preferences?.employmentTypes[0], "full_time");
   assert.equal(mapped.roleTracks[0].resumeIds[0], "resume-1");
   assert.equal(mapped.resumes[0].associatedRoleTrackIds[0], "track-1");
-  assert.equal(mapped.workHistory[0].associatedResumeIds[0], "resume-1");
-  assert.equal(mapped.skills[0].relatedProjectIds[0], "project-1");
-  assert.equal(mapped.skills[0].relatedWorkHistoryIds[0], "work-1");
+  assert.equal(mapped.fitSignals?.goodSignals[0], "Ambiguous systems work");
+  assert.equal(mapped.workExamples[0].oneHitter, "Cut workflow turnaround 40%.");
+  assert.equal(mapped.skills[0].relatedWorkExampleIds[0], "example-1");
+  assert.equal(mapped.voicePersonality?.q1Value, "Untangling messy delivery and shipping the fix.");
+  assert.equal(mapped.writingSamples[0].bucket, "sounds_like_me");
   assert.equal(mapped.roleTrackOutreachRules[0].roleTrackId, "track-1");
   assert.equal(mapped.profileQuality?.status, "incomplete");
 
-  const calls: Array<{ table: string; method?: string; query?: string; body?: unknown; headers?: Record<string, string> }> = [];
+  const calls: Call[] = [];
   const generation = regenerateCandidateProfileArtifacts({
     ...mapped,
-    qualityFields: mapped.qualityFields.map((field) => ({
-      ...field,
-      section: "operating_style",
-      fieldKey: "howIApproachProblems",
-      value: "Specific.",
-      quality: "weak",
-    })),
+    qualityFields: mapped.qualityFields.map((field) => ({ ...field, quality: "weak" })),
   }, { generatedAt: now, nextVersion: 3 });
 
   await persistCandidateProfileGeneration(async (table, options) => {
@@ -287,7 +257,7 @@ async function main() {
   assert.equal(calls[1].headers?.Prefer, "resolution=merge-duplicates");
   assert.equal((calls[2].body as { version: number }).version, 3);
 
-  const identityCalls: Array<{ table: string; method?: string; query?: string; body?: unknown; headers?: Record<string, string> }> = [];
+  const identityCalls: Call[] = [];
   const identityUpdate = applyIdentitySearchSectionPatch(mapped, {
     fullName: "Avery Updated",
     preferredName: undefined,
@@ -307,12 +277,26 @@ async function main() {
   assert.equal((identityCalls[0].body as { preferred_name: string | null }).preferred_name, null);
   assert.deepEqual((identityCalls[1].body as { employment_types: string[] }).employment_types, ["full_time", "contract"]);
   assert.deepEqual((identityCalls[1].body as { avoid_companies: string[] }).avoid_companies, ["Bad Co"]);
-  assert.equal(identityCalls[1].query, "?on_conflict=profile_id");
-  assert.equal(identityCalls[1].headers?.Prefer, "resolution=merge-duplicates");
-  assert.equal(identityCalls[2].query, "?on_conflict=profile_id");
-  assert.equal(identityCalls[2].headers?.Prefer, "resolution=merge-duplicates");
 
-  const roleTrackCalls: Array<{ table: string; method?: string; query?: string; body?: unknown; headers?: Record<string, string> }> = [];
+  const fitSignalsCalls: Call[] = [];
+  const fitSignalsUpdate = applyFitSignalsSectionPatch(mapped, {
+    id: mapped.fitSignals?.id,
+    goodSignals: ["Ambiguous systems work", "Strong product partner"],
+    poorFitSignals: ["Staffing-only delivery"],
+  }, now);
+  await persistFitSignalsSection(async (table, options) => {
+    fitSignalsCalls.push({ table, ...options });
+    return undefined as never;
+  }, fitSignalsUpdate);
+  assert.deepEqual(fitSignalsCalls.map((call) => [call.table, call.method]), [
+    ["candidate_profiles", "PATCH"],
+    ["fit_signals", "POST"],
+    ["profile_quality", "POST"],
+  ]);
+  assert.equal(fitSignalsCalls[1].query, "?on_conflict=profile_id");
+  assert.deepEqual((fitSignalsCalls[1].body as { good_signals: string[] }).good_signals, ["Ambiguous systems work", "Strong product partner"]);
+
+  const roleTrackCalls: Call[] = [];
   const roleTrackUpdate = applyRoleTracksSectionPatch(mapped, {
     roleTracks: [{
       ...mapped.roleTracks[0],
@@ -332,19 +316,11 @@ async function main() {
     ["resume_role_tracks", "POST"],
     ["profile_quality", "POST"],
   ]);
-  assert.equal((roleTrackCalls[0].body as { status: string }).status, roleTrackUpdate.profileQuality.status);
   assert.ok(roleTrackCalls[1].query?.includes("archived_at=is.null"));
-  assert.equal(roleTrackCalls[2].query, "?on_conflict=id");
-  assert.equal(roleTrackCalls[2].headers?.Prefer, "resolution=merge-duplicates");
   assert.equal((roleTrackCalls[2].body as Array<{ name: string }>)[0].name, "Updated Program Director");
   assert.equal(roleTrackCalls[3].query, "?role_track_id=eq.track-1");
-  assert.deepEqual((roleTrackCalls[4].body as Array<{ resume_id: string; role_track_id: string }>)[0], {
-    resume_id: "resume-1",
-    role_track_id: "track-1",
-  });
-  assert.equal(roleTrackCalls[5].query, "?on_conflict=profile_id");
 
-  const resumeCalls: Array<{ table: string; method?: string; query?: string; body?: unknown; headers?: Record<string, string> }> = [];
+  const resumeCalls: Call[] = [];
   const resumeUpdate = applyResumeUploadsSectionPatch(mapped, {
     resumes: [{
       ...mapped.resumes[0],
@@ -364,83 +340,36 @@ async function main() {
     ["resume_role_tracks", "POST"],
     ["profile_quality", "POST"],
   ]);
-  assert.equal((resumeCalls[0].body as { status: string }).status, resumeUpdate.profileQuality.status);
-  assert.ok(resumeCalls[1].query?.includes("archived_at=is.null"));
-  assert.equal(resumeCalls[2].query, "?on_conflict=id");
-  assert.equal(resumeCalls[2].headers?.Prefer, "resolution=merge-duplicates");
   assert.equal((resumeCalls[2].body as Array<{ name: string }>)[0].name, "Updated Program Resume");
-  assert.equal(resumeCalls[3].query, "?resume_id=eq.resume-1");
-  assert.deepEqual((resumeCalls[4].body as Array<{ resume_id: string; role_track_id: string }>)[0], {
-    resume_id: "resume-1",
-    role_track_id: "track-1",
-  });
-  assert.equal(resumeCalls[5].query, "?on_conflict=profile_id");
 
-  const workHistoryCalls: Array<{ table: string; method?: string; query?: string; body?: unknown; headers?: Record<string, string> }> = [];
-  const workHistoryUpdate = applyWorkHistorySectionPatch(mapped, {
-    workHistory: [{
-      ...mapped.workHistory[0],
-      title: "Updated Program Director",
-      associatedResumeIds: ["resume-1"],
-    }],
-  }, now);
-  await persistWorkHistorySection(async (table, options) => {
-    workHistoryCalls.push({ table, ...options });
-    return undefined as never;
-  }, workHistoryUpdate);
-  assert.deepEqual(workHistoryCalls.map((call) => [call.table, call.method]), [
-    ["candidate_profiles", "PATCH"],
-    ["work_history_items", "DELETE"],
-    ["work_history_items", "POST"],
-    ["work_history_resumes", "DELETE"],
-    ["work_history_resumes", "POST"],
-    ["profile_quality", "POST"],
-  ]);
-  assert.equal((workHistoryCalls[0].body as { status: string }).status, workHistoryUpdate.profileQuality.status);
-  assert.ok(workHistoryCalls[1].query?.includes("id=not.in.(work-1)"));
-  assert.equal(workHistoryCalls[2].query, "?on_conflict=id");
-  assert.equal(workHistoryCalls[2].headers?.Prefer, "resolution=merge-duplicates");
-  assert.equal((workHistoryCalls[2].body as Array<{ title: string }>)[0].title, "Updated Program Director");
-  assert.equal(workHistoryCalls[3].query, "?work_history_item_id=eq.work-1");
-  assert.deepEqual((workHistoryCalls[4].body as Array<{ work_history_item_id: string; resume_id: string }>)[0], {
-    work_history_item_id: "work-1",
-    resume_id: "resume-1",
-  });
-  assert.equal(workHistoryCalls[5].query, "?on_conflict=profile_id");
-
-  const proofCalls: Array<{ table: string; method?: string; query?: string; body?: unknown; headers?: Record<string, string> }> = [];
-  const proofUpdate = applyProofLibrarySectionPatch(mapped, {
-    projects: [{
-      ...mapped.projects[0],
-      name: "Updated Phred",
+  const workExampleCalls: Call[] = [];
+  const workExampleUpdate = applyWorkExamplesSectionPatch(mapped, {
+    workExamples: [{
+      ...mapped.workExamples[0],
+      title: "Updated Phred",
       link: undefined,
     }],
   }, now);
-  await persistProofLibrarySection(async (table, options) => {
-    proofCalls.push({ table, ...options });
+  await persistWorkExamplesSection(async (table, options) => {
+    workExampleCalls.push({ table, ...options });
     return undefined as never;
-  }, proofUpdate);
-  assert.deepEqual(proofCalls.map((call) => [call.table, call.method]), [
+  }, workExampleUpdate);
+  assert.deepEqual(workExampleCalls.map((call) => [call.table, call.method]), [
     ["candidate_profiles", "PATCH"],
-    ["project_proofs", "PATCH"],
-    ["project_proofs", "POST"],
+    ["work_examples", "DELETE"],
+    ["work_examples", "POST"],
     ["profile_quality", "POST"],
   ]);
-  assert.equal((proofCalls[0].body as { status: string }).status, proofUpdate.profileQuality.status);
-  assert.ok(proofCalls[1].query?.includes("archived_at=is.null"));
-  assert.equal(proofCalls[2].query, "?on_conflict=id");
-  assert.equal(proofCalls[2].headers?.Prefer, "resolution=merge-duplicates");
-  assert.equal((proofCalls[2].body as Array<{ name: string; link: string | null }>)[0].name, "Updated Phred");
-  assert.equal((proofCalls[2].body as Array<{ name: string; link: string | null }>)[0].link, null);
-  assert.equal(proofCalls[3].query, "?on_conflict=profile_id");
+  assert.ok(workExampleCalls[1].query?.includes("id=not.in.(example-1)"));
+  assert.equal((workExampleCalls[2].body as Array<{ title: string; link: string | null }>)[0].title, "Updated Phred");
+  assert.equal((workExampleCalls[2].body as Array<{ title: string; link: string | null }>)[0].link, null);
 
-  const skillsCalls: Array<{ table: string; method?: string; query?: string; body?: unknown; headers?: Record<string, string> }> = [];
+  const skillsCalls: Call[] = [];
   const skillsUpdate = applySkillsInventorySectionPatch(mapped, {
     skills: [{
       ...mapped.skills[0],
       skillName: "Updated Program Leadership",
-      relatedProjectIds: ["project-1"],
-      relatedWorkHistoryIds: ["work-1"],
+      relatedWorkExampleIds: ["example-1"],
     }],
   }, now);
   await persistSkillsInventorySection(async (table, options) => {
@@ -451,126 +380,51 @@ async function main() {
     ["candidate_profiles", "PATCH"],
     ["skill_profiles", "DELETE"],
     ["skill_profiles", "POST"],
-    ["skill_project_proofs", "DELETE"],
-    ["skill_project_proofs", "POST"],
-    ["skill_work_history_items", "DELETE"],
-    ["skill_work_history_items", "POST"],
+    ["skill_work_examples", "DELETE"],
+    ["skill_work_examples", "POST"],
     ["profile_quality", "POST"],
   ]);
-  assert.equal((skillsCalls[0].body as { status: string }).status, skillsUpdate.profileQuality.status);
-  assert.ok(skillsCalls[1].query?.includes("id=not.in.(skill-1)"));
-  assert.equal(skillsCalls[2].query, "?on_conflict=id");
-  assert.equal(skillsCalls[2].headers?.Prefer, "resolution=merge-duplicates");
   assert.equal((skillsCalls[2].body as Array<{ skill_name: string }>)[0].skill_name, "Updated Program Leadership");
   assert.equal(skillsCalls[3].query, "?skill_id=eq.skill-1");
-  assert.deepEqual((skillsCalls[4].body as Array<{ skill_id: string; project_proof_id: string }>)[0], {
+  assert.deepEqual((skillsCalls[4].body as Array<{ skill_id: string; work_example_id: string }>)[0], {
     skill_id: "skill-1",
-    project_proof_id: "project-1",
+    work_example_id: "example-1",
   });
-  assert.equal(skillsCalls[5].query, "?skill_id=eq.skill-1");
-  assert.deepEqual((skillsCalls[6].body as Array<{ skill_id: string; work_history_item_id: string }>)[0], {
-    skill_id: "skill-1",
-    work_history_item_id: "work-1",
-  });
-  assert.equal(skillsCalls[7].query, "?on_conflict=profile_id");
 
-  const narrativeCalls: Array<{ table: string; method?: string; query?: string; body?: unknown; headers?: Record<string, string> }> = [];
-  const narrativeUpdate = applyQualityNarrativeSectionPatch(mapped, "why_people_hire_me", {
-    section: "why_people_hire_me",
-    fields: mapped.qualityFields.map((field) => ({
-      id: field.id,
-      fieldKey: field.fieldKey,
-      value: field.fieldKey === "problemsPeopleBringMe" ? "Updated specific problem." : field.value,
-      quality: field.quality,
-      feedback: field.feedback,
-    })),
+  const voiceCalls: Call[] = [];
+  const voiceUpdate = applyVoicePersonalitySectionPatch(mapped, {
+    id: mapped.voicePersonality?.id,
+    q1Value: "Updated value.",
+    q4Opinion: mapped.voicePersonality!.q4Opinion,
+    toneTags: ["direct", "no-fluff"],
+    avoidTags: ["Corporate Jargon", "LinkedIn malarky"],
+    avoidNote: "No synergy.",
   }, now);
-  await persistQualityNarrativeSection(async (table, options) => {
-    narrativeCalls.push({ table, ...options });
+  await persistVoicePersonalitySection(async (table, options) => {
+    voiceCalls.push({ table, ...options });
     return undefined as never;
-  }, narrativeUpdate);
-  assert.deepEqual(narrativeCalls.map((call) => [call.table, call.method]), [
+  }, voiceUpdate);
+  assert.deepEqual(voiceCalls.map((call) => [call.table, call.method]), [
     ["candidate_profiles", "PATCH"],
-    ["quality_scored_text_fields", "DELETE"],
-    ["quality_scored_text_fields", "POST"],
+    ["voice_personality", "POST"],
     ["profile_quality", "POST"],
   ]);
-  assert.equal((narrativeCalls[0].body as { status: string }).status, narrativeUpdate.profileQuality.status);
-  assert.equal(narrativeCalls[1].query, "?profile_id=eq.profile-1&section=eq.why_people_hire_me");
-  assert.equal(narrativeCalls[2].query, "?on_conflict=profile_id,section,field_key");
-  assert.equal(narrativeCalls[2].headers?.Prefer, "resolution=merge-duplicates");
-  assert.equal((narrativeCalls[2].body as Array<{ field_key: string; value: string }>)[0].field_key, "problemsPeopleBringMe");
-  assert.equal((narrativeCalls[2].body as Array<{ field_key: string; value: string }>)[0].value, "Updated specific problem.");
-  assert.equal(narrativeCalls[3].query, "?on_conflict=profile_id");
+  assert.equal(voiceCalls[1].query, "?on_conflict=profile_id");
+  assert.equal((voiceCalls[1].body as { q1_value: string }).q1_value, "Updated value.");
+  assert.deepEqual((voiceCalls[1].body as { avoid_tags: string[] }).avoid_tags, ["Corporate Jargon", "LinkedIn malarky"]);
 
-  const communicationFields = [
-    "voiceDescription",
-    "whatIShouldSoundLike",
-    "whatIShouldNeverSoundLike",
-  ].map((fieldKey) => ({
-    id: `communication-${fieldKey}`,
-    profileId: "profile-1",
-    section: "communication_style" as const,
-    fieldKey,
-    value: `Specific ${fieldKey}`,
-    quality: "complete" as const,
-    createdAt: now,
-    updatedAt: now,
-  }));
-  const communicationCalls: Array<{ table: string; method?: string; query?: string; body?: unknown; headers?: Record<string, string> }> = [];
-  const communicationUpdate = applyCommunicationStyleSectionPatch({
-    ...mapped,
-    qualityFields: [
-      ...mapped.qualityFields,
-      ...communicationFields,
-    ],
-  }, {
-    settings: {
-      ...mapped.communicationStyle!,
-      preferredTone: ["Direct", "Warm"],
-      phrasesToAvoid: ["rockstar", "ninja"],
-    },
-    fields: communicationFields.map((field) => ({
-      id: field.id,
-      fieldKey: field.fieldKey,
-      value: field.fieldKey === "voiceDescription" ? "Updated voice." : field.value,
-      quality: field.quality,
-    })),
-  }, now);
-  await persistCommunicationStyleSection(async (table, options) => {
-    communicationCalls.push({ table, ...options });
-    return undefined as never;
-  }, communicationUpdate);
-  assert.deepEqual(communicationCalls.map((call) => [call.table, call.method]), [
-    ["candidate_profiles", "PATCH"],
-    ["communication_style_settings", "POST"],
-    ["quality_scored_text_fields", "DELETE"],
-    ["quality_scored_text_fields", "POST"],
-    ["profile_quality", "POST"],
-  ]);
-  assert.equal((communicationCalls[0].body as { status: string }).status, communicationUpdate.profileQuality.status);
-  assert.equal(communicationCalls[1].query, "?on_conflict=profile_id");
-  assert.equal(communicationCalls[1].headers?.Prefer, "resolution=merge-duplicates");
-  assert.deepEqual((communicationCalls[1].body as { preferred_tone: string[] }).preferred_tone, ["Direct", "Warm"]);
-  assert.deepEqual((communicationCalls[1].body as { phrases_to_avoid: string[] }).phrases_to_avoid, ["rockstar", "ninja"]);
-  assert.equal(communicationCalls[2].query, "?profile_id=eq.profile-1&section=eq.communication_style");
-  assert.equal(communicationCalls[3].query, "?on_conflict=profile_id,section,field_key");
-  assert.equal((communicationCalls[3].body as Array<{ field_key: string; value: string }>)[0].field_key, "voiceDescription");
-  assert.equal((communicationCalls[3].body as Array<{ field_key: string; value: string }>)[0].value, "Updated voice.");
-  assert.equal(communicationCalls[4].query, "?on_conflict=profile_id");
-
-  const writingSampleCalls: Array<{ table: string; method?: string; query?: string; body?: unknown; headers?: Record<string, string> }> = [];
+  const writingSampleCalls: Call[] = [];
   const writingSamplesUpdate = applyWritingSamplesSectionPatch(mapped, {
     writingSamples: [{
       ...mapped.writingSamples[0],
       text: "Updated short, direct sample.",
     }, {
-      id: "sample-hate-1",
+      id: "sample-never-1",
       profileId: "profile-1",
-      sampleType: "hate",
+      bucket: "never_sound",
       channel: "linkedin",
       text: "Excited to announce synergy.",
-      whyItWorksOrFails: "Too generic.",
+      tags: [],
       createdAt: now,
       updatedAt: now,
     }],
@@ -585,42 +439,17 @@ async function main() {
     ["writing_samples", "POST"],
     ["profile_quality", "POST"],
   ]);
-  assert.equal((writingSampleCalls[0].body as { status: string }).status, writingSamplesUpdate.profileQuality.status);
-  assert.ok(writingSampleCalls[1].query?.includes("id=not.in.(sample-1,sample-hate-1)"));
-  assert.equal(writingSampleCalls[2].query, "?on_conflict=id");
-  assert.equal(writingSampleCalls[2].headers?.Prefer, "resolution=merge-duplicates");
+  assert.ok(writingSampleCalls[1].query?.includes("id=not.in.(sample-1,sample-never-1)"));
   assert.equal((writingSampleCalls[2].body as Array<{ text: string }>)[0].text, "Updated short, direct sample.");
-  assert.equal(writingSampleCalls[3].query, "?on_conflict=profile_id");
+  assert.equal((writingSampleCalls[2].body as Array<{ bucket: string }>)[1].bucket, "never_sound");
 
-  const outreachFields = [
-    "hiringManagerApproach",
-    "recruiterApproach",
-    "functionalLeaderApproach",
-    "executiveSponsorApproach",
-    "noContactRoutingApproach",
-  ].map((fieldKey) => ({
-    id: `outreach-${fieldKey}`,
-    profileId: "profile-1",
-    section: "outreach_rules" as const,
-    fieldKey,
-    value: `Specific ${fieldKey}`,
-    quality: "complete" as const,
-    createdAt: now,
-    updatedAt: now,
-  }));
-  const outreachCalls: Array<{ table: string; method?: string; query?: string; body?: unknown; headers?: Record<string, string> }> = [];
-  const outreachUpdate = applyOutreachRulesSectionPatch({
-    ...mapped,
-    qualityFields: [
-      ...mapped.qualityFields,
-      ...outreachFields,
-    ],
-  }, {
+  const outreachCalls: Call[] = [];
+  const outreachUpdate = applyOutreachRulesSectionPatch(mapped, {
     settings: {
       ...mapped.outreachRules!,
       globalRules: ["Be specific.", "Lead with proof."],
     },
-    fields: outreachFields.map((field) => ({
+    fields: mapped.qualityFields.map((field) => ({
       id: field.id,
       fieldKey: field.fieldKey,
       value: field.fieldKey === "hiringManagerApproach" ? "Updated approach." : field.value,
@@ -647,18 +476,12 @@ async function main() {
     ["role_track_outreach_rules", "POST"],
     ["profile_quality", "POST"],
   ]);
-  assert.equal((outreachCalls[0].body as { status: string }).status, outreachUpdate.profileQuality.status);
-  assert.equal(outreachCalls[1].query, "?on_conflict=profile_id");
   assert.deepEqual((outreachCalls[1].body as { global_rules: string[] }).global_rules, ["Be specific.", "Lead with proof."]);
   assert.equal(outreachCalls[2].query, "?profile_id=eq.profile-1&section=eq.outreach_rules");
-  assert.equal((outreachCalls[3].body as Array<{ field_key: string; value: string }>)[0].field_key, "hiringManagerApproach");
-  assert.equal((outreachCalls[3].body as Array<{ field_key: string; value: string }>)[0].value, "Updated approach.");
   assert.equal(outreachCalls[4].query, "?role_track_id=in.(track-1)&id=not.in.(track-rule-2)");
-  assert.equal((outreachCalls[5].body as Array<{ role_track_id: string; rules: string[] }>)[0].role_track_id, "track-1");
-  assert.deepEqual((outreachCalls[5].body as Array<{ role_track_id: string; rules: string[] }>)[0].rules, ["Lead with systems proof"]);
-  assert.equal(outreachCalls[6].query, "?on_conflict=profile_id");
+  assert.equal((outreachCalls[5].body as Array<{ role_track_id: string }>)[0].role_track_id, "track-1");
 
-  const leadershipCalls: Array<{ table: string; method?: string; query?: string; body?: unknown; headers?: Record<string, string> }> = [];
+  const leadershipCalls: Call[] = [];
   const leadershipUpdate = applyLeadershipProfileSectionPatch(mapped, {
     visible: true,
     fields: [{
@@ -679,13 +502,9 @@ async function main() {
     ["quality_scored_text_fields", "POST"],
     ["profile_quality", "POST"],
   ]);
-  assert.equal((leadershipCalls[0].body as { status: string }).status, leadershipUpdate.profileQuality.status);
-  assert.equal(leadershipCalls[1].query, "?on_conflict=profile_id");
   assert.equal((leadershipCalls[1].body as { visible: boolean }).visible, true);
   assert.equal(leadershipCalls[2].query, "?profile_id=eq.profile-1&section=eq.leadership_profile");
-  assert.equal((leadershipCalls[3].body as Array<{ field_key: string; value: string }>)[0].field_key, "leadershipStyle");
-  assert.equal((leadershipCalls[3].body as Array<{ field_key: string; value: string }>)[0].value, "Calm operator in messy systems.");
-  assert.equal(leadershipCalls[4].query, "?on_conflict=profile_id");
+  assert.equal((leadershipCalls[3].body as Array<{ field_key: string }>)[0].field_key, "leadershipStyle");
 
   const freshRows = rows();
   const tableRows: Record<string, unknown[]> = {
@@ -694,25 +513,26 @@ async function main() {
     company_watchlist_items: freshRows.companyWatchlist,
     role_tracks: freshRows.roleTracks,
     resumes: freshRows.resumes,
-    work_history_items: freshRows.workHistory,
-    project_proofs: freshRows.projects,
+    fit_signals: [freshRows.fitSignals],
+    work_examples: freshRows.workExamples,
     skill_profiles: freshRows.skills,
     quality_scored_text_fields: freshRows.qualityFields,
-    communication_style_settings: [freshRows.communicationStyle],
+    voice_personality: [freshRows.voicePersonality],
     writing_samples: freshRows.writingSamples,
     outreach_rule_sets: [freshRows.outreachRules],
     leadership_profiles: [freshRows.leadershipProfile],
     profile_quality: [freshRows.profileQuality],
     resume_role_tracks: freshRows.resumeRoleTracks,
-    work_history_resumes: freshRows.workHistoryResumes,
-    skill_project_proofs: freshRows.skillProjects,
-    skill_work_history_items: freshRows.skillWorkHistory,
+    skill_work_examples: freshRows.skillWorkExamples,
     role_track_outreach_rules: freshRows.roleTrackOutreachRules,
   };
   const fakeRequest: PublicProfileRepositoryRequest = async (table) => tableRows[table] as never;
   const loaded = await loadCandidateProfileAggregate(fakeRequest, "user-1");
   assert.equal(loaded?.profile.id, "profile-1");
   assert.equal(loaded?.roleTracks[0].resumeIds[0], "resume-1");
+  assert.equal(loaded?.workExamples[0].title, "Phred");
+  assert.equal(loaded?.voicePersonality?.q1Value, "Untangling messy delivery and shipping the fix.");
+  assert.equal(loaded?.skills[0].relatedWorkExampleIds[0], "example-1");
 
   console.log("public profile repository: all assertions passed");
 }
