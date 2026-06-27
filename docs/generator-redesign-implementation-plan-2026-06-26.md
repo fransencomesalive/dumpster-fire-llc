@@ -63,8 +63,14 @@ Protocol (`git status`, read this plan + the two design docs).
   communication_style_settings→voice_personality (recreated); writing_samples sample_type→bucket
   (backfilled like→sounds_like_me / hate→never_sound) + tags, drop why_it_works_or_fails; trim
   quality_scored_text_fields section check to outreach_rules|leadership_profile.
-- [ ] **A5. Fixtures + tests** — update `scripts/fixtures/public-profile.ts` and the affected
-  `scripts/test-*` scripts to the new shapes. Keep them green.
+- [~] **A5. Fixtures + tests** — PARTIAL 2026-06-27. `scripts/fixtures/public-profile.ts` rewritten to
+  the new aggregate (fitSignals, workExamples, voicePersonality, bucket/tags samples; dropped
+  workHistory/projects/communicationStyle/workAuth/availability) and compiles clean. The `scripts/
+  test-*` scripts are **B-coupled** — they import `section-service` (`updateLoaded*SectionForUser`)
+  and assert profile-quality reasons, so they can't go green until B1/B2/B4. **Rewrite each test
+  alongside its phase**: test-public-profile-sections + -service + -repository + -api with B1/B2,
+  test-public-profile-generation with B3, quality assertions with B4. Until then they stay red by
+  design. Fixtures are the shared A-layer artifact and are done.
 
 ## Phase B — Services / API
 - [ ] B1. `section-service.ts` + `repository.ts` for the new shapes.
