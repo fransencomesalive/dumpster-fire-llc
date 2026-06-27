@@ -6,41 +6,6 @@ import type {
 } from "./types";
 
 export const requiredProfileQualityFields: Record<QualitySection, string[]> = {
-  why_people_hire_me: [
-    "problemsPeopleBringMe",
-    "whatBreaksIfImNotThere",
-    "messesICleanUp",
-    "teamsThatBenefitFromMe",
-    "situationsWhereIAmMostUseful",
-    "situationsWhereIAmNotUseful",
-  ],
-  operating_style: [
-    "howIApproachProblems",
-    "howIHandleAmbiguity",
-    "howIWorkWithTeams",
-    "whatIValue",
-    "whatIReject",
-  ],
-  decision_style: [
-    "howIEvaluateRoles",
-    "whatMakesRoleWorthPursuing",
-    "whatMakesRoleBadFit",
-    "whatILookForInCompanies",
-    "redFlags",
-    "greenFlags",
-  ],
-  communication_style: [
-    "voiceDescription",
-    "whatIShouldSoundLike",
-    "whatIShouldNeverSoundLike",
-  ],
-  ai_misreadings: [
-    "wrongAssumptions",
-    "badDefaultFramings",
-    "skillsNotToExaggerate",
-    "rolesNotToForceMeInto",
-    "languageThatMisrepresentsMe",
-  ],
   outreach_rules: [
     "hiringManagerApproach",
     "recruiterApproach",
@@ -146,9 +111,7 @@ export function evaluateCandidateProfileQuality(
 
   requireCondition(accumulator, "identity.fullName", hasText(aggregate.profile.fullName), "Full name is required.");
   requireCondition(accumulator, "identity.location", hasText(aggregate.profile.location), "Location is required.");
-  requireCondition(accumulator, "identity.workAuthorization", hasText(aggregate.profile.workAuthorization), "Work authorization is required.");
   requireCondition(accumulator, "search.remotePreference", hasText(aggregate.profile.remotePreference), "Remote preference is required.");
-  requireCondition(accumulator, "search.availability", hasText(aggregate.profile.availability), "Availability is required.");
   requireCondition(
     accumulator,
     "search.employmentTypes",
@@ -187,30 +150,12 @@ export function evaluateCandidateProfileQuality(
     requireCondition(accumulator, `${prefix}.parsingQuality`, resume.parsingQuality === "complete", `Resume ${resume.name || resume.id} parsing quality must be complete.`);
   }
 
-  requireCondition(accumulator, "workHistory", aggregate.workHistory.length > 0, "Parsed work history is required.");
-  for (const item of aggregate.workHistory) {
-    const prefix = `workHistory.${item.id}`;
-    requireCondition(accumulator, `${prefix}.company`, hasText(item.company), `Work history ${item.id} needs a company.`);
-    requireCondition(accumulator, `${prefix}.title`, hasText(item.title), `Work history ${item.id} needs a title.`);
-    requireCondition(accumulator, `${prefix}.responsibilitiesOrAccomplishments`, hasItems(item.responsibilities) || hasItems(item.accomplishments), `Work history ${item.title || item.id} needs responsibilities or accomplishments.`);
-    requireCondition(accumulator, `${prefix}.associatedResumeIds`, item.associatedResumeIds.some((resumeId) => resumeIds.has(resumeId)), `Work history ${item.title || item.id} must be tied to a resume.`);
-    requireCondition(accumulator, `${prefix}.source`, item.source === "resume_parse" || item.source === "user_corrected", `Work history ${item.title || item.id} needs a valid source.`);
-  }
-
-  requireCondition(accumulator, "projects", aggregate.projects.length > 0, "At least one Project is required.");
-  for (const project of aggregate.projects) {
-    const prefix = `projects.${project.id}`;
-    requireCondition(accumulator, `${prefix}.name`, hasText(project.name), `Project ${project.id} needs a name.`);
-    requireCondition(accumulator, `${prefix}.description`, hasText(project.description), `Project ${project.name || project.id} needs a description.`);
-    requireCondition(accumulator, `${prefix}.candidateRole`, hasText(project.candidateRole), `Project ${project.name || project.id} needs candidate role.`);
-    requireCondition(accumulator, `${prefix}.whatThisProves`, hasItems(project.whatThisProves), `Project ${project.name || project.id} needs what-this-proves evidence.`);
-    requireCondition(accumulator, `${prefix}.capabilitiesDemonstrated`, hasItems(project.capabilitiesDemonstrated), `Project ${project.name || project.id} needs capabilities demonstrated.`);
-    requireCondition(accumulator, `${prefix}.keyResponsibilitiesSupported`, hasItems(project.keyResponsibilitiesSupported), `Project ${project.name || project.id} needs key responsibilities supported.`);
-    requireCondition(accumulator, `${prefix}.requiredExperienceSupported`, hasItems(project.requiredExperienceSupported), `Project ${project.name || project.id} needs required experience supported.`);
-    requireCondition(accumulator, `${prefix}.bestUsedFor`, hasItems(project.bestUsedFor), `Project ${project.name || project.id} needs best-used-for guidance.`);
-    requireCondition(accumulator, `${prefix}.avoidUsingFor`, hasItems(project.avoidUsingFor), `Project ${project.name || project.id} needs avoid-using-for guidance.`);
-    requireCondition(accumulator, `${prefix}.caveats`, hasItems(project.caveats), `Project ${project.name || project.id} needs caveats.`);
-    requireCondition(accumulator, `${prefix}.confidence`, hasText(project.confidence), `Project ${project.name || project.id} needs confidence.`);
+  requireCondition(accumulator, "workExamples", aggregate.workExamples.length > 0, "At least one Work Example is required.");
+  for (const example of aggregate.workExamples) {
+    const prefix = `workExamples.${example.id}`;
+    requireCondition(accumulator, `${prefix}.title`, hasText(example.title), `Work Example ${example.id} needs a title.`);
+    requireCondition(accumulator, `${prefix}.oneHitter`, hasText(example.oneHitter), `Work Example ${example.title || example.id} needs a one-hitter.`);
+    requireCondition(accumulator, `${prefix}.context`, hasText(example.context), `Work Example ${example.title || example.id} needs context.`);
   }
 
   requireCondition(accumulator, "skills", aggregate.skills.length > 0, "At least one skill is required.");
@@ -223,18 +168,15 @@ export function evaluateCandidateProfileQuality(
     requireCondition(accumulator, `${prefix}.doNotOverclaim`, hasItems(skill.doNotOverclaim), `Skill ${skill.skillName || skill.id} needs do-not-overclaim guidance.`);
   }
 
-  requireCondition(accumulator, "communicationStyle", Boolean(aggregate.communicationStyle), "Communication style settings are required.");
-  if (aggregate.communicationStyle) {
-    requireCondition(accumulator, "communicationStyle.preferredTone", hasItems(aggregate.communicationStyle.preferredTone), "Preferred tone is required.");
-    requireCondition(accumulator, "communicationStyle.messageLengthPreference", hasText(aggregate.communicationStyle.messageLengthPreference), "Message length preference is required.");
-    requireCondition(accumulator, "communicationStyle.greetingPreferences", hasItems(aggregate.communicationStyle.greetingPreferences), "Greeting preferences are required.");
-    requireCondition(accumulator, "communicationStyle.signoffPreferences", hasItems(aggregate.communicationStyle.signoffPreferences), "Signoff preferences are required.");
-    requireCondition(accumulator, "communicationStyle.phrasesToAvoid", hasItems(aggregate.communicationStyle.phrasesToAvoid), "Phrases to avoid are required.");
-    requireCondition(accumulator, "communicationStyle.phrasesThatSoundLikeMe", hasItems(aggregate.communicationStyle.phrasesThatSoundLikeMe), "Phrases that sound like me are required.");
+  requireCondition(accumulator, "voicePersonality", Boolean(aggregate.voicePersonality), "Voice & Personality answers are required.");
+  if (aggregate.voicePersonality) {
+    requireCondition(accumulator, "voicePersonality.q1Value", hasText(aggregate.voicePersonality.q1Value), "Q1 (what you're the person for) is required.");
+    requireCondition(accumulator, "voicePersonality.q4Opinion", hasText(aggregate.voicePersonality.q4Opinion), "Q4 (an opinion you'll defend) is required.");
+    requireCondition(accumulator, "voicePersonality.toneTags", hasItems(aggregate.voicePersonality.toneTags), "At least one tone tag is required.");
   }
 
-  requireCondition(accumulator, "writingSamples.like", aggregate.writingSamples.some((sample) => sample.sampleType === "like" && hasText(sample.text) && hasText(sample.whyItWorksOrFails)), "At least one liked writing sample is required.");
-  requireCondition(accumulator, "writingSamples.hate", aggregate.writingSamples.some((sample) => sample.sampleType === "hate" && hasText(sample.text) && hasText(sample.whyItWorksOrFails)), "At least one hated writing sample is required.");
+  requireCondition(accumulator, "writingSamples.soundsLikeMe", aggregate.writingSamples.some((sample) => sample.bucket === "sounds_like_me" && hasText(sample.text)), "At least one \"sounds like me\" writing sample is required.");
+  requireCondition(accumulator, "writingSamples.neverSound", aggregate.writingSamples.some((sample) => sample.bucket === "never_sound" && hasText(sample.text)), "At least one \"never sound like this\" writing sample is required.");
 
   requireCondition(accumulator, "outreachRules", Boolean(aggregate.outreachRules), "Outreach rule settings are required.");
   if (aggregate.outreachRules) {

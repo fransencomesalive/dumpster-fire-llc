@@ -94,7 +94,13 @@ Protocol (`git status`, read this plan + the two design docs).
   Outreach → **Guardrails** (per-track + per-skill do-not-overclaim, never-sound samples) → Profile
   Quality. Dropped work auth/availability, Work History, Projects, the 4 narrative sections, and
   Communication Settings; writing samples now bucketed.
-- [ ] B4. `profile-quality.ts` — update binary complete/incomplete rules for the new required set.
+- [x] B4. `profile-quality.ts` — DONE 2026-06-27 (0 in-file tsc errors). New required set (binary
+  complete/incomplete): Identity (fullName, location, remotePreference, employmentTypes — dropped
+  workAuth/availability); Role Tracks (unchanged); Resumes (unchanged); **Work Examples** (title,
+  oneHitter, context — replaces Work History + Projects); Skills (unchanged); **Voice & Personality**
+  (q1Value, q4Opinion, ≥1 toneTag); writing samples (≥1 sounds_like_me + ≥1 never_sound by text only,
+  dropped the `why` requirement); Outreach Rules (unchanged). **Fit Signals stays optional** (soft
+  scoring, not a completion gate). Required narrative quality fields trimmed to outreach_rules.
 
 ## Phase C — Claude voice-fingerprint pre-pass
 - [ ] C1. Provision Anthropic API key in env (Randall has it ready).
