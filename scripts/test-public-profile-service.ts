@@ -29,6 +29,18 @@ async function main() {
   }
   assert.equal(persisted.length, 1);
 
+  // Voice fingerprint pre-pass: an injected block lands at the top of profile.md.
+  const voiceBlock = "**Voice fingerprint (write like this):**\n\nDirect and specific.";
+  const voiceWired = await regenerateLoadedPublicProfileForUser({
+    loadAggregate: async () => completeCandidateProfileAggregate(now),
+    persistGeneration: async () => {},
+    generateVoiceProfileBlock: async () => voiceBlock,
+  }, "user-1", { generatedAt: now });
+  assert.equal(voiceWired.status, "regenerated");
+  if (voiceWired.status === "regenerated") {
+    assert.ok(voiceWired.generation.generatedMarkdown.markdown.includes(voiceBlock));
+  }
+
   const incompletePersisted: unknown[] = [];
   const incomplete = await regenerateLoadedPublicProfileForUser({
     loadAggregate: async () => ({

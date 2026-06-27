@@ -113,7 +113,8 @@ function renderWritingSamplesByBucket(samples: WritingSample[], bucket: WritingS
 
 export function generateCandidateProfileMarkdown(
   aggregate: CandidateProfileAggregate,
-  generatedAt = new Date().toISOString()
+  generatedAt = new Date().toISOString(),
+  voiceProfileBlock?: string,
 ): GeneratedMarkdown {
   const { profile, voicePersonality, fitSignals } = aggregate;
   const qualityGroups = qualityFieldsBySection(aggregate.qualityFields);
@@ -138,6 +139,10 @@ export function generateCandidateProfileMarkdown(
     // top of this section; until then it carries the raw voice inputs.
     "## Voice Profile",
     "",
+    // Phase C injects the distilled fingerprint here; the raw inputs follow as
+    // the fallback and source material.
+    voiceProfileBlock ? voiceProfileBlock : "",
+    voiceProfileBlock ? "" : "",
     voicePersonality ? [
       line("What I'm the person for", voicePersonality.q1Value),
       line("An opinion I'll defend", voicePersonality.q4Opinion),

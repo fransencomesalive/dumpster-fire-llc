@@ -102,12 +102,21 @@ Protocol (`git status`, read this plan + the two design docs).
   scoring, not a completion gate). Required narrative quality fields trimmed to outreach_rules.
 
 ## Phase C — Claude voice-fingerprint pre-pass
-- [ ] C1. Provision Anthropic API key in env (Randall has it ready).
-- [ ] C2. Add Anthropic SDK + `lib/public-profile/voice-fingerprint.ts`: input Q1/Q4/samples/tags →
-  output compact Voice Profile (tone description + do/don't + 1-2 exemplar lines). Use the
-  `claude-api` reference for model id + call shape; default to the latest Claude model.
-- [ ] C3. Wire into profile save → regenerate markdown with the fingerprint at the top.
-- [ ] C4. Fixtures/tests for the pre-pass (mock the model in tests).
+- [ ] C1. **Randall's action:** set `ANTHROPIC_API_KEY` in env (local `.env` + Vercel). Until set, the
+  pre-pass returns undefined and profile.md falls back to the raw Voice & Personality inputs — no error.
+- [x] C2. DONE 2026-06-27. `@anthropic-ai/sdk` installed; `lib/public-profile/voice-fingerprint.ts`:
+  `voiceFingerprintInput(aggregate)` → `generateVoiceFingerprint(input, {callModel?})` → `{toneDescription,
+  doList, dontList, exemplarLines}` → `renderVoiceFingerprint`. Model `claude-opus-4-8` (per claude-api
+  ref), lazy SDK import, JSON-out parsed defensively. `callModel` is injected (mockable; graceful
+  undefined with no key). 0 in-file tsc errors.
+- [x] C3. DONE 2026-06-27. Threaded an optional `voiceProfileBlock` through `generateCandidateProfileMarkdown`
+  (rendered at the top of the Voice Profile slot) → `regenerateCandidateProfileArtifacts` options →
+  `regenerateLoadedPublicProfileForUser` (computes the block via the injected
+  `generateVoiceProfileBlock` dep in the async layer; sync pipeline stays sync). `regeneratePublicProfileForUser`
+  wires the real default.
+- [x] C4. DONE 2026-06-27. `scripts/test-public-profile-voice-fingerprint.mjs` (10 assertions, mocked model:
+  parse/fences/degradation/input-builder/render/end-to-end) + a service-layer assertion that the block lands
+  in profile.md. Full suite (incl. jobs + auth) green.
 
 ## Phase D — Onboarding UI (GATED on design direction)
 - [ ] D0. Resolve design direction for the lean IA (prior design build was rejected — needs an

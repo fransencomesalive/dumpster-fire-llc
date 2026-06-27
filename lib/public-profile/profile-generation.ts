@@ -12,6 +12,9 @@ export type CandidateProfileGenerationOptions = {
   generatedAt?: string;
   nextVersion?: number;
   changeSummary?: string;
+  // Distilled voice fingerprint block (Phase C); rendered at the top of the
+  // Voice Profile section of profile.md when present.
+  voiceProfileBlock?: string;
 };
 
 export type CandidateProfilePersistenceRows = {
@@ -74,7 +77,7 @@ export function regenerateCandidateProfileArtifacts(
     profile: profileForMarkdown,
     profileQuality,
   };
-  const generatedMarkdown = generateCandidateProfileMarkdown(markdownAggregate, generatedAt);
+  const generatedMarkdown = generateCandidateProfileMarkdown(markdownAggregate, generatedAt, options.voiceProfileBlock);
   const profile: CandidateProfileRecord = {
     ...profileForMarkdown,
     generatedMarkdown: generatedMarkdown.markdown,
