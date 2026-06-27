@@ -43,13 +43,13 @@ export const metadata: Metadata = {
     default: "The Job Market Is a Dumpster Fire",
     template: "%s | The Job Market Is a Dumpster Fire",
   },
-  description: "A pursuit system for better job matching, Human Path research, and outreach.",
+  description: "A pursuit system for better job matching and the Human Path process for research, contact sourcing, and outreach.",
   icons: {
     icon: "/scans/icon.png",
   },
   openGraph: {
     title: "The Job Market Is a Dumpster Fire",
-    description: "Build the profile behind better matching, proof selection, Human Path, and outreach.",
+    description: "Build the profile behind better matching, work examples, and Human Path.",
     url: "https://www.thejobmarketisadumpsterfire.com",
     siteName: "The Job Market Is a Dumpster Fire",
     images: ["/scans/opengraph-image"],

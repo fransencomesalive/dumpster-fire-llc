@@ -303,7 +303,7 @@ export default function DashboardClient() {
                 <p className={styles.profileEditorLabel}>Career Profile</p>
                 <h2 id="profile-editor-title">Edit Career Profile</h2>
                 <p>
-                  Keep the profile current so scans, saved jobs, Human Path, and outreach can stay grounded in what
+                  Keep the profile current so scans, saved jobs, and Human Path can stay grounded in what
                   you actually want.
                 </p>
               </div>

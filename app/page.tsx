@@ -19,14 +19,14 @@ const operatingLoop = [
   },
   {
     title: "Pursue with context",
-    copy: "Use proof, voice, and contact context to make each pursuit specific. No automated application blasts.",
+    copy: "Use work examples, voice, and contact context to make each pursuit specific. No automated application blasts.",
   },
 ];
 
 const onboardingFlow = [
   {
     title: "Intake",
-    copy: "Add the basics, target roles, resumes, work history, proof, skills, writing style, and outreach preferences.",
+    copy: "Add the basics, target roles, resumes, work history, work examples, skills, writing style, and outreach preferences.",
   },
   {
     title: "Shape",
@@ -38,11 +38,11 @@ const onboardingFlow = [
   },
   {
     title: "Activate",
-    copy: "Use the completed profile to support matching, proof selection, Human Path, and outreach.",
+    copy: "Use the completed profile to support matching, work examples, and Human Path.",
   },
   {
     title: "Improve",
-    copy: "Keep the profile current as your search, proof, and role targets change.",
+    copy: "Keep the profile current as your search, work examples, and role targets change.",
   },
 ];
 
@@ -81,7 +81,7 @@ const humanPathSlides = [
       {
         heading: "Tailored outreach message",
         copy: "Maya - saw Good Vibes is hiring a Senior PM to tighten the path from customer signal to shipped product bets. That shape is close to work I have led.",
-        items: ["Proof object: customer insight to roadmap launch", "Tone: direct, specific, human", "Status: editable draft, not sent"],
+        items: ["Work example: customer insight to roadmap launch", "Tone: direct, specific, human", "Status: editable draft, not sent"],
       },
     ],
   },
@@ -103,11 +103,11 @@ const humanPathSteps = ["Review", "Contacts", "Outreach", "Track"];
 const featureSets = [
   {
     title: "Career profile",
-    items: ["Identity and search basics", "Role Tracks", "Resume and work history review", "Proof Library", "Voice and outreach rules"],
+    items: ["Identity and search basics", "Role Tracks", "Resume and work history review", "Work Examples", "Voice and outreach rules"],
   },
   {
     title: "Job review",
-    items: ["Fit labels", "Role Track context", "Resume notes", "Proof selection", "Risk explanation"],
+    items: ["Fit labels", "Role Track context", "Resume notes", "Work examples", "Risk explanation"],
   },
   {
     title: "Human Path workflow",
@@ -118,17 +118,17 @@ const featureSets = [
 const accessStates = [
   {
     title: "Profile setup",
-    price: "Available in beta",
-    copy: "Build the profile that supports better matching, proof selection, and outreach.",
+    price: "Good",
+    copy: "Build the profile that supports better matching, work examples, and outreach.",
   },
   {
     title: "Job scanning",
-    price: "Limited beta",
+    price: "Gooder",
     copy: "Scan roles against your current profile and keep track of jobs worth revisiting.",
   },
   {
     title: "Pursuit workflow",
-    price: "Next beta area",
+    price: "Goodest",
     copy: "Turn saved jobs into researched, specific pursuits with contact context and outreach support as the workflow opens.",
   },
 ];
@@ -155,7 +155,7 @@ export default function HomePage() {
           <a href="#human-path">Human Path</a>
           <a href="#access">Access</a>
           <Link href="/onboarding">Build profile</Link>
-          <a href="mailto:randall@randallfransen.com?subject=Dumpster%20Fire%20beta">Contact</a>
+          <a href="mailto:randall@randallfransen.com?subject=Dumpster%20Fire%20access">Contact</a>
         </nav>
       </header>
 
@@ -175,7 +175,7 @@ export default function HomePage() {
               A job-search operating system for people who are done feeding the machine.
             </p>
             <p className={styles.publicLandingIntro}>
-              Job boards and ATS&apos;s are where good candidates disappear. Dumpster Fire scans boards, company pages, and targeted sources, surfaces likely hiring contacts, and helps you reach out with your proof and voice.
+              Job boards and ATS&apos;s are where good candidates disappear. Dumpster Fire scans boards, company pages, and targeted sources, surfaces likely hiring contacts, and helps you reach out with your work examples and voice.
             </p>
             <div className={styles.publicLandingHeroSigns} aria-label="Search posture">
               <span className={styles.publicLandingSignTomato}>Stop applying</span>
@@ -219,7 +219,7 @@ export default function HomePage() {
         <div className={styles.publicLandingSectionIntro}>
           <h2 id="onboarding-title">Onboarding</h2>
           <p>
-            Start by building the profile that matching, proof selection, Human Path, and outreach depend on.
+            Start by building the profile that matching, work examples, and Human Path depend on.
           </p>
         </div>
         <div className={styles.publicLandingOnboardingFlow} aria-label="Onboarding flow">
@@ -302,7 +302,7 @@ export default function HomePage() {
         <div className={styles.publicLandingSectionIntro}>
           <p className={styles.publicLandingKicker}>How it works</p>
           <h2 id="feature-set-title">The profile makes the search less random.</h2>
-          <p>Matching, Saved Jobs, Pursuits, Human Path, and outreach all work better when they start from the same source of truth.</p>
+          <p>Matching, Saved Jobs, Pursuits, and Human Path all work better when they start from the same source of truth.</p>
         </div>
         <div className={styles.publicLandingFeatureSetGrid}>
           {featureSets.map((featureSet) => (
@@ -322,7 +322,6 @@ export default function HomePage() {
         <div className={styles.publicLandingSectionIntro}>
           <p className={styles.publicLandingKicker}>Access</p>
           <h2 id="access-title">Start with the profile. Add momentum from there.</h2>
-          <p>Profile setup is open for beta users now. Job scanning and pursuit tools are limited while the workflow is tightened around real search behavior.</p>
         </div>
         <div className={styles.publicLandingPricingGrid}>
           {accessStates.map((tier) => (
@@ -339,7 +338,7 @@ export default function HomePage() {
         <div className={styles.publicLandingBandCopy}>
           <p className={styles.publicLandingKicker}>Guardrails</p>
           <h2 id="guardrails-title">Built for trust before scale.</h2>
-          <p>The product keeps the human in the loop and treats profile data, outreach context, and source quality as things that need proof.</p>
+          <p>The product keeps the human in the loop and treats profile data, outreach context, and source quality as things that need to be verified.</p>
         </div>
         <ul className={styles.publicLandingGuardrailList}>
           {guardrails.map((item) => (

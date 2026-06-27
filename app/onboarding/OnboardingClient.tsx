@@ -242,7 +242,7 @@ type TokenResponse = {
 
 const notLoadedReadinessLabel = "Not loaded";
 const incompleteProfileJustification = "Without the full picture, outreach won't be good. And if outreach isn't good, your chances drop. Finish your profile.";
-const incompleteProfileLockout = "Scanning is locked until the profile is complete. Matching, Saved Jobs, Pursuits, Human Path, and outreach stay locked with it.";
+const incompleteProfileLockout = "Scanning is locked until the profile is complete. Matching, Saved Jobs, Pursuits, and Human Path stay locked with it.";
 
 const qualitySectionByOnboardingKey: Partial<Record<PublicProfileOnboardingSectionKey, QualitySection>> = {
   whyPeopleHireMe: "why_people_hire_me",
@@ -1279,7 +1279,7 @@ export default function OnboardingClient({
         <div>
           <p className={styles.statusLabel}>Account</p>
           <p className={styles.statusDetail}>
-            {accessToken ? "Signed in." : "Sign in with your beta account to continue."}
+            {accessToken ? "Signed in." : "Sign in to continue."}
           </p>
         </div>
         {accessToken ? (

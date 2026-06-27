@@ -58,6 +58,15 @@ Chat acknowledgement is not durable memory. If a behavioral rule matters, it mus
 
 Do not put internal implementation reasoning, roadmap sequencing, backend terminology, provider details, agent/tool notes, or recovery-session commentary into public-facing app copy. Translate internal product logic into user-facing language before editing UI text, metadata, onboarding text, dashboard text, or marketing sections.
 
+### Public Product Vocabulary & Positioning
+
+These are standing copy rules for all user-facing surfaces (Randall, 2026-06-26):
+
+- **Not a beta, not a phased rollout.** Never use "beta", "rollout", "open now", "limited", "coming soon", or availability-announcement framing. The Access section is a **pricing structure** with three ascending tiers named **Good / Gooder / Goodest**.
+- **No "proof" vocabulary.** Never use the word "proof" (proof, Proof Library, proof object, proof selection, "what this proves", etc.) in user-facing copy. The user-facing concept is **work examples / portfolio** — text-only examples used as context for outreach-message generation.
+- **No "improve the profile / improve matching" framing.** Matches are rated by the system to provide better matching; the user maintains/keeps their profile current, they do not "improve matching."
+- **Brand voice: anti-corporate-speak.** Dumpster Fire is not a tool for corporate-speak lovers. The positioning is about bringing the user's personality to the table when pursuing a job. Copy should sound human and specific, never generic corporate boilerplate.
+
 ### Design Authority
 
 Codex must not invent UI, layout, CSS, visual hierarchy, component structure, or public-facing presentation from its own judgment.
