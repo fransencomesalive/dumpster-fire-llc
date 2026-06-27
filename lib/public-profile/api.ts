@@ -3,6 +3,14 @@ import {
   type PublicAuthSession,
 } from "../public-auth/session";
 import {
+  searchIndustries,
+  searchLocations,
+  searchSkills,
+  type IndustrySearchResult,
+  type LocationSearchResult,
+  type SkillSearchResult,
+} from "./catalogues";
+import {
   createPublicProfileRepositoryRequest,
   ensureCandidateProfileAggregate,
   getPublicProfileRepositoryConfig,
@@ -318,6 +326,17 @@ export type PublicProfileLeadershipProfileHandlerOptions = {
   ) => Promise<PublicProfileLeadershipProfileUpdateResult>;
 };
 
+export type PublicProfileCatalogueKind = "skills" | "industries" | "locations";
+
+export type PublicProfileCatalogueSearchHandlerOptions = {
+  env?: NodeJS.ProcessEnv;
+  getSession?: (request: Request) => Promise<PublicAuthSession>;
+  searchCatalogue?: (
+    query: string,
+    limit: number,
+  ) => SkillSearchResult[] | IndustrySearchResult[] | LocationSearchResult[];
+};
+
 function json(body: unknown, init: ResponseInit = {}) {
   return Response.json(body, {
     ...init,
@@ -407,6 +426,45 @@ function repositoryConfigErrorResponse() {
     error: "Public profile repository is not configured.",
     missing: ["SUPABASE_URL or NEXT_PUBLIC_SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY or SUPABASE_SERVICE_KEY"],
   }, { status: 503 });
+}
+
+function parseCatalogueLimit(value: string | null) {
+  if (!value) return 10;
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isFinite(parsed)) return 10;
+  return Math.min(Math.max(parsed, 1), 50);
+}
+
+function searchCatalogue(
+  kind: PublicProfileCatalogueKind,
+  query: string,
+  limit: number,
+) {
+  if (kind === "skills") return searchSkills(query, limit);
+  if (kind === "industries") return searchIndustries(query, limit);
+  return searchLocations(query, limit);
+}
+
+export async function handlePublicProfileCatalogueSearchRequest(
+  request: Request,
+  kind: PublicProfileCatalogueKind,
+  options: PublicProfileCatalogueSearchHandlerOptions = {},
+) {
+  const session = await sessionForRequest(request, options);
+  if (session.status !== "authenticated") return authErrorResponse(session);
+
+  const url = new URL(request.url);
+  const query = url.searchParams.get("q")?.trim() ?? "";
+  const limit = parseCatalogueLimit(url.searchParams.get("limit"));
+  const catalogueSearch = options.searchCatalogue ?? ((q, l) => searchCatalogue(kind, q, l));
+
+  return json({
+    status: "ready",
+    catalogue: kind,
+    query,
+    limit,
+    results: query ? catalogueSearch(query, limit) : [],
+  });
 }
 
 export async function handlePublicProfileRegenerationRequest(
