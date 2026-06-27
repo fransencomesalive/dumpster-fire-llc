@@ -1,78 +1,77 @@
 import {
   applyIdentitySearchSectionPatch,
-  applyCommunicationStyleSectionPatch,
+  applyFitSignalsSectionPatch,
+  applyVoicePersonalitySectionPatch,
   applyLeadershipProfileSectionPatch,
   applyOutreachRulesSectionPatch,
-  applyProofLibrarySectionPatch,
+  applyWorkExamplesSectionPatch,
   applyQualityNarrativeSectionPatch,
   applyResumeUploadsSectionPatch,
   applyRoleTracksSectionPatch,
   applySkillsInventorySectionPatch,
-  applyWorkHistorySectionPatch,
   applyWritingSamplesSectionPatch,
   identitySearchSection,
-  communicationStyleSection,
+  fitSignalsSection,
+  voicePersonalitySection,
   leadershipProfileSection,
   outreachRulesSection,
   parseIdentitySearchSectionPatch,
-  parseCommunicationStyleSectionPatch,
+  parseFitSignalsSectionPatch,
+  parseVoicePersonalitySectionPatch,
   parseLeadershipProfileSectionPatch,
   parseOutreachRulesSectionPatch,
-  parseProofLibrarySectionPatch,
+  parseWorkExamplesSectionPatch,
   parseQualityNarrativeSectionPatch,
   parseResumeUploadsSectionPatch,
   parseRoleTracksSectionPatch,
   parseSkillsInventorySectionPatch,
-  parseWorkHistorySectionPatch,
   parseWritingSamplesSectionPatch,
-  proofLibrarySection,
+  workExamplesSection,
   qualityNarrativeSection,
   resumeUploadsSection,
   roleTracksSection,
   skillsInventorySection,
   writingSamplesSection,
   type ApplyIdentitySearchSectionResult,
-  type ApplyCommunicationStyleSectionResult,
+  type ApplyFitSignalsSectionResult,
+  type ApplyVoicePersonalitySectionResult,
   type ApplyLeadershipProfileSectionResult,
   type ApplyOutreachRulesSectionResult,
-  type ApplyProofLibrarySectionResult,
+  type ApplyWorkExamplesSectionResult,
   type ApplyQualityNarrativeSectionResult,
   type ApplyResumeUploadsSectionResult,
   type ApplyRoleTracksSectionResult,
   type ApplySkillsInventorySectionResult,
-  type ApplyWorkHistorySectionResult,
   type ApplyWritingSamplesSectionResult,
   type IdentitySearchSection,
-  type CommunicationStyleSection,
+  type FitSignalsSection,
+  type VoicePersonalitySection,
   type LeadershipProfileSection,
   type OutreachRulesSection,
-  type ProofLibrarySection,
+  type WorkExamplesSection,
   type QualityNarrativeSection,
   type ResumeUploadsSection,
   type RoleTracksSection,
   type SectionValidationIssue,
   type SkillsInventorySection,
-  type WorkHistorySection,
   type WritingSamplesSection,
   validateResumeUploadsSectionPatch,
   validateOutreachRulesSectionPatch,
   validateSkillsInventorySectionPatch,
-  validateWorkHistorySectionPatch,
-  workHistorySection,
 } from "./sections";
 import { evaluateCandidateProfileQuality } from "./profile-quality";
 import {
   loadCandidateProfileAggregate,
   persistIdentitySearchSection,
-  persistCommunicationStyleSection,
+  persistFitSignalsSection,
+  persistVoicePersonalitySection,
   persistLeadershipProfileSection,
   persistOutreachRulesSection,
-  persistProofLibrarySection,
+  persistWorkExamplesSection,
   persistQualityNarrativeSection,
   persistResumeUploadsSection,
   persistRoleTracksSection,
   persistSkillsInventorySection,
-  persistWorkHistorySection,
   persistWritingSamplesSection,
   type PublicProfileRepositoryRequest,
 } from "./repository";
@@ -81,15 +80,15 @@ import type { CandidateProfileAggregate, ProfileQuality, QualitySection } from "
 export type PublicProfileSectionServiceDependencies = {
   loadAggregate: (userId: string) => Promise<CandidateProfileAggregate | undefined>;
   persistIdentitySearchSection: (result: ApplyIdentitySearchSectionResult) => Promise<void>;
-  persistCommunicationStyleSection?: (result: ApplyCommunicationStyleSectionResult) => Promise<void>;
+  persistFitSignalsSection?: (result: ApplyFitSignalsSectionResult) => Promise<void>;
+  persistVoicePersonalitySection?: (result: ApplyVoicePersonalitySectionResult) => Promise<void>;
   persistLeadershipProfileSection?: (result: ApplyLeadershipProfileSectionResult) => Promise<void>;
   persistOutreachRulesSection?: (result: ApplyOutreachRulesSectionResult) => Promise<void>;
-  persistProofLibrarySection?: (result: ApplyProofLibrarySectionResult) => Promise<void>;
+  persistWorkExamplesSection?: (result: ApplyWorkExamplesSectionResult) => Promise<void>;
   persistQualityNarrativeSection?: (result: ApplyQualityNarrativeSectionResult) => Promise<void>;
   persistResumeUploadsSection?: (result: ApplyResumeUploadsSectionResult) => Promise<void>;
   persistRoleTracksSection?: (result: ApplyRoleTracksSectionResult) => Promise<void>;
   persistSkillsInventorySection?: (result: ApplySkillsInventorySectionResult) => Promise<void>;
-  persistWorkHistorySection?: (result: ApplyWorkHistorySectionResult) => Promise<void>;
   persistWritingSamplesSection?: (result: ApplyWritingSamplesSectionResult) => Promise<void>;
 };
 
@@ -183,7 +182,7 @@ export type PublicProfileResumeUploadsReadResult =
       aggregate: CandidateProfileAggregate;
     };
 
-export type PublicProfileWorkHistoryUpdateResult =
+export type PublicProfileFitSignalsUpdateResult =
   | {
       status: "validation_error";
       issues: SectionValidationIssue[];
@@ -195,12 +194,12 @@ export type PublicProfileWorkHistoryUpdateResult =
   | {
       status: "updated";
       userId: string;
-      section: WorkHistorySection;
+      section: FitSignalsSection;
       profileQuality: ProfileQuality;
       aggregate: CandidateProfileAggregate;
     };
 
-export type PublicProfileWorkHistoryReadResult =
+export type PublicProfileFitSignalsReadResult =
   | {
       status: "not_found";
       userId: string;
@@ -208,12 +207,12 @@ export type PublicProfileWorkHistoryReadResult =
   | {
       status: "found";
       userId: string;
-      section: WorkHistorySection;
+      section: FitSignalsSection;
       profileQuality: ProfileQuality;
       aggregate: CandidateProfileAggregate;
     };
 
-export type PublicProfileProofLibraryUpdateResult =
+export type PublicProfileWorkExamplesUpdateResult =
   | {
       status: "validation_error";
       issues: SectionValidationIssue[];
@@ -225,12 +224,12 @@ export type PublicProfileProofLibraryUpdateResult =
   | {
       status: "updated";
       userId: string;
-      section: ProofLibrarySection;
+      section: WorkExamplesSection;
       profileQuality: ProfileQuality;
       aggregate: CandidateProfileAggregate;
     };
 
-export type PublicProfileProofLibraryReadResult =
+export type PublicProfileWorkExamplesReadResult =
   | {
       status: "not_found";
       userId: string;
@@ -238,7 +237,7 @@ export type PublicProfileProofLibraryReadResult =
   | {
       status: "found";
       userId: string;
-      section: ProofLibrarySection;
+      section: WorkExamplesSection;
       profileQuality: ProfileQuality;
       aggregate: CandidateProfileAggregate;
     };
@@ -303,7 +302,7 @@ export type PublicProfileQualityNarrativeReadResult =
       aggregate: CandidateProfileAggregate;
     };
 
-export type PublicProfileCommunicationStyleUpdateResult =
+export type PublicProfileVoicePersonalityUpdateResult =
   | {
       status: "validation_error";
       issues: SectionValidationIssue[];
@@ -315,12 +314,12 @@ export type PublicProfileCommunicationStyleUpdateResult =
   | {
       status: "updated";
       userId: string;
-      section: CommunicationStyleSection;
+      section: VoicePersonalitySection;
       profileQuality: ProfileQuality;
       aggregate: CandidateProfileAggregate;
     };
 
-export type PublicProfileCommunicationStyleReadResult =
+export type PublicProfileVoicePersonalityReadResult =
   | {
       status: "not_found";
       userId: string;
@@ -328,7 +327,7 @@ export type PublicProfileCommunicationStyleReadResult =
   | {
       status: "found";
       userId: string;
-      section: CommunicationStyleSection;
+      section: VoicePersonalitySection;
       profileQuality: ProfileQuality;
       aggregate: CandidateProfileAggregate;
     };
@@ -638,11 +637,11 @@ export async function updateLoadedResumeUploadsSectionForUser(
   };
 }
 
-export async function readLoadedWorkHistorySectionForUser(
+export async function readLoadedFitSignalsSectionForUser(
   loadAggregate: PublicProfileSectionServiceDependencies["loadAggregate"],
   userId: string,
   checkedAt = new Date().toISOString(),
-): Promise<PublicProfileWorkHistoryReadResult> {
+): Promise<PublicProfileFitSignalsReadResult> {
   const aggregate = await loadAggregate(userId);
   if (!aggregate) {
     return {
@@ -656,7 +655,7 @@ export async function readLoadedWorkHistorySectionForUser(
   return {
     status: "found",
     userId,
-    section: workHistorySection(aggregate),
+    section: fitSignalsSection(aggregate),
     profileQuality,
     aggregate: {
       ...aggregate,
@@ -665,13 +664,13 @@ export async function readLoadedWorkHistorySectionForUser(
   };
 }
 
-export async function updateLoadedWorkHistorySectionForUser(
+export async function updateLoadedFitSignalsSectionForUser(
   dependencies: PublicProfileSectionServiceDependencies,
   userId: string,
   input: unknown,
   options: PublicProfileSectionUpdateOptions = {},
-): Promise<PublicProfileWorkHistoryUpdateResult> {
-  const parsed = parseWorkHistorySectionPatch(input);
+): Promise<PublicProfileFitSignalsUpdateResult> {
+  const parsed = parseFitSignalsSectionPatch(input);
   if (parsed.ok === false) {
     return {
       status: "validation_error",
@@ -687,24 +686,16 @@ export async function updateLoadedWorkHistorySectionForUser(
     };
   }
 
-  const attachmentIssues = validateWorkHistorySectionPatch(aggregate, parsed.patch);
-  if (attachmentIssues.length > 0) {
-    return {
-      status: "validation_error",
-      issues: attachmentIssues,
-    };
+  if (!dependencies.persistFitSignalsSection) {
+    throw new Error("Fit Signals persistence dependency is required.");
   }
 
-  if (!dependencies.persistWorkHistorySection) {
-    throw new Error("Work History persistence dependency is required.");
-  }
-
-  const result = applyWorkHistorySectionPatch(
+  const result = applyFitSignalsSectionPatch(
     aggregate,
     parsed.patch,
     options.updatedAt,
   );
-  await dependencies.persistWorkHistorySection(result);
+  await dependencies.persistFitSignalsSection(result);
 
   return {
     status: "updated",
@@ -715,11 +706,11 @@ export async function updateLoadedWorkHistorySectionForUser(
   };
 }
 
-export async function readLoadedProofLibrarySectionForUser(
+export async function readLoadedWorkExamplesSectionForUser(
   loadAggregate: PublicProfileSectionServiceDependencies["loadAggregate"],
   userId: string,
   checkedAt = new Date().toISOString(),
-): Promise<PublicProfileProofLibraryReadResult> {
+): Promise<PublicProfileWorkExamplesReadResult> {
   const aggregate = await loadAggregate(userId);
   if (!aggregate) {
     return {
@@ -733,7 +724,7 @@ export async function readLoadedProofLibrarySectionForUser(
   return {
     status: "found",
     userId,
-    section: proofLibrarySection(aggregate),
+    section: workExamplesSection(aggregate),
     profileQuality,
     aggregate: {
       ...aggregate,
@@ -742,13 +733,13 @@ export async function readLoadedProofLibrarySectionForUser(
   };
 }
 
-export async function updateLoadedProofLibrarySectionForUser(
+export async function updateLoadedWorkExamplesSectionForUser(
   dependencies: PublicProfileSectionServiceDependencies,
   userId: string,
   input: unknown,
   options: PublicProfileSectionUpdateOptions = {},
-): Promise<PublicProfileProofLibraryUpdateResult> {
-  const parsed = parseProofLibrarySectionPatch(input);
+): Promise<PublicProfileWorkExamplesUpdateResult> {
+  const parsed = parseWorkExamplesSectionPatch(input);
   if (parsed.ok === false) {
     return {
       status: "validation_error",
@@ -764,16 +755,16 @@ export async function updateLoadedProofLibrarySectionForUser(
     };
   }
 
-  if (!dependencies.persistProofLibrarySection) {
-    throw new Error("Proof Library persistence dependency is required.");
+  if (!dependencies.persistWorkExamplesSection) {
+    throw new Error("Work Examples persistence dependency is required.");
   }
 
-  const result = applyProofLibrarySectionPatch(
+  const result = applyWorkExamplesSectionPatch(
     aggregate,
     parsed.patch,
     options.updatedAt,
   );
-  await dependencies.persistProofLibrarySection(result);
+  await dependencies.persistWorkExamplesSection(result);
 
   return {
     status: "updated",
@@ -933,11 +924,11 @@ export async function updateLoadedQualityNarrativeSectionForUser(
   };
 }
 
-export async function readLoadedCommunicationStyleSectionForUser(
+export async function readLoadedVoicePersonalitySectionForUser(
   loadAggregate: PublicProfileSectionServiceDependencies["loadAggregate"],
   userId: string,
   checkedAt = new Date().toISOString(),
-): Promise<PublicProfileCommunicationStyleReadResult> {
+): Promise<PublicProfileVoicePersonalityReadResult> {
   const aggregate = await loadAggregate(userId);
   if (!aggregate) {
     return {
@@ -951,7 +942,7 @@ export async function readLoadedCommunicationStyleSectionForUser(
   return {
     status: "found",
     userId,
-    section: communicationStyleSection(aggregate),
+    section: voicePersonalitySection(aggregate),
     profileQuality,
     aggregate: {
       ...aggregate,
@@ -960,13 +951,13 @@ export async function readLoadedCommunicationStyleSectionForUser(
   };
 }
 
-export async function updateLoadedCommunicationStyleSectionForUser(
+export async function updateLoadedVoicePersonalitySectionForUser(
   dependencies: PublicProfileSectionServiceDependencies,
   userId: string,
   input: unknown,
   options: PublicProfileSectionUpdateOptions = {},
-): Promise<PublicProfileCommunicationStyleUpdateResult> {
-  const parsed = parseCommunicationStyleSectionPatch(input);
+): Promise<PublicProfileVoicePersonalityUpdateResult> {
+  const parsed = parseVoicePersonalitySectionPatch(input);
   if (parsed.ok === false) {
     return {
       status: "validation_error",
@@ -982,16 +973,16 @@ export async function updateLoadedCommunicationStyleSectionForUser(
     };
   }
 
-  if (!dependencies.persistCommunicationStyleSection) {
-    throw new Error("Communication Style persistence dependency is required.");
+  if (!dependencies.persistVoicePersonalitySection) {
+    throw new Error("Voice & Personality persistence dependency is required.");
   }
 
-  const result = applyCommunicationStyleSectionPatch(
+  const result = applyVoicePersonalitySectionPatch(
     aggregate,
     parsed.patch,
     options.updatedAt,
   );
-  await dependencies.persistCommunicationStyleSection(result);
+  await dependencies.persistVoicePersonalitySection(result);
 
   return {
     status: "updated",
@@ -1291,53 +1282,53 @@ export async function updateResumeUploadsSectionForUser(
   }, userId, input, options);
 }
 
-export async function readWorkHistorySectionForUser(
+export async function readFitSignalsSectionForUser(
   request: PublicProfileRepositoryRequest,
   userId: string,
   checkedAt?: string,
 ) {
-  return readLoadedWorkHistorySectionForUser(
+  return readLoadedFitSignalsSectionForUser(
     (requestedUserId) => loadCandidateProfileAggregate(request, requestedUserId),
     userId,
     checkedAt,
   );
 }
 
-export async function updateWorkHistorySectionForUser(
+export async function updateFitSignalsSectionForUser(
   request: PublicProfileRepositoryRequest,
   userId: string,
   input: unknown,
   options: PublicProfileSectionUpdateOptions = {},
 ) {
-  return updateLoadedWorkHistorySectionForUser({
+  return updateLoadedFitSignalsSectionForUser({
     loadAggregate: (requestedUserId) => loadCandidateProfileAggregate(request, requestedUserId),
     persistIdentitySearchSection: (result) => persistIdentitySearchSection(request, result),
-    persistWorkHistorySection: (result) => persistWorkHistorySection(request, result),
+    persistFitSignalsSection: (result) => persistFitSignalsSection(request, result),
   }, userId, input, options);
 }
 
-export async function readProofLibrarySectionForUser(
+export async function readWorkExamplesSectionForUser(
   request: PublicProfileRepositoryRequest,
   userId: string,
   checkedAt?: string,
 ) {
-  return readLoadedProofLibrarySectionForUser(
+  return readLoadedWorkExamplesSectionForUser(
     (requestedUserId) => loadCandidateProfileAggregate(request, requestedUserId),
     userId,
     checkedAt,
   );
 }
 
-export async function updateProofLibrarySectionForUser(
+export async function updateWorkExamplesSectionForUser(
   request: PublicProfileRepositoryRequest,
   userId: string,
   input: unknown,
   options: PublicProfileSectionUpdateOptions = {},
 ) {
-  return updateLoadedProofLibrarySectionForUser({
+  return updateLoadedWorkExamplesSectionForUser({
     loadAggregate: (requestedUserId) => loadCandidateProfileAggregate(request, requestedUserId),
     persistIdentitySearchSection: (result) => persistIdentitySearchSection(request, result),
-    persistProofLibrarySection: (result) => persistProofLibrarySection(request, result),
+    persistWorkExamplesSection: (result) => persistWorkExamplesSection(request, result),
   }, userId, input, options);
 }
 
@@ -1394,28 +1385,28 @@ export async function updateQualityNarrativeSectionForUser(
   }, userId, section, input, options);
 }
 
-export async function readCommunicationStyleSectionForUser(
+export async function readVoicePersonalitySectionForUser(
   request: PublicProfileRepositoryRequest,
   userId: string,
   checkedAt?: string,
 ) {
-  return readLoadedCommunicationStyleSectionForUser(
+  return readLoadedVoicePersonalitySectionForUser(
     (requestedUserId) => loadCandidateProfileAggregate(request, requestedUserId),
     userId,
     checkedAt,
   );
 }
 
-export async function updateCommunicationStyleSectionForUser(
+export async function updateVoicePersonalitySectionForUser(
   request: PublicProfileRepositoryRequest,
   userId: string,
   input: unknown,
   options: PublicProfileSectionUpdateOptions = {},
 ) {
-  return updateLoadedCommunicationStyleSectionForUser({
+  return updateLoadedVoicePersonalitySectionForUser({
     loadAggregate: (requestedUserId) => loadCandidateProfileAggregate(request, requestedUserId),
     persistIdentitySearchSection: (result) => persistIdentitySearchSection(request, result),
-    persistCommunicationStyleSection: (result) => persistCommunicationStyleSection(request, result),
+    persistVoicePersonalitySection: (result) => persistVoicePersonalitySection(request, result),
   }, userId, input, options);
 }
 

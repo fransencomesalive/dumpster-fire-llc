@@ -73,7 +73,13 @@ Protocol (`git status`, read this plan + the two design docs).
   design. Fixtures are the shared A-layer artifact and are done.
 
 ## Phase B — Services / API
-- [ ] B1. `section-service.ts` + `repository.ts` for the new shapes.
+- [x] B1. `section-service.ts` + `repository.ts` for the new shapes. DONE 2026-06-27; both compile
+  clean (0 in-file tsc errors). Removed WorkHistory + ProofLibrary + CommunicationStyle service/
+  repo functions; added FitSignals, WorkExamples, VoicePersonality (read/update/persist + row
+  mappers + load queries). work_examples uses hard-delete (migration dropped archived_at);
+  skill_work_examples join; voice_personality + fit_signals singleton upserts; writing_samples
+  bucket/tags; identity persist drops work_auth/availability. Remaining red in `api.ts` (route
+  wiring) is **B2**, not B1.
 - [ ] B2. Routes: rename `proof-library` → `work-examples`; remove `work-history`; add
   `fit-signals`; trim `identity-search`; consolidate the narrative routes into one
   `voice-personality` route (Q1/Q4/samples/tags). Remove dead routes.

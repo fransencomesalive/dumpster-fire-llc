@@ -2,17 +2,17 @@ import type {
   CandidateProfileAggregate,
   CandidateProfilePreferences,
   CandidateProfileRecord,
-  CommunicationStyleSettings,
   CompanyWatchlistItem,
+  FitSignals,
   ProfileQuality,
   Quality,
   QualityScoredTextField,
   QualitySection,
   RoleTrack,
   RoleTrackOutreachRule,
+  VoicePersonality,
   WritingSample,
-  WorkHistoryItem,
-  ProjectProof,
+  WorkExample,
   Resume,
   SkillProfile,
 } from "./types";
@@ -20,15 +20,15 @@ import type { CandidateProfileGenerationResult } from "./profile-generation";
 import { evaluateCandidateProfileQuality } from "./profile-quality";
 import type {
   ApplyIdentitySearchSectionResult,
-  ApplyCommunicationStyleSectionResult,
+  ApplyFitSignalsSectionResult,
+  ApplyVoicePersonalitySectionResult,
   ApplyLeadershipProfileSectionResult,
   ApplyOutreachRulesSectionResult,
-  ApplyProofLibrarySectionResult,
+  ApplyWorkExamplesSectionResult,
   ApplyQualityNarrativeSectionResult,
   ApplyResumeUploadsSectionResult,
   ApplyRoleTracksSectionResult,
   ApplySkillsInventorySectionResult,
-  ApplyWorkHistorySectionResult,
   ApplyWritingSamplesSectionResult,
 } from "./sections";
 
@@ -55,7 +55,6 @@ type CandidateProfileRow = {
   full_name: string;
   preferred_name: string | null;
   location: string;
-  work_authorization: string;
   linkedin_url: string | null;
   portfolio_url: string | null;
   personal_website_url: string | null;
@@ -63,7 +62,6 @@ type CandidateProfileRow = {
   remote_preference: CandidateProfileRecord["remotePreference"];
   target_compensation_min: number | null;
   target_compensation_preferred: number | null;
-  availability: string;
   generated_markdown: string;
   markdown_generated_at: string | null;
   created_at: string;
@@ -133,45 +131,22 @@ type ResumeRoleTrackRow = {
   role_track_id: string;
 };
 
-type WorkHistoryRow = {
+type FitSignalsRow = {
   id: string;
   profile_id: string;
-  company: string;
-  title: string;
-  start_date: string | null;
-  end_date: string | null;
-  current_role: boolean;
-  responsibilities: string[];
-  accomplishments: string[];
-  skills: string[];
-  metrics: string[];
-  source: WorkHistoryItem["source"];
+  good_signals: string[];
+  poor_fit_signals: string[];
   created_at: string;
   updated_at: string;
 };
 
-type WorkHistoryResumeRow = {
-  work_history_item_id: string;
-  resume_id: string;
-};
-
-type ProjectProofRow = {
+type WorkExampleRow = {
   id: string;
   profile_id: string;
-  name: string;
+  title: string;
+  one_hitter: string;
   link: string | null;
-  description: string;
-  candidate_role: string;
-  what_this_proves: string[];
-  capabilities_demonstrated: string[];
-  key_responsibilities_supported: string[];
-  required_experience_supported: string[];
-  industries_relevant: string[];
-  best_used_for: string[];
-  avoid_using_for: string[];
-  metrics_results: string[];
-  caveats: string[];
-  confidence: ProjectProof["confidence"];
+  context: string;
   created_at: string;
   updated_at: string;
 };
@@ -188,14 +163,9 @@ type SkillRow = {
   updated_at: string;
 };
 
-type SkillProjectRow = {
+type SkillWorkExampleRow = {
   skill_id: string;
-  project_proof_id: string;
-};
-
-type SkillWorkHistoryRow = {
-  skill_id: string;
-  work_history_item_id: string;
+  work_example_id: string;
 };
 
 type QualityFieldRow = {
@@ -210,17 +180,14 @@ type QualityFieldRow = {
   updated_at: string;
 };
 
-type CommunicationStyleRow = {
+type VoicePersonalityRow = {
   id: string;
   profile_id: string;
-  preferred_tone: string[];
-  formality_level: CommunicationStyleSettings["formalityLevel"];
-  humor_level: CommunicationStyleSettings["humorLevel"];
-  message_length_preference: CommunicationStyleSettings["messageLengthPreference"];
-  greeting_preferences: string[];
-  signoff_preferences: string[];
-  phrases_to_avoid: string[];
-  phrases_that_sound_like_me: string[];
+  q1_value: string;
+  q4_opinion: string;
+  tone_tags: string[];
+  avoid_tags: string[];
+  avoid_note: string;
   created_at: string;
   updated_at: string;
 };
@@ -228,10 +195,10 @@ type CommunicationStyleRow = {
 type WritingSampleRow = {
   id: string;
   profile_id: string;
-  sample_type: WritingSample["sampleType"];
+  bucket: WritingSample["bucket"];
   channel: WritingSample["channel"];
   text: string;
-  why_it_works_or_fails: string;
+  tags: string[];
   created_at: string;
   updated_at: string;
 };
@@ -345,14 +312,12 @@ export function mapPublicProfileRows(rows: {
   roleTracks: RoleTrackRow[];
   resumes: ResumeRow[];
   resumeRoleTracks: ResumeRoleTrackRow[];
-  workHistory: WorkHistoryRow[];
-  workHistoryResumes: WorkHistoryResumeRow[];
-  projects: ProjectProofRow[];
+  fitSignals?: FitSignalsRow;
+  workExamples: WorkExampleRow[];
   skills: SkillRow[];
-  skillProjects: SkillProjectRow[];
-  skillWorkHistory: SkillWorkHistoryRow[];
+  skillWorkExamples: SkillWorkExampleRow[];
   qualityFields: QualityFieldRow[];
-  communicationStyle?: CommunicationStyleRow;
+  voicePersonality?: VoicePersonalityRow;
   writingSamples: WritingSampleRow[];
   outreachRules?: OutreachRuleSetRow;
   roleTrackOutreachRules: RoleTrackOutreachRuleRow[];
@@ -369,18 +334,8 @@ export function mapPublicProfileRows(rows: {
     "left",
     "right",
   );
-  const resumeIdsByWorkHistory = idsByLeft(
-    rows.workHistoryResumes.map((row) => ({ left: row.work_history_item_id, right: row.resume_id })),
-    "left",
-    "right",
-  );
-  const projectIdsBySkill = idsByLeft(
-    rows.skillProjects.map((row) => ({ left: row.skill_id, right: row.project_proof_id })),
-    "left",
-    "right",
-  );
-  const workHistoryIdsBySkill = idsByLeft(
-    rows.skillWorkHistory.map((row) => ({ left: row.skill_id, right: row.work_history_item_id })),
+  const workExampleIdsBySkill = idsByLeft(
+    rows.skillWorkExamples.map((row) => ({ left: row.skill_id, right: row.work_example_id })),
     "left",
     "right",
   );
@@ -394,7 +349,6 @@ export function mapPublicProfileRows(rows: {
       fullName: rows.profile.full_name,
       preferredName: defined(rows.profile.preferred_name),
       location: rows.profile.location,
-      workAuthorization: rows.profile.work_authorization,
       linkedInUrl: defined(rows.profile.linkedin_url),
       portfolioUrl: defined(rows.profile.portfolio_url),
       personalWebsiteUrl: defined(rows.profile.personal_website_url),
@@ -402,7 +356,6 @@ export function mapPublicProfileRows(rows: {
       remotePreference: rows.profile.remote_preference,
       targetCompensationMin: defined(rows.profile.target_compensation_min),
       targetCompensationPreferred: defined(rows.profile.target_compensation_preferred),
-      availability: rows.profile.availability,
       generatedMarkdown: rows.profile.generated_markdown,
       markdownGeneratedAt: defined(rows.profile.markdown_generated_at),
       createdAt: rows.profile.created_at,
@@ -464,40 +417,21 @@ export function mapPublicProfileRows(rows: {
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     })),
-    workHistory: rows.workHistory.map((row): WorkHistoryItem => ({
+    fitSignals: rows.fitSignals ? {
+      id: rows.fitSignals.id,
+      profileId: rows.fitSignals.profile_id,
+      goodSignals: rows.fitSignals.good_signals,
+      poorFitSignals: rows.fitSignals.poor_fit_signals,
+      createdAt: rows.fitSignals.created_at,
+      updatedAt: rows.fitSignals.updated_at,
+    } : undefined,
+    workExamples: rows.workExamples.map((row): WorkExample => ({
       id: row.id,
       profileId: row.profile_id,
-      company: row.company,
       title: row.title,
-      startDate: defined(row.start_date),
-      endDate: defined(row.end_date),
-      currentRole: row.current_role,
-      responsibilities: row.responsibilities,
-      accomplishments: row.accomplishments,
-      skills: row.skills,
-      metrics: row.metrics,
-      associatedResumeIds: resumeIdsByWorkHistory.get(row.id) ?? [],
-      source: row.source,
-      createdAt: row.created_at,
-      updatedAt: row.updated_at,
-    })),
-    projects: rows.projects.map((row): ProjectProof => ({
-      id: row.id,
-      profileId: row.profile_id,
-      name: row.name,
+      oneHitter: row.one_hitter,
       link: defined(row.link),
-      description: row.description,
-      candidateRole: row.candidate_role,
-      whatThisProves: row.what_this_proves,
-      capabilitiesDemonstrated: row.capabilities_demonstrated,
-      keyResponsibilitiesSupported: row.key_responsibilities_supported,
-      requiredExperienceSupported: row.required_experience_supported,
-      industriesRelevant: row.industries_relevant,
-      bestUsedFor: row.best_used_for,
-      avoidUsingFor: row.avoid_using_for,
-      metricsResults: row.metrics_results,
-      caveats: row.caveats,
-      confidence: row.confidence,
+      context: row.context,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     })),
@@ -507,8 +441,7 @@ export function mapPublicProfileRows(rows: {
       skillName: row.skill_name,
       proficiency: row.proficiency,
       evidence: row.evidence,
-      relatedProjectIds: projectIdsBySkill.get(row.id) ?? [],
-      relatedWorkHistoryIds: workHistoryIdsBySkill.get(row.id) ?? [],
+      relatedWorkExampleIds: workExampleIdsBySkill.get(row.id) ?? [],
       bestRoleFit: row.best_role_fit,
       doNotOverclaim: row.do_not_overclaim,
       createdAt: row.created_at,
@@ -525,27 +458,24 @@ export function mapPublicProfileRows(rows: {
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     })),
-    communicationStyle: rows.communicationStyle ? {
-      id: rows.communicationStyle.id,
-      profileId: rows.communicationStyle.profile_id,
-      preferredTone: rows.communicationStyle.preferred_tone,
-      formalityLevel: rows.communicationStyle.formality_level,
-      humorLevel: rows.communicationStyle.humor_level,
-      messageLengthPreference: rows.communicationStyle.message_length_preference,
-      greetingPreferences: rows.communicationStyle.greeting_preferences,
-      signoffPreferences: rows.communicationStyle.signoff_preferences,
-      phrasesToAvoid: rows.communicationStyle.phrases_to_avoid,
-      phrasesThatSoundLikeMe: rows.communicationStyle.phrases_that_sound_like_me,
-      createdAt: rows.communicationStyle.created_at,
-      updatedAt: rows.communicationStyle.updated_at,
+    voicePersonality: rows.voicePersonality ? {
+      id: rows.voicePersonality.id,
+      profileId: rows.voicePersonality.profile_id,
+      q1Value: rows.voicePersonality.q1_value,
+      q4Opinion: rows.voicePersonality.q4_opinion,
+      toneTags: rows.voicePersonality.tone_tags,
+      avoidTags: rows.voicePersonality.avoid_tags,
+      avoidNote: rows.voicePersonality.avoid_note,
+      createdAt: rows.voicePersonality.created_at,
+      updatedAt: rows.voicePersonality.updated_at,
     } : undefined,
     writingSamples: rows.writingSamples.map((row): WritingSample => ({
       id: row.id,
       profileId: row.profile_id,
-      sampleType: row.sample_type,
+      bucket: row.bucket,
       channel: row.channel,
       text: row.text,
-      whyItWorksOrFails: row.why_it_works_or_fails,
+      tags: row.tags,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     })),
@@ -602,11 +532,11 @@ export async function loadCandidateProfileAggregate(
     companyWatchlist,
     roleTracks,
     resumes,
-    workHistory,
-    projects,
+    fitSignals,
+    workExamples,
     skills,
     qualityFields,
-    communicationStyle,
+    voicePersonality,
     writingSamples,
     outreachRules,
     leadershipProfile,
@@ -616,32 +546,26 @@ export async function loadCandidateProfileAggregate(
     request<CompanyWatchlistRow[]>("company_watchlist_items", { query: profileQuery }),
     request<RoleTrackRow[]>("role_tracks", { query: `${profileQuery}&archived_at=is.null` }),
     request<ResumeRow[]>("resumes", { query: `${profileQuery}&archived_at=is.null` }),
-    request<WorkHistoryRow[]>("work_history_items", { query: profileQuery }),
-    request<ProjectProofRow[]>("project_proofs", { query: `${profileQuery}&archived_at=is.null` }),
+    request<FitSignalsRow[]>("fit_signals", { query: qs({ profile_id: `eq.${profile.id}`, limit: "1" }) }),
+    request<WorkExampleRow[]>("work_examples", { query: profileQuery }),
     request<SkillRow[]>("skill_profiles", { query: profileQuery }),
     request<QualityFieldRow[]>("quality_scored_text_fields", { query: profileQuery }),
-    request<CommunicationStyleRow[]>("communication_style_settings", { query: qs({ profile_id: `eq.${profile.id}`, limit: "1" }) }),
+    request<VoicePersonalityRow[]>("voice_personality", { query: qs({ profile_id: `eq.${profile.id}`, limit: "1" }) }),
     request<WritingSampleRow[]>("writing_samples", { query: profileQuery }),
     request<OutreachRuleSetRow[]>("outreach_rule_sets", { query: qs({ profile_id: `eq.${profile.id}`, limit: "1" }) }),
     request<LeadershipProfileRow[]>("leadership_profiles", { query: qs({ profile_id: `eq.${profile.id}`, limit: "1" }) }),
     request<ProfileQualityRow[]>("profile_quality", { query: qs({ profile_id: `eq.${profile.id}`, limit: "1" }) }),
   ]);
   const roleTrackIds = roleTracks.map((row) => row.id);
-  const resumeIds = resumes.map((row) => row.id);
-  const workHistoryIds = workHistory.map((row) => row.id);
-  const projectIds = projects.map((row) => row.id);
   const skillIds = skills.map((row) => row.id);
+  const workExampleIds = workExamples.map((row) => row.id);
   const [
     resumeRoleTracks,
-    workHistoryResumes,
-    skillProjects,
-    skillWorkHistory,
+    skillWorkExamples,
     roleTrackOutreachRules,
   ] = await Promise.all([
     roleTrackIds.length === 0 ? [] : request<ResumeRoleTrackRow[]>("resume_role_tracks", { query: qs({ role_track_id: `in.(${roleTrackIds.join(",")})` }) }),
-    resumeIds.length === 0 || workHistoryIds.length === 0 ? [] : request<WorkHistoryResumeRow[]>("work_history_resumes", { query: qs({ work_history_item_id: `in.(${workHistoryIds.join(",")})` }) }),
-    skillIds.length === 0 || projectIds.length === 0 ? [] : request<SkillProjectRow[]>("skill_project_proofs", { query: qs({ skill_id: `in.(${skillIds.join(",")})` }) }),
-    skillIds.length === 0 || workHistoryIds.length === 0 ? [] : request<SkillWorkHistoryRow[]>("skill_work_history_items", { query: qs({ skill_id: `in.(${skillIds.join(",")})` }) }),
+    skillIds.length === 0 || workExampleIds.length === 0 ? [] : request<SkillWorkExampleRow[]>("skill_work_examples", { query: qs({ skill_id: `in.(${skillIds.join(",")})` }) }),
     roleTrackIds.length === 0 ? [] : request<RoleTrackOutreachRuleRow[]>("role_track_outreach_rules", { query: qs({ role_track_id: `in.(${roleTrackIds.join(",")})` }) }),
   ]);
 
@@ -652,14 +576,12 @@ export async function loadCandidateProfileAggregate(
     roleTracks,
     resumes,
     resumeRoleTracks,
-    workHistory,
-    workHistoryResumes,
-    projects,
+    fitSignals: first(fitSignals),
+    workExamples,
     skills,
-    skillProjects,
-    skillWorkHistory,
+    skillWorkExamples,
     qualityFields,
-    communicationStyle: first(communicationStyle),
+    voicePersonality: first(voicePersonality),
     writingSamples,
     outreachRules: first(outreachRules),
     roleTrackOutreachRules,
@@ -781,7 +703,6 @@ export async function persistIdentitySearchSection(
       full_name: profile.fullName,
       preferred_name: profile.preferredName ?? null,
       location: profile.location,
-      work_authorization: profile.workAuthorization,
       linkedin_url: profile.linkedInUrl ?? null,
       portfolio_url: profile.portfolioUrl ?? null,
       personal_website_url: profile.personalWebsiteUrl ?? null,
@@ -789,7 +710,6 @@ export async function persistIdentitySearchSection(
       remote_preference: profile.remotePreference,
       target_compensation_min: profile.targetCompensationMin ?? null,
       target_compensation_preferred: profile.targetCompensationPreferred ?? null,
-      availability: profile.availability,
       updated_at: profile.updatedAt,
     },
   });
@@ -1016,12 +936,14 @@ export async function persistResumeUploadsSection(
   });
 }
 
-export async function persistWorkHistorySection(
+export async function persistFitSignalsSection(
   request: PublicProfileRepositoryRequest,
-  result: ApplyWorkHistorySectionResult,
+  result: ApplyFitSignalsSectionResult,
 ) {
-  const { profile, workHistory } = result.aggregate;
-  const activeWorkHistoryIds = workHistory.map((item) => item.id);
+  const { profile, fitSignals } = result.aggregate;
+  if (!fitSignals) {
+    throw new Error("Fit Signals settings are required for persistence.");
+  }
 
   await request("candidate_profiles", {
     method: "PATCH",
@@ -1033,57 +955,19 @@ export async function persistWorkHistorySection(
     },
   });
 
-  if (activeWorkHistoryIds.length === 0) {
-    await request("work_history_items", {
-      method: "DELETE",
-      query: qs({ profile_id: `eq.${profile.id}` }),
-    });
-  } else {
-    await request("work_history_items", {
-      method: "DELETE",
-      query: `${qs({ profile_id: `eq.${profile.id}` })}&id=not.in.(${activeWorkHistoryIds.join(",")})`,
-    });
-    await request("work_history_items", {
-      method: "POST",
-      query: "?on_conflict=id",
-      headers: { Prefer: "resolution=merge-duplicates" },
-      body: workHistory.map((item) => ({
-        id: item.id,
-        profile_id: item.profileId,
-        company: item.company,
-        title: item.title,
-        start_date: item.startDate ?? null,
-        end_date: item.endDate ?? null,
-        current_role: item.currentRole,
-        responsibilities: item.responsibilities,
-        accomplishments: item.accomplishments,
-        skills: item.skills,
-        metrics: item.metrics,
-        source: item.source,
-        created_at: item.createdAt,
-        updated_at: item.updatedAt,
-      })),
-    });
-  }
-
-  for (const item of workHistory) {
-    await request("work_history_resumes", {
-      method: "DELETE",
-      query: qs({ work_history_item_id: `eq.${item.id}` }),
-    });
-
-    if (item.associatedResumeIds.length > 0) {
-      await request("work_history_resumes", {
-        method: "POST",
-        query: "?on_conflict=work_history_item_id,resume_id",
-        headers: { Prefer: "resolution=ignore-duplicates" },
-        body: item.associatedResumeIds.map((resumeId) => ({
-          work_history_item_id: item.id,
-          resume_id: resumeId,
-        })),
-      });
-    }
-  }
+  await request("fit_signals", {
+    method: "POST",
+    query: "?on_conflict=profile_id",
+    headers: { Prefer: "resolution=merge-duplicates" },
+    body: {
+      id: fitSignals.id,
+      profile_id: profile.id,
+      good_signals: fitSignals.goodSignals,
+      poor_fit_signals: fitSignals.poorFitSignals,
+      created_at: fitSignals.createdAt,
+      updated_at: fitSignals.updatedAt,
+    },
+  });
 
   await request("profile_quality", {
     method: "POST",
@@ -1101,12 +985,12 @@ export async function persistWorkHistorySection(
   });
 }
 
-export async function persistProofLibrarySection(
+export async function persistWorkExamplesSection(
   request: PublicProfileRepositoryRequest,
-  result: ApplyProofLibrarySectionResult,
+  result: ApplyWorkExamplesSectionResult,
 ) {
-  const { profile, projects } = result.aggregate;
-  const activeProjectIds = projects.map((project) => project.id);
+  const { profile, workExamples } = result.aggregate;
+  const activeWorkExampleIds = workExamples.map((example) => example.id);
 
   await request("candidate_profiles", {
     method: "PATCH",
@@ -1118,48 +1002,29 @@ export async function persistProofLibrarySection(
     },
   });
 
-  if (activeProjectIds.length === 0) {
-    await request("project_proofs", {
-      method: "PATCH",
-      query: `${qs({ profile_id: `eq.${profile.id}` })}&archived_at=is.null`,
-      body: {
-        archived_at: profile.updatedAt,
-        updated_at: profile.updatedAt,
-      },
+  if (activeWorkExampleIds.length === 0) {
+    await request("work_examples", {
+      method: "DELETE",
+      query: qs({ profile_id: `eq.${profile.id}` }),
     });
   } else {
-    await request("project_proofs", {
-      method: "PATCH",
-      query: `${qs({ profile_id: `eq.${profile.id}` })}&id=not.in.(${activeProjectIds.join(",")})&archived_at=is.null`,
-      body: {
-        archived_at: profile.updatedAt,
-        updated_at: profile.updatedAt,
-      },
+    await request("work_examples", {
+      method: "DELETE",
+      query: `${qs({ profile_id: `eq.${profile.id}` })}&id=not.in.(${activeWorkExampleIds.join(",")})`,
     });
-    await request("project_proofs", {
+    await request("work_examples", {
       method: "POST",
       query: "?on_conflict=id",
       headers: { Prefer: "resolution=merge-duplicates" },
-      body: projects.map((project) => ({
-        id: project.id,
-        profile_id: project.profileId,
-        name: project.name,
-        link: project.link ?? null,
-        description: project.description,
-        candidate_role: project.candidateRole,
-        what_this_proves: project.whatThisProves,
-        capabilities_demonstrated: project.capabilitiesDemonstrated,
-        key_responsibilities_supported: project.keyResponsibilitiesSupported,
-        required_experience_supported: project.requiredExperienceSupported,
-        industries_relevant: project.industriesRelevant,
-        best_used_for: project.bestUsedFor,
-        avoid_using_for: project.avoidUsingFor,
-        metrics_results: project.metricsResults,
-        caveats: project.caveats,
-        confidence: project.confidence,
-        archived_at: null,
-        created_at: project.createdAt,
-        updated_at: project.updatedAt,
+      body: workExamples.map((example) => ({
+        id: example.id,
+        profile_id: example.profileId,
+        title: example.title,
+        one_hitter: example.oneHitter,
+        link: example.link ?? null,
+        context: example.context,
+        created_at: example.createdAt,
+        updated_at: example.updatedAt,
       })),
     });
   }
@@ -1226,36 +1091,19 @@ export async function persistSkillsInventorySection(
   }
 
   for (const skill of skills) {
-    await request("skill_project_proofs", {
+    await request("skill_work_examples", {
       method: "DELETE",
       query: qs({ skill_id: `eq.${skill.id}` }),
     });
 
-    if (skill.relatedProjectIds.length > 0) {
-      await request("skill_project_proofs", {
+    if (skill.relatedWorkExampleIds.length > 0) {
+      await request("skill_work_examples", {
         method: "POST",
-        query: "?on_conflict=skill_id,project_proof_id",
+        query: "?on_conflict=skill_id,work_example_id",
         headers: { Prefer: "resolution=ignore-duplicates" },
-        body: skill.relatedProjectIds.map((projectId) => ({
+        body: skill.relatedWorkExampleIds.map((workExampleId) => ({
           skill_id: skill.id,
-          project_proof_id: projectId,
-        })),
-      });
-    }
-
-    await request("skill_work_history_items", {
-      method: "DELETE",
-      query: qs({ skill_id: `eq.${skill.id}` }),
-    });
-
-    if (skill.relatedWorkHistoryIds.length > 0) {
-      await request("skill_work_history_items", {
-        method: "POST",
-        query: "?on_conflict=skill_id,work_history_item_id",
-        headers: { Prefer: "resolution=ignore-duplicates" },
-        body: skill.relatedWorkHistoryIds.map((workHistoryId) => ({
-          skill_id: skill.id,
-          work_history_item_id: workHistoryId,
+          work_example_id: workExampleId,
         })),
       });
     }
@@ -1334,13 +1182,13 @@ export async function persistQualityNarrativeSection(
   });
 }
 
-export async function persistCommunicationStyleSection(
+export async function persistVoicePersonalitySection(
   request: PublicProfileRepositoryRequest,
-  result: ApplyCommunicationStyleSectionResult,
+  result: ApplyVoicePersonalitySectionResult,
 ) {
-  const { profile, communicationStyle } = result.aggregate;
-  if (!communicationStyle) {
-    throw new Error("Communication Style settings are required for persistence.");
+  const { profile, voicePersonality } = result.aggregate;
+  if (!voicePersonality) {
+    throw new Error("Voice & Personality settings are required for persistence.");
   }
 
   await request("candidate_profiles", {
@@ -1353,49 +1201,22 @@ export async function persistCommunicationStyleSection(
     },
   });
 
-  await request("communication_style_settings", {
+  await request("voice_personality", {
     method: "POST",
     query: "?on_conflict=profile_id",
     headers: { Prefer: "resolution=merge-duplicates" },
     body: {
-      id: communicationStyle.id,
+      id: voicePersonality.id,
       profile_id: profile.id,
-      preferred_tone: communicationStyle.preferredTone,
-      formality_level: communicationStyle.formalityLevel,
-      humor_level: communicationStyle.humorLevel,
-      message_length_preference: communicationStyle.messageLengthPreference,
-      greeting_preferences: communicationStyle.greetingPreferences,
-      signoff_preferences: communicationStyle.signoffPreferences,
-      phrases_to_avoid: communicationStyle.phrasesToAvoid,
-      phrases_that_sound_like_me: communicationStyle.phrasesThatSoundLikeMe,
-      created_at: communicationStyle.createdAt,
-      updated_at: communicationStyle.updatedAt,
+      q1_value: voicePersonality.q1Value,
+      q4_opinion: voicePersonality.q4Opinion,
+      tone_tags: voicePersonality.toneTags,
+      avoid_tags: voicePersonality.avoidTags,
+      avoid_note: voicePersonality.avoidNote,
+      created_at: voicePersonality.createdAt,
+      updated_at: voicePersonality.updatedAt,
     },
   });
-
-  await request("quality_scored_text_fields", {
-    method: "DELETE",
-    query: `${qs({ profile_id: `eq.${profile.id}` })}&section=eq.communication_style`,
-  });
-
-  if (result.section.fields.length > 0) {
-    await request("quality_scored_text_fields", {
-      method: "POST",
-      query: "?on_conflict=profile_id,section,field_key",
-      headers: { Prefer: "resolution=merge-duplicates" },
-      body: result.section.fields.map((field) => ({
-        id: field.id,
-        profile_id: profile.id,
-        section: "communication_style",
-        field_key: field.fieldKey,
-        value: field.value,
-        quality: field.quality,
-        feedback: field.feedback ?? null,
-        created_at: result.aggregate.qualityFields.find((qualityField) => qualityField.id === field.id)?.createdAt ?? profile.updatedAt,
-        updated_at: profile.updatedAt,
-      })),
-    });
-  }
 
   await request("profile_quality", {
     method: "POST",
@@ -1447,10 +1268,10 @@ export async function persistWritingSamplesSection(
       body: writingSamples.map((sample) => ({
         id: sample.id,
         profile_id: sample.profileId,
-        sample_type: sample.sampleType,
+        bucket: sample.bucket,
         channel: sample.channel,
         text: sample.text,
-        why_it_works_or_fails: sample.whyItWorksOrFails,
+        tags: sample.tags,
         created_at: sample.createdAt,
         updated_at: sample.updatedAt,
       })),
