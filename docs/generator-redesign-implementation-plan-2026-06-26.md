@@ -88,8 +88,12 @@ Protocol (`git status`, read this plan + the two design docs).
   used by tests) but no route mounts them anymore. NOTE: stale `.next/types/validator.ts` errors
   reference deleted routes — they regenerate on next build (`.next` is gitignored). Remaining red:
   profile-markdown (B3), profile-quality (B4), OnboardingClient (D2), tests (with their phases).
-- [ ] B3. `profile-markdown.ts` → new structure: **Voice Profile slot** → Substance
-  (Identity/Fit, Role Tracks, Resume summary, Skills, Work Examples one-hitters) → Guardrails.
+- [x] B3. `profile-markdown.ts` — DONE 2026-06-27 (0 in-file tsc errors). New structure: **Voice
+  Profile slot** (raw voice inputs now; C injects the distilled fingerprint here) → Substance
+  (Identity & Search, Fit Signals, Role Tracks, Resumes, Skills, Work Examples one-hitters) →
+  Outreach → **Guardrails** (per-track + per-skill do-not-overclaim, never-sound samples) → Profile
+  Quality. Dropped work auth/availability, Work History, Projects, the 4 narrative sections, and
+  Communication Settings; writing samples now bucketed.
 - [ ] B4. `profile-quality.ts` — update binary complete/incomplete rules for the new required set.
 
 ## Phase C — Claude voice-fingerprint pre-pass

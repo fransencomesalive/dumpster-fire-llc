@@ -4,16 +4,19 @@ import type {
   QualityScoredTextField,
   QualitySection,
   RoleTrack,
+  WritingSample,
+  WritingSampleBucket,
 } from "./types";
 
 const sectionLabels: Record<QualitySection, string> = {
-  why_people_hire_me: "Why People Hire Me",
-  operating_style: "Operating Style",
-  decision_style: "Decision Style",
-  communication_style: "Communication Style",
-  ai_misreadings: "What AI Gets Wrong About Me",
   outreach_rules: "Outreach Rules",
   leadership_profile: "Leadership Profile",
+};
+
+const writingBucketLabels: Record<WritingSampleBucket, string> = {
+  sounds_like_me: "Sounds like me",
+  want_to_sound: "Want to sound like this",
+  never_sound: "Never sound like this",
 };
 
 function clean(value: string | undefined) {
@@ -77,16 +80,12 @@ function renderRoleTrack(track: RoleTrack) {
     "",
     line("Core positioning", track.corePositioning),
     line("Outreach angle", track.outreachAngle),
-    track.globalProofRules ? line("Global proof rules", track.globalProofRules) : "",
     "",
     "Target titles:",
     list(track.targetTitles),
     "",
     "Key responsibilities:",
     list(track.keyResponsibilities),
-    "",
-    "Required experience patterns:",
-    list(track.requiredExperiencePatterns),
     "",
     "Strong job signals:",
     list(track.strongJobSignals),
@@ -96,39 +95,73 @@ function renderRoleTrack(track: RoleTrack) {
     "",
     "Mismatch signals:",
     list(track.mismatchSignals),
-    "",
-    "Do not overclaim:",
-    list(track.doNotOverclaim),
   ].filter(Boolean).join("\n");
+}
+
+function renderWritingSamplesByBucket(samples: WritingSample[], bucket: WritingSampleBucket) {
+  const matching = samples.filter((sample) => sample.bucket === bucket);
+  if (matching.length === 0) return "";
+  const body = matching
+    .map((sample) => [
+      `> ${clean(sample.text) || "Not captured"}`,
+      sample.tags.length > 0 ? `Tags: ${sample.tags.join(", ")}` : "",
+      `Channel: ${sample.channel}`,
+    ].filter(Boolean).join("\n"))
+    .join("\n\n");
+  return [`${writingBucketLabels[bucket]}:`, "", body].join("\n");
 }
 
 export function generateCandidateProfileMarkdown(
   aggregate: CandidateProfileAggregate,
   generatedAt = new Date().toISOString()
 ): GeneratedMarkdown {
-  const { profile } = aggregate;
+  const { profile, voicePersonality, fitSignals } = aggregate;
   const qualityGroups = qualityFieldsBySection(aggregate.qualityFields);
   const preferredName = clean(profile.preferredName);
+
+  // Per-Role-Track and per-Skill do-not-overclaim, plus never-sound samples,
+  // are collected into the Guardrails block at the bottom.
+  const trackOverclaim = aggregate.roleTracks
+    .filter((track) => track.doNotOverclaim.length > 0)
+    .map((track) => `- ${track.name}:\n${track.doNotOverclaim.map((rule) => `  - ${clean(rule)}`).join("\n")}`)
+    .join("\n");
+  const skillOverclaim = aggregate.skills
+    .filter((skill) => skill.doNotOverclaim.length > 0)
+    .map((skill) => `- ${skill.skillName}:\n${skill.doNotOverclaim.map((rule) => `  - ${clean(rule)}`).join("\n")}`)
+    .join("\n");
+  const neverSound = renderWritingSamplesByBucket(aggregate.writingSamples, "never_sound");
+
   const sections = [
     "# Candidate Profile",
     "",
-    "## Identity",
+    // Voice Profile slot. Phase C injects a distilled voice fingerprint at the
+    // top of this section; until then it carries the raw voice inputs.
+    "## Voice Profile",
+    "",
+    voicePersonality ? [
+      line("What I'm the person for", voicePersonality.q1Value),
+      line("An opinion I'll defend", voicePersonality.q4Opinion),
+      "",
+      "Tone tags:",
+      list(voicePersonality.toneTags),
+    ].join("\n") : "No voice inputs captured.",
+    "",
+    renderWritingSamplesByBucket(aggregate.writingSamples, "sounds_like_me"),
+    "",
+    renderWritingSamplesByBucket(aggregate.writingSamples, "want_to_sound"),
+    "",
+    "## Identity & Search",
     "",
     line("Full name", profile.fullName),
     preferredName ? line("Preferred name", preferredName) : "",
     line("Location", profile.location),
-    line("Work authorization", profile.workAuthorization),
     line("LinkedIn", profile.linkedInUrl),
     line("Portfolio", profile.portfolioUrl),
     line("Website", profile.personalWebsiteUrl),
     line("Email", profile.email),
-    "",
-    "## Search Constraints",
-    "",
     line("Remote preference", profile.remotePreference),
     line("Compensation floor", profile.targetCompensationMin),
     line("Preferred compensation", profile.targetCompensationPreferred),
-    line("Availability", profile.availability),
     "",
     "Employment types:",
     list(aggregate.preferences?.employmentTypes),
@@ -145,13 +178,20 @@ export function generateCandidateProfileMarkdown(
     "Avoid companies:",
     list(aggregate.preferences?.avoidCompanies),
     "",
-    "## Company Watchlist",
-    "",
-    aggregate.companyWatchlist.length === 0
-      ? "No watchlist companies captured."
-      : aggregate.companyWatchlist
+    aggregate.companyWatchlist.length === 0 ? "" : [
+      "Company watchlist:",
+      aggregate.companyWatchlist
         .map((company) => `- ${company.companyName} (${company.priority}): ${company.reason}${company.notes ? ` Notes: ${company.notes}` : ""}`)
         .join("\n"),
+    ].join("\n"),
+    "",
+    "## Fit Signals",
+    "",
+    "Good signals (raise fit):",
+    list(fitSignals?.goodSignals),
+    "",
+    "Poor-fit signals (lower fit, still surfaced):",
+    list(fitSignals?.poorFitSignals),
     "",
     "## Role Tracks",
     "",
@@ -178,53 +218,6 @@ export function generateCandidateProfileMarkdown(
         list(resume.avoidWhen),
       ].join("\n")).join("\n\n"),
     "",
-    "## Work History",
-    "",
-    aggregate.workHistory.length === 0
-      ? "No work history captured."
-      : aggregate.workHistory.map((item) => [
-        `### ${item.title} - ${item.company}`,
-        "",
-        line("Dates", [item.startDate, item.endDate || (item.currentRole ? "Present" : "")].filter(Boolean).join(" - ")),
-        "Responsibilities:",
-        list(item.responsibilities),
-        "",
-        "Accomplishments:",
-        list(item.accomplishments),
-        "",
-        "Metrics:",
-        list(item.metrics),
-      ].join("\n")).join("\n\n"),
-    "",
-    "## Projects",
-    "",
-    aggregate.projects.length === 0
-      ? "No projects captured."
-      : aggregate.projects.map((project) => [
-        `### ${project.name}`,
-        "",
-        clean(project.description) || "No description captured.",
-        "",
-        line("Link", project.link),
-        line("Candidate role", project.candidateRole),
-        line("Confidence", project.confidence),
-        "",
-        "What this proves:",
-        list(project.whatThisProves),
-        "",
-        "Capabilities demonstrated:",
-        list(project.capabilitiesDemonstrated),
-        "",
-        "Best used for:",
-        list(project.bestUsedFor),
-        "",
-        "Avoid using for:",
-        list(project.avoidUsingFor),
-        "",
-        "Caveats:",
-        list(project.caveats),
-      ].join("\n")).join("\n\n"),
-    "",
     "## Skills",
     "",
     aggregate.skills.length === 0
@@ -238,49 +231,20 @@ export function generateCandidateProfileMarkdown(
         "",
         "Best role fit:",
         list(skill.bestRoleFit),
-        "",
-        "Do not overclaim:",
-        list(skill.doNotOverclaim),
       ].join("\n")).join("\n\n"),
     "",
-    renderQualitySection("why_people_hire_me", qualityGroups.get("why_people_hire_me") ?? []),
+    "## Work Examples",
     "",
-    renderQualitySection("operating_style", qualityGroups.get("operating_style") ?? []),
-    "",
-    renderQualitySection("decision_style", qualityGroups.get("decision_style") ?? []),
-    "",
-    renderQualitySection("communication_style", qualityGroups.get("communication_style") ?? []),
-    "",
-    "## Communication Settings",
-    "",
-    aggregate.communicationStyle ? [
-      "Preferred tone:",
-      list(aggregate.communicationStyle.preferredTone),
-      "",
-      line("Formality", aggregate.communicationStyle.formalityLevel),
-      line("Humor", aggregate.communicationStyle.humorLevel),
-      line("Length", aggregate.communicationStyle.messageLengthPreference),
-      "",
-      "Phrases to avoid:",
-      list(aggregate.communicationStyle.phrasesToAvoid),
-      "",
-      "Phrases that sound like me:",
-      list(aggregate.communicationStyle.phrasesThatSoundLikeMe),
-    ].join("\n") : "No communication settings captured.",
-    "",
-    "## Writing Samples",
-    "",
-    aggregate.writingSamples.length === 0
-      ? "No writing samples captured."
-      : aggregate.writingSamples.map((sample) => [
-        `### ${sample.sampleType === "like" ? "Writing I Like" : "Writing I Hate"} (${sample.channel})`,
+    aggregate.workExamples.length === 0
+      ? "No work examples captured."
+      : aggregate.workExamples.map((example) => [
+        `### ${example.title}`,
         "",
-        sample.text,
+        line("One-hitter", example.oneHitter),
+        example.link ? line("Link", example.link) : "",
         "",
-        line("Why it works or fails", sample.whyItWorksOrFails),
-      ].join("\n")).join("\n\n"),
-    "",
-    renderQualitySection("ai_misreadings", qualityGroups.get("ai_misreadings") ?? []),
+        clean(example.context) || "No context captured.",
+      ].filter(Boolean).join("\n")).join("\n\n"),
     "",
     renderQualitySection("outreach_rules", qualityGroups.get("outreach_rules") ?? []),
     "",
@@ -300,6 +264,16 @@ export function generateCandidateProfileMarkdown(
     aggregate.leadershipProfile?.visible
       ? renderQualitySection("leadership_profile", qualityGroups.get("leadership_profile") ?? [])
       : "",
+    "",
+    "## Guardrails",
+    "",
+    "Do not overclaim (by Role Track):",
+    trackOverclaim || "- None captured",
+    "",
+    "Do not overclaim (by Skill):",
+    skillOverclaim || "- None captured",
+    "",
+    neverSound || "Never sound like this:\n\nNo anti-pattern samples captured.",
     "",
     "## Profile Quality",
     "",
