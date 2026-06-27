@@ -54,10 +54,15 @@ Protocol (`git status`, read this plan + the two design docs).
   - rewrite the manifest to the ~7 sections:
   Identity & Search (+Fit Signals), Role Tracks, Resumes, Work Examples, Skills,
   Voice & Personality, Outreach Rules, Leadership (optional).
-- [x] **A4. Migration** in `supabase/migrations/` — DONE (written) 2026-06-27:
-  `20260627000100_generator_redesign_profile_schema.sql`. **NOT VERIFIED against a DB** (live-data
-  status unknown per Randall; do not run blind). To verify: review SQL, then `supabase db reset`
-  (or run against a dev DB) and confirm no errors. OD2 resolved → drop now (defensive if-exists
+- [x] **A4. Migration** in `supabase/migrations/` — DONE + **VERIFIED 2026-06-27**:
+  `20260627000100_generator_redesign_profile_schema.sql`. Validated on a local Postgres 16 (no
+  Docker): (a) full 17-migration set applies clean on a fresh DB (supabase-db-reset equivalent, with
+  a stubbed `auth` schema); (b) data-preservation proven by seeding old-shape rows before A4 —
+  project_proofs row → work_examples (name→title, description→context, one_hitter=''), writing_samples
+  sample_type='hate' → bucket='never_sound' + tags={}, skill_project_proofs join preserved as
+  skill_work_examples (work_example_id == old proof id), work_history_items / communication_style_settings
+  dropped. Residual: a `supabase db reset` against the real local stack is still worth doing for
+  RLS-vs-real-`auth.uid()` fidelity before prod. OD2 resolved → drop now (defensive if-exists
   guards; preserves mappable rows). Covers: drop work_auth/availability; drop work_history (+joins);
   project_proofs→work_examples (+ skill_work_examples, renamed index/policy); add fit_signals;
   communication_style_settings→voice_personality (recreated); writing_samples sample_type→bucket

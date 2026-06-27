@@ -26,7 +26,17 @@ Both are scoped to be safe and unambiguous. **Read the Operating Rules first.**
 
 ---
 
-## Task 1 — Validate the A4 migration against a LOCAL database (do NOT edit the SQL)
+## Task 1 — DONE 2026-06-27 (Claude, local Postgres 16). NO LONGER FOR CODEX.
+
+Validated locally without Docker: full 17-migration set applies clean on a fresh DB
+(stubbed `auth` schema), and seeding old-shape rows before A4 proved data preservation
+(project_proofs→work_examples name→title/description→context, sample_type hate→bucket
+never_sound, skill join preserved, work_history/communication_style dropped). See the A4
+entry in `docs/generator-redesign-implementation-plan-2026-06-26.md`. Optional follow-up
+for whoever sets up the Supabase local stack: a `supabase db reset` for RLS-vs-real-auth
+fidelity. **Codex: skip Task 1 — go to Task 2.** Original task text retained below for record.
+
+## Task 1 (original, for record) — Validate the A4 migration against a LOCAL database (do NOT edit the SQL)
 
 **Goal:** prove that `supabase/migrations/20260627000100_generator_redesign_profile_schema.sql`
 applies cleanly on top of the existing migrations, against a **local/disposable**
