@@ -5,48 +5,39 @@ database (`job-search`, ref `ngftlvlslhjsyjcbuuwv`), and where the migration-his
 bookkeeping diverges from the `supabase/migrations/` folder. Read this before running
 any `supabase db push` / `supabase migration` command against this project.
 
-## ⚠️ Migration-history divergence (IMPORTANT)
+## Migration-history divergence — RESOLVED 2026-06-28
 
-`supabase/migrations/20260627000100_generator_redesign_profile_schema.sql` (the Phase A4
-generator-redesign schema) was **applied directly via `psql`** on **2026-06-28**, not through
-the Supabase CLI. As a result:
+`20260627000100_generator_redesign_profile_schema.sql` (Phase A4) and
+`20260626000100_public_job_scan_results.sql` were both **applied directly via `psql`** (A4 on
+the prior session, scan-results on 2026-06-28), bypassing the Supabase CLI — so they were
+initially missing from `supabase_migrations.schema_migrations`.
 
-- The migration ran successfully and the production schema is correct (new tables
-  `fit_signals`, `work_examples`, `voice_personality`, `skill_work_examples` exist; legacy
-  `project_proofs`, `communication_style_settings`, `work_history_items`,
-  `skill_project_proofs` are dropped; `writing_samples` migrated to the bucket model).
-- **But `supabase_migrations.schema_migrations` has NO row for `20260627000100`.**
+**Reconciled 2026-06-28:** both versions were recorded as applied via:
+```sql
+insert into supabase_migrations.schema_migrations (version, name, statements) values
+  ('20260626000100', 'public_job_scan_results', array['-- applied via psql 2026-06-28; recorded manually']),
+  ('20260627000100', 'generator_redesign_profile_schema', array['-- applied via psql 2026-06-28; recorded manually'])
+on conflict (version) do nothing;
+```
+The `schema_migrations` table columns are `version text`, `statements text[]`, `name text`.
+A `supabase db push` will now correctly **skip** both. No further action needed.
 
-### Consequence
-A future `supabase db push` (or `supabase migration up`) will think `20260627000100` is
-pending and try to **re-apply** it. It is NOT safe to blindly re-run: several statements are
-not idempotent (e.g. `alter table public.work_examples rename column name to title` has no
-column-level `if exists` guard and will error because the rename already happened). The run
-would abort partway.
+**Lesson for next time:** apply migrations via the Supabase CLI (`supabase db push`) so history
+records automatically, OR record the row manually right after a direct psql apply. Don't blindly
+re-run a psql-applied migration through the CLI — A4 in particular is non-idempotent (e.g.
+`alter table public.work_examples rename column name to title` has no column-level guard).
 
-### How to reconcile (pick one before using the CLI again)
-1. **Record it as applied** without re-running — insert the history row so the CLI skips it:
-   ```sql
-   insert into supabase_migrations.schema_migrations (version, name)
-   values ('20260627000100', 'generator_redesign_profile_schema')
-   on conflict do nothing;
-   ```
-   (Confirm the exact column set on `supabase_migrations.schema_migrations` first; some CLI
-   versions also expect a `statements` array.)
-2. Or adopt the CLI as source of truth via `supabase migration repair --status applied 20260627000100`.
-
-## Applied to production (confirmed)
+## Applied to production (confirmed, all recorded in schema_migrations)
 
 - All `20260604*`–`20260623000100_public_foundation_schema.sql` foundation migrations.
-- `20260627000100_generator_redesign_profile_schema.sql` — applied 2026-06-28 via psql (see above).
+- `20260626000100_public_job_scan_results.sql` — applied 2026-06-28 via psql, recorded.
+- `20260627000100_generator_redesign_profile_schema.sql` — applied via psql (prior session), recorded 2026-06-28.
 
 ## NOT yet applied to production
 
-- **`20260626000100_public_job_scan_results.sql`** — the `job_scan_results` bridge table for
-  the public Jobs/Saved Jobs scan flow. Onboarding does not need it, but the public Jobs
-  feature does. Scheduled as a near-term to-do (see `docs/project-todo.md`). When applying,
-  prefer the Supabase CLI so history stays clean — but first resolve the `20260627000100`
-  divergence above, or the CLI will trip on it.
+- None outstanding. Future pursuit/subscription migrations (see
+  `docs/codex-tasks-backend-2026-06-28.md`) will be written next; apply them via the CLI or
+  record them manually per the lesson above.
 
 ## How the app connects (context)
 

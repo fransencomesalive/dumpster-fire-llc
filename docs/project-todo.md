@@ -22,11 +22,9 @@ Finish the Step 2 Profile Management follow-ups, then clarify and build Step 3 J
 
 ## Near-Term (scheduled)
 
-- [ ] **Apply `20260626000100_public_job_scan_results.sql` to the production Supabase DB (soon).**
-  The `job_scan_results` bridge table is not yet applied; the public Jobs/Saved Jobs scan flow
-  depends on it. First resolve the migration-history divergence noted in
-  `docs/database-migration-state.md` (the A4 migration `20260627000100` was applied via psql and
-  is not recorded in `supabase_migrations`), so a CLI `db push` doesn't trip on it.
+- [x] **Apply `20260626000100_public_job_scan_results.sql` to production** — DONE 2026-06-28.
+  `job_scan_results` table created with RLS; migration history reconciled (both `...626` and the
+  A4 `...627` now recorded in `supabase_migrations`). See `docs/database-migration-state.md`.
 - [ ] **Rotate exposed credentials before sending invites / full launch** — Supabase
   service_role + anon keys, DB password, and `ANTHROPIC_API_KEY` were entered locally on
   2026-06-28 and surfaced in a chat transcript. Deferred by Randall to invite time.
@@ -183,7 +181,7 @@ Finish the Step 2 Profile Management follow-ups, then clarify and build Step 3 J
 - [x] Add user-scoped Jobs scan-result API/UI using current profile search requirements.
 - [x] Add Saved Jobs as "pursue later" only, separate from pursuit creation.
 - [x] Add save/unsave route for active user scan results.
-- [ ] Apply public job scan results migration to Supabase.
+- [x] Apply public job scan results migration to Supabase. (2026-06-28)
 - [ ] Wire external/public connector ingestion into `/api/jobs/scan`; current provider scans the normalized public `jobs` table.
 - [ ] Add Pursuits.
 - [ ] Add pursuit stages for review, Human Path, contacts, outreach, and tracking.
