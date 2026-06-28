@@ -960,7 +960,6 @@ export async function persistFitSignalsSection(
     query: "?on_conflict=profile_id",
     headers: { Prefer: "resolution=merge-duplicates" },
     body: {
-      id: fitSignals.id,
       profile_id: profile.id,
       good_signals: fitSignals.goodSignals,
       poor_fit_signals: fitSignals.poorFitSignals,
@@ -1206,7 +1205,6 @@ export async function persistVoicePersonalitySection(
     query: "?on_conflict=profile_id",
     headers: { Prefer: "resolution=merge-duplicates" },
     body: {
-      id: voicePersonality.id,
       profile_id: profile.id,
       q1_value: voicePersonality.q1Value,
       q4_opinion: voicePersonality.q4Opinion,
@@ -1320,7 +1318,6 @@ export async function persistOutreachRulesSection(
     query: "?on_conflict=profile_id",
     headers: { Prefer: "resolution=merge-duplicates" },
     body: {
-      id: outreachRules.id,
       profile_id: profile.id,
       global_rules: outreachRules.globalRules,
       follow_up_rules: outreachRules.followUpRules,
@@ -1421,7 +1418,6 @@ export async function persistLeadershipProfileSection(
     query: "?on_conflict=profile_id",
     headers: { Prefer: "resolution=merge-duplicates" },
     body: {
-      id: leadershipProfile.id,
       profile_id: profile.id,
       visible: leadershipProfile.visible,
       created_at: leadershipProfile.createdAt,
