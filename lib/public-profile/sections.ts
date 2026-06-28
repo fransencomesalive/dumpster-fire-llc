@@ -558,6 +558,7 @@ function countWords(value: string) {
 
 const writingSampleWordCap = 120;
 const avoidNoteWordCap = 25;
+const voiceAnswerWordCap = 120;
 
 function cleanStringList(value: unknown) {
   if (!Array.isArray(value)) return undefined;
@@ -1524,6 +1525,20 @@ export function parseVoicePersonalitySectionPatch(input: unknown): ParseVoicePer
     issues.push({
       field: "avoidNote",
       message: `avoidNote must be ${avoidNoteWordCap} words or fewer.`,
+    });
+  }
+
+  if (patch.q1Value && countWords(patch.q1Value) > voiceAnswerWordCap) {
+    issues.push({
+      field: "q1Value",
+      message: `q1Value must be ${voiceAnswerWordCap} words or fewer.`,
+    });
+  }
+
+  if (patch.q4Opinion && countWords(patch.q4Opinion) > voiceAnswerWordCap) {
+    issues.push({
+      field: "q4Opinion",
+      message: `q4Opinion must be ${voiceAnswerWordCap} words or fewer.`,
     });
   }
 

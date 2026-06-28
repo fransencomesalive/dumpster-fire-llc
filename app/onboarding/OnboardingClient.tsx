@@ -1,30 +1,41 @@
 "use client";
 
-import { type Dispatch, type SetStateAction, useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { clearPublicProfileAccessToken, readPublicProfileAccessToken, writePublicProfileAccessToken } from "@/lib/public-profile/browser-session";
 import { requestPublicProfileApi } from "@/lib/public-profile/client";
 import type { PublicProfileOnboardingSection, PublicProfileOnboardingSectionKey } from "@/lib/public-profile/onboarding";
 import styles from "./onboarding.module.css";
 
+/* ============================================================
+   Section view models — mirror lib/public-profile/sections.ts
+   (the new ~7-section IA from the generator redesign).
+   ============================================================ */
+
+type RemotePreference = "remote_only" | "remote_preferred" | "hybrid_ok" | "onsite_ok";
+
 type IdentitySearchSection = {
   fullName: string;
   preferredName?: string;
   location: string;
-  workAuthorization: string;
   linkedInUrl?: string;
   portfolioUrl?: string;
   personalWebsiteUrl?: string;
   email?: string;
-  remotePreference: "remote_only" | "remote_preferred" | "hybrid_ok" | "onsite_ok";
+  remotePreference: RemotePreference;
   targetCompensationMin?: number;
   targetCompensationPreferred?: number;
-  availability: string;
   employmentTypes: string[];
   targetIndustries: string[];
   avoidIndustries: string[];
   targetCompanyTypes: string[];
   avoidCompanies: string[];
+};
+
+type FitSignalsSection = {
+  id?: string;
+  goodSignals: string[];
+  poorFitSignals: string[];
 };
 
 type RoleTrackSectionItem = {
@@ -44,9 +55,7 @@ type RoleTrackSectionItem = {
   resumeIds: string[];
 };
 
-type RoleTracksSection = {
-  roleTracks: RoleTrackSectionItem[];
-};
+type RoleTracksSection = { roleTracks: RoleTrackSectionItem[] };
 
 type ParsingQuality = "failed" | "weak" | "complete";
 
@@ -64,54 +73,17 @@ type ResumeUploadSectionItem = {
   parsingIssues: string[];
 };
 
-type ResumeUploadsSection = {
-  resumes: ResumeUploadSectionItem[];
-};
+type ResumeUploadsSection = { resumes: ResumeUploadSectionItem[] };
 
-type WorkHistorySource = "resume_parse" | "user_corrected";
-
-type WorkHistorySectionItem = {
+type WorkExampleSectionItem = {
   id: string;
-  company: string;
   title: string;
-  startDate?: string;
-  endDate?: string;
-  currentRole: boolean;
-  responsibilities: string[];
-  accomplishments: string[];
-  skills: string[];
-  metrics: string[];
-  associatedResumeIds: string[];
-  source: WorkHistorySource;
-};
-
-type WorkHistorySection = {
-  workHistory: WorkHistorySectionItem[];
-};
-
-type ProofConfidence = "low" | "medium" | "high";
-
-type ProofLibrarySectionItem = {
-  id: string;
-  name: string;
+  oneHitter: string;
   link?: string;
-  description: string;
-  candidateRole: string;
-  whatThisProves: string[];
-  capabilitiesDemonstrated: string[];
-  keyResponsibilitiesSupported: string[];
-  requiredExperienceSupported: string[];
-  industriesRelevant: string[];
-  bestUsedFor: string[];
-  avoidUsingFor: string[];
-  metricsResults: string[];
-  caveats: string[];
-  confidence: ProofConfidence;
+  context: string;
 };
 
-type ProofLibrarySection = {
-  projects: ProofLibrarySectionItem[];
-};
+type WorkExamplesSection = { workExamples: WorkExampleSectionItem[] };
 
 type SkillProficiency = "working" | "strong" | "expert";
 
@@ -120,26 +92,36 @@ type SkillsInventorySectionItem = {
   skillName: string;
   proficiency: SkillProficiency;
   evidence: string[];
-  relatedProjectIds: string[];
-  relatedWorkHistoryIds: string[];
+  relatedWorkExampleIds: string[];
   bestRoleFit: string[];
   doNotOverclaim: string[];
 };
 
-type SkillsInventorySection = {
-  skills: SkillsInventorySectionItem[];
+type SkillsInventorySection = { skills: SkillsInventorySectionItem[] };
+
+type VoicePersonalitySection = {
+  id?: string;
+  q1Value: string;
+  q4Opinion: string;
+  toneTags: string[];
+  avoidTags: string[];
+  avoidNote: string;
 };
 
-type Quality = "weak" | "complete";
+type WritingSampleBucket = "sounds_like_me" | "want_to_sound" | "never_sound";
+type WritingChannel = "linkedin" | "email" | "dm" | "social_post" | "other";
 
-type QualitySection =
-  | "why_people_hire_me"
-  | "operating_style"
-  | "decision_style"
-  | "communication_style"
-  | "ai_misreadings"
-  | "outreach_rules"
-  | "leadership_profile";
+type WritingSamplesSectionItem = {
+  id: string;
+  bucket: WritingSampleBucket;
+  channel: WritingChannel;
+  text: string;
+  tags: string[];
+};
+
+type WritingSamplesSection = { writingSamples: WritingSamplesSectionItem[] };
+
+type Quality = "weak" | "complete";
 
 type QualityNarrativeSectionField = {
   id: string;
@@ -147,47 +129,6 @@ type QualityNarrativeSectionField = {
   value: string;
   quality: Quality;
   feedback?: string;
-};
-
-type QualityNarrativeSection = {
-  section: QualitySection;
-  fields: QualityNarrativeSectionField[];
-};
-
-type FormalityLevel = "low" | "medium" | "high";
-type HumorLevel = "none" | "light" | "medium";
-type MessageLengthPreference = "short" | "medium" | "long";
-
-type CommunicationStyleSettingsSection = {
-  id?: string;
-  preferredTone: string[];
-  formalityLevel: FormalityLevel;
-  humorLevel: HumorLevel;
-  messageLengthPreference: MessageLengthPreference;
-  greetingPreferences: string[];
-  signoffPreferences: string[];
-  phrasesToAvoid: string[];
-  phrasesThatSoundLikeMe: string[];
-};
-
-type CommunicationStyleSection = {
-  settings?: CommunicationStyleSettingsSection;
-  fields: QualityNarrativeSectionField[];
-};
-
-type WritingSampleType = "like" | "hate";
-type WritingChannel = "linkedin" | "email" | "dm" | "social_post" | "other";
-
-type WritingSamplesSectionItem = {
-  id: string;
-  sampleType: WritingSampleType;
-  channel: WritingChannel;
-  text: string;
-  whyItWorksOrFails: string;
-};
-
-type WritingSamplesSection = {
-  writingSamples: WritingSamplesSectionItem[];
 };
 
 type OutreachRuleSettingsSection = {
@@ -240,78 +181,74 @@ type TokenResponse = {
   msg?: string;
 };
 
+/* ============================================================
+   Constants
+   ============================================================ */
+
 const notLoadedReadinessLabel = "Not loaded";
 const incompleteProfileJustification = "Without the full picture, outreach won't be good. And if outreach isn't good, your chances drop. Finish your profile.";
 const incompleteProfileLockout = "Scanning is locked until the profile is complete. Matching, Saved Jobs, Pursuits, and Human Path stay locked with it.";
 
-const qualitySectionByOnboardingKey: Partial<Record<PublicProfileOnboardingSectionKey, QualitySection>> = {
-  whyPeopleHireMe: "why_people_hire_me",
-  operatingStyle: "operating_style",
-  decisionStyle: "decision_style",
-  communicationStyle: "communication_style",
-  aiMisreadings: "ai_misreadings",
-  outreachRules: "outreach_rules",
-  leadershipProfile: "leadership_profile",
+const voiceAnswerWordCap = 120;
+const avoidNoteWordCap = 25;
+const writingSampleWordCap = 120;
+
+// Tone-tag presets (Phase D / D0 control decisions).
+const leanIntoPresets = ["punchy", "warm", "no-fluff", "blunt", "funny", "specific", "casual", "brief"];
+const steerClearPresets = ["corporate jargon", "biz-formal", "LinkedIn malarky"];
+
+type WritingBucketConfig = {
+  bucket: WritingSampleBucket;
+  label: string;
+  helper: string;
+  required: boolean;
+  max: number;
 };
 
-const qualityNarrativeFieldLabels: Record<QualitySection, Record<string, string>> = {
-  why_people_hire_me: {
-    problemsPeopleBringMe: "Problems people bring me",
-    whatBreaksIfImNotThere: "What breaks if I am not there",
-    messesICleanUp: "Messes I clean up",
-    teamsThatBenefitFromMe: "Teams that benefit from me",
-    situationsWhereIAmMostUseful: "Situations where I am most useful",
-    situationsWhereIAmNotUseful: "Situations where I am not useful",
+const writingBucketConfigs: WritingBucketConfig[] = [
+  {
+    bucket: "sounds_like_me",
+    label: "Sounds like me",
+    helper: "Paste something you actually wrote. One is enough; add a second only if it shows a different side of your voice.",
+    required: true,
+    max: 2,
   },
-  operating_style: {
-    howIApproachProblems: "How I approach problems",
-    howIHandleAmbiguity: "How I handle ambiguity",
-    howIWorkWithTeams: "How I work with teams",
-    whatIValue: "What I value",
-    whatIReject: "What I reject",
+  {
+    bucket: "want_to_sound",
+    label: "Want to sound like",
+    helper: "Optional. Something in someone else's voice you wish yours read like.",
+    required: false,
+    max: 1,
   },
-  decision_style: {
-    howIEvaluateRoles: "How I evaluate roles",
-    whatMakesRoleWorthPursuing: "What makes a role worth pursuing",
-    whatMakesRoleBadFit: "What makes a role a bad fit",
-    whatILookForInCompanies: "What I look for in companies",
-    redFlags: "Red flags",
-    greenFlags: "Green flags",
+  {
+    bucket: "never_sound",
+    label: "Never sound like",
+    helper: "One example of writing you never want to be mistaken for.",
+    required: true,
+    max: 1,
   },
-  communication_style: {
-    voiceDescription: "Voice description",
-    whatIShouldSoundLike: "What I should sound like",
-    whatIShouldNeverSoundLike: "What I should never sound like",
-  },
-  ai_misreadings: {
-    wrongAssumptions: "Wrong assumptions",
-    badDefaultFramings: "Bad default framings",
-    skillsNotToExaggerate: "Skills not to exaggerate",
-    rolesNotToForceMeInto: "Roles not to force me into",
-    languageThatMisrepresentsMe: "Language that misrepresents me",
-  },
-  outreach_rules: {
-    hiringManagerApproach: "Hiring manager approach",
-    recruiterApproach: "Recruiter approach",
-    functionalLeaderApproach: "Functional leader approach",
-    executiveSponsorApproach: "Executive sponsor approach",
-    noContactRoutingApproach: "No-contact routing approach",
-  },
-  leadership_profile: {
-    leadershipStyle: "Leadership style",
-    teamManagementStyle: "Team management style",
-    stakeholderManagementStyle: "Stakeholder management style",
-    conflictStyle: "Conflict style",
-    executiveCommunicationStyle: "Executive communication style",
-  },
+];
+
+const outreachFieldLabels: Record<string, string> = {
+  hiringManagerApproach: "Hiring manager approach",
+  recruiterApproach: "Recruiter approach",
+  functionalLeaderApproach: "Functional leader approach",
+  executiveSponsorApproach: "Executive sponsor approach",
+  noContactRoutingApproach: "No-contact routing approach",
+};
+
+const leadershipFieldLabels: Record<string, string> = {
+  leadershipStyle: "Leadership style",
+  teamManagementStyle: "Team management style",
+  stakeholderManagementStyle: "Stakeholder management style",
+  conflictStyle: "Conflict style",
+  executiveCommunicationStyle: "Executive communication style",
 };
 
 const emptyIdentity: IdentitySearchSection = {
   fullName: "",
   location: "",
-  workAuthorization: "",
   remotePreference: "remote_preferred",
-  availability: "",
   employmentTypes: [],
   targetIndustries: [],
   avoidIndustries: [],
@@ -319,13 +256,47 @@ const emptyIdentity: IdentitySearchSection = {
   avoidCompanies: [],
 };
 
-function createClientId() {
-  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
-    return crypto.randomUUID();
-  }
+const emptyVoice: VoicePersonalitySection = {
+  q1Value: "",
+  q4Opinion: "",
+  toneTags: [],
+  avoidTags: [],
+  avoidNote: "",
+};
 
-  const segment = () => Math.floor((1 + Math.random()) * 0x10000).toString(16).slice(1);
-  return `${segment()}${segment()}-${segment()}-4${segment().slice(1)}-8${segment().slice(1)}-${segment()}${segment()}${segment()}`;
+const emptyFitSignals: FitSignalsSection = {
+  goodSignals: [],
+  poorFitSignals: [],
+};
+
+/* ============================================================
+   Helpers
+   ============================================================ */
+
+function createClientId() {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
+  return `tmp-${Math.random().toString(36).slice(2)}-${Date.now()}`;
+}
+
+function listToText(values: string[] | undefined) {
+  return (values ?? []).join(", ");
+}
+
+function textToList(value: string) {
+  return value.split(",").map((entry) => entry.trim()).filter(Boolean);
+}
+
+function optionalNumber(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+  const parsed = Number(trimmed);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+function countWords(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return 0;
+  return trimmed.split(/\s+/).length;
 }
 
 function emptyRoleTrack(): RoleTrackSectionItem {
@@ -335,6 +306,7 @@ function emptyRoleTrack(): RoleTrackSectionItem {
     description: "",
     corePositioning: "",
     outreachAngle: "",
+    globalProofRules: "",
     targetTitles: [],
     keyResponsibilities: [],
     requiredExperiencePatterns: [],
@@ -362,128 +334,50 @@ function emptyResume(): ResumeUploadSectionItem {
   };
 }
 
-function emptyWorkHistoryItem(): WorkHistorySectionItem {
+function emptyWorkExample(): WorkExampleSectionItem {
   return {
     id: createClientId(),
-    company: "",
     title: "",
-    currentRole: false,
-    responsibilities: [],
-    accomplishments: [],
-    skills: [],
-    metrics: [],
-    associatedResumeIds: [],
-    source: "user_corrected",
-  };
-}
-
-function emptyProofProject(): ProofLibrarySectionItem {
-  return {
-    id: createClientId(),
-    name: "",
+    oneHitter: "",
     link: "",
-    description: "",
-    candidateRole: "",
-    whatThisProves: [],
-    capabilitiesDemonstrated: [],
-    keyResponsibilitiesSupported: [],
-    requiredExperienceSupported: [],
-    industriesRelevant: [],
-    bestUsedFor: [],
-    avoidUsingFor: [],
-    metricsResults: [],
-    caveats: [],
-    confidence: "medium",
+    context: "",
   };
 }
 
-function emptySkill(): SkillsInventorySectionItem {
+function emptySkill(name = ""): SkillsInventorySectionItem {
   return {
     id: createClientId(),
-    skillName: "",
-    proficiency: "strong",
+    skillName: name,
+    proficiency: "working",
     evidence: [],
-    relatedProjectIds: [],
-    relatedWorkHistoryIds: [],
+    relatedWorkExampleIds: [],
     bestRoleFit: [],
     doNotOverclaim: [],
   };
 }
 
-function emptyQualityNarrativeField(section: QualitySection, fieldKey: string): QualityNarrativeSectionField {
+function emptyWritingSample(bucket: WritingSampleBucket): WritingSamplesSectionItem {
   return {
     id: createClientId(),
-    fieldKey,
-    value: "",
-    quality: "weak",
-    feedback: "",
-  };
-}
-
-function completeQualityNarrativeSection(section: QualitySection, fields: QualityNarrativeSectionField[] = []): QualityNarrativeSection {
-  const fieldsByKey = new Map(fields.map((field) => [field.fieldKey, field]));
-  const orderedFields = Object.keys(qualityNarrativeFieldLabels[section]).map((fieldKey) => {
-    return fieldsByKey.get(fieldKey) ?? emptyQualityNarrativeField(section, fieldKey);
-  });
-
-  return {
-    section,
-    fields: orderedFields,
-  };
-}
-
-function emptyCommunicationSettings(): CommunicationStyleSettingsSection {
-  return {
-    preferredTone: [],
-    formalityLevel: "medium",
-    humorLevel: "light",
-    messageLengthPreference: "medium",
-    greetingPreferences: [],
-    signoffPreferences: [],
-    phrasesToAvoid: [],
-    phrasesThatSoundLikeMe: [],
-  };
-}
-
-function completeCommunicationStyleSection(section?: CommunicationStyleSection): CommunicationStyleSection {
-  return {
-    settings: section?.settings ?? emptyCommunicationSettings(),
-    fields: completeQualityNarrativeSection("communication_style", section?.fields).fields,
-  };
-}
-
-function emptyWritingSample(): WritingSamplesSectionItem {
-  return {
-    id: createClientId(),
-    sampleType: "like",
-    channel: "email",
+    bucket,
+    channel: "other",
     text: "",
-    whyItWorksOrFails: "",
+    tags: [],
   };
 }
 
 function emptyOutreachSettings(): OutreachRuleSettingsSection {
-  return {
-    globalRules: [],
-    followUpRules: [],
-    linkSelectionRules: [],
-  };
+  return { globalRules: [], followUpRules: [], linkSelectionRules: [] };
 }
 
 function emptyRoleTrackOutreachRule(roleTrackId = ""): RoleTrackOutreachRuleSectionItem {
-  return {
-    id: createClientId(),
-    roleTrackId,
-    rules: [],
-    preferredProofTypes: [],
-    avoidProofTypes: [],
-  };
+  return { id: createClientId(), roleTrackId, rules: [], preferredProofTypes: [], avoidProofTypes: [] };
 }
 
 function completeOutreachRulesSection(section?: OutreachRulesSection): OutreachRulesSection {
   return {
     settings: section?.settings ?? emptyOutreachSettings(),
-    fields: completeQualityNarrativeSection("outreach_rules", section?.fields).fields,
+    fields: section?.fields ?? [],
     roleTrackSpecificRules: section?.roleTrackSpecificRules ?? [],
   };
 }
@@ -491,117 +385,349 @@ function completeOutreachRulesSection(section?: OutreachRulesSection): OutreachR
 function completeLeadershipProfileSection(section?: LeadershipProfileSection): LeadershipProfileSection {
   return {
     visible: section?.visible ?? false,
-    fields: completeQualityNarrativeSection("leadership_profile", section?.fields).fields,
+    fields: section?.fields ?? [],
   };
 }
 
-function listToText(values: string[] | undefined) {
-  return (values ?? []).join(", ");
-}
-
-function textToList(value: string) {
-  return Array.from(new Set(value.split(",").map((item) => item.trim()).filter(Boolean)));
-}
-
-function optionalNumber(value: string) {
-  if (!value.trim()) return undefined;
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? Math.round(parsed) : undefined;
-}
-
 function reasonBelongsToSection(sectionKey: PublicProfileOnboardingSectionKey, reason: string) {
-  const qualitySection = qualitySectionByOnboardingKey[sectionKey];
-  if (qualitySection && reason.includes(`${qualitySection}.`)) return true;
-
+  const value = reason.toLowerCase();
   switch (sectionKey) {
     case "identitySearch":
-      return [
-        "Full name is required.",
-        "Location is required.",
-        "Work authorization is required.",
-        "Remote preference is required.",
-        "Availability is required.",
-        "At least one employment type is required.",
-      ].includes(reason);
+      return value.includes("full name") || value.includes("location") || value.includes("remote preference") || value.includes("employment");
+    case "fitSignals":
+      return value.includes("fit signal");
     case "roleTracks":
-      return reason.startsWith("At least one Role Track") || reason.startsWith("Role Track ");
+      return value.includes("role track");
     case "resumes":
-      return reason.startsWith("At least one resume") || reason.startsWith("Resume ");
-    case "workHistory":
-      return reason.startsWith("Parsed work history") || reason.startsWith("Work history ");
-    case "proofLibrary":
-      return reason.startsWith("At least one Project") || reason.startsWith("Project ");
+      return value.startsWith("resume ") || value.includes("at least one resume");
+    case "workExamples":
+      return value.includes("work example");
     case "skills":
-      return reason.startsWith("At least one skill") || reason.startsWith("Skill ");
-    case "communicationStyle":
-      return [
-        "Communication style settings are required.",
-        "Preferred tone is required.",
-        "Message length preference is required.",
-        "Greeting preferences are required.",
-        "Signoff preferences are required.",
-        "Phrases to avoid are required.",
-        "Phrases that sound like me are required.",
-      ].includes(reason) || reason.includes("communication_style.");
-    case "writingSamples":
-      return reason.startsWith("At least one liked writing sample") || reason.startsWith("At least one hated writing sample");
+      return value.startsWith("skill ") || value.includes("at least one skill");
+    case "voicePersonality":
+      return value.includes("voice") || value.includes("q1") || value.includes("q4") || value.includes("tone tag") || value.includes("writing sample");
     case "outreachRules":
-      return [
-        "Outreach rule settings are required.",
-        "Global outreach rules are required.",
-        "Follow-up rules are required.",
-        "Link selection rules are required.",
-      ].includes(reason) || reason.includes("outreach_rules.");
+      return value.includes("outreach") || value.includes("follow-up") || value.includes("link selection");
     case "leadershipProfile":
-      return reason.includes("leadership_profile.");
+      return value.includes("leadership");
     default:
       return false;
   }
 }
 
 function weakFieldBelongsToSection(sectionKey: PublicProfileOnboardingSectionKey, weakField: string) {
-  const qualitySection = qualitySectionByOnboardingKey[sectionKey];
-  return Boolean(qualitySection && weakField.startsWith(`${qualitySection}.`));
+  return reasonBelongsToSection(sectionKey, weakField);
 }
 
 function readinessLabel(status: SectionReadinessStatus) {
-  if (status === "not_loaded") return notLoadedReadinessLabel;
-  if (status === "optional") return "Optional";
-  if (status === "complete") return "Complete";
-  return "Needs work";
+  switch (status) {
+    case "complete":
+      return "Complete";
+    case "incomplete":
+      return "Needs work";
+    case "optional":
+      return "Optional";
+    default:
+      return notLoadedReadinessLabel;
+  }
 }
 
+/* ============================================================
+   Tone-tag chip group (tap-to-toggle presets + custom chips)
+   ============================================================ */
+
+type ChipGroupProps = {
+  legend: string;
+  presets: string[];
+  selected: string[];
+  onToggle: (value: string) => void;
+  onAddCustom: (value: string) => void;
+  onRemoveCustom: (value: string) => void;
+  addLabel: string;
+  disabled?: boolean;
+};
+
+function ChipGroup({ legend, presets, selected, onToggle, onAddCustom, onRemoveCustom, addLabel, disabled }: ChipGroupProps) {
+  const [draft, setDraft] = useState("");
+  const presetSet = useMemo(() => new Set(presets.map((preset) => preset.toLowerCase())), [presets]);
+  const customSelected = selected.filter((value) => !presetSet.has(value.toLowerCase()));
+
+  function commitCustom() {
+    const value = draft.trim();
+    if (!value) return;
+    onAddCustom(value);
+    setDraft("");
+  }
+
+  return (
+    <fieldset className={styles.chipFieldset}>
+      <legend className={styles.chipLegend}>{legend}</legend>
+      <div className={styles.chipRow}>
+        {presets.map((preset) => {
+          const on = selected.some((value) => value.toLowerCase() === preset.toLowerCase());
+          return (
+            <button
+              key={preset}
+              type="button"
+              className={`${styles.chip} ${on ? styles.chipOn : ""}`}
+              aria-pressed={on}
+              disabled={disabled}
+              onClick={() => onToggle(preset)}
+            >
+              {preset}
+            </button>
+          );
+        })}
+        {customSelected.map((value) => (
+          <span key={value} className={`${styles.chip} ${styles.chipOn} ${styles.chipCustom}`}>
+            {value}
+            <button
+              type="button"
+              className={styles.chipRemove}
+              aria-label={`Remove ${value}`}
+              disabled={disabled}
+              onClick={() => onRemoveCustom(value)}
+            >
+              ✕
+            </button>
+          </span>
+        ))}
+      </div>
+      <div className={styles.chipAddRow}>
+        <input
+          className={styles.chipInput}
+          value={draft}
+          placeholder={addLabel}
+          disabled={disabled}
+          onChange={(event) => setDraft(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              event.preventDefault();
+              commitCustom();
+            }
+          }}
+        />
+        <button type="button" className={styles.secondaryButton} disabled={disabled || !draft.trim()} onClick={commitCustom}>
+          Add
+        </button>
+      </div>
+    </fieldset>
+  );
+}
+
+/* ============================================================
+   Type-ahead catalogue picker (single + multi modes)
+   Consumes /api/catalogues/{skills,industries,locations}.
+   ============================================================ */
+
+type CatalogueKind = "skills" | "industries" | "locations";
+type CatalogueResult = { id: string; label: string };
+type CatalogueResponse = { results: CatalogueResult[] };
+
+type CataloguePickerProps = {
+  kind: CatalogueKind;
+  accessToken: string;
+  label: string;
+  placeholder: string;
+  disabled?: boolean;
+} & (
+  | { mode: "single"; value: string; onSelect: (label: string) => void }
+  | { mode: "multi"; values: string[]; onAdd: (label: string) => void; onRemove: (label: string) => void }
+);
+
+function CataloguePicker(props: CataloguePickerProps) {
+  const { kind, accessToken, label, placeholder, disabled } = props;
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<CatalogueResult[]>([]);
+  const [open, setOpen] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const wrapRef = useRef<HTMLDivElement | null>(null);
+  const listboxId = useId();
+
+  useEffect(() => {
+    const trimmed = query.trim();
+    if (!trimmed || !accessToken) {
+      setResults([]);
+      setLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setLoading(true);
+    const handle = setTimeout(async () => {
+      try {
+        const response = await requestPublicProfileApi<CatalogueResponse>(
+          `/api/catalogues/${kind}?q=${encodeURIComponent(trimmed)}&limit=8`,
+          { method: "GET", accessToken },
+        );
+        if (!cancelled) {
+          setResults(response.results ?? []);
+          setActiveIndex(0);
+        }
+      } catch {
+        if (!cancelled) setResults([]);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }, 200);
+    return () => {
+      cancelled = true;
+      clearTimeout(handle);
+    };
+  }, [query, kind, accessToken]);
+
+  useEffect(() => {
+    function onClickAway(event: MouseEvent) {
+      if (wrapRef.current && !wrapRef.current.contains(event.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", onClickAway);
+    return () => document.removeEventListener("mousedown", onClickAway);
+  }, []);
+
+  const trimmedQuery = query.trim();
+  const hasExactMatch = results.some((result) => result.label.toLowerCase() === trimmedQuery.toLowerCase());
+  const options: Array<{ key: string; label: string; custom: boolean }> = [
+    ...results.map((result) => ({ key: result.id, label: result.label, custom: false })),
+  ];
+  if (trimmedQuery && !hasExactMatch) {
+    options.push({ key: `custom-${trimmedQuery}`, label: trimmedQuery, custom: true });
+  }
+
+  function choose(value: string) {
+    if (props.mode === "single") {
+      props.onSelect(value);
+      setQuery("");
+    } else {
+      if (!props.values.some((existing) => existing.toLowerCase() === value.toLowerCase())) {
+        props.onAdd(value);
+      }
+      setQuery("");
+    }
+    setResults([]);
+    setOpen(false);
+  }
+
+  function onKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
+    if (!open || options.length === 0) return;
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      setActiveIndex((index) => (index + 1) % options.length);
+    } else if (event.key === "ArrowUp") {
+      event.preventDefault();
+      setActiveIndex((index) => (index - 1 + options.length) % options.length);
+    } else if (event.key === "Enter") {
+      event.preventDefault();
+      const option = options[activeIndex];
+      if (option) choose(option.label);
+    } else if (event.key === "Escape") {
+      setOpen(false);
+    }
+  }
+
+  return (
+    <div className={styles.pickerField} ref={wrapRef}>
+      <span className={styles.pickerLabel}>{label}</span>
+      {props.mode === "single" && props.value ? (
+        <div className={styles.pickerChips}>
+          <span className={`${styles.chip} ${styles.chipOn}`}>
+            {props.value}
+            <button type="button" className={styles.chipRemove} aria-label="Clear" disabled={disabled} onClick={() => props.onSelect("")}>
+              ✕
+            </button>
+          </span>
+        </div>
+      ) : null}
+      {props.mode === "multi" && props.values.length > 0 ? (
+        <div className={styles.pickerChips}>
+          {props.values.map((value) => (
+            <span key={value} className={`${styles.chip} ${styles.chipOn}`}>
+              {value}
+              <button type="button" className={styles.chipRemove} aria-label={`Remove ${value}`} disabled={disabled} onClick={() => props.onRemove(value)}>
+                ✕
+              </button>
+            </span>
+          ))}
+        </div>
+      ) : null}
+      <div className={styles.pickerInputWrap}>
+        <input
+          className={styles.pickerInput}
+          value={query}
+          placeholder={placeholder}
+          disabled={disabled}
+          onChange={(event) => {
+            setQuery(event.target.value);
+            setOpen(true);
+          }}
+          onFocus={() => setOpen(true)}
+          onKeyDown={onKeyDown}
+          role="combobox"
+          aria-expanded={open}
+          aria-controls={listboxId}
+          aria-autocomplete="list"
+        />
+        {open && trimmedQuery ? (
+          <ul className={styles.pickerDropdown} role="listbox" id={listboxId}>
+            {loading && options.length === 0 ? (
+              <li className={styles.pickerEmpty}>Searching…</li>
+            ) : options.length === 0 ? (
+              <li className={styles.pickerEmpty}>No matches.</li>
+            ) : (
+              options.map((option, index) => (
+                <li key={option.key} role="option" aria-selected={index === activeIndex}>
+                  <button
+                    type="button"
+                    className={`${styles.pickerOption} ${index === activeIndex ? styles.pickerOptionActive : ""}`}
+                    onMouseEnter={() => setActiveIndex(index)}
+                    onClick={() => choose(option.label)}
+                  >
+                    {option.custom ? `Add "${option.label}"` : option.label}
+                  </button>
+                </li>
+              ))
+            )}
+          </ul>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+/* ============================================================
+   Main client
+   ============================================================ */
+
 export default function OnboardingClient({
-  sections,
   mode = "onboarding",
+  sections,
 }: {
-  sections: PublicProfileOnboardingSection[];
   mode?: "onboarding" | "profile-editor";
+  sections: PublicProfileOnboardingSection[];
 }) {
   const router = useRouter();
   const isProfileEditor = mode === "profile-editor";
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [accessToken, setAccessToken] = useState("");
+
   const [identity, setIdentity] = useState<IdentitySearchSection>(emptyIdentity);
+  const [fitSignals, setFitSignals] = useState<FitSignalsSection>(emptyFitSignals);
   const [roleTracks, setRoleTracks] = useState<RoleTrackSectionItem[]>([]);
   const [resumes, setResumes] = useState<ResumeUploadSectionItem[]>([]);
-  const [workHistory, setWorkHistory] = useState<WorkHistorySectionItem[]>([]);
-  const [proofProjects, setProofProjects] = useState<ProofLibrarySectionItem[]>([]);
+  const [workExamples, setWorkExamples] = useState<WorkExampleSectionItem[]>([]);
   const [skills, setSkills] = useState<SkillsInventorySectionItem[]>([]);
-  const [whyPeopleHireMe, setWhyPeopleHireMe] = useState<QualityNarrativeSection>(() => completeQualityNarrativeSection("why_people_hire_me"));
-  const [operatingStyle, setOperatingStyle] = useState<QualityNarrativeSection>(() => completeQualityNarrativeSection("operating_style"));
-  const [decisionStyle, setDecisionStyle] = useState<QualityNarrativeSection>(() => completeQualityNarrativeSection("decision_style"));
-  const [aiMisreadings, setAiMisreadings] = useState<QualityNarrativeSection>(() => completeQualityNarrativeSection("ai_misreadings"));
-  const [communicationStyle, setCommunicationStyle] = useState<CommunicationStyleSection>(() => completeCommunicationStyleSection());
+  const [voice, setVoice] = useState<VoicePersonalitySection>(emptyVoice);
   const [writingSamples, setWritingSamples] = useState<WritingSamplesSectionItem[]>([]);
   const [outreachRules, setOutreachRules] = useState<OutreachRulesSection>(() => completeOutreachRulesSection());
   const [leadershipProfile, setLeadershipProfile] = useState<LeadershipProfileSection>(() => completeLeadershipProfileSection());
+
   const [profileStatus, setProfileStatus] = useState<"incomplete" | "complete">("incomplete");
   const [profileQuality, setProfileQuality] = useState<ProfileQualitySummary | null>(null);
   const [issues, setIssues] = useState<string[]>([]);
   const [message, setMessage] = useState(isProfileEditor ? "Loading your Career Profile." : "Sign in to start your profile.");
   const [busy, setBusy] = useState(false);
+
   const requiredSections = useMemo(() => sections.filter((section) => section.required), [sections]);
 
   const applyProfileQuality = useCallback((summary: ProfileQualitySummary) => {
@@ -621,8 +747,7 @@ export default function OnboardingClient({
           : blockers.length === 0 && weakFields.length === 0
             ? "complete"
             : "incomplete";
-
-      return [section.key, { status, blockers, weakFields }];
+      return [section.key, { status, blockers, weakFields }] as const;
     }));
   }, [profileQuality, sections]);
 
@@ -634,166 +759,48 @@ export default function OnboardingClient({
   const loadProfile = useCallback(async (token: string) => {
     const bootstrap = await requestPublicProfileApi<{
       profileStatus: "incomplete" | "complete";
-      profileQuality: SectionResponse<IdentitySearchSection>["profileQuality"];
-    }>("/api/public-profile/bootstrap", {
-      method: "POST",
-      accessToken: token,
-    });
+      profileQuality: ProfileQualitySummary;
+    }>("/api/public-profile/bootstrap", { method: "POST", accessToken: token });
+
+    const get = <T,>(path: string) => requestPublicProfileApi<SectionResponse<T>>(path, { method: "GET", accessToken: token });
 
     const [
       identityResponse,
+      fitSignalsResponse,
       roleTracksResponse,
       resumeResponse,
-      workHistoryResponse,
-      proofLibraryResponse,
+      workExamplesResponse,
       skillsResponse,
-      whyPeopleHireMeResponse,
-      operatingStyleResponse,
-      decisionStyleResponse,
-      aiMisreadingsResponse,
-      communicationStyleResponse,
+      voiceResponse,
       writingSamplesResponse,
       outreachRulesResponse,
       leadershipProfileResponse,
     ] = await Promise.all([
-      requestPublicProfileApi<SectionResponse<IdentitySearchSection>>("/api/public-profile/identity-search", {
-        method: "GET",
-        accessToken: token,
-      }),
-      requestPublicProfileApi<SectionResponse<RoleTracksSection>>("/api/public-profile/role-tracks", {
-        method: "GET",
-        accessToken: token,
-      }),
-      requestPublicProfileApi<SectionResponse<ResumeUploadsSection>>("/api/public-profile/resumes", {
-        method: "GET",
-        accessToken: token,
-      }),
-      requestPublicProfileApi<SectionResponse<WorkHistorySection>>("/api/public-profile/work-history", {
-        method: "GET",
-        accessToken: token,
-      }),
-      requestPublicProfileApi<SectionResponse<ProofLibrarySection>>("/api/public-profile/proof-library", {
-        method: "GET",
-        accessToken: token,
-      }),
-      requestPublicProfileApi<SectionResponse<SkillsInventorySection>>("/api/public-profile/skills", {
-        method: "GET",
-        accessToken: token,
-      }),
-      requestPublicProfileApi<SectionResponse<QualityNarrativeSection>>("/api/public-profile/why-people-hire-me", {
-        method: "GET",
-        accessToken: token,
-      }),
-      requestPublicProfileApi<SectionResponse<QualityNarrativeSection>>("/api/public-profile/operating-style", {
-        method: "GET",
-        accessToken: token,
-      }),
-      requestPublicProfileApi<SectionResponse<QualityNarrativeSection>>("/api/public-profile/decision-style", {
-        method: "GET",
-        accessToken: token,
-      }),
-      requestPublicProfileApi<SectionResponse<QualityNarrativeSection>>("/api/public-profile/ai-misreadings", {
-        method: "GET",
-        accessToken: token,
-      }),
-      requestPublicProfileApi<SectionResponse<CommunicationStyleSection>>("/api/public-profile/communication-style", {
-        method: "GET",
-        accessToken: token,
-      }),
-      requestPublicProfileApi<SectionResponse<WritingSamplesSection>>("/api/public-profile/writing-samples", {
-        method: "GET",
-        accessToken: token,
-      }),
-      requestPublicProfileApi<SectionResponse<OutreachRulesSection>>("/api/public-profile/outreach-rules", {
-        method: "GET",
-        accessToken: token,
-      }),
-      requestPublicProfileApi<SectionResponse<LeadershipProfileSection>>("/api/public-profile/leadership-profile", {
-        method: "GET",
-        accessToken: token,
-      }),
+      get<IdentitySearchSection>("/api/public-profile/identity-search"),
+      get<FitSignalsSection>("/api/public-profile/fit-signals"),
+      get<RoleTracksSection>("/api/public-profile/role-tracks"),
+      get<ResumeUploadsSection>("/api/public-profile/resumes"),
+      get<WorkExamplesSection>("/api/public-profile/work-examples"),
+      get<SkillsInventorySection>("/api/public-profile/skills"),
+      get<VoicePersonalitySection>("/api/public-profile/voice-personality"),
+      get<WritingSamplesSection>("/api/public-profile/writing-samples"),
+      get<OutreachRulesSection>("/api/public-profile/outreach-rules"),
+      get<LeadershipProfileSection>("/api/public-profile/leadership-profile"),
     ]);
 
     setIdentity(identityResponse.section);
+    setFitSignals(fitSignalsResponse.section);
     setRoleTracks(roleTracksResponse.section.roleTracks);
     setResumes(resumeResponse.section.resumes);
-    setWorkHistory(workHistoryResponse.section.workHistory);
-    setProofProjects(proofLibraryResponse.section.projects);
+    setWorkExamples(workExamplesResponse.section.workExamples);
     setSkills(skillsResponse.section.skills);
-    setWhyPeopleHireMe(completeQualityNarrativeSection("why_people_hire_me", whyPeopleHireMeResponse.section.fields));
-    setOperatingStyle(completeQualityNarrativeSection("operating_style", operatingStyleResponse.section.fields));
-    setDecisionStyle(completeQualityNarrativeSection("decision_style", decisionStyleResponse.section.fields));
-    setAiMisreadings(completeQualityNarrativeSection("ai_misreadings", aiMisreadingsResponse.section.fields));
-    setCommunicationStyle(completeCommunicationStyleSection(communicationStyleResponse.section));
+    setVoice(voiceResponse.section);
     setWritingSamples(writingSamplesResponse.section.writingSamples);
     setOutreachRules(completeOutreachRulesSection(outreachRulesResponse.section));
     setLeadershipProfile(completeLeadershipProfileSection(leadershipProfileResponse.section));
-    applyProfileQuality(identityResponse.profileQuality.status ? identityResponse.profileQuality : bootstrap.profileQuality);
+    applyProfileQuality(identityResponse.profileQuality ?? bootstrap.profileQuality);
     setMessage("Profile sections loaded.");
   }, [applyProfileQuality]);
-
-  const updateRoleTrack = useCallback((id: string, patch: Partial<RoleTrackSectionItem>) => {
-    setRoleTracks((tracks) => tracks.map((track) => track.id === id ? { ...track, ...patch } : track));
-  }, []);
-
-  const updateResume = useCallback((id: string, patch: Partial<ResumeUploadSectionItem>) => {
-    setResumes((items) => items.map((resume) => resume.id === id ? { ...resume, ...patch } : resume));
-  }, []);
-
-  const updateWorkHistoryItem = useCallback((id: string, patch: Partial<WorkHistorySectionItem>) => {
-    setWorkHistory((items) => items.map((item) => item.id === id ? { ...item, ...patch } : item));
-  }, []);
-
-  const updateProofProject = useCallback((id: string, patch: Partial<ProofLibrarySectionItem>) => {
-    setProofProjects((projects) => projects.map((project) => project.id === id ? { ...project, ...patch } : project));
-  }, []);
-
-  const updateSkill = useCallback((id: string, patch: Partial<SkillsInventorySectionItem>) => {
-    setSkills((items) => items.map((skill) => skill.id === id ? { ...skill, ...patch } : skill));
-  }, []);
-
-  const updateQualityNarrativeField = useCallback((
-    setSection: Dispatch<SetStateAction<QualityNarrativeSection>>,
-    id: string,
-    patch: Partial<QualityNarrativeSectionField>,
-  ) => {
-    setSection((section) => ({
-      ...section,
-      fields: section.fields.map((field) => field.id === id ? { ...field, ...patch } : field),
-    }));
-  }, []);
-
-  const updateCommunicationField = useCallback((id: string, patch: Partial<QualityNarrativeSectionField>) => {
-    setCommunicationStyle((section) => ({
-      ...section,
-      fields: section.fields.map((field) => field.id === id ? { ...field, ...patch } : field),
-    }));
-  }, []);
-
-  const updateWritingSample = useCallback((id: string, patch: Partial<WritingSamplesSectionItem>) => {
-    setWritingSamples((samples) => samples.map((sample) => sample.id === id ? { ...sample, ...patch } : sample));
-  }, []);
-
-  const updateOutreachField = useCallback((id: string, patch: Partial<QualityNarrativeSectionField>) => {
-    setOutreachRules((section) => ({
-      ...section,
-      fields: section.fields.map((field) => field.id === id ? { ...field, ...patch } : field),
-    }));
-  }, []);
-
-  const updateOutreachRule = useCallback((id: string, patch: Partial<RoleTrackOutreachRuleSectionItem>) => {
-    setOutreachRules((section) => ({
-      ...section,
-      roleTrackSpecificRules: section.roleTrackSpecificRules.map((rule) => rule.id === id ? { ...rule, ...patch } : rule),
-    }));
-  }, []);
-
-  const updateLeadershipField = useCallback((id: string, patch: Partial<QualityNarrativeSectionField>) => {
-    setLeadershipProfile((section) => ({
-      ...section,
-      fields: section.fields.map((field) => field.id === id ? { ...field, ...patch } : field),
-    }));
-  }, []);
 
   useEffect(() => {
     const stored = readPublicProfileAccessToken();
@@ -824,10 +831,7 @@ export default function OnboardingClient({
       if (!supabaseUrl || !anonKey) throw new Error("Sign-in is not configured yet.");
       const response = await fetch(`${supabaseUrl}/auth/v1/token?grant_type=password`, {
         method: "POST",
-        headers: {
-          apikey: anonKey,
-          "Content-Type": "application/json",
-        },
+        headers: { apikey: anonKey, "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
       });
       const body = await response.json().catch(() => null) as TokenResponse | null;
@@ -857,245 +861,16 @@ export default function OnboardingClient({
     }
   }
 
-  async function saveIdentity() {
-    if (!accessToken) return;
-    setBusy(true);
-    setMessage("Saving Identity/Search…");
-    try {
-      const response = await requestPublicProfileApi<SectionResponse<IdentitySearchSection>>("/api/public-profile/identity-search", {
-        method: "PATCH",
-        accessToken,
-        body: identity,
-      });
-      setIdentity(response.section);
-      applyProfileQuality(response.profileQuality);
-      setMessage("Identity/Search saved.");
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Save failed.");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function saveRoleTracks() {
-    if (!accessToken) return;
-    setBusy(true);
-    setMessage("Saving Role Tracks…");
-    try {
-      const response = await requestPublicProfileApi<SectionResponse<RoleTracksSection>>("/api/public-profile/role-tracks", {
-        method: "PATCH",
-        accessToken,
-        body: { roleTracks },
-      });
-      setRoleTracks(response.section.roleTracks);
-      applyProfileQuality(response.profileQuality);
-      setMessage("Role Tracks saved.");
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Save failed.");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function saveResumes() {
-    if (!accessToken) return;
-    setBusy(true);
-    setMessage("Saving Resume Uploads…");
-    try {
-      const response = await requestPublicProfileApi<SectionResponse<ResumeUploadsSection>>("/api/public-profile/resumes", {
-        method: "PATCH",
-        accessToken,
-        body: { resumes },
-      });
-      setResumes(response.section.resumes);
-      applyProfileQuality(response.profileQuality);
-      setMessage("Resume Uploads saved.");
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Save failed.");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function saveWorkHistory() {
-    if (!accessToken) return;
-    setBusy(true);
-    setMessage("Saving Work History…");
-    try {
-      const response = await requestPublicProfileApi<SectionResponse<WorkHistorySection>>("/api/public-profile/work-history", {
-        method: "PATCH",
-        accessToken,
-        body: { workHistory },
-      });
-      setWorkHistory(response.section.workHistory);
-      applyProfileQuality(response.profileQuality);
-      setMessage("Work History saved.");
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Save failed.");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function saveProofLibrary() {
-    if (!accessToken) return;
-    setBusy(true);
-    setMessage("Saving Proof Library…");
-    try {
-      const response = await requestPublicProfileApi<SectionResponse<ProofLibrarySection>>("/api/public-profile/proof-library", {
-        method: "PATCH",
-        accessToken,
-        body: { projects: proofProjects },
-      });
-      setProofProjects(response.section.projects);
-      applyProfileQuality(response.profileQuality);
-      setMessage("Proof Library saved.");
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Save failed.");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function saveSkills() {
-    if (!accessToken) return;
-    setBusy(true);
-    setMessage("Saving Skills Inventory…");
-    try {
-      const response = await requestPublicProfileApi<SectionResponse<SkillsInventorySection>>("/api/public-profile/skills", {
-        method: "PATCH",
-        accessToken,
-        body: { skills },
-      });
-      setSkills(response.section.skills);
-      applyProfileQuality(response.profileQuality);
-      setMessage("Skills Inventory saved.");
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Save failed.");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function saveQualityNarrative(
-    label: string,
-    path: string,
-    section: QualityNarrativeSection,
-    setSection: Dispatch<SetStateAction<QualityNarrativeSection>>,
-  ) {
-    if (!accessToken) return;
-    setBusy(true);
-    setMessage(`Saving ${label}…`);
-    try {
-      const response = await requestPublicProfileApi<SectionResponse<QualityNarrativeSection>>(path, {
-        method: "PATCH",
-        accessToken,
-        body: section,
-      });
-      setSection(completeQualityNarrativeSection(section.section, response.section.fields));
-      applyProfileQuality(response.profileQuality);
-      setMessage(`${label} saved.`);
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Save failed.");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function saveCommunicationStyle() {
-    if (!accessToken) return;
-    setBusy(true);
-    setMessage("Saving Communication Style…");
-    try {
-      const response = await requestPublicProfileApi<SectionResponse<CommunicationStyleSection>>("/api/public-profile/communication-style", {
-        method: "PATCH",
-        accessToken,
-        body: communicationStyle,
-      });
-      setCommunicationStyle(completeCommunicationStyleSection(response.section));
-      applyProfileQuality(response.profileQuality);
-      setMessage("Communication Style saved.");
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Save failed.");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function saveWritingSamples() {
-    if (!accessToken) return;
-    setBusy(true);
-    setMessage("Saving Writing Samples…");
-    try {
-      const response = await requestPublicProfileApi<SectionResponse<WritingSamplesSection>>("/api/public-profile/writing-samples", {
-        method: "PATCH",
-        accessToken,
-        body: { writingSamples },
-      });
-      setWritingSamples(response.section.writingSamples);
-      applyProfileQuality(response.profileQuality);
-      setMessage("Writing Samples saved.");
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Save failed.");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function saveOutreachRules() {
-    if (!accessToken) return;
-    setBusy(true);
-    setMessage("Saving Outreach Rules…");
-    try {
-      const response = await requestPublicProfileApi<SectionResponse<OutreachRulesSection>>("/api/public-profile/outreach-rules", {
-        method: "PATCH",
-        accessToken,
-        body: outreachRules,
-      });
-      setOutreachRules(completeOutreachRulesSection(response.section));
-      applyProfileQuality(response.profileQuality);
-      setMessage("Outreach Rules saved.");
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Save failed.");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function saveLeadershipProfile() {
-    if (!accessToken) return;
-    setBusy(true);
-    setMessage("Saving Leadership Profile…");
-    try {
-      const response = await requestPublicProfileApi<SectionResponse<LeadershipProfileSection>>("/api/public-profile/leadership-profile", {
-        method: "PATCH",
-        accessToken,
-        body: leadershipProfile,
-      });
-      setLeadershipProfile(completeLeadershipProfileSection(response.section));
-      applyProfileQuality(response.profileQuality);
-      setMessage("Leadership Profile saved.");
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Save failed.");
-    } finally {
-      setBusy(false);
-    }
-  }
-
   function signOut() {
     clearPublicProfileAccessToken();
     setAccessToken("");
     setIdentity(emptyIdentity);
+    setFitSignals(emptyFitSignals);
     setRoleTracks([]);
     setResumes([]);
-    setWorkHistory([]);
-    setProofProjects([]);
+    setWorkExamples([]);
     setSkills([]);
-    setWhyPeopleHireMe(completeQualityNarrativeSection("why_people_hire_me"));
-    setOperatingStyle(completeQualityNarrativeSection("operating_style"));
-    setDecisionStyle(completeQualityNarrativeSection("decision_style"));
-    setAiMisreadings(completeQualityNarrativeSection("ai_misreadings"));
-    setCommunicationStyle(completeCommunicationStyleSection());
+    setVoice(emptyVoice);
     setWritingSamples([]);
     setOutreachRules(completeOutreachRulesSection());
     setLeadershipProfile(completeLeadershipProfileSection());
@@ -1105,170 +880,142 @@ export default function OnboardingClient({
     setMessage("Signed out.");
   }
 
-  function removeRoleTrack(id: string) {
-    setRoleTracks((tracks) => tracks.filter((track) => track.id !== id));
+  async function saveSection<T>(label: string, path: string, body: unknown, onResult: (section: T, quality: ProfileQualitySummary) => void) {
+    if (!accessToken) return;
+    setBusy(true);
+    setMessage(`Saving ${label}…`);
+    try {
+      const response = await requestPublicProfileApi<SectionResponse<T>>(path, { method: "PATCH", accessToken, body });
+      onResult(response.section, response.profileQuality);
+      applyProfileQuality(response.profileQuality);
+      setMessage(`${label} saved.`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Save failed.");
+    } finally {
+      setBusy(false);
+    }
   }
 
-  function duplicateRoleTrack(track: RoleTrackSectionItem) {
-    setRoleTracks((tracks) => {
-      const duplicate: RoleTrackSectionItem = {
-        ...track,
-        id: createClientId(),
-        name: track.name ? `${track.name} copy` : "",
-        targetTitles: [...track.targetTitles],
-        keyResponsibilities: [...track.keyResponsibilities],
-        requiredExperiencePatterns: [...track.requiredExperiencePatterns],
-        strongJobSignals: [...track.strongJobSignals],
-        weakJobSignals: [...track.weakJobSignals],
-        mismatchSignals: [...track.mismatchSignals],
-        doNotOverclaim: [...track.doNotOverclaim],
-        resumeIds: [...track.resumeIds],
+  const saveIdentity = () =>
+    saveSection<IdentitySearchSection>("Identity & Search", "/api/public-profile/identity-search", identity, (section) => setIdentity(section));
+  const saveFitSignals = () =>
+    saveSection<FitSignalsSection>("Fit Signals", "/api/public-profile/fit-signals", fitSignals, (section) => setFitSignals(section));
+  const saveRoleTracks = () =>
+    saveSection<RoleTracksSection>("Role Tracks", "/api/public-profile/role-tracks", { roleTracks }, (section) => setRoleTracks(section.roleTracks));
+  const saveResumes = () =>
+    saveSection<ResumeUploadsSection>("Resumes", "/api/public-profile/resumes", { resumes }, (section) => setResumes(section.resumes));
+  const saveWorkExamples = () =>
+    saveSection<WorkExamplesSection>("Work Examples", "/api/public-profile/work-examples", { workExamples }, (section) => setWorkExamples(section.workExamples));
+  const saveSkills = () =>
+    saveSection<SkillsInventorySection>("Skills", "/api/public-profile/skills", { skills }, (section) => setSkills(section.skills));
+  const saveOutreachRules = () =>
+    saveSection<OutreachRulesSection>("Outreach Rules", "/api/public-profile/outreach-rules", outreachRules, (section) => setOutreachRules(completeOutreachRulesSection(section)));
+  const saveLeadership = () =>
+    saveSection<LeadershipProfileSection>("Leadership Profile", "/api/public-profile/leadership-profile", leadershipProfile, (section) => setLeadershipProfile(completeLeadershipProfileSection(section)));
+
+  // Voice & Personality persists to two endpoints: voice-personality + writing-samples.
+  async function saveVoiceAndPersonality() {
+    if (!accessToken) return;
+    setBusy(true);
+    setMessage("Saving Voice & Personality…");
+    try {
+      await requestPublicProfileApi<SectionResponse<VoicePersonalitySection>>("/api/public-profile/voice-personality", {
+        method: "PATCH",
+        accessToken,
+        body: voice,
+      });
+      const writingResponse = await requestPublicProfileApi<SectionResponse<WritingSamplesSection>>("/api/public-profile/writing-samples", {
+        method: "PATCH",
+        accessToken,
+        body: { writingSamples },
+      });
+      setWritingSamples(writingResponse.section.writingSamples);
+      applyProfileQuality(writingResponse.profileQuality);
+      setMessage("Voice & Personality saved.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Save failed.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  /* --- per-item state updates --- */
+
+  const updateRoleTrack = (id: string, patch: Partial<RoleTrackSectionItem>) =>
+    setRoleTracks((tracks) => tracks.map((track) => (track.id === id ? { ...track, ...patch } : track)));
+  const updateResume = (id: string, patch: Partial<ResumeUploadSectionItem>) =>
+    setResumes((items) => items.map((resume) => (resume.id === id ? { ...resume, ...patch } : resume)));
+  const updateWorkExample = (id: string, patch: Partial<WorkExampleSectionItem>) =>
+    setWorkExamples((items) => items.map((example) => (example.id === id ? { ...example, ...patch } : example)));
+  const updateSkill = (id: string, patch: Partial<SkillsInventorySectionItem>) =>
+    setSkills((items) => items.map((skill) => (skill.id === id ? { ...skill, ...patch } : skill)));
+  const updateWritingSample = (id: string, patch: Partial<WritingSamplesSectionItem>) =>
+    setWritingSamples((samples) => samples.map((sample) => (sample.id === id ? { ...sample, ...patch } : sample)));
+
+  function toggleResumeRoleTrack(resume: ResumeUploadSectionItem, roleTrackId: string) {
+    const ids = new Set(resume.associatedRoleTrackIds);
+    if (ids.has(roleTrackId)) ids.delete(roleTrackId); else ids.add(roleTrackId);
+    updateResume(resume.id, { associatedRoleTrackIds: Array.from(ids) });
+  }
+
+  function toggleSkillWorkExample(skill: SkillsInventorySectionItem, workExampleId: string) {
+    const ids = new Set(skill.relatedWorkExampleIds);
+    if (ids.has(workExampleId)) ids.delete(workExampleId); else ids.add(workExampleId);
+    updateSkill(skill.id, { relatedWorkExampleIds: Array.from(ids) });
+  }
+
+  function toggleTone(value: string) {
+    setVoice((current) => {
+      const exists = current.toneTags.some((tag) => tag.toLowerCase() === value.toLowerCase());
+      return {
+        ...current,
+        toneTags: exists
+          ? current.toneTags.filter((tag) => tag.toLowerCase() !== value.toLowerCase())
+          : [...current.toneTags, value],
       };
-      const index = tracks.findIndex((item) => item.id === track.id);
-      if (index < 0) return [...tracks, duplicate];
-      return [...tracks.slice(0, index + 1), duplicate, ...tracks.slice(index + 1)];
     });
   }
 
-  function removeResume(id: string) {
-    setResumes((items) => items.filter((resume) => resume.id !== id));
+  function toggleAvoidTag(value: string) {
+    setVoice((current) => {
+      const exists = current.avoidTags.some((tag) => tag.toLowerCase() === value.toLowerCase());
+      return {
+        ...current,
+        avoidTags: exists
+          ? current.avoidTags.filter((tag) => tag.toLowerCase() !== value.toLowerCase())
+          : [...current.avoidTags, value],
+      };
+    });
   }
 
-  function toggleResumeRoleTrack(resume: ResumeUploadSectionItem, roleTrackId: string) {
-    const currentIds = new Set(resume.associatedRoleTrackIds);
-    if (currentIds.has(roleTrackId)) {
-      currentIds.delete(roleTrackId);
-    } else {
-      currentIds.add(roleTrackId);
-    }
-    updateResume(resume.id, { associatedRoleTrackIds: Array.from(currentIds) });
-  }
+  const bucketSamples = (bucket: WritingSampleBucket) => writingSamples.filter((sample) => sample.bucket === bucket);
 
-  function removeWorkHistoryItem(id: string) {
-    setWorkHistory((items) => items.filter((item) => item.id !== id));
-  }
-
-  function removeProofProject(id: string) {
-    setProofProjects((projects) => projects.filter((project) => project.id !== id));
-  }
-
-  function removeSkill(id: string) {
-    setSkills((items) => items.filter((skill) => skill.id !== id));
+  function addWritingSample(bucket: WritingSampleBucket) {
+    setWritingSamples((samples) => [...samples, emptyWritingSample(bucket)]);
   }
 
   function removeWritingSample(id: string) {
     setWritingSamples((samples) => samples.filter((sample) => sample.id !== id));
   }
 
-  function removeOutreachRule(id: string) {
-    setOutreachRules((section) => ({
-      ...section,
-      roleTrackSpecificRules: section.roleTrackSpecificRules.filter((rule) => rule.id !== id),
-    }));
-  }
+  const avoidNoteWords = countWords(voice.avoidNote);
+  const q1Words = countWords(voice.q1Value);
+  const q4Words = countWords(voice.q4Opinion);
 
-  function toggleSkillProject(skill: SkillsInventorySectionItem, projectId: string) {
-    const currentIds = new Set(skill.relatedProjectIds);
-    if (currentIds.has(projectId)) {
-      currentIds.delete(projectId);
-    } else {
-      currentIds.add(projectId);
-    }
-    updateSkill(skill.id, { relatedProjectIds: Array.from(currentIds) });
-  }
+  /* --- shared section header --- */
 
-  function toggleSkillWorkHistory(skill: SkillsInventorySectionItem, workHistoryId: string) {
-    const currentIds = new Set(skill.relatedWorkHistoryIds);
-    if (currentIds.has(workHistoryId)) {
-      currentIds.delete(workHistoryId);
-    } else {
-      currentIds.add(workHistoryId);
-    }
-    updateSkill(skill.id, { relatedWorkHistoryIds: Array.from(currentIds) });
-  }
-
-  function toggleWorkHistoryResume(item: WorkHistorySectionItem, resumeId: string) {
-    const currentIds = new Set(item.associatedResumeIds);
-    if (currentIds.has(resumeId)) {
-      currentIds.delete(resumeId);
-    } else {
-      currentIds.add(resumeId);
-    }
-    updateWorkHistoryItem(item.id, { associatedResumeIds: Array.from(currentIds) });
-  }
-
-  function renderQualityNarrativeCard(
-    sectionKey: PublicProfileOnboardingSectionKey,
-    label: string,
-    path: string,
-    section: QualityNarrativeSection,
-    setSection: Dispatch<SetStateAction<QualityNarrativeSection>>,
-  ) {
+  function sectionHeader(sectionKey: PublicProfileOnboardingSectionKey, title: string, optional = false, action?: React.ReactNode) {
+    const readiness = readinessBySection.get(sectionKey);
+    const status = readiness?.status ?? "not_loaded";
     return (
-      <article className={styles.formCard} id={`career-profile-${sectionKey}`}>
-        <div className={styles.formHeader}>
-          <div>
-            <p className={styles.statusLabel}>Editable Section</p>
-            <h2>{label}</h2>
-          </div>
+      <div className={styles.formHeader}>
+        <div>
+          <p className={styles.statusLabel}>{optional ? "Optional Section" : "Editable Section"}</p>
+          <h2>{title}</h2>
         </div>
-        <div className={styles.roleTrackList}>
-          {section.fields.map((field) => (
-            <div className={styles.roleTrackEditor} key={field.id}>
-              <div className={styles.roleTrackHeader}>
-                <h3>{qualityNarrativeFieldLabels[section.section][field.fieldKey] ?? field.fieldKey}</h3>
-                <label className={styles.checkboxLabel}>
-                  <input
-                    checked={field.quality === "complete"}
-                    onChange={(event) => updateQualityNarrativeField(setSection, field.id, { quality: event.target.checked ? "complete" : "weak" })}
-                    type="checkbox"
-                  />
-                  Complete
-                </label>
-              </div>
-              <div className={styles.formGrid}>
-                <label className={styles.fullWidth}>Response<textarea value={field.value} onChange={(event) => updateQualityNarrativeField(setSection, field.id, { value: event.target.value })} /></label>
-                <label className={styles.fullWidth}>Notes for improvement<textarea value={field.feedback ?? ""} onChange={(event) => updateQualityNarrativeField(setSection, field.id, { feedback: event.target.value })} /></label>
-              </div>
-            </div>
-          ))}
-        </div>
-        <div className={styles.formActions}>
-          <button className={styles.primaryButton} disabled={!accessToken || busy} onClick={() => saveQualityNarrative(label, path, section, setSection)} type="button">
-            Save {label}
-          </button>
-          <p>Mark complete only when the response is specific enough to support useful matching and outreach.</p>
-        </div>
-      </article>
-    );
-  }
-
-  function renderQualityFields(
-    fields: QualityNarrativeSectionField[],
-    sectionKey: QualitySection,
-    updateField: (id: string, patch: Partial<QualityNarrativeSectionField>) => void,
-  ) {
-    return (
-      <div className={styles.roleTrackList}>
-        {fields.map((field) => (
-          <div className={styles.roleTrackEditor} key={field.id}>
-            <div className={styles.roleTrackHeader}>
-              <h3>{qualityNarrativeFieldLabels[sectionKey][field.fieldKey] ?? field.fieldKey}</h3>
-              <label className={styles.checkboxLabel}>
-                <input
-                  checked={field.quality === "complete"}
-                  onChange={(event) => updateField(field.id, { quality: event.target.checked ? "complete" : "weak" })}
-                  type="checkbox"
-                />
-                Complete
-              </label>
-            </div>
-            <div className={styles.formGrid}>
-              <label className={styles.fullWidth}>Response<textarea value={field.value} onChange={(event) => updateField(field.id, { value: event.target.value })} /></label>
-              <label className={styles.fullWidth}>Notes for improvement<textarea value={field.feedback ?? ""} onChange={(event) => updateField(field.id, { feedback: event.target.value })} /></label>
-            </div>
-          </div>
-        ))}
+        {action ?? (
+          <span className={`${styles.readinessBadge} ${styles[`readiness_${status}`]}`}>{readinessLabel(status)}</span>
+        )}
       </div>
     );
   }
@@ -1278,31 +1025,21 @@ export default function OnboardingClient({
       <section className={isProfileEditor ? styles.authPanelCompact : styles.authPanel} aria-label="Profile sign in">
         <div>
           <p className={styles.statusLabel}>Account</p>
-          <p className={styles.statusDetail}>
-            {accessToken ? "Signed in." : "Sign in to continue."}
-          </p>
+          <p className={styles.statusDetail}>{accessToken ? "Signed in." : "Sign in to continue."}</p>
         </div>
         {accessToken ? (
           <div className={styles.authActions}>
-              <button className={styles.secondaryButton} disabled={busy} onClick={reloadProfile} type="button">
-                Reload
-              </button>
-              {!isProfileEditor && profileQuality?.status === "complete" ? (
-                <button className={styles.secondaryButton} disabled={busy} onClick={() => router.push("/dashboard")} type="button">
-                  Go to dashboard
-                </button>
-              ) : null}
-              <button className={styles.secondaryButton} onClick={signOut} type="button">
-                Sign out
-            </button>
+            <button className={styles.secondaryButton} disabled={busy} onClick={reloadProfile} type="button">Reload</button>
+            {!isProfileEditor && profileQuality?.status === "complete" ? (
+              <button className={styles.secondaryButton} disabled={busy} onClick={() => router.push("/dashboard")} type="button">Go to dashboard</button>
+            ) : null}
+            <button className={styles.secondaryButton} onClick={signOut} type="button">Sign out</button>
           </div>
         ) : (
           <div className={styles.authForm}>
             <input aria-label="Email" autoComplete="email" onChange={(event) => setEmail(event.target.value)} placeholder="email@example.com" type="email" value={email} />
             <input aria-label="Password" autoComplete="current-password" onChange={(event) => setPassword(event.target.value)} placeholder="Password" type="password" value={password} />
-            <button className={styles.primaryButton} disabled={busy || !email || !password} onClick={signIn} type="button">
-              Sign in
-            </button>
+            <button className={styles.primaryButton} disabled={busy || !email || !password} onClick={signIn} type="button">Sign in</button>
           </div>
         )}
       </section>
@@ -1331,22 +1068,27 @@ export default function OnboardingClient({
 
       <section className={`${styles.editorGrid} ${isProfileEditor ? styles.profileEditorGrid : ""}`} aria-label="Editable onboarding form">
         <div className={styles.formStack}>
+
+          {/* --- Identity & Search --- */}
           <article className={styles.formCard} id="career-profile-identitySearch">
-            <div className={styles.formHeader}>
-              <div>
-                <p className={styles.statusLabel}>Editable Section</p>
-                <h2>Identity and Search Basics</h2>
-              </div>
-              <span className={styles.profileStatus}>{profileQuality ? profileStatus : notLoadedReadinessLabel}</span>
-            </div>
+            {sectionHeader("identitySearch", "Identity & Search")}
             <div className={styles.formGrid}>
               <label>Full name<input value={identity.fullName} onChange={(event) => setIdentity({ ...identity, fullName: event.target.value })} /></label>
               <label>Preferred name<input value={identity.preferredName ?? ""} onChange={(event) => setIdentity({ ...identity, preferredName: event.target.value })} /></label>
-              <label>Location<input value={identity.location} onChange={(event) => setIdentity({ ...identity, location: event.target.value })} /></label>
-              <label>Work authorization<input value={identity.workAuthorization} onChange={(event) => setIdentity({ ...identity, workAuthorization: event.target.value })} /></label>
+              <div className={styles.fullWidth}>
+                <CataloguePicker
+                  kind="locations"
+                  mode="single"
+                  accessToken={accessToken}
+                  label="Location"
+                  placeholder="Search a city…"
+                  disabled={!accessToken || busy}
+                  value={identity.location}
+                  onSelect={(value) => setIdentity({ ...identity, location: value })}
+                />
+              </div>
               <label>Email<input value={identity.email ?? ""} onChange={(event) => setIdentity({ ...identity, email: event.target.value })} /></label>
-              <label>Availability<input value={identity.availability} onChange={(event) => setIdentity({ ...identity, availability: event.target.value })} /></label>
-              <label>Remote preference<select value={identity.remotePreference} onChange={(event) => setIdentity({ ...identity, remotePreference: event.target.value as IdentitySearchSection["remotePreference"] })}>
+              <label>Remote preference<select value={identity.remotePreference} onChange={(event) => setIdentity({ ...identity, remotePreference: event.target.value as RemotePreference })}>
                 <option value="remote_only">Remote only</option>
                 <option value="remote_preferred">Remote preferred</option>
                 <option value="hybrid_ok">Hybrid OK</option>
@@ -1358,53 +1100,64 @@ export default function OnboardingClient({
               <label>Portfolio URL<input value={identity.portfolioUrl ?? ""} onChange={(event) => setIdentity({ ...identity, portfolioUrl: event.target.value })} /></label>
               <label>Personal site URL<input value={identity.personalWebsiteUrl ?? ""} onChange={(event) => setIdentity({ ...identity, personalWebsiteUrl: event.target.value })} /></label>
               <label>Employment types<input value={listToText(identity.employmentTypes)} onChange={(event) => setIdentity({ ...identity, employmentTypes: textToList(event.target.value) })} /></label>
-              <label>Target industries<input value={listToText(identity.targetIndustries)} onChange={(event) => setIdentity({ ...identity, targetIndustries: textToList(event.target.value) })} /></label>
-              <label>Target company types<input value={listToText(identity.targetCompanyTypes)} onChange={(event) => setIdentity({ ...identity, targetCompanyTypes: textToList(event.target.value) })} /></label>
+              <div className={styles.fullWidth}>
+                <CataloguePicker
+                  kind="industries"
+                  mode="multi"
+                  accessToken={accessToken}
+                  label="Target industries"
+                  placeholder="Search industries…"
+                  disabled={!accessToken || busy}
+                  values={identity.targetIndustries}
+                  onAdd={(value) => setIdentity((current) => ({ ...current, targetIndustries: [...current.targetIndustries, value] }))}
+                  onRemove={(value) => setIdentity((current) => ({ ...current, targetIndustries: current.targetIndustries.filter((entry) => entry !== value) }))}
+                />
+              </div>
               <label>Avoid industries<input value={listToText(identity.avoidIndustries)} onChange={(event) => setIdentity({ ...identity, avoidIndustries: textToList(event.target.value) })} /></label>
+              <label>Target company types<input value={listToText(identity.targetCompanyTypes)} onChange={(event) => setIdentity({ ...identity, targetCompanyTypes: textToList(event.target.value) })} /></label>
               <label>Avoid companies<input value={listToText(identity.avoidCompanies)} onChange={(event) => setIdentity({ ...identity, avoidCompanies: textToList(event.target.value) })} /></label>
             </div>
             <div className={styles.formActions}>
-              <button className={styles.primaryButton} disabled={!accessToken || busy} onClick={saveIdentity} type="button">
-                Save Identity/Search
-              </button>
+              <button className={styles.primaryButton} disabled={!accessToken || busy} onClick={saveIdentity} type="button">Save Identity & Search</button>
               <p>{message}</p>
             </div>
           </article>
 
-          <article className={styles.formCard} id="career-profile-roleTracks">
-            <div className={styles.formHeader}>
-              <div>
-                <p className={styles.statusLabel}>Editable Section</p>
-                <h2>Role Tracks</h2>
-              </div>
-              <button className={styles.secondaryButton} disabled={!accessToken || busy} onClick={() => setRoleTracks((tracks) => [...tracks, emptyRoleTrack()])} type="button">
-                Add Role Track
-              </button>
+          {/* --- Fit Signals --- */}
+          <article className={styles.formCard} id="career-profile-fitSignals">
+            {sectionHeader("fitSignals", "Fit Signals", true)}
+            <p className={styles.cardLede}>Soft signals that nudge job ratings up or down. Poor-fit jobs still surface, rated lower, with the reason shown.</p>
+            <div className={styles.formGrid}>
+              <label className={styles.fullWidth}>What makes a role a strong fit<textarea value={listToText(fitSignals.goodSignals)} onChange={(event) => setFitSignals({ ...fitSignals, goodSignals: textToList(event.target.value) })} /></label>
+              <label className={styles.fullWidth}>What makes a role a poor fit<textarea value={listToText(fitSignals.poorFitSignals)} onChange={(event) => setFitSignals({ ...fitSignals, poorFitSignals: textToList(event.target.value) })} /></label>
             </div>
+            <div className={styles.formActions}>
+              <button className={styles.primaryButton} disabled={!accessToken || busy} onClick={saveFitSignals} type="button">Save Fit Signals</button>
+              <p>Comma-separate signals. These shape rating context, never hard filters.</p>
+            </div>
+          </article>
+
+          {/* --- Role Tracks --- */}
+          <article className={styles.formCard} id="career-profile-roleTracks">
+            {sectionHeader("roleTracks", "Role Tracks", false, (
+              <button className={styles.secondaryButton} disabled={!accessToken || busy} onClick={() => setRoleTracks((tracks) => [...tracks, emptyRoleTrack()])} type="button">Add Role Track</button>
+            ))}
             {roleTracks.length === 0 ? (
-              <p className={styles.emptyState}>No Role Tracks yet. Add one credible lane to start connecting resumes, proof, and outreach rules.</p>
+              <p className={styles.emptyState}>No Role Tracks yet. Add one credible lane to start connecting resumes, work examples, and outreach rules.</p>
             ) : (
               <div className={styles.roleTrackList}>
                 {roleTracks.map((track, index) => (
                   <div className={styles.roleTrackEditor} key={track.id}>
                     <div className={styles.roleTrackHeader}>
                       <h3>Track {index + 1}</h3>
-                      <div className={styles.itemActions}>
-                        <button className={styles.secondaryButton} disabled={busy} onClick={() => duplicateRoleTrack(track)} type="button">
-                          Duplicate
-                        </button>
-                        <button className={styles.secondaryButton} disabled={busy} onClick={() => removeRoleTrack(track.id)} type="button">
-                          Archive
-                        </button>
-                      </div>
+                      <button className={styles.secondaryButton} disabled={busy} onClick={() => setRoleTracks((tracks) => tracks.filter((item) => item.id !== track.id))} type="button">Remove</button>
                     </div>
                     <div className={styles.formGrid}>
                       <label>Name<input value={track.name} onChange={(event) => updateRoleTrack(track.id, { name: event.target.value })} /></label>
                       <label>Target titles<input value={listToText(track.targetTitles)} onChange={(event) => updateRoleTrack(track.id, { targetTitles: textToList(event.target.value) })} /></label>
-                      <label>Description<textarea value={track.description} onChange={(event) => updateRoleTrack(track.id, { description: event.target.value })} /></label>
-                      <label>Core positioning<textarea value={track.corePositioning} onChange={(event) => updateRoleTrack(track.id, { corePositioning: event.target.value })} /></label>
-                      <label>Outreach angle<textarea value={track.outreachAngle} onChange={(event) => updateRoleTrack(track.id, { outreachAngle: event.target.value })} /></label>
-                      <label>Global proof rules<textarea value={track.globalProofRules ?? ""} onChange={(event) => updateRoleTrack(track.id, { globalProofRules: event.target.value })} /></label>
+                      <label className={styles.fullWidth}>Description<textarea value={track.description} onChange={(event) => updateRoleTrack(track.id, { description: event.target.value })} /></label>
+                      <label className={styles.fullWidth}>Core positioning<textarea value={track.corePositioning} onChange={(event) => updateRoleTrack(track.id, { corePositioning: event.target.value })} /></label>
+                      <label className={styles.fullWidth}>Outreach angle<textarea value={track.outreachAngle} onChange={(event) => updateRoleTrack(track.id, { outreachAngle: event.target.value })} /></label>
                       <label>Key responsibilities<textarea value={listToText(track.keyResponsibilities)} onChange={(event) => updateRoleTrack(track.id, { keyResponsibilities: textToList(event.target.value) })} /></label>
                       <label>Required experience patterns<textarea value={listToText(track.requiredExperiencePatterns)} onChange={(event) => updateRoleTrack(track.id, { requiredExperiencePatterns: textToList(event.target.value) })} /></label>
                       <label>Strong job signals<textarea value={listToText(track.strongJobSignals)} onChange={(event) => updateRoleTrack(track.id, { strongJobSignals: textToList(event.target.value) })} /></label>
@@ -1417,23 +1170,16 @@ export default function OnboardingClient({
               </div>
             )}
             <div className={styles.formActions}>
-              <button className={styles.primaryButton} disabled={!accessToken || busy} onClick={saveRoleTracks} type="button">
-                Save Role Tracks
-              </button>
+              <button className={styles.primaryButton} disabled={!accessToken || busy} onClick={saveRoleTracks} type="button">Save Role Tracks</button>
               <p>Comma-separate list fields. Resume connections stay linked to the selected Role Tracks.</p>
             </div>
           </article>
 
+          {/* --- Resumes --- */}
           <article className={styles.formCard} id="career-profile-resumes">
-            <div className={styles.formHeader}>
-              <div>
-                <p className={styles.statusLabel}>Editable Section</p>
-                <h2>Resumes</h2>
-              </div>
-              <button className={styles.secondaryButton} disabled={!accessToken || busy} onClick={() => setResumes((items) => [...items, emptyResume()])} type="button">
-                Add Resume
-              </button>
-            </div>
+            {sectionHeader("resumes", "Resumes", false, (
+              <button className={styles.secondaryButton} disabled={!accessToken || busy} onClick={() => setResumes((items) => [...items, emptyResume()])} type="button">Add Resume</button>
+            ))}
             {resumes.length === 0 ? (
               <p className={styles.emptyState}>No resumes yet. Add a resume record and attach it to at least one Role Track.</p>
             ) : (
@@ -1442,9 +1188,7 @@ export default function OnboardingClient({
                   <div className={styles.roleTrackEditor} key={resume.id}>
                     <div className={styles.roleTrackHeader}>
                       <h3>Resume {index + 1}</h3>
-                      <button className={styles.secondaryButton} disabled={busy} onClick={() => removeResume(resume.id)} type="button">
-                        Remove
-                      </button>
+                      <button className={styles.secondaryButton} disabled={busy} onClick={() => setResumes((items) => items.filter((item) => item.id !== resume.id))} type="button">Remove</button>
                     </div>
                     <div className={styles.formGrid}>
                       <label>Name<input value={resume.name} onChange={(event) => updateResume(resume.id, { name: event.target.value })} /></label>
@@ -1469,11 +1213,7 @@ export default function OnboardingClient({
                         <div className={styles.checkboxGrid}>
                           {roleTracks.map((track) => (
                             <label key={track.id}>
-                              <input
-                                checked={resume.associatedRoleTrackIds.includes(track.id)}
-                                onChange={() => toggleResumeRoleTrack(resume, track.id)}
-                                type="checkbox"
-                              />
+                              <input checked={resume.associatedRoleTrackIds.includes(track.id)} onChange={() => toggleResumeRoleTrack(resume, track.id)} type="checkbox" />
                               {track.name || track.id}
                             </label>
                           ))}
@@ -1485,162 +1225,71 @@ export default function OnboardingClient({
               </div>
             )}
             <div className={styles.formActions}>
-              <button className={styles.primaryButton} disabled={!accessToken || busy} onClick={saveResumes} type="button">
-                Save Resumes
-              </button>
+              <button className={styles.primaryButton} disabled={!accessToken || busy} onClick={saveResumes} type="button">Save Resumes</button>
               <p>Add resume text or a link here, then connect the resume to the Role Tracks it supports.</p>
             </div>
           </article>
 
-          <article className={styles.formCard} id="career-profile-workHistory">
-            <div className={styles.formHeader}>
-              <div>
-                <p className={styles.statusLabel}>Editable Section</p>
-                <h2>Work History</h2>
-              </div>
-              <button className={styles.secondaryButton} disabled={!accessToken || busy} onClick={() => setWorkHistory((items) => [...items, emptyWorkHistoryItem()])} type="button">
-                Add Work Item
-              </button>
-            </div>
-            {workHistory.length === 0 ? (
-              <p className={styles.emptyState}>No work history yet. Add one role or bring in experience from a resume.</p>
+          {/* --- Work Examples --- */}
+          <article className={styles.formCard} id="career-profile-workExamples">
+            {sectionHeader("workExamples", "Work Examples", false, (
+              <button className={styles.secondaryButton} disabled={!accessToken || busy} onClick={() => setWorkExamples((items) => [...items, emptyWorkExample()])} type="button">Add Work Example</button>
+            ))}
+            <p className={styles.cardLede}>Text-only examples the outreach generator can reach for. The one-hitter is the punchy line that can drop straight into a message.</p>
+            {workExamples.length === 0 ? (
+              <p className={styles.emptyState}>No work examples yet. Add a few with a punchy one-hitter and the context behind it.</p>
             ) : (
               <div className={styles.roleTrackList}>
-                {workHistory.map((item, index) => (
-                  <div className={styles.roleTrackEditor} key={item.id}>
+                {workExamples.map((example, index) => (
+                  <div className={styles.roleTrackEditor} key={example.id}>
                     <div className={styles.roleTrackHeader}>
-                      <h3>Work Item {index + 1}</h3>
-                      <button className={styles.secondaryButton} disabled={busy} onClick={() => removeWorkHistoryItem(item.id)} type="button">
-                        Remove
-                      </button>
+                      <h3>Example {index + 1}</h3>
+                      <button className={styles.secondaryButton} disabled={busy} onClick={() => setWorkExamples((items) => items.filter((item) => item.id !== example.id))} type="button">Remove</button>
                     </div>
                     <div className={styles.formGrid}>
-                      <label>Company<input value={item.company} onChange={(event) => updateWorkHistoryItem(item.id, { company: event.target.value })} /></label>
-                      <label>Title<input value={item.title} onChange={(event) => updateWorkHistoryItem(item.id, { title: event.target.value })} /></label>
-                      <label>Start date<input placeholder="YYYY-MM or YYYY-MM-DD" value={item.startDate ?? ""} onChange={(event) => updateWorkHistoryItem(item.id, { startDate: event.target.value })} /></label>
-                      <label>End date<input placeholder="YYYY-MM or YYYY-MM-DD" value={item.endDate ?? ""} onChange={(event) => updateWorkHistoryItem(item.id, { endDate: event.target.value })} /></label>
-                      <label>Source<select value={item.source} onChange={(event) => updateWorkHistoryItem(item.id, { source: event.target.value as WorkHistorySource })}>
-                        <option value="resume_parse">Resume parse</option>
-                        <option value="user_corrected">User corrected</option>
-                      </select></label>
-                      <label className={styles.checkboxLabel}>
-                        <input checked={item.currentRole} onChange={(event) => updateWorkHistoryItem(item.id, { currentRole: event.target.checked })} type="checkbox" />
-                        Current role
-                      </label>
-                      <label>Responsibilities<textarea value={listToText(item.responsibilities)} onChange={(event) => updateWorkHistoryItem(item.id, { responsibilities: textToList(event.target.value) })} /></label>
-                      <label>Accomplishments<textarea value={listToText(item.accomplishments)} onChange={(event) => updateWorkHistoryItem(item.id, { accomplishments: textToList(event.target.value) })} /></label>
-                      <label>Skills<textarea value={listToText(item.skills)} onChange={(event) => updateWorkHistoryItem(item.id, { skills: textToList(event.target.value) })} /></label>
-                      <label>Metrics<textarea value={listToText(item.metrics)} onChange={(event) => updateWorkHistoryItem(item.id, { metrics: textToList(event.target.value) })} /></label>
-                    </div>
-                    <div className={styles.attachmentBlock}>
-                      <p className={styles.statusLabel}>Attach to Resumes</p>
-                      {resumes.length === 0 ? (
-                        <p className={styles.emptyState}>Add and save at least one resume before saving work-history attachments.</p>
-                      ) : (
-                        <div className={styles.checkboxGrid}>
-                          {resumes.map((resume) => (
-                            <label key={resume.id}>
-                              <input
-                                checked={item.associatedResumeIds.includes(resume.id)}
-                                onChange={() => toggleWorkHistoryResume(item, resume.id)}
-                                type="checkbox"
-                              />
-                              {resume.name || resume.id}
-                            </label>
-                          ))}
-                        </div>
-                      )}
+                      <label>Title<input value={example.title} onChange={(event) => updateWorkExample(example.id, { title: event.target.value })} /></label>
+                      <label>Link (optional)<input value={example.link ?? ""} onChange={(event) => updateWorkExample(example.id, { link: event.target.value })} /></label>
+                      <label className={styles.fullWidth}>One-hitter<input value={example.oneHitter} placeholder="A single punchy line you could drop into a message" onChange={(event) => updateWorkExample(example.id, { oneHitter: event.target.value })} /></label>
+                      <label className={styles.fullWidth}>Context<textarea value={example.context} onChange={(event) => updateWorkExample(example.id, { context: event.target.value })} /></label>
                     </div>
                   </div>
                 ))}
               </div>
             )}
             <div className={styles.formActions}>
-              <button className={styles.primaryButton} disabled={!accessToken || busy} onClick={saveWorkHistory} type="button">
-                Save Work History
-              </button>
-              <p>Comma-separate responsibilities, accomplishments, skills, and metrics.</p>
+              <button className={styles.primaryButton} disabled={!accessToken || busy} onClick={saveWorkExamples} type="button">Save Work Examples</button>
+              <p>Keep examples text-only. The generator picks the most relevant one per message.</p>
             </div>
           </article>
 
-          <article className={styles.formCard} id="career-profile-proofLibrary">
-            <div className={styles.formHeader}>
-              <div>
-                <p className={styles.statusLabel}>Editable Section</p>
-                <h2>Proof Library</h2>
-              </div>
-              <button className={styles.secondaryButton} disabled={!accessToken || busy} onClick={() => setProofProjects((projects) => [...projects, emptyProofProject()])} type="button">
-                Add Proof
-              </button>
-            </div>
-            {proofProjects.length === 0 ? (
-              <p className={styles.emptyState}>No proof objects yet. Add projects, launches, case studies, writing, campaigns, tools, or operational work that proves the profile claims.</p>
-            ) : (
-              <div className={styles.roleTrackList}>
-                {proofProjects.map((project, index) => (
-                  <div className={styles.roleTrackEditor} key={project.id}>
-                    <div className={styles.roleTrackHeader}>
-                      <h3>Proof {index + 1}</h3>
-                      <button className={styles.secondaryButton} disabled={busy} onClick={() => removeProofProject(project.id)} type="button">
-                        Remove
-                      </button>
-                    </div>
-                    <div className={styles.formGrid}>
-                      <label>Name<input value={project.name} onChange={(event) => updateProofProject(project.id, { name: event.target.value })} /></label>
-                      <label>Link<input value={project.link ?? ""} onChange={(event) => updateProofProject(project.id, { link: event.target.value })} /></label>
-                      <label>Confidence<select value={project.confidence} onChange={(event) => updateProofProject(project.id, { confidence: event.target.value as ProofConfidence })}>
-                        <option value="low">Low</option>
-                        <option value="medium">Medium</option>
-                        <option value="high">High</option>
-                      </select></label>
-                      <label>Candidate role<input value={project.candidateRole} onChange={(event) => updateProofProject(project.id, { candidateRole: event.target.value })} /></label>
-                      <label className={styles.fullWidth}>Description<textarea value={project.description} onChange={(event) => updateProofProject(project.id, { description: event.target.value })} /></label>
-                      <label>What this proves<textarea value={listToText(project.whatThisProves)} onChange={(event) => updateProofProject(project.id, { whatThisProves: textToList(event.target.value) })} /></label>
-                      <label>Capabilities demonstrated<textarea value={listToText(project.capabilitiesDemonstrated)} onChange={(event) => updateProofProject(project.id, { capabilitiesDemonstrated: textToList(event.target.value) })} /></label>
-                      <label>Responsibilities supported<textarea value={listToText(project.keyResponsibilitiesSupported)} onChange={(event) => updateProofProject(project.id, { keyResponsibilitiesSupported: textToList(event.target.value) })} /></label>
-                      <label>Experience supported<textarea value={listToText(project.requiredExperienceSupported)} onChange={(event) => updateProofProject(project.id, { requiredExperienceSupported: textToList(event.target.value) })} /></label>
-                      <label>Industries relevant<textarea value={listToText(project.industriesRelevant)} onChange={(event) => updateProofProject(project.id, { industriesRelevant: textToList(event.target.value) })} /></label>
-                      <label>Best used for<textarea value={listToText(project.bestUsedFor)} onChange={(event) => updateProofProject(project.id, { bestUsedFor: textToList(event.target.value) })} /></label>
-                      <label>Avoid using for<textarea value={listToText(project.avoidUsingFor)} onChange={(event) => updateProofProject(project.id, { avoidUsingFor: textToList(event.target.value) })} /></label>
-                      <label>Metrics/results<textarea value={listToText(project.metricsResults)} onChange={(event) => updateProofProject(project.id, { metricsResults: textToList(event.target.value) })} /></label>
-                      <label>Caveats<textarea value={listToText(project.caveats)} onChange={(event) => updateProofProject(project.id, { caveats: textToList(event.target.value) })} /></label>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-            <div className={styles.formActions}>
-              <button className={styles.primaryButton} disabled={!accessToken || busy} onClick={saveProofLibrary} type="button">
-                Save Proof Library
-              </button>
-              <p>Comma-separate proof signals. Proof objects stay capability-driven, not title-bound.</p>
-            </div>
-          </article>
-
+          {/* --- Skills --- */}
           <article className={styles.formCard} id="career-profile-skills">
-            <div className={styles.formHeader}>
-              <div>
-                <p className={styles.statusLabel}>Editable Section</p>
-                <h2>Skills Inventory</h2>
-              </div>
-              <button className={styles.secondaryButton} disabled={!accessToken || busy} onClick={() => setSkills((items) => [...items, emptySkill()])} type="button">
-                Add Skill
-              </button>
-            </div>
+            {sectionHeader("skills", "Skills", false, (
+              <button className={styles.secondaryButton} disabled={!accessToken || busy} onClick={() => setSkills((items) => [...items, emptySkill()])} type="button">Add Skill</button>
+            ))}
             {skills.length === 0 ? (
-              <p className={styles.emptyState}>No skills yet. Add capabilities with evidence, proof links, and explicit do-not-overclaim guardrails.</p>
+              <p className={styles.emptyState}>No skills yet. Search the catalogue or add your own, then back each one with evidence and guardrails.</p>
             ) : (
               <div className={styles.roleTrackList}>
                 {skills.map((skill, index) => (
                   <div className={styles.roleTrackEditor} key={skill.id}>
                     <div className={styles.roleTrackHeader}>
                       <h3>Skill {index + 1}</h3>
-                      <button className={styles.secondaryButton} disabled={busy} onClick={() => removeSkill(skill.id)} type="button">
-                        Remove
-                      </button>
+                      <button className={styles.secondaryButton} disabled={busy} onClick={() => setSkills((items) => items.filter((item) => item.id !== skill.id))} type="button">Remove</button>
                     </div>
                     <div className={styles.formGrid}>
-                      <label>Skill<input value={skill.skillName} onChange={(event) => updateSkill(skill.id, { skillName: event.target.value })} /></label>
+                      <div className={styles.fullWidth}>
+                        <CataloguePicker
+                          kind="skills"
+                          mode="single"
+                          accessToken={accessToken}
+                          label="Skill"
+                          placeholder={skill.skillName || "Search skills…"}
+                          disabled={!accessToken || busy}
+                          value={skill.skillName}
+                          onSelect={(value) => updateSkill(skill.id, { skillName: value })}
+                        />
+                      </div>
                       <label>Proficiency<select value={skill.proficiency} onChange={(event) => updateSkill(skill.id, { proficiency: event.target.value as SkillProficiency })}>
                         <option value="working">Working</option>
                         <option value="strong">Strong</option>
@@ -1651,38 +1300,15 @@ export default function OnboardingClient({
                       <label>Do not overclaim<textarea value={listToText(skill.doNotOverclaim)} onChange={(event) => updateSkill(skill.id, { doNotOverclaim: textToList(event.target.value) })} /></label>
                     </div>
                     <div className={styles.attachmentBlock}>
-                      <p className={styles.statusLabel}>Related Proof</p>
-                      {proofProjects.length === 0 ? (
-                        <p className={styles.emptyState}>Add and save at least one Proof Library item before saving proof relationships.</p>
+                      <p className={styles.statusLabel}>Related Work Examples</p>
+                      {workExamples.length === 0 ? (
+                        <p className={styles.emptyState}>Add and save at least one Work Example before linking it here.</p>
                       ) : (
                         <div className={styles.checkboxGrid}>
-                          {proofProjects.map((project) => (
-                            <label key={project.id}>
-                              <input
-                                checked={skill.relatedProjectIds.includes(project.id)}
-                                onChange={() => toggleSkillProject(skill, project.id)}
-                                type="checkbox"
-                              />
-                              {project.name || project.id}
-                            </label>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                    <div className={styles.attachmentBlock}>
-                      <p className={styles.statusLabel}>Related Work History</p>
-                      {workHistory.length === 0 ? (
-                        <p className={styles.emptyState}>Add and save at least one Work History item before saving work-history relationships.</p>
-                      ) : (
-                        <div className={styles.checkboxGrid}>
-                          {workHistory.map((item) => (
-                            <label key={item.id}>
-                              <input
-                                checked={skill.relatedWorkHistoryIds.includes(item.id)}
-                                onChange={() => toggleSkillWorkHistory(skill, item.id)}
-                                type="checkbox"
-                              />
-                              {item.title || item.company || item.id}
+                          {workExamples.map((example) => (
+                            <label key={example.id}>
+                              <input checked={skill.relatedWorkExampleIds.includes(example.id)} onChange={() => toggleSkillWorkExample(skill, example.id)} type="checkbox" />
+                              {example.title || example.id}
                             </label>
                           ))}
                         </div>
@@ -1693,121 +1319,128 @@ export default function OnboardingClient({
               </div>
             )}
             <div className={styles.formActions}>
-              <button className={styles.primaryButton} disabled={!accessToken || busy} onClick={saveSkills} type="button">
-                Save Skills Inventory
-              </button>
-              <p>Comma-separate evidence, fit, and overclaim guardrails. Save related Proof Library and Work History items first.</p>
+              <button className={styles.primaryButton} disabled={!accessToken || busy} onClick={saveSkills} type="button">Save Skills</button>
+              <p>Comma-separate evidence, fit, and overclaim guardrails. Save related Work Examples first.</p>
             </div>
           </article>
 
-          {renderQualityNarrativeCard("whyPeopleHireMe", "Why People Hire Me", "/api/public-profile/why-people-hire-me", whyPeopleHireMe, setWhyPeopleHireMe)}
-          {renderQualityNarrativeCard("operatingStyle", "Operating Style", "/api/public-profile/operating-style", operatingStyle, setOperatingStyle)}
-          {renderQualityNarrativeCard("decisionStyle", "Decision Style", "/api/public-profile/decision-style", decisionStyle, setDecisionStyle)}
-          {renderQualityNarrativeCard("aiMisreadings", "What AI Gets Wrong", "/api/public-profile/ai-misreadings", aiMisreadings, setAiMisreadings)}
+          {/* --- Voice & Personality --- */}
+          <article className={styles.formCard} id="career-profile-voicePersonality">
+            {sectionHeader("voicePersonality", "Voice & Personality")}
+            <p className={styles.cardLede}>Tap what fits, paste a little of your real writing, then answer two quick questions in your own words.</p>
 
-          <article className={styles.formCard} id="career-profile-communicationStyle">
-            <div className={styles.formHeader}>
-              <div>
-                <p className={styles.statusLabel}>Editable Section</p>
-                <h2>Communication Style</h2>
-              </div>
-            </div>
-            <div className={styles.formGrid}>
-              <label>Preferred tone<textarea value={listToText(communicationStyle.settings?.preferredTone)} onChange={(event) => setCommunicationStyle((section) => ({ ...section, settings: { ...(section.settings ?? emptyCommunicationSettings()), preferredTone: textToList(event.target.value) } }))} /></label>
-              <label>Formality<select value={communicationStyle.settings?.formalityLevel ?? "medium"} onChange={(event) => setCommunicationStyle((section) => ({ ...section, settings: { ...(section.settings ?? emptyCommunicationSettings()), formalityLevel: event.target.value as FormalityLevel } }))}>
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
-              </select></label>
-              <label>Humor<select value={communicationStyle.settings?.humorLevel ?? "light"} onChange={(event) => setCommunicationStyle((section) => ({ ...section, settings: { ...(section.settings ?? emptyCommunicationSettings()), humorLevel: event.target.value as HumorLevel } }))}>
-                <option value="none">None</option>
-                <option value="light">Light</option>
-                <option value="medium">Medium</option>
-              </select></label>
-              <label>Message length<select value={communicationStyle.settings?.messageLengthPreference ?? "medium"} onChange={(event) => setCommunicationStyle((section) => ({ ...section, settings: { ...(section.settings ?? emptyCommunicationSettings()), messageLengthPreference: event.target.value as MessageLengthPreference } }))}>
-                <option value="short">Short</option>
-                <option value="medium">Medium</option>
-                <option value="long">Long</option>
-              </select></label>
-              <label>Greeting preferences<textarea value={listToText(communicationStyle.settings?.greetingPreferences)} onChange={(event) => setCommunicationStyle((section) => ({ ...section, settings: { ...(section.settings ?? emptyCommunicationSettings()), greetingPreferences: textToList(event.target.value) } }))} /></label>
-              <label>Signoff preferences<textarea value={listToText(communicationStyle.settings?.signoffPreferences)} onChange={(event) => setCommunicationStyle((section) => ({ ...section, settings: { ...(section.settings ?? emptyCommunicationSettings()), signoffPreferences: textToList(event.target.value) } }))} /></label>
-              <label>Phrases to avoid<textarea value={listToText(communicationStyle.settings?.phrasesToAvoid)} onChange={(event) => setCommunicationStyle((section) => ({ ...section, settings: { ...(section.settings ?? emptyCommunicationSettings()), phrasesToAvoid: textToList(event.target.value) } }))} /></label>
-              <label>Phrases that sound like me<textarea value={listToText(communicationStyle.settings?.phrasesThatSoundLikeMe)} onChange={(event) => setCommunicationStyle((section) => ({ ...section, settings: { ...(section.settings ?? emptyCommunicationSettings()), phrasesThatSoundLikeMe: textToList(event.target.value) } }))} /></label>
-            </div>
-            {renderQualityFields(communicationStyle.fields, "communication_style", updateCommunicationField)}
-            <div className={styles.formActions}>
-              <button className={styles.primaryButton} disabled={!accessToken || busy} onClick={saveCommunicationStyle} type="button">
-                Save Communication Style
-              </button>
-              <p>Comma-separate tone settings and mark narrative fields complete when they are specific enough for generated outreach.</p>
-            </div>
-          </article>
+            <ChipGroup
+              legend="Lean into"
+              presets={leanIntoPresets}
+              selected={voice.toneTags}
+              onToggle={toggleTone}
+              onAddCustom={(value) => setVoice((current) => ({ ...current, toneTags: [...current.toneTags, value] }))}
+              onRemoveCustom={(value) => setVoice((current) => ({ ...current, toneTags: current.toneTags.filter((tag) => tag !== value) }))}
+              addLabel="+ your own"
+              disabled={!accessToken || busy}
+            />
+            <ChipGroup
+              legend="Steer clear"
+              presets={steerClearPresets}
+              selected={voice.avoidTags}
+              onToggle={toggleAvoidTag}
+              onAddCustom={(value) => setVoice((current) => ({ ...current, avoidTags: [...current.avoidTags, value] }))}
+              onRemoveCustom={(value) => setVoice((current) => ({ ...current, avoidTags: current.avoidTags.filter((tag) => tag !== value) }))}
+              addLabel="+ your own"
+              disabled={!accessToken || busy}
+            />
+            <label className={styles.voiceField}>
+              <span className={styles.subFieldLabel}>Anything else to avoid?</span>
+              <textarea value={voice.avoidNote} onChange={(event) => setVoice({ ...voice, avoidNote: event.target.value })} />
+              <span className={`${styles.wordNote} ${avoidNoteWords > avoidNoteWordCap ? styles.wordNoteOver : ""}`}>
+                {avoidNoteWords > avoidNoteWordCap ? `${avoidNoteWords}/${avoidNoteWordCap} words, trim it down` : `${avoidNoteWordCap}-word limit`}
+              </span>
+            </label>
 
-          <article className={styles.formCard} id="career-profile-writingSamples">
-            <div className={styles.formHeader}>
-              <div>
-                <p className={styles.statusLabel}>Editable Section</p>
-                <h2>Writing Samples</h2>
-              </div>
-              <button className={styles.secondaryButton} disabled={!accessToken || busy} onClick={() => setWritingSamples((samples) => [...samples, emptyWritingSample()])} type="button">
-                Add Sample
-              </button>
-            </div>
-            {writingSamples.length === 0 ? (
-              <p className={styles.emptyState}>No writing samples yet. Add examples the system should imitate or avoid.</p>
-            ) : (
-              <div className={styles.roleTrackList}>
-                {writingSamples.map((sample, index) => (
-                  <div className={styles.roleTrackEditor} key={sample.id}>
-                    <div className={styles.roleTrackHeader}>
-                      <h3>Sample {index + 1}</h3>
-                      <button className={styles.secondaryButton} disabled={busy} onClick={() => removeWritingSample(sample.id)} type="button">
-                        Remove
-                      </button>
+            <div className={styles.bucketStack}>
+              {writingBucketConfigs.map((config) => {
+                const samples = bucketSamples(config.bucket);
+                const canAdd = samples.length < config.max;
+                return (
+                  <div className={styles.bucketField} key={config.bucket}>
+                    <div className={styles.bucketHead}>
+                      <span className={styles.subFieldLabel}>{config.label}{config.required ? <span className={styles.requiredMark}> *</span> : null}</span>
+                      {canAdd ? (
+                        <button type="button" className={styles.secondaryButton} disabled={!accessToken || busy} onClick={() => addWritingSample(config.bucket)}>
+                          {samples.length === 0 ? "Add a snippet" : "+ add one more"}
+                        </button>
+                      ) : null}
                     </div>
-                    <div className={styles.formGrid}>
-                      <label>Type<select value={sample.sampleType} onChange={(event) => updateWritingSample(sample.id, { sampleType: event.target.value as WritingSampleType })}>
-                        <option value="like">Like</option>
-                        <option value="hate">Avoid</option>
-                      </select></label>
-                      <label>Channel<select value={sample.channel} onChange={(event) => updateWritingSample(sample.id, { channel: event.target.value as WritingChannel })}>
-                        <option value="linkedin">LinkedIn</option>
-                        <option value="email">Email</option>
-                        <option value="dm">DM</option>
-                        <option value="social_post">Social post</option>
-                        <option value="other">Other</option>
-                      </select></label>
-                      <label className={styles.fullWidth}>Text<textarea value={sample.text} onChange={(event) => updateWritingSample(sample.id, { text: event.target.value })} /></label>
-                      <label className={styles.fullWidth}>Why it works or fails<textarea value={sample.whyItWorksOrFails} onChange={(event) => updateWritingSample(sample.id, { whyItWorksOrFails: event.target.value })} /></label>
-                    </div>
+                    <p className={styles.bucketHelper}>{config.helper}</p>
+                    {samples.length === 0 ? (
+                      <p className={styles.emptyState}>No snippet yet.</p>
+                    ) : (
+                      samples.map((sample) => {
+                        const words = countWords(sample.text);
+                        const over = words > writingSampleWordCap;
+                        return (
+                          <div className={styles.snippet} key={sample.id}>
+                            <textarea value={sample.text} onChange={(event) => updateWritingSample(sample.id, { text: event.target.value })} />
+                            <div className={styles.snippetFoot}>
+                              <span className={`${styles.wordNote} ${over ? styles.wordNoteOver : ""}`}>
+                                {over ? `${words}/${writingSampleWordCap} words, trim it down` : `${writingSampleWordCap}-word limit`}
+                              </span>
+                              <button type="button" className={styles.chipRemove} aria-label="Remove snippet" disabled={busy} onClick={() => removeWritingSample(sample.id)}>✕</button>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
                   </div>
-                ))}
-              </div>
-            )}
+                );
+              })}
+            </div>
+
+            <label className={styles.voiceField}>
+              <span className={styles.subFieldLabel}>What are you the person for?<span className={styles.requiredMark}> *</span></span>
+              <textarea value={voice.q1Value} placeholder="What do people come to you for?" onChange={(event) => setVoice({ ...voice, q1Value: event.target.value })} />
+              <span className={`${styles.wordNote} ${q1Words > voiceAnswerWordCap ? styles.wordNoteOver : ""}`}>
+                {q1Words > voiceAnswerWordCap ? `${q1Words}/${voiceAnswerWordCap} words, trim it down` : `${voiceAnswerWordCap}-word limit`}
+              </span>
+            </label>
+            <label className={styles.voiceField}>
+              <span className={styles.subFieldLabel}>A take you&apos;ll defend?<span className={styles.requiredMark}> *</span></span>
+              <textarea value={voice.q4Opinion} placeholder="An opinion about your field you'll stand behind" onChange={(event) => setVoice({ ...voice, q4Opinion: event.target.value })} />
+              <span className={`${styles.wordNote} ${q4Words > voiceAnswerWordCap ? styles.wordNoteOver : ""}`}>
+                {q4Words > voiceAnswerWordCap ? `${q4Words}/${voiceAnswerWordCap} words, trim it down` : `${voiceAnswerWordCap}-word limit`}
+              </span>
+            </label>
+
             <div className={styles.formActions}>
-              <button className={styles.primaryButton} disabled={!accessToken || busy} onClick={saveWritingSamples} type="button">
-                Save Writing Samples
-              </button>
-              <p>Samples calibrate voice; use avoid samples for generic, inflated, or off-brand phrasing.</p>
+              <button className={styles.primaryButton} disabled={!accessToken || busy} onClick={saveVoiceAndPersonality} type="button">Save Voice & Personality</button>
+              <p>Tone tags and one &quot;sounds like me&quot; plus one &quot;never sound like&quot; snippet are required.</p>
             </div>
           </article>
 
+          {/* --- Outreach Rules --- */}
           <article className={styles.formCard} id="career-profile-outreachRules">
-            <div className={styles.formHeader}>
-              <div>
-                <p className={styles.statusLabel}>Editable Section</p>
-                <h2>Outreach Rules</h2>
-              </div>
-              <button className={styles.secondaryButton} disabled={!accessToken || busy} onClick={() => setOutreachRules((section) => ({ ...section, roleTrackSpecificRules: [...section.roleTrackSpecificRules, emptyRoleTrackOutreachRule(roleTracks[0]?.id)] }))} type="button">
-                Add Role Rule
-              </button>
-            </div>
+            {sectionHeader("outreachRules", "Outreach Rules", false, (
+              <button className={styles.secondaryButton} disabled={!accessToken || busy} onClick={() => setOutreachRules((section) => ({ ...section, roleTrackSpecificRules: [...section.roleTrackSpecificRules, emptyRoleTrackOutreachRule(roleTracks[0]?.id)] }))} type="button">Add Role Rule</button>
+            ))}
             <div className={styles.formGrid}>
               <label>Global rules<textarea value={listToText(outreachRules.settings?.globalRules)} onChange={(event) => setOutreachRules((section) => ({ ...section, settings: { ...(section.settings ?? emptyOutreachSettings()), globalRules: textToList(event.target.value) } }))} /></label>
               <label>Follow-up rules<textarea value={listToText(outreachRules.settings?.followUpRules)} onChange={(event) => setOutreachRules((section) => ({ ...section, settings: { ...(section.settings ?? emptyOutreachSettings()), followUpRules: textToList(event.target.value) } }))} /></label>
               <label>Link selection rules<textarea value={listToText(outreachRules.settings?.linkSelectionRules)} onChange={(event) => setOutreachRules((section) => ({ ...section, settings: { ...(section.settings ?? emptyOutreachSettings()), linkSelectionRules: textToList(event.target.value) } }))} /></label>
             </div>
-            {renderQualityFields(outreachRules.fields, "outreach_rules", updateOutreachField)}
+            {outreachRules.fields.length > 0 ? (
+              <div className={styles.roleTrackList}>
+                {outreachRules.fields.map((field) => (
+                  <div className={styles.roleTrackEditor} key={field.id}>
+                    <div className={styles.roleTrackHeader}>
+                      <h3>{outreachFieldLabels[field.fieldKey] ?? field.fieldKey}</h3>
+                    </div>
+                    <div className={styles.formGrid}>
+                      <label className={styles.fullWidth}>Response<textarea value={field.value} onChange={(event) => setOutreachRules((section) => ({ ...section, fields: section.fields.map((item) => item.id === field.id ? { ...item, value: event.target.value } : item) }))} /></label>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : null}
             {outreachRules.roleTrackSpecificRules.length === 0 ? (
               <p className={styles.emptyState}>No Role Track-specific outreach rules yet. Add Role Tracks first if outreach varies by lane.</p>
             ) : (
@@ -1816,50 +1449,54 @@ export default function OnboardingClient({
                   <div className={styles.roleTrackEditor} key={rule.id}>
                     <div className={styles.roleTrackHeader}>
                       <h3>Role Rule {index + 1}</h3>
-                      <button className={styles.secondaryButton} disabled={busy} onClick={() => removeOutreachRule(rule.id)} type="button">
-                        Remove
-                      </button>
+                      <button className={styles.secondaryButton} disabled={busy} onClick={() => setOutreachRules((section) => ({ ...section, roleTrackSpecificRules: section.roleTrackSpecificRules.filter((item) => item.id !== rule.id) }))} type="button">Remove</button>
                     </div>
                     <div className={styles.formGrid}>
-                      <label>Role Track<select value={rule.roleTrackId} onChange={(event) => updateOutreachRule(rule.id, { roleTrackId: event.target.value })}>
+                      <label>Role Track<select value={rule.roleTrackId} onChange={(event) => setOutreachRules((section) => ({ ...section, roleTrackSpecificRules: section.roleTrackSpecificRules.map((item) => item.id === rule.id ? { ...item, roleTrackId: event.target.value } : item) }))}>
                         <option value="">Choose a Role Track</option>
-                        {roleTracks.map((track) => (
-                          <option key={track.id} value={track.id}>{track.name || track.id}</option>
-                        ))}
+                        {roleTracks.map((track) => (<option key={track.id} value={track.id}>{track.name || track.id}</option>))}
                       </select></label>
-                      <label>Rules<textarea value={listToText(rule.rules)} onChange={(event) => updateOutreachRule(rule.id, { rules: textToList(event.target.value) })} /></label>
-                      <label>Preferred proof types<textarea value={listToText(rule.preferredProofTypes)} onChange={(event) => updateOutreachRule(rule.id, { preferredProofTypes: textToList(event.target.value) })} /></label>
-                      <label>Avoid proof types<textarea value={listToText(rule.avoidProofTypes)} onChange={(event) => updateOutreachRule(rule.id, { avoidProofTypes: textToList(event.target.value) })} /></label>
+                      <label>Rules<textarea value={listToText(rule.rules)} onChange={(event) => setOutreachRules((section) => ({ ...section, roleTrackSpecificRules: section.roleTrackSpecificRules.map((item) => item.id === rule.id ? { ...item, rules: textToList(event.target.value) } : item) }))} /></label>
+                      <label>Preferred proof types<textarea value={listToText(rule.preferredProofTypes)} onChange={(event) => setOutreachRules((section) => ({ ...section, roleTrackSpecificRules: section.roleTrackSpecificRules.map((item) => item.id === rule.id ? { ...item, preferredProofTypes: textToList(event.target.value) } : item) }))} /></label>
+                      <label>Avoid proof types<textarea value={listToText(rule.avoidProofTypes)} onChange={(event) => setOutreachRules((section) => ({ ...section, roleTrackSpecificRules: section.roleTrackSpecificRules.map((item) => item.id === rule.id ? { ...item, avoidProofTypes: textToList(event.target.value) } : item) }))} /></label>
                     </div>
                   </div>
                 ))}
               </div>
             )}
             <div className={styles.formActions}>
-              <button className={styles.primaryButton} disabled={!accessToken || busy} onClick={saveOutreachRules} type="button">
-                Save Outreach Rules
-              </button>
+              <button className={styles.primaryButton} disabled={!accessToken || busy} onClick={saveOutreachRules} type="button">Save Outreach Rules</button>
               <p>Save Role Tracks before saving role-specific outreach rules so relationship IDs validate.</p>
             </div>
           </article>
 
+          {/* --- Leadership Profile --- */}
           <article className={styles.formCard} id="career-profile-leadershipProfile">
-            <div className={styles.formHeader}>
-              <div>
-                <p className={styles.statusLabel}>Optional Section</p>
-                <h2>Leadership Profile</h2>
-              </div>
+            {sectionHeader("leadershipProfile", "Leadership Profile", true, (
               <label className={styles.checkboxLabel}>
                 <input checked={leadershipProfile.visible} onChange={(event) => setLeadershipProfile((section) => ({ ...section, visible: event.target.checked }))} type="checkbox" />
                 Visible
               </label>
-            </div>
-            {renderQualityFields(leadershipProfile.fields, "leadership_profile", updateLeadershipField)}
+            ))}
+            {leadershipProfile.fields.length === 0 ? (
+              <p className={styles.emptyState}>Optional. Turn on visibility to include leadership positioning in generated outputs.</p>
+            ) : (
+              <div className={styles.roleTrackList}>
+                {leadershipProfile.fields.map((field) => (
+                  <div className={styles.roleTrackEditor} key={field.id}>
+                    <div className={styles.roleTrackHeader}>
+                      <h3>{leadershipFieldLabels[field.fieldKey] ?? field.fieldKey}</h3>
+                    </div>
+                    <div className={styles.formGrid}>
+                      <label className={styles.fullWidth}>Response<textarea value={field.value} onChange={(event) => setLeadershipProfile((section) => ({ ...section, fields: section.fields.map((item) => item.id === field.id ? { ...item, value: event.target.value } : item) }))} /></label>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
             <div className={styles.formActions}>
-              <button className={styles.primaryButton} disabled={!accessToken || busy} onClick={saveLeadershipProfile} type="button">
-                Save Leadership Profile
-              </button>
-              <p>Keep hidden unless leadership or executive positioning should appear in generated profile outputs.</p>
+              <button className={styles.primaryButton} disabled={!accessToken || busy} onClick={saveLeadership} type="button">Save Leadership Profile</button>
+              <p>Keep hidden unless leadership or executive positioning should appear in generated outputs.</p>
             </div>
           </article>
         </div>
@@ -1870,9 +1507,7 @@ export default function OnboardingClient({
             <p>{profileQuality?.status === "complete" ? "Profile complete. Scan and downstream workflow gates can open." : "No profile blockers loaded yet."}</p>
           ) : (
             <ul>
-              {issues.slice(0, 8).map((issue) => (
-                <li key={issue}>{issue}</li>
-              ))}
+              {issues.slice(0, 8).map((issue) => (<li key={issue}>{issue}</li>))}
             </ul>
           )}
         </aside>
@@ -1886,7 +1521,6 @@ export default function OnboardingClient({
               const status = readiness?.status ?? "not_loaded";
               const blockerCount = readiness?.blockers.length ?? 0;
               const weakFieldCount = readiness?.weakFields.length ?? 0;
-
               return (
                 <article className={styles.sectionCard} key={section.key}>
                   <span className={styles.index}>{index + 1}</span>
@@ -1902,12 +1536,7 @@ export default function OnboardingClient({
                     </p>
                   </div>
                   <div className={styles.sectionMeta}>
-                    <span className={`${styles.readinessBadge} ${styles[`readiness_${status}`]}`}>
-                      {readinessLabel(status)}
-                    </span>
-                    <span className={`${styles.endpoint} ${section.required ? "" : styles.optional}`}>
-                      {section.required ? section.path : "Optional"}
-                    </span>
+                    <span className={`${styles.readinessBadge} ${styles[`readiness_${status}`]}`}>{readinessLabel(status)}</span>
                   </div>
                 </article>
               );

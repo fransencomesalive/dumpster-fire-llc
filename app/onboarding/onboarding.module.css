@@ -550,6 +550,294 @@
   color: var(--c-ink-soft);
 }
 
+/* ============================================================
+   Phase D controls — tone chips, catalogue pickers, writing
+   buckets, voice fields. Teal = selected/saved; tomato = over
+   limit / required. Built on the same paper tokens above.
+   ============================================================ */
+
+.cardLede {
+  margin: -8px 0 18px;
+  color: var(--c-ink-soft);
+  font-family: var(--font-body);
+  line-height: 1.5;
+  max-width: 60ch;
+}
+
+/* --- Tone-tag chips ----------------------------------------- */
+.chipFieldset {
+  border: 0;
+  margin: 0 0 18px;
+  padding: 0;
+}
+
+.chipLegend {
+  padding: 0;
+  margin: 0 0 10px;
+  color: var(--c-teal);
+  font-family: var(--font-subhead);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-subhead);
+  font-size: 0.95rem;
+}
+
+.chipRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 38px;
+  border: var(--line-reg) solid var(--c-ink);
+  border-radius: var(--radius-pill);
+  padding: 0 14px;
+  background: var(--c-paper);
+  color: var(--c-ink);
+  font-family: var(--font-ui);
+  font-weight: 800;
+  font-size: 0.92rem;
+  cursor: pointer;
+}
+
+.chip:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.chipOn {
+  background-color: var(--c-teal);
+  color: var(--c-paper);
+  border-color: var(--c-ink);
+}
+
+.chipCustom {
+  cursor: default;
+}
+
+.chipRemove {
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: currentcolor;
+  font-size: 0.8rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.chipAddRow {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+  max-width: 360px;
+}
+
+.chipInput {
+  flex: 1;
+  min-height: 38px;
+  border: var(--line-reg) solid var(--c-ink);
+  border-radius: var(--radius-md);
+  padding: 0 12px;
+  background-color: var(--c-paper);
+  color: var(--c-ink);
+  font: inherit;
+  font-family: var(--font-ui);
+}
+
+.chipInput:focus {
+  outline: 3px solid color-mix(in srgb, var(--c-teal) 28%, transparent);
+  outline-offset: 1px;
+}
+
+/* --- Type-ahead catalogue picker ---------------------------- */
+.pickerField {
+  position: relative;
+  display: grid;
+  gap: 7px;
+}
+
+.pickerLabel {
+  color: var(--c-ink);
+  font-family: var(--font-subhead);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-subhead);
+  font-size: 0.95rem;
+  font-weight: 800;
+}
+
+.pickerChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.pickerInputWrap {
+  position: relative;
+}
+
+.pickerInput {
+  width: 100%;
+  min-height: 44px;
+  border: var(--line-reg) solid var(--c-ink);
+  border-radius: var(--radius-md);
+  padding: 0 12px;
+  background-color: var(--c-paper);
+  color: var(--c-ink);
+  font: inherit;
+  font-family: var(--font-ui);
+  box-shadow: inset 1px 1px 0 rgba(36, 31, 26, 0.08);
+}
+
+.pickerInput:focus {
+  outline: 3px solid color-mix(in srgb, var(--c-teal) 28%, transparent);
+  outline-offset: 1px;
+}
+
+.pickerDropdown {
+  position: absolute;
+  z-index: 5;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  display: grid;
+  gap: 2px;
+  max-height: 260px;
+  overflow-y: auto;
+  border: var(--line-reg) solid var(--c-ink);
+  border-radius: var(--radius-md);
+  background-color: var(--c-paper);
+  box-shadow: var(--shadow-card);
+}
+
+.pickerOption {
+  width: 100%;
+  text-align: left;
+  border: 0;
+  border-radius: var(--radius-sm);
+  padding: 9px 10px;
+  background: transparent;
+  color: var(--c-ink);
+  font: inherit;
+  font-family: var(--font-ui);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.pickerOptionActive {
+  background-color: color-mix(in srgb, var(--c-teal) 18%, transparent);
+}
+
+.pickerEmpty {
+  padding: 9px 10px;
+  color: var(--c-ink-soft);
+  font-family: var(--font-body);
+}
+
+/* --- Voice fields + word counters --------------------------- */
+.voiceField {
+  display: grid;
+  gap: 7px;
+  margin-bottom: 18px;
+}
+
+.subFieldLabel {
+  color: var(--c-ink);
+  font-family: var(--font-subhead);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-subhead);
+  font-size: 0.95rem;
+  font-weight: 800;
+}
+
+.requiredMark {
+  color: var(--c-tomato);
+}
+
+.voiceField textarea,
+.snippet textarea {
+  min-height: 104px;
+  border: var(--line-reg) solid var(--c-ink);
+  border-radius: var(--radius-md);
+  padding: 12px;
+  background-color: var(--c-paper);
+  color: var(--c-ink);
+  font: inherit;
+  font-family: var(--font-ui);
+  resize: vertical;
+  box-shadow: inset 1px 1px 0 rgba(36, 31, 26, 0.08);
+}
+
+.voiceField textarea:focus,
+.snippet textarea:focus {
+  outline: 3px solid color-mix(in srgb, var(--c-teal) 28%, transparent);
+  outline-offset: 1px;
+}
+
+.wordNote {
+  color: var(--c-ink-soft);
+  font-family: var(--font-subhead);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-subhead);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.wordNoteOver {
+  color: var(--c-tomato);
+}
+
+/* --- Writing-sample buckets --------------------------------- */
+.bucketStack {
+  display: grid;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.bucketField {
+  display: grid;
+  gap: 8px;
+  border: var(--line-reg) solid var(--c-ink);
+  border-radius: var(--radius-md);
+  background-color: var(--c-paper);
+  padding: 14px;
+}
+
+.bucketHead {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+}
+
+.bucketHelper {
+  margin: 0;
+  color: var(--c-ink-soft);
+  font-family: var(--font-body);
+  line-height: 1.45;
+}
+
+.snippet {
+  display: grid;
+  gap: 6px;
+}
+
+.snippetFoot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
 @media (max-width: 840px) {
   .hero {
     grid-template-columns: 1fr;
