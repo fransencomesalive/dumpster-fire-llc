@@ -20,6 +20,17 @@ Canonical planning sources remain:
 
 Finish the Step 2 Profile Management follow-ups, then clarify and build Step 3 Jobs and Saved Jobs.
 
+## Near-Term (scheduled)
+
+- [ ] **Apply `20260626000100_public_job_scan_results.sql` to the production Supabase DB (soon).**
+  The `job_scan_results` bridge table is not yet applied; the public Jobs/Saved Jobs scan flow
+  depends on it. First resolve the migration-history divergence noted in
+  `docs/database-migration-state.md` (the A4 migration `20260627000100` was applied via psql and
+  is not recorded in `supabase_migrations`), so a CLI `db push` doesn't trip on it.
+- [ ] **Rotate exposed credentials before sending invites / full launch** — Supabase
+  service_role + anon keys, DB password, and `ANTHROPIC_API_KEY` were entered locally on
+  2026-06-28 and surfaced in a chat transcript. Deferred by Randall to invite time.
+
 ## Phase 1 — Foundation
 
 ### Done
