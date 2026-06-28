@@ -76,9 +76,14 @@ Not yet built as public workflows:
 
 ## Canonical Next Product Task
 
-> **UPDATED 2026-06-27.** The generator-redesign **backend spine (Phases A–E) is COMPLETE and
-> tested** — see `docs/generator-redesign-implementation-plan-2026-06-26.md` (A1–A5, B1–B4, C, E all
-> checked off). Test suite 11/11 green; `tsc` clean except `app/onboarding/OnboardingClient.tsx`.
+> **UPDATED 2026-06-28.** Phase D **design pass is COMPLETE** — the four new onboarding controls
+> (tone chips, writing-sample buckets, type-ahead pickers, Q1/Q4) are designed, approved, and live
+> as cards in the Claude Design "Onboarding" group. D3 catalogue backend merged + pushed (`dc3015c`).
+> **Next task = `OnboardingClient.tsx` implementation.** START at `docs/phase-d-implementation-handoff-2026-06-28.md`.
+>
+> (Prior) The generator-redesign **backend spine (Phases A–E) is COMPLETE and tested** — see
+> `docs/generator-redesign-implementation-plan-2026-06-26.md` (A1–A5, B1–B4, C, E all checked off).
+> Test suite 11/11 green; `tsc` clean except `app/onboarding/OnboardingClient.tsx`.
 
 **Next session kicks off Phase D — onboarding UI — and starts with Claude design / design-system
 updates (Randall).** Phase D is **design-gated** (AGENTS.md Design Authority): D0 (design direction)
