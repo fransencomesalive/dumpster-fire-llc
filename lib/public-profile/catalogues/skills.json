@@ -1,0 +1,425 @@
+{
+  "metadata": {
+    "generatedAt": "2026-06-27T22:45:36.820Z",
+    "source": {
+      "name": "Lightcast Open Skills",
+      "url": "https://lightcast.io/open-skills",
+      "license": "Lightcast Open Skills terms; free with registration per docs/onboarding-redesign-spec-2026-06-26.md section 7a.",
+      "notes": [
+        "Runtime code must use the committed snapshot only; do not call Lightcast at request time.",
+        "For a full refresh, export Lightcast Open Skills as JSON or CSV after registration and pass --input <file>.",
+        "This generator accepts common Lightcast/Open Skills field names: id, name, type, category, subcategory."
+      ]
+    },
+    "recordCount": 58,
+    "input": "bootstrap curated Lightcast-aligned seed"
+  },
+  "records": [
+    {
+      "id": "lightcast-accessibility",
+      "name": "Accessibility",
+      "type": "skill",
+      "category": "",
+      "subcategory": ""
+    },
+    {
+      "id": "lightcast-account-management",
+      "name": "Account Management",
+      "type": "skill",
+      "category": "",
+      "subcategory": ""
+    },
+    {
+      "id": "lightcast-agile-methodology",
+      "name": "Agile Methodology",
+      "type": "skill",
+      "category": "",
+      "subcategory": ""
+    },
+    {
+      "id": "lightcast-ai-workflow-design",
+      "name": "AI Workflow Design",
+      "type": "skill",
+      "category": "",
+      "subcategory": ""
+    },
+    {
+      "id": "lightcast-analytics",
+      "name": "Analytics",
+      "type": "skill",
+      "category": "",
+      "subcategory": ""
+    },
+    {
+      "id": "lightcast-api-design",
+      "name": "API Design",
+      "type": "skill",
+      "category": "",
+      "subcategory": ""
+    },
+    {
+      "id": "lightcast-audience-development",
+      "name": "Audience Development",
+      "type": "skill",
+      "category": "",
+      "subcategory": ""
+    },
+    {
+      "id": "lightcast-b2b-marketing",
+      "name": "B2B Marketing",
+      "type": "skill",
+      "category": "",
+      "subcategory": ""
+    },
+    {
+      "id": "lightcast-brand-strategy",
+      "name": "Brand Strategy",
+      "type": "skill",
+      "category": "",
+      "subcategory": ""
+    },
+    {
+      "id": "lightcast-budget-management",
+      "name": "Budget Management",
+      "type": "skill",
+      "category": "",
+      "subcategory": ""
+    },
+    {
+      "id": "lightcast-business-analysis",
+      "name": "Business Analysis",
+      "type": "skill",
+      "category": "",
+      "subcategory": ""
+    },
+    {
+      "id": "lightcast-change-management",
+      "name": "Change Management",
+      "type": "skill",
+      "category": "",
+      "subcategory": ""
+    },
+    {
+      "id": "lightcast-client-relations",
+      "name": "Client Relations",
+      "type": "skill",
+      "category": "",
+      "subcategory": ""
+    },
+    {
+      "id": "lightcast-cloud-computing",
+      "name": "Cloud Computing",
+      "type": "skill",
+      "category": "",
+      "subcategory": ""
+    },
+    {
+      "id": "lightcast-communication",
+      "name": "Communication",
+      "type": "skill",
+      "category": "",
+      "subcategory": ""
+    },
+    {
+      "id": "lightcast-content-strategy",
+      "name": "Content Strategy",
+      "type": "skill",
+      "category": "",
+      "subcategory": ""
+    },
+    {
+      "id": "lightcast-copywriting",
+      "name": "Copywriting",
+      "type": "skill",
+      "category": "",
+      "subcategory": ""
+    },
+    {
+      "id": "lightcast-crm",
+      "name": "CRM",
+      "type": "skill",
+      "category": "",
+      "subcategory": ""
+    },
+    {
+      "id": "lightcast-customer-discovery",
+      "name": "Customer Discovery",
+      "type": "skill",
+      "category": "",
+      "subcategory": ""
+    },
+    {
+      "id": "lightcast-customer-success",
+      "name": "Customer Success",
+      "type": "skill",
+      "category": "",
+      "subcategory": ""
+    },
+    {
+      "id": "lightcast-data-analysis",
+      "name": "Data Analysis",
+      "type": "skill",
+      "category": "",
+      "subcategory": ""
+    },
+    {
+      "id": "lightcast-data-visualization",
+      "name": "Data Visualization",
+      "type": "skill",
+      "category": "",
+      "subcategory": ""
+    },
+    {
+      "id": "lightcast-digital-marketing",
+      "name": "Digital Marketing",
+      "type": "skill",
+      "category": "",
+      "subcategory": ""
+    },
+    {
+      "id": "lightcast-editorial-strategy",
+      "name": "Editorial Strategy",
+      "type": "skill",
+      "category": "",
+      "subcategory": ""
+    },
+    {
+      "id": "lightcast-event-production",
+      "name": "Event Production",
+      "type": "skill",
+      "category": "",
+      "subcategory": ""
+    },
+    {
+      "id": "lightcast-executive-communications",
+      "name": "Executive Communications",
+      "type": "skill",
+      "category": "",
+      "subcategory": ""
+    },
+    {
+      "id": "lightcast-facilitation",
+      "name": "Facilitation",
+      "type": "skill",
+      "category": "",
+      "subcategory": ""
+    },
+    {
+      "id": "lightcast-financial-modeling",
+      "name": "Financial Modeling",
+      "type": "skill",
+      "category": "",
+      "subcategory": ""
+    },
+    {
+      "id": "lightcast-go-to-market-strategy",
+      "name": "Go-To-Market Strategy",
+      "type": "skill",
+      "category": "",
+      "subcategory": ""
+    },
+    {
+      "id": "lightcast-google-analytics",
+      "name": "Google Analytics",
+      "type": "skill",
+      "category": "",
+      "subcategory": ""
+    },
+    {
+      "id": "lightcast-hiring",
+      "name": "Hiring",
+      "type": "skill",
+      "category": "",
+      "subcategory": ""
+    },
+    {
+      "id": "lightcast-hubspot",
+      "name": "HubSpot",
+      "type": "skill",
+      "category": "",
+      "subcategory": ""
+    },
+    {
+      "id": "lightcast-information-architecture",
+      "name": "Information Architecture",
+      "type": "skill",
+      "category": "",
+      "subcategory": ""
+    },
+    {
+      "id": "lightcast-javascript",
+      "name": "JavaScript",
+      "type": "skill",
+      "category": "",
+      "subcategory": ""
+    },
+    {
+      "id": "lightcast-leadership",
+      "name": "Leadership",
+      "type": "skill",
+      "category": "",
+      "subcategory": ""
+    },
+    {
+      "id": "lightcast-market-research",
+      "name": "Market Research",
+      "type": "skill",
+      "category": "",
+      "subcategory": ""
+    },
+    {
+      "id": "lightcast-marketing-operations",
+      "name": "Marketing Operations",
+      "type": "skill",
+      "category": "",
+      "subcategory": ""
+    },
+    {
+      "id": "lightcast-microsoft-excel",
+      "name": "Microsoft Excel",
+      "type": "skill",
+      "category": "",
+      "subcategory": ""
+    },
+    {
+      "id": "lightcast-operations-management",
+      "name": "Operations Management",
+      "type": "skill",
+      "category": "",
+      "subcategory": ""
+    },
+    {
+      "id": "lightcast-partnership-development",
+      "name": "Partnership Development",
+      "type": "skill",
+      "category": "",
+      "subcategory": ""
+    },
+    {
+      "id": "lightcast-product-management",
+      "name": "Product Management",
+      "type": "skill",
+      "category": "",
+      "subcategory": ""
+    },
+    {
+      "id": "lightcast-product-marketing",
+      "name": "Product Marketing",
+      "type": "skill",
+      "category": "",
+      "subcategory": ""
+    },
+    {
+      "id": "lightcast-program-management",
+      "name": "Program Management",
+      "type": "skill",
+      "category": "",
+      "subcategory": ""
+    },
+    {
+      "id": "lightcast-project-management",
+      "name": "Project Management",
+      "type": "skill",
+      "category": "",
+      "subcategory": ""
+    },
+    {
+      "id": "lightcast-public-relations",
+      "name": "Public Relations",
+      "type": "skill",
+      "category": "",
+      "subcategory": ""
+    },
+    {
+      "id": "lightcast-react",
+      "name": "React",
+      "type": "skill",
+      "category": "",
+      "subcategory": ""
+    },
+    {
+      "id": "lightcast-research",
+      "name": "Research",
+      "type": "skill",
+      "category": "",
+      "subcategory": ""
+    },
+    {
+      "id": "lightcast-sales-enablement",
+      "name": "Sales Enablement",
+      "type": "skill",
+      "category": "",
+      "subcategory": ""
+    },
+    {
+      "id": "lightcast-salesforce",
+      "name": "Salesforce",
+      "type": "skill",
+      "category": "",
+      "subcategory": ""
+    },
+    {
+      "id": "lightcast-search-engine-optimization",
+      "name": "Search Engine Optimization",
+      "type": "skill",
+      "category": "",
+      "subcategory": ""
+    },
+    {
+      "id": "lightcast-sql",
+      "name": "SQL",
+      "type": "skill",
+      "category": "",
+      "subcategory": ""
+    },
+    {
+      "id": "lightcast-stakeholder-management",
+      "name": "Stakeholder Management",
+      "type": "skill",
+      "category": "",
+      "subcategory": ""
+    },
+    {
+      "id": "lightcast-strategic-planning",
+      "name": "Strategic Planning",
+      "type": "skill",
+      "category": "",
+      "subcategory": ""
+    },
+    {
+      "id": "lightcast-technical-writing",
+      "name": "Technical Writing",
+      "type": "skill",
+      "category": "",
+      "subcategory": ""
+    },
+    {
+      "id": "lightcast-typescript",
+      "name": "TypeScript",
+      "type": "skill",
+      "category": "",
+      "subcategory": ""
+    },
+    {
+      "id": "lightcast-user-experience-design",
+      "name": "User Experience Design",
+      "type": "skill",
+      "category": "",
+      "subcategory": ""
+    },
+    {
+      "id": "lightcast-vendor-management",
+      "name": "Vendor Management",
+      "type": "skill",
+      "category": "",
+      "subcategory": ""
+    },
+    {
+      "id": "lightcast-workflow-automation",
+      "name": "Workflow Automation",
+      "type": "skill",
+      "category": "",
+      "subcategory": ""
+    }
+  ]
+}
