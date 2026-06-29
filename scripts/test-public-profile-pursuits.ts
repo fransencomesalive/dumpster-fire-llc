@@ -12,6 +12,7 @@ import {
   loadContactSuggestionsForPursuit,
   persistContactSelection,
   persistHumanPathGeneration,
+  persistOutreachGeneration,
   persistPursuitTransition,
 } from "../lib/public-profile/pursuits/repository";
 
@@ -193,6 +194,35 @@ async function main() {
     selected_for_outreach: true,
     updated_at: contacts.pursuit.updatedAt,
   });
+
+  if (!outreach.ok) throw new Error("outreach pursuit should be available for repository test");
+  calls.length = 0;
+  await persistOutreachGeneration(request, outreach, [{
+    contactSuggestionId: "contact-1",
+    recipientType: "likely_hiring_manager",
+    message: "Hi Dana - interested in the Program Director role.",
+    selectedRoleTrackId: "track-1",
+    selectedResumeId: "resume-1",
+    selectedWorkExampleId: "example-1",
+    createdAt: outreach.pursuit.updatedAt,
+  }]);
+  assert.equal(calls[0].table, "pursuits");
+  assert.equal(calls[1].table, "pursuit_events");
+  assert.equal(calls[2].table, "usage_ledger");
+  assert.equal(calls[3].table, "outreach_messages");
+  assert.equal(calls[3].method, "POST");
+  assert.deepEqual(calls[3].body, [{
+    pursuit_id: outreach.pursuit.id,
+    contact_suggestion_id: "contact-1",
+    recipient_type: "likely_hiring_manager",
+    message: "Hi Dana - interested in the Program Director role.",
+    selected_resume_id: "resume-1",
+    selected_role_track_id: "track-1",
+    selected_work_example_id: "example-1",
+    status: "draft",
+    created_at: outreach.pursuit.updatedAt,
+    updated_at: outreach.pursuit.updatedAt,
+  }]);
 
   console.log("public profile pursuits: all assertions passed");
 }

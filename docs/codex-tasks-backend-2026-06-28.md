@@ -228,3 +228,15 @@ metering ledger, status updated here. No UI, no live billing integration.
   (7 existing warnings, 0 errors), and `git diff --check`. Local migration validation used a
   disposable Postgres 16 cluster on port 55433 with a minimal `contact_suggestions` table; the
   migration applied cleanly and reapplied idempotently, then the cluster was stopped.
+- 2026-06-29 — Codex added the next outreach backend slice: defensive
+  `20260629000300_outreach_work_examples.sql` migration adds `selected_work_example_id` to
+  outreach message drafts, and `POST /api/public-profile/pursuits/outreach` generates one
+  metered draft outreach message per selected Human Path contact, enforces outreach limits before
+  model work, persists the `outreach_generated` usage event plus draft `outreach_messages`, and
+  keeps the existing standalone outreach endpoint unchanged. Verified
+  `node scripts/test-public-profile-api.mjs`, `node scripts/test-public-profile-pursuits.mjs`,
+  `node scripts/test-public-profile-subscription.mjs`, `npm run test:public-jobs`,
+  `npx tsc --noEmit --incremental false`, `npm run lint` (7 existing warnings, 0 errors), and
+  `git diff --check`. Local migration validation used a disposable Postgres 16 cluster on port
+  55434 with minimal `work_examples` and `outreach_messages` tables; the migration applied
+  cleanly and reapplied idempotently, then the cluster was stopped.

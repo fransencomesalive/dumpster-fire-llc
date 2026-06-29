@@ -1,6 +1,7 @@
 import type { PublicProfileRepositoryRequest } from "../repository";
 import type {
   CreatePursuitInput,
+  GeneratedOutreachDraft,
   HumanPathContact,
   HumanPathContactSuggestion,
   Pursuit,
@@ -149,6 +150,21 @@ function contactSuggestionBody(pursuit: Pursuit, contact: HumanPathContact, upda
   };
 }
 
+function outreachMessageBody(pursuit: Pursuit, draft: GeneratedOutreachDraft) {
+  return {
+    pursuit_id: pursuit.id,
+    contact_suggestion_id: draft.contactSuggestionId,
+    recipient_type: draft.recipientType,
+    message: draft.message,
+    selected_resume_id: draft.selectedResumeId ?? null,
+    selected_role_track_id: draft.selectedRoleTrackId ?? null,
+    selected_work_example_id: draft.selectedWorkExampleId ?? null,
+    status: "draft",
+    created_at: draft.createdAt,
+    updated_at: draft.createdAt,
+  };
+}
+
 function mapContactSuggestion(row: ContactSuggestionRow): HumanPathContactSuggestion {
   return {
     id: row.id,
@@ -287,6 +303,21 @@ export async function persistHumanPathGeneration(
     await request("contact_suggestions", {
       method: "POST",
       body: contacts.map((contact) => contactSuggestionBody(result.pursuit, contact, result.pursuit.updatedAt)),
+    });
+  }
+}
+
+export async function persistOutreachGeneration(
+  request: PublicProfileRepositoryRequest,
+  result: Extract<PursuitTransitionResult, { ok: true }>,
+  drafts: GeneratedOutreachDraft[],
+) {
+  await persistPursuitTransition(request, result);
+
+  if (drafts.length > 0) {
+    await request("outreach_messages", {
+      method: "POST",
+      body: drafts.map((draft) => outreachMessageBody(result.pursuit, draft)),
     });
   }
 }

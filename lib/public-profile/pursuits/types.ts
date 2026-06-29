@@ -117,6 +117,23 @@ export type HumanPathContactSuggestion = HumanPathContact & {
   updatedAt: string;
 };
 
+export type OutreachRecipientType =
+  | "likely_hiring_manager"
+  | "functional_leader"
+  | "recruiter"
+  | "executive_sponsor"
+  | "no_contact";
+
+export type GeneratedOutreachDraft = {
+  contactSuggestionId: string;
+  recipientType: OutreachRecipientType;
+  message: string;
+  selectedRoleTrackId?: string;
+  selectedResumeId?: string;
+  selectedWorkExampleId?: string;
+  createdAt: string;
+};
+
 export type HumanPathProviderInput = {
   pursuit: Pursuit;
   job: {

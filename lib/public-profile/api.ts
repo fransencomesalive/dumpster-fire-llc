@@ -25,6 +25,7 @@ import {
   loadPursuitByIdForUser,
   persistContactSelection,
   persistHumanPathGeneration,
+  persistOutreachGeneration,
   persistPursuitTransition,
 } from "./pursuits/repository";
 import { unavailableHumanPathProvider } from "./pursuits/human-path";
@@ -32,9 +33,11 @@ import { completeReview, transitionPursuit } from "./pursuits/state-machine";
 import type {
   CompleteReviewInput,
   CreatePursuitInput,
+  GeneratedOutreachDraft,
   HumanPathContact,
   HumanPathContactSuggestion,
   HumanPathProvider,
+  OutreachRecipientType,
   Pursuit,
   PursuitTransitionResult,
 } from "./pursuits/types";
@@ -49,9 +52,13 @@ import type {
   UsageLedgerEntry,
 } from "./subscription/types";
 import {
+  generateOutreachMessage,
   generateOutreachMessageForUser,
   parseOutreachRequest,
+  type OutreachContact,
   type OutreachGenerationResult,
+  type OutreachJob,
+  type OutreachMessage,
 } from "./outreach-generator";
 import { evaluateMatch } from "./matching/engine";
 import type { MatchJob, MatchResult } from "./matching/types";
@@ -421,6 +428,17 @@ export type PublicProfilePursuitsHandlerOptions = PublicProfileMatchHandlerOptio
     result: Extract<PursuitTransitionResult, { ok: true }>,
     contactIds: string[],
   ) => Promise<void>;
+  generateOutreachForContact?: (input: {
+    profileMarkdown: string;
+    job: OutreachJob;
+    contact: OutreachContact;
+    contactSuggestion: HumanPathContactSuggestion;
+  }) => Promise<OutreachMessage | undefined>;
+  persistOutreach?: (
+    request: PublicProfileRepositoryRequest,
+    result: Extract<PursuitTransitionResult, { ok: true }>,
+    drafts: GeneratedOutreachDraft[],
+  ) => Promise<void>;
   loadSubscriptionContext?: (
     request: PublicProfileRepositoryRequest,
     userId: string,
@@ -584,13 +602,42 @@ function validateCompleteReviewInput(
 
 function subscriptionBlockedResponse(result: Exclude<SubscriptionEnforcementResult, { status: "allowed" }>) {
   const status = result.status === "limit_reached" ? 429 : 402;
+  const featureName = result.feature === "human_path"
+    ? "Human Path"
+    : result.feature === "outreach_message"
+      ? "Outreach"
+      : "Subscription feature";
   return json({
     error: result.status === "limit_reached"
-      ? "Human Path limit reached."
+      ? `${featureName} limit reached.`
       : "Subscription does not allow this action.",
     status: result.status,
     subscription: result,
   }, { status });
+}
+
+function outreachRecipientType(contactType: HumanPathContact["contactType"]): OutreachRecipientType {
+  if (contactType === "likely_hiring_manager") return "likely_hiring_manager";
+  if (contactType === "functional_leader") return "functional_leader";
+  if (contactType === "recruiter") return "recruiter";
+  if (contactType === "executive_sponsor") return "executive_sponsor";
+  return "no_contact";
+}
+
+function outreachContactFromSuggestion(contact: HumanPathContactSuggestion): OutreachContact {
+  return {
+    name: contact.name,
+    role: contact.title || contact.contactType.replace(/_/g, " "),
+    seniority: contact.contactType,
+  };
+}
+
+function outreachJobFromPublicJob(job: PublicJobRecord): OutreachJob {
+  return {
+    title: job.title,
+    company: job.companyName,
+    description: job.description,
+  };
 }
 
 function profileIncompleteResponse(aggregate: CandidateProfileAggregate, profileQuality: ReturnType<typeof evaluateCandidateProfileQuality>, action: string) {
@@ -1064,6 +1111,153 @@ export async function handlePublicProfilePursuitContactSelectionRequest(
     selectedContactIds: contactIds,
     contacts: contacts.filter((contact) => contactIdsForPursuit.has(contact.id) && contactIds.includes(contact.id)),
     event: result.event,
+  });
+}
+
+export async function handlePublicProfilePursuitOutreachRequest(
+  request: Request,
+  options: PublicProfilePursuitsHandlerOptions = {},
+) {
+  const session = await sessionForRequest(request, options);
+  if (session.status !== "authenticated") return authErrorResponse(session);
+
+  const repositoryRequest = repositoryRequestForOptions(options);
+  if (!repositoryRequest) return repositoryConfigErrorResponse();
+
+  const input = await request.json().catch(() => null) as Record<string, unknown> | null;
+  const pursuitId = optionalString(input?.pursuitId);
+  if (!pursuitId) {
+    return json({
+      error: "Expected pursuitId.",
+      status: "validation_error",
+      issues: [{ field: "pursuitId", message: "pursuitId is required." }],
+    }, { status: 400 });
+  }
+
+  const loadAggregate = options.loadAggregate ?? loadCandidateProfileAggregate;
+  const aggregate = await loadAggregate(repositoryRequest, session.userId);
+  if (!aggregate) {
+    return json({ error: "Candidate profile not found.", status: "not_found" }, { status: 404 });
+  }
+
+  const generatedAt = options.now?.() ?? new Date().toISOString();
+  const profileQuality = aggregate.profileQuality ?? evaluateCandidateProfileQuality(aggregate, generatedAt);
+  if (profileQuality.status !== "complete") {
+    return profileIncompleteResponse(aggregate, profileQuality, "generating outreach");
+  }
+  const profileMarkdown = aggregate.profile.generatedMarkdown?.trim();
+  if (!profileMarkdown) {
+    return json({
+      error: "Complete and generate your profile before generating outreach.",
+      status: "profile_incomplete",
+    }, { status: 409 });
+  }
+
+  const loadPursuit = options.loadPursuit ?? loadPursuitByIdForUser;
+  const pursuit = await loadPursuit(repositoryRequest, session.userId, pursuitId);
+  if (!pursuit || pursuit.profileId !== aggregate.profile.id) {
+    return json({ error: "Pursuit not found.", status: "not_found" }, { status: 404 });
+  }
+
+  const loadJob = options.loadJob ?? loadPublicJobById;
+  const job = await loadJob(repositoryRequest, pursuit.jobId);
+  if (!job) {
+    return json({ error: "Job not found.", status: "not_found" }, { status: 404 });
+  }
+
+  const loadContactSuggestions = options.loadContactSuggestions ?? loadContactSuggestionsForPursuit;
+  const selectedContacts = (await loadContactSuggestions(repositoryRequest, pursuit.id))
+    .filter((contact) => contact.selectedForOutreach);
+  if (selectedContacts.length === 0) {
+    return json({
+      error: "Select at least one Human Path contact before generating outreach.",
+      status: "validation_error",
+      issues: [{ field: "selectedContacts", message: "At least one selected contact is required." }],
+    }, { status: 400 });
+  }
+
+  const loadSubscriptionContext = options.loadSubscriptionContext ?? loadSubscriptionContextForUser;
+  const loadUsageEntries = options.loadUsageEntries ?? loadUsageLedgerForUser;
+  const subscriptionContext = await loadSubscriptionContext(repositoryRequest, session.userId);
+  const usageEntries = await loadUsageEntries(repositoryRequest, session.userId, {
+    at: generatedAt,
+    periodStart: subscriptionContext.currentPeriodStart,
+    periodEnd: subscriptionContext.currentPeriodEnd,
+  });
+  const enforceSubscription = options.enforceSubscription
+    ?? ((context, entries, at) => enforceSubscriptionFeature(context, entries, "outreach_message", {
+      at,
+      quantity: selectedContacts.length,
+    }));
+  const enforcement = enforceSubscription(subscriptionContext, usageEntries, generatedAt);
+  if (enforcement.status !== "allowed") {
+    return subscriptionBlockedResponse(enforcement);
+  }
+
+  const result = transitionPursuit(pursuit, "outreach_generated", generatedAt, {
+    contactIds: selectedContacts.map((contact) => contact.id),
+    messageCount: selectedContacts.length,
+  });
+  if (result.ok === false) {
+    return json({
+      error: "Could not generate outreach.",
+      status: "transition_error",
+      issues: result.issues,
+    }, { status: 409 });
+  }
+
+  const outreachJob = outreachJobFromPublicJob(job);
+  const generateOutreachForContact = options.generateOutreachForContact
+    ?? ((outreachInput) => generateOutreachMessage({
+      profileMarkdown: outreachInput.profileMarkdown,
+      job: outreachInput.job,
+      contact: outreachInput.contact,
+    }));
+  const generatedMessages: Array<{
+    contact: HumanPathContactSuggestion;
+    outreach: OutreachMessage;
+  }> = [];
+  for (const contactSuggestion of selectedContacts) {
+    const outreach = await generateOutreachForContact({
+      profileMarkdown,
+      job: outreachJob,
+      contact: outreachContactFromSuggestion(contactSuggestion),
+      contactSuggestion,
+    });
+    if (!outreach) {
+      return json({
+        error: "Outreach generation is not configured.",
+        status: "model_unavailable",
+      }, { status: 503 });
+    }
+    generatedMessages.push({ contact: contactSuggestion, outreach });
+  }
+
+  const drafts: GeneratedOutreachDraft[] = generatedMessages.map(({ contact, outreach }) => ({
+    contactSuggestionId: contact.id,
+    recipientType: outreachRecipientType(contact.contactType),
+    message: outreach.message,
+    selectedRoleTrackId: pursuit.selectedRoleTrackId,
+    selectedResumeId: pursuit.selectedResumeId,
+    selectedWorkExampleId: pursuit.selectedWorkExampleId,
+    createdAt: generatedAt,
+  }));
+  const persistOutreach = options.persistOutreach ?? persistOutreachGeneration;
+  await persistOutreach(repositoryRequest, result, drafts);
+
+  return json({
+    status: "outreach_generated",
+    profileId: aggregate.profile.id,
+    job,
+    pursuit: result.pursuit,
+    messages: generatedMessages.map(({ contact, outreach }) => ({
+      contactSuggestionId: contact.id,
+      recipientType: outreachRecipientType(contact.contactType),
+      message: outreach.message,
+      insertedExample: outreach.insertedExample,
+    })),
+    event: result.event,
+    subscription: enforcement,
   });
 }
 

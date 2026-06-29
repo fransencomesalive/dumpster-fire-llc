@@ -13,6 +13,7 @@ import {
   handlePublicProfilePursuitContactSelectionRequest,
   handlePublicProfilePursuitCreateRequest,
   handlePublicProfilePursuitHumanPathRequest,
+  handlePublicProfilePursuitOutreachRequest,
   handlePublicProfilePursuitReviewRequest,
   handlePublicProfileBootstrapRequest,
   handlePublicProfileRegenerationRequest,
@@ -30,7 +31,7 @@ import {
   handleWritingSamplesSectionPatchRequest,
 } from "../lib/public-profile/api";
 import type { PublicProfileRepositoryRequest } from "../lib/public-profile/repository";
-import type { HumanPathContact, HumanPathContactSuggestion, Pursuit } from "../lib/public-profile/pursuits/types";
+import type { GeneratedOutreachDraft, HumanPathContact, HumanPathContactSuggestion, Pursuit } from "../lib/public-profile/pursuits/types";
 import type { PublicJobRecord } from "../lib/public-jobs/types";
 import type { SubscriptionContext, UsageLedgerEntry } from "../lib/public-profile/subscription/types";
 import type { PublicProfileRegenerationResult } from "../lib/public-profile/service";
@@ -930,6 +931,170 @@ async function main() {
   assert.equal((contactSelectionJson.event as Record<string, unknown>).eventType, "contacts_selected");
   assert.deepEqual(persistedContactIds, ["contact-1"]);
   assert.equal((persistedContactSelection as { pursuit: Pursuit }).pursuit.status, "outreach_ready");
+
+  // ---- Pursuit outreach route ----
+  const pursuitOutreachValidation = await handlePublicProfilePursuitOutreachRequest(postRequest("pursuits/outreach", {}), {
+    getSession: async () => authed(),
+    repositoryRequest,
+    loadAggregate: async () => { throw new Error("should not load aggregate on validation error"); },
+    loadPursuit: async () => { throw new Error("should not load pursuit on validation error"); },
+  });
+  assert.equal(pursuitOutreachValidation.status, 400);
+  assert.equal((await body(pursuitOutreachValidation)).status, "validation_error");
+
+  const pursuitOutreachUnauthorized = await handlePublicProfilePursuitOutreachRequest(postRequest("pursuits/outreach", { pursuitId: "pursuit-1" }), {
+    getSession: async () => ({ status: "unauthenticated", reason: "Missing bearer token." }),
+  });
+  assert.equal(pursuitOutreachUnauthorized.status, 401);
+
+  const noGeneratedProfile = {
+    ...agg,
+    profile: { ...agg.profile, generatedMarkdown: "" },
+  };
+  const pursuitOutreachProfileIncomplete = await handlePublicProfilePursuitOutreachRequest(postRequest("pursuits/outreach", { pursuitId: "pursuit-1" }), {
+    now: () => now,
+    getSession: async () => authed(),
+    repositoryRequest,
+    loadAggregate: async () => noGeneratedProfile,
+  });
+  assert.equal(pursuitOutreachProfileIncomplete.status, 409);
+  assert.equal((await body(pursuitOutreachProfileIncomplete)).status, "profile_incomplete");
+
+  const pursuitOutreachMissingPursuit = await handlePublicProfilePursuitOutreachRequest(postRequest("pursuits/outreach", { pursuitId: "pursuit-404" }), {
+    getSession: async () => authed(),
+    repositoryRequest,
+    loadAggregate: async () => agg,
+    loadPursuit: async () => undefined,
+  });
+  assert.equal(pursuitOutreachMissingPursuit.status, 404);
+
+  const pursuitOutreachMissingJob = await handlePublicProfilePursuitOutreachRequest(postRequest("pursuits/outreach", { pursuitId: "pursuit-1" }), {
+    getSession: async () => authed(),
+    repositoryRequest,
+    loadAggregate: async () => agg,
+    loadPursuit: async () => savedPursuit({ status: "outreach_ready" }),
+    loadJob: async () => undefined,
+  });
+  assert.equal(pursuitOutreachMissingJob.status, 404);
+
+  const pursuitOutreachNoContacts = await handlePublicProfilePursuitOutreachRequest(postRequest("pursuits/outreach", { pursuitId: "pursuit-1" }), {
+    getSession: async () => authed(),
+    repositoryRequest,
+    loadAggregate: async () => agg,
+    loadPursuit: async () => savedPursuit({ status: "outreach_ready" }),
+    loadJob: async () => publicJob(),
+    loadContactSuggestions: async () => [contactSuggestion({ selectedForOutreach: false })],
+  });
+  assert.equal(pursuitOutreachNoContacts.status, 400);
+  assert.equal((await body(pursuitOutreachNoContacts)).status, "validation_error");
+
+  let outreachGeneratorCalledAfterLimit = false;
+  const pursuitOutreachLimit = await handlePublicProfilePursuitOutreachRequest(postRequest("pursuits/outreach", { pursuitId: "pursuit-1" }), {
+    now: () => now,
+    getSession: async () => authed(),
+    repositoryRequest,
+    loadAggregate: async () => agg,
+    loadPursuit: async () => savedPursuit({ status: "outreach_ready" }),
+    loadJob: async () => publicJob(),
+    loadContactSuggestions: async () => [contactSuggestion({ selectedForOutreach: true })],
+    loadSubscriptionContext: async () => activeBasicSubscription(),
+    loadUsageEntries: async () => [usage("outreach_message", 100)],
+    generateOutreachForContact: async () => {
+      outreachGeneratorCalledAfterLimit = true;
+      return { message: "Nope.", insertedExample: null };
+    },
+  });
+  assert.equal(pursuitOutreachLimit.status, 429);
+  assert.equal((await body(pursuitOutreachLimit)).status, "limit_reached");
+  assert.equal(outreachGeneratorCalledAfterLimit, false);
+
+  let outreachGeneratorCalledAfterTransitionError = false;
+  const pursuitOutreachTransitionError = await handlePublicProfilePursuitOutreachRequest(postRequest("pursuits/outreach", { pursuitId: "pursuit-1" }), {
+    now: () => now,
+    getSession: async () => authed(),
+    repositoryRequest,
+    loadAggregate: async () => agg,
+    loadPursuit: async () => savedPursuit({ status: "human_path_generated" }),
+    loadJob: async () => publicJob(),
+    loadContactSuggestions: async () => [contactSuggestion({ selectedForOutreach: true })],
+    loadSubscriptionContext: async () => activeBasicSubscription(),
+    loadUsageEntries: async () => [],
+    generateOutreachForContact: async () => {
+      outreachGeneratorCalledAfterTransitionError = true;
+      return { message: "Nope.", insertedExample: null };
+    },
+  });
+  assert.equal(pursuitOutreachTransitionError.status, 409);
+  assert.equal((await body(pursuitOutreachTransitionError)).status, "transition_error");
+  assert.equal(outreachGeneratorCalledAfterTransitionError, false);
+
+  const pursuitOutreachUnavailable = await handlePublicProfilePursuitOutreachRequest(postRequest("pursuits/outreach", { pursuitId: "pursuit-1" }), {
+    now: () => now,
+    getSession: async () => authed(),
+    repositoryRequest,
+    loadAggregate: async () => agg,
+    loadPursuit: async () => savedPursuit({ status: "outreach_ready" }),
+    loadJob: async () => publicJob(),
+    loadContactSuggestions: async () => [contactSuggestion({ selectedForOutreach: true })],
+    loadSubscriptionContext: async () => activeBasicSubscription(),
+    loadUsageEntries: async () => [],
+    generateOutreachForContact: async () => undefined,
+  });
+  assert.equal(pursuitOutreachUnavailable.status, 503);
+  assert.equal((await body(pursuitOutreachUnavailable)).status, "model_unavailable");
+
+  let persistedOutreach: unknown;
+  let persistedDrafts: unknown;
+  let outreachUsageOptions: unknown;
+  const generatedForContacts: unknown[] = [];
+  const pursuitOutreachGenerated = await handlePublicProfilePursuitOutreachRequest(postRequest("pursuits/outreach", { pursuitId: "pursuit-1" }), {
+    now: () => now,
+    getSession: async () => authed(),
+    repositoryRequest,
+    loadAggregate: async () => agg,
+    loadPursuit: async () => savedPursuit({
+      status: "outreach_ready",
+      selectedRoleTrackId: "track-1",
+      selectedResumeId: "resume-1",
+      selectedWorkExampleId: "example-1",
+    }),
+    loadJob: async () => publicJob(),
+    loadContactSuggestions: async () => [
+      contactSuggestion({ selectedForOutreach: true }),
+      contactSuggestion({ id: "contact-2", name: "Riley Chen", contactType: "recruiter", selectedForOutreach: true }),
+    ],
+    loadSubscriptionContext: async () => activeBasicSubscription(),
+    loadUsageEntries: async (_request, _userId, options) => {
+      outreachUsageOptions = options;
+      return [usage("outreach_message", 12)];
+    },
+    generateOutreachForContact: async (input) => {
+      generatedForContacts.push(input);
+      return {
+        message: `Hi ${input.contact.name ?? input.contact.role} - interested in ${input.job.title}.`,
+        insertedExample: { oneHitter: "Cut turnaround 40%.", link: "https://example.com/x" },
+      };
+    },
+    persistOutreach: async (_request, result, drafts) => {
+      persistedOutreach = result;
+      persistedDrafts = drafts;
+    },
+  });
+  assert.equal(pursuitOutreachGenerated.status, 200);
+  assert.deepEqual(outreachUsageOptions, {
+    at: now,
+    periodStart: "2026-06-01T00:00:00.000Z",
+    periodEnd: "2026-07-01T00:00:00.000Z",
+  });
+  assert.equal(generatedForContacts.length, 2);
+  const pursuitOutreachJson = await body(pursuitOutreachGenerated);
+  assert.equal(pursuitOutreachJson.status, "outreach_generated");
+  assert.equal((pursuitOutreachJson.event as Record<string, unknown>).usageType, "outreach_message");
+  assert.equal((pursuitOutreachJson.messages as unknown[]).length, 2);
+  assert.equal((persistedOutreach as { pursuit: Pursuit }).pursuit.status, "outreach_ready");
+  assert.equal((persistedDrafts as GeneratedOutreachDraft[]).length, 2);
+  assert.deepEqual((persistedDrafts as GeneratedOutreachDraft[]).map((draft) => draft.recipientType), ["likely_hiring_manager", "recruiter"]);
+  assert.equal((persistedDrafts as GeneratedOutreachDraft[])[0].selectedWorkExampleId, "example-1");
 
   // ---- Identity & Search (full GET/PATCH coverage) ----
   const identityView = identitySearchSection(agg);
