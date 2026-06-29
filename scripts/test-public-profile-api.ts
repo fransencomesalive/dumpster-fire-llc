@@ -10,6 +10,7 @@ import {
   handleOutreachRulesSectionPatchRequest,
   handleOutreachGeneratorRequest,
   handlePublicProfileMatchRequest,
+  handlePublicProfilePursuitCreateRequest,
   handlePublicProfileBootstrapRequest,
   handlePublicProfileRegenerationRequest,
   handleResumeUploadsSectionGetRequest,
@@ -344,6 +345,153 @@ async function main() {
   assert.equal(matchJson.profileId, "profile-1");
   assert.equal((matchJson.job as Record<string, unknown>).id, "job-1");
   assert.equal((matchJson.match as Record<string, unknown>).label, "Strong Match");
+
+  // ---- Pursuit create route ----
+  const pursuitValidation = await handlePublicProfilePursuitCreateRequest(postRequest("pursuits", {}), {
+    getSession: async () => authed(),
+    repositoryRequest,
+    loadAggregate: async () => { throw new Error("should not load aggregate on validation error"); },
+    loadJob: async () => { throw new Error("should not load job on validation error"); },
+  });
+  assert.equal(pursuitValidation.status, 400);
+  assert.equal((await body(pursuitValidation)).status, "validation_error");
+
+  const pursuitUnauthorized = await handlePublicProfilePursuitCreateRequest(postRequest("pursuits", { jobId: "job-1" }), {
+    getSession: async () => ({ status: "unauthenticated", reason: "Missing bearer token." }),
+  });
+  assert.equal(pursuitUnauthorized.status, 401);
+
+  const pursuitRepoConfig = await handlePublicProfilePursuitCreateRequest(postRequest("pursuits", { jobId: "job-1" }), {
+    getSession: async () => authed(),
+    env: {} as NodeJS.ProcessEnv,
+  });
+  assert.equal(pursuitRepoConfig.status, 503);
+
+  const pursuitMissingProfile = await handlePublicProfilePursuitCreateRequest(postRequest("pursuits", { jobId: "job-1" }), {
+    getSession: async () => authed(),
+    repositoryRequest,
+    loadAggregate: async () => undefined,
+  });
+  assert.equal(pursuitMissingProfile.status, 404);
+
+  const pursuitIncomplete = await handlePublicProfilePursuitCreateRequest(postRequest("pursuits", { jobId: "job-1" }), {
+    now: () => now,
+    getSession: async () => authed(),
+    repositoryRequest,
+    loadAggregate: async () => incompleteProfileResult.aggregate,
+  });
+  assert.equal(pursuitIncomplete.status, 409);
+  assert.equal((await body(pursuitIncomplete)).status, "profile_incomplete");
+
+  const pursuitMissingJob = await handlePublicProfilePursuitCreateRequest(postRequest("pursuits", { jobId: "job-404" }), {
+    getSession: async () => authed(),
+    repositoryRequest,
+    loadAggregate: async () => agg,
+    loadJob: async () => undefined,
+  });
+  assert.equal(pursuitMissingJob.status, 404);
+
+  const pursuitTransitionError = await handlePublicProfilePursuitCreateRequest(postRequest("pursuits", { jobId: "job-1" }), {
+    getSession: async () => authed(),
+    repositoryRequest,
+    loadAggregate: async () => agg,
+    loadJob: async () => ({
+      id: "job-1",
+      source: "fixture",
+      sourceUrl: "https://jobs.example/1",
+      companyName: "Useful Studio",
+      title: "Program Director",
+      description: "Lead stakeholder alignment.",
+      scrapedAt: now,
+      firstSeenAt: now,
+      lastSeenAt: now,
+      saved: false,
+    }),
+    createPursuit: async () => ({ ok: false, issues: ["Nope."] }),
+  });
+  assert.equal(pursuitTransitionError.status, 409);
+  assert.equal((await body(pursuitTransitionError)).status, "transition_error");
+
+  let createdPursuitInput: unknown;
+  const pursuitCreated = await handlePublicProfilePursuitCreateRequest(postRequest("pursuits", { jobId: "job-1" }), {
+    now: () => now,
+    getSession: async () => authed(),
+    repositoryRequest,
+    loadAggregate: async () => agg,
+    loadJob: async () => ({
+      id: "job-1",
+      source: "fixture",
+      sourceUrl: "https://jobs.example/1",
+      companyName: "Useful Studio",
+      title: "Program Director",
+      description: "Lead stakeholder alignment.",
+      scrapedAt: now,
+      firstSeenAt: now,
+      lastSeenAt: now,
+      saved: false,
+    }),
+    createId: () => "pursuit-1",
+    evaluate: () => ({
+      internalScore: 84,
+      label: "Strong Match",
+      categoryFits: [],
+      recommendations: {
+        roleTrack: { roleTrack: { id: "track-1", name: "Program Director" }, confidence: "high", reason: "Use this Role Track." },
+        workExample: { workExample: { id: "example-1", title: "Phred", oneHitter: "Cut turnaround 40%." }, confidence: "high", reason: "Relevant." },
+        alternativeWorkExamples: [{ workExample: { id: "example-2", title: "Alt", oneHitter: "Shipped it." }, confidence: "medium", reason: "Also relevant." }],
+      },
+      risks: ["Easy Apply volume"],
+      whyMatched: ["Program Director overlap"],
+      whyNotMatched: [],
+      softExclusions: [],
+      explanation: "Strong match.",
+    }),
+    createPursuit: async (_request, input) => {
+      createdPursuitInput = input;
+      return {
+        ok: true,
+        pursuit: {
+          id: input.id,
+          userId: input.userId,
+          profileId: input.profileId,
+          jobId: input.jobId,
+          status: "saved",
+          fitSummary: input.fitSummary,
+          risks: input.risks ?? [],
+          recommendedWorkExampleIds: input.recommendedWorkExampleIds ?? [],
+          outreachAngle: input.outreachAngle,
+          lastActivityAt: input.now,
+          createdAt: input.now,
+          updatedAt: input.now,
+        },
+        event: {
+          pursuitId: input.id,
+          userId: input.userId,
+          eventType: "created",
+          toStatus: "saved",
+          usageType: "pursuit",
+          payload: {},
+          createdAt: input.now,
+        },
+        usageEvents: [],
+      };
+    },
+  });
+  assert.equal(pursuitCreated.status, 201);
+  assert.deepEqual(createdPursuitInput, {
+    id: "pursuit-1",
+    userId: "user-1",
+    profileId: "profile-1",
+    jobId: "job-1",
+    now,
+    fitSummary: "Strong match.",
+    risks: ["Easy Apply volume"],
+    recommendedWorkExampleIds: ["example-1", "example-2"],
+    outreachAngle: "Use this Role Track.",
+  });
+  const pursuitJson = await body(pursuitCreated);
+  assert.equal(pursuitJson.status, "created");
+  assert.equal((pursuitJson.pursuit as Record<string, unknown>).id, "pursuit-1");
 
   // ---- Identity & Search (full GET/PATCH coverage) ----
   const identityView = identitySearchSection(agg);

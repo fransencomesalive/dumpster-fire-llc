@@ -19,6 +19,8 @@ import {
   loadCandidateProfileAggregate,
   type PublicProfileRepositoryRequest,
 } from "./repository";
+import { createPursuitForJob } from "./pursuits/repository";
+import type { CreatePursuitInput, PursuitTransitionResult } from "./pursuits/types";
 import {
   generateOutreachMessageForUser,
   parseOutreachRequest,
@@ -363,6 +365,14 @@ export type PublicProfileMatchHandlerOptions = {
   }) => MatchResult;
 };
 
+export type PublicProfilePursuitsHandlerOptions = PublicProfileMatchHandlerOptions & {
+  createPursuit?: (
+    request: PublicProfileRepositoryRequest,
+    input: CreatePursuitInput,
+  ) => Promise<PursuitTransitionResult>;
+  createId?: () => string;
+};
+
 function json(body: unknown, init: ResponseInit = {}) {
   return Response.json(body, {
     ...init,
@@ -425,6 +435,26 @@ function matchJobFromPublicJob(job: PublicJobRecord): MatchJob {
     scrapedAt: job.scrapedAt,
     sourceUrl: job.sourceUrl,
   };
+}
+
+function workExampleRecommendationIds(match: MatchResult) {
+  return [
+    match.recommendations.workExample?.workExample.id,
+    ...match.recommendations.alternativeWorkExamples.map((recommendation) => recommendation.workExample.id),
+  ].filter((id): id is string => Boolean(id));
+}
+
+function profileIncompleteResponse(aggregate: CandidateProfileAggregate, profileQuality: ReturnType<typeof evaluateCandidateProfileQuality>, action: string) {
+  return json({
+    error: `A complete profile is required before ${action}.`,
+    status: "profile_incomplete",
+    profileId: aggregate.profile.id,
+    profileStatus: profileQuality.status,
+    incompleteReasons: profileQuality.incompleteReasons,
+    weakFields: profileQuality.weakFields,
+    weakResponseCount: profileQuality.weakResponseCount,
+    lastCheckedAt: profileQuality.lastCheckedAt,
+  }, { status: 409 });
 }
 
 async function sessionForRequest(
@@ -538,16 +568,7 @@ export async function handlePublicProfileMatchRequest(
   const evaluatedAt = options.now?.() ?? new Date().toISOString();
   const profileQuality = aggregate.profileQuality ?? evaluateCandidateProfileQuality(aggregate, evaluatedAt);
   if (profileQuality.status !== "complete") {
-    return json({
-      error: "A complete profile is required before matching jobs.",
-      status: "profile_incomplete",
-      profileId: aggregate.profile.id,
-      profileStatus: profileQuality.status,
-      incompleteReasons: profileQuality.incompleteReasons,
-      weakFields: profileQuality.weakFields,
-      weakResponseCount: profileQuality.weakResponseCount,
-      lastCheckedAt: profileQuality.lastCheckedAt,
-    }, { status: 409 });
+    return profileIncompleteResponse(aggregate, profileQuality, "matching jobs");
   }
 
   const loadJob = options.loadJob ?? loadPublicJobById;
@@ -569,6 +590,80 @@ export async function handlePublicProfileMatchRequest(
     job,
     match,
   });
+}
+
+export async function handlePublicProfilePursuitCreateRequest(
+  request: Request,
+  options: PublicProfilePursuitsHandlerOptions = {},
+) {
+  const session = await sessionForRequest(request, options);
+  if (session.status !== "authenticated") return authErrorResponse(session);
+
+  const repositoryRequest = repositoryRequestForOptions(options);
+  if (!repositoryRequest) return repositoryConfigErrorResponse();
+
+  const input = await request.json().catch(() => null) as { jobId?: unknown } | null;
+  const jobId = typeof input?.jobId === "string" ? input.jobId.trim() : "";
+  if (!jobId) {
+    return json({
+      error: "Expected jobId.",
+      status: "validation_error",
+      issues: [{ field: "jobId", message: "jobId is required." }],
+    }, { status: 400 });
+  }
+
+  const loadAggregate = options.loadAggregate ?? loadCandidateProfileAggregate;
+  const aggregate = await loadAggregate(repositoryRequest, session.userId);
+  if (!aggregate) {
+    return json({ error: "Candidate profile not found.", status: "not_found" }, { status: 404 });
+  }
+
+  const createdAt = options.now?.() ?? new Date().toISOString();
+  const profileQuality = aggregate.profileQuality ?? evaluateCandidateProfileQuality(aggregate, createdAt);
+  if (profileQuality.status !== "complete") {
+    return profileIncompleteResponse(aggregate, profileQuality, "creating pursuits");
+  }
+
+  const loadJob = options.loadJob ?? loadPublicJobById;
+  const job = await loadJob(repositoryRequest, jobId);
+  if (!job) {
+    return json({ error: "Job not found.", status: "not_found" }, { status: 404 });
+  }
+
+  const evaluate = options.evaluate ?? ((matchInput) => evaluateMatch(matchInput));
+  const match = evaluate({
+    profile: aggregate,
+    job: matchJobFromPublicJob(job),
+    evaluatedAt: createdAt,
+  });
+  const createPursuit = options.createPursuit ?? createPursuitForJob;
+  const result = await createPursuit(repositoryRequest, {
+    id: options.createId?.() ?? crypto.randomUUID(),
+    userId: session.userId,
+    profileId: aggregate.profile.id,
+    jobId,
+    now: createdAt,
+    fitSummary: match.explanation,
+    risks: match.risks,
+    recommendedWorkExampleIds: workExampleRecommendationIds(match),
+    outreachAngle: match.recommendations.roleTrack?.reason,
+  });
+
+  if (result.ok === false) {
+    return json({
+      error: "Could not create pursuit.",
+      status: "transition_error",
+      issues: result.issues,
+    }, { status: 409 });
+  }
+
+  return json({
+    status: "created",
+    profileId: aggregate.profile.id,
+    job,
+    match,
+    pursuit: result.pursuit,
+  }, { status: 201 });
 }
 
 export async function handlePublicProfileRegenerationRequest(
