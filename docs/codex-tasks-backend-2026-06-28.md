@@ -248,3 +248,11 @@ metering ledger, status updated here. No UI, no live billing integration.
   `node scripts/test-public-profile-pursuits.mjs`, `node scripts/test-public-profile-subscription.mjs`,
   `npm run test:public-jobs`, `npx tsc --noEmit --incremental false`, `npm run lint`
   (7 existing warnings, 0 errors), and `git diff --check`.
+- 2026-06-29 — Codex added the next lifecycle backend slice: `POST
+  /api/public-profile/pursuits/lifecycle` accepts `note_added`, `expired`, and `deleted`, validates
+  pursuit ownership through the user aggregate, requires note text for notes, rejects expiration
+  for fresh pursuits, and persists the existing pursuit event/transition path without adding
+  usage. Verified `node scripts/test-public-profile-api.mjs`, `node scripts/test-public-profile-pursuits.mjs`,
+  `node scripts/test-public-profile-subscription.mjs`, `npm run test:public-jobs`,
+  `npx tsc --noEmit --incremental false`, `npm run lint` (7 existing warnings, 0 errors), and
+  `git diff --check`.

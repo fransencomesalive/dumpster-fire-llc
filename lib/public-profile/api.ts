@@ -29,7 +29,7 @@ import {
   persistPursuitTransition,
 } from "./pursuits/repository";
 import { unavailableHumanPathProvider } from "./pursuits/human-path";
-import { completeReview, transitionPursuit } from "./pursuits/state-machine";
+import { completeReview, expireInactivePursuit, transitionPursuit } from "./pursuits/state-machine";
 import type {
   CompleteReviewInput,
   CreatePursuitInput,
@@ -574,6 +574,19 @@ function parseTrackingAction(value: unknown): PursuitEventType | undefined {
   const action = optionalString(value);
   return action && action in TRACKING_ACTIONS
     ? TRACKING_ACTIONS[action as keyof typeof TRACKING_ACTIONS]
+    : undefined;
+}
+
+const LIFECYCLE_ACTIONS = {
+  note_added: "note_added",
+  expired: "expired",
+  deleted: "deleted",
+} satisfies Record<string, PursuitEventType>;
+
+function parseLifecycleAction(value: unknown): PursuitEventType | undefined {
+  const action = optionalString(value);
+  return action && action in LIFECYCLE_ACTIONS
+    ? LIFECYCLE_ACTIONS[action as keyof typeof LIFECYCLE_ACTIONS]
     : undefined;
 }
 
@@ -1324,6 +1337,72 @@ export async function handlePublicProfilePursuitStatusRequest(
   if (result.ok === false) {
     return json({
       error: "Could not update pursuit status.",
+      status: "transition_error",
+      issues: result.issues,
+    }, { status: 409 });
+  }
+
+  const persistTransition = options.persistTransition ?? persistPursuitTransition;
+  await persistTransition(repositoryRequest, result);
+
+  return json({
+    status: "updated",
+    profileId: aggregate.profile.id,
+    pursuit: result.pursuit,
+    event: result.event,
+  });
+}
+
+export async function handlePublicProfilePursuitLifecycleRequest(
+  request: Request,
+  options: PublicProfilePursuitsHandlerOptions = {},
+) {
+  const session = await sessionForRequest(request, options);
+  if (session.status !== "authenticated") return authErrorResponse(session);
+
+  const repositoryRequest = repositoryRequestForOptions(options);
+  if (!repositoryRequest) return repositoryConfigErrorResponse();
+
+  const input = await request.json().catch(() => null) as Record<string, unknown> | null;
+  const pursuitId = optionalString(input?.pursuitId);
+  const action = parseLifecycleAction(input?.action);
+  const note = optionalString(input?.note);
+  const issues: { field: string; message: string }[] = [];
+  if (!pursuitId) issues.push({ field: "pursuitId", message: "pursuitId is required." });
+  if (!action) issues.push({ field: "action", message: "action must be one of note_added, expired, deleted." });
+  if (action === "note_added" && !note) {
+    issues.push({ field: "note", message: "note is required when action is note_added." });
+  }
+  if (issues.length > 0) {
+    return json({
+      error: "Expected pursuitId and lifecycle action.",
+      status: "validation_error",
+      issues,
+    }, { status: 400 });
+  }
+
+  const loadAggregate = options.loadAggregate ?? loadCandidateProfileAggregate;
+  const aggregate = await loadAggregate(repositoryRequest, session.userId);
+  if (!aggregate) {
+    return json({ error: "Candidate profile not found.", status: "not_found" }, { status: 404 });
+  }
+
+  const updatedAt = options.now?.() ?? new Date().toISOString();
+  const loadPursuit = options.loadPursuit ?? loadPursuitByIdForUser;
+  const pursuit = await loadPursuit(repositoryRequest, session.userId, pursuitId as string);
+  if (!pursuit || pursuit.profileId !== aggregate.profile.id) {
+    return json({ error: "Pursuit not found.", status: "not_found" }, { status: 404 });
+  }
+
+  const result = action === "expired"
+    ? expireInactivePursuit(pursuit, updatedAt)
+    : transitionPursuit(pursuit, action as PursuitEventType, updatedAt, {
+      action,
+      note,
+    });
+  if (result.ok === false) {
+    return json({
+      error: "Could not update pursuit.",
       status: "transition_error",
       issues: result.issues,
     }, { status: 409 });

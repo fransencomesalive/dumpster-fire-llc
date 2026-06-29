@@ -13,6 +13,7 @@ import {
   handlePublicProfilePursuitContactSelectionRequest,
   handlePublicProfilePursuitCreateRequest,
   handlePublicProfilePursuitHumanPathRequest,
+  handlePublicProfilePursuitLifecycleRequest,
   handlePublicProfilePursuitOutreachRequest,
   handlePublicProfilePursuitReviewRequest,
   handlePublicProfilePursuitStatusRequest,
@@ -1193,6 +1194,151 @@ async function main() {
   assert.equal((pursuitStatusJson.pursuit as Record<string, unknown>).status, "outreach_sent");
   assert.equal((pursuitStatusJson.event as Record<string, unknown>).eventType, "outreach_sent");
   assert.equal((persistedStatus as { pursuit: Pursuit }).pursuit.status, "outreach_sent");
+
+  // ---- Pursuit lifecycle route ----
+  const pursuitLifecycleValidation = await handlePublicProfilePursuitLifecycleRequest(postRequest("pursuits/lifecycle", {
+    action: "made_up",
+  }), {
+    getSession: async () => authed(),
+    repositoryRequest,
+    loadAggregate: async () => { throw new Error("should not load aggregate on validation error"); },
+    loadPursuit: async () => { throw new Error("should not load pursuit on validation error"); },
+  });
+  assert.equal(pursuitLifecycleValidation.status, 400);
+  const pursuitLifecycleValidationJson = await body(pursuitLifecycleValidation);
+  assert.equal(pursuitLifecycleValidationJson.status, "validation_error");
+  assert.equal((pursuitLifecycleValidationJson.issues as unknown[]).length, 2);
+
+  const pursuitLifecycleUnauthorized = await handlePublicProfilePursuitLifecycleRequest(postRequest("pursuits/lifecycle", {
+    pursuitId: "pursuit-1",
+    action: "note_added",
+    note: "Sent follow-up.",
+  }), {
+    getSession: async () => ({ status: "unauthenticated", reason: "Missing bearer token." }),
+  });
+  assert.equal(pursuitLifecycleUnauthorized.status, 401);
+
+  const pursuitLifecycleMissingProfile = await handlePublicProfilePursuitLifecycleRequest(postRequest("pursuits/lifecycle", {
+    pursuitId: "pursuit-1",
+    action: "note_added",
+    note: "Sent follow-up.",
+  }), {
+    getSession: async () => authed(),
+    repositoryRequest,
+    loadAggregate: async () => undefined,
+  });
+  assert.equal(pursuitLifecycleMissingProfile.status, 404);
+
+  const pursuitLifecycleMissingPursuit = await handlePublicProfilePursuitLifecycleRequest(postRequest("pursuits/lifecycle", {
+    pursuitId: "pursuit-404",
+    action: "note_added",
+    note: "Sent follow-up.",
+  }), {
+    getSession: async () => authed(),
+    repositoryRequest,
+    loadAggregate: async () => agg,
+    loadPursuit: async () => undefined,
+  });
+  assert.equal(pursuitLifecycleMissingPursuit.status, 404);
+
+  const pursuitLifecycleWrongProfile = await handlePublicProfilePursuitLifecycleRequest(postRequest("pursuits/lifecycle", {
+    pursuitId: "pursuit-1",
+    action: "note_added",
+    note: "Sent follow-up.",
+  }), {
+    getSession: async () => authed(),
+    repositoryRequest,
+    loadAggregate: async () => agg,
+    loadPursuit: async () => savedPursuit({ profileId: "profile-2" }),
+  });
+  assert.equal(pursuitLifecycleWrongProfile.status, 404);
+
+  const pursuitLifecycleMissingNote = await handlePublicProfilePursuitLifecycleRequest(postRequest("pursuits/lifecycle", {
+    pursuitId: "pursuit-1",
+    action: "note_added",
+  }), {
+    getSession: async () => authed(),
+    repositoryRequest,
+    loadAggregate: async () => { throw new Error("should not load aggregate on validation error"); },
+  });
+  assert.equal(pursuitLifecycleMissingNote.status, 400);
+  assert.equal((await body(pursuitLifecycleMissingNote)).status, "validation_error");
+
+  let persistedLifecycleNote: unknown;
+  const pursuitLifecycleNoteAdded = await handlePublicProfilePursuitLifecycleRequest(postRequest("pursuits/lifecycle", {
+    pursuitId: "pursuit-1",
+    action: "note_added",
+    note: "Sent follow-up.",
+  }), {
+    now: () => now,
+    getSession: async () => authed(),
+    repositoryRequest,
+    loadAggregate: async () => agg,
+    loadPursuit: async () => savedPursuit(),
+    persistTransition: async (_request, result) => {
+      persistedLifecycleNote = result;
+    },
+  });
+  assert.equal(pursuitLifecycleNoteAdded.status, 200);
+  const pursuitLifecycleNoteJson = await body(pursuitLifecycleNoteAdded);
+  assert.equal(pursuitLifecycleNoteJson.status, "updated");
+  assert.equal((pursuitLifecycleNoteJson.pursuit as Record<string, unknown>).status, "saved");
+  assert.equal((pursuitLifecycleNoteJson.event as Record<string, unknown>).eventType, "note_added");
+  assert.equal(((pursuitLifecycleNoteJson.event as Record<string, unknown>).payload as Record<string, unknown>).note, "Sent follow-up.");
+  assert.equal((persistedLifecycleNote as { pursuit: Pursuit }).pursuit.status, "saved");
+
+  const pursuitLifecycleFreshExpired = await handlePublicProfilePursuitLifecycleRequest(postRequest("pursuits/lifecycle", {
+    pursuitId: "pursuit-1",
+    action: "expired",
+  }), {
+    now: () => now,
+    getSession: async () => authed(),
+    repositoryRequest,
+    loadAggregate: async () => agg,
+    loadPursuit: async () => savedPursuit({ lastActivityAt: "2026-06-01T00:00:00.000Z" }),
+  });
+  assert.equal(pursuitLifecycleFreshExpired.status, 409);
+  assert.equal((await body(pursuitLifecycleFreshExpired)).status, "transition_error");
+
+  let persistedLifecycleExpired: unknown;
+  const pursuitLifecycleExpired = await handlePublicProfilePursuitLifecycleRequest(postRequest("pursuits/lifecycle", {
+    pursuitId: "pursuit-1",
+    action: "expired",
+  }), {
+    now: () => now,
+    getSession: async () => authed(),
+    repositoryRequest,
+    loadAggregate: async () => agg,
+    loadPursuit: async () => savedPursuit({ lastActivityAt: "2026-02-01T00:00:00.000Z" }),
+    persistTransition: async (_request, result) => {
+      persistedLifecycleExpired = result;
+    },
+  });
+  assert.equal(pursuitLifecycleExpired.status, 200);
+  const pursuitLifecycleExpiredJson = await body(pursuitLifecycleExpired);
+  assert.equal((pursuitLifecycleExpiredJson.pursuit as Record<string, unknown>).status, "expired");
+  assert.equal((pursuitLifecycleExpiredJson.event as Record<string, unknown>).eventType, "expired");
+  assert.equal((persistedLifecycleExpired as { pursuit: Pursuit }).pursuit.status, "expired");
+
+  let persistedLifecycleDeleted: unknown;
+  const pursuitLifecycleDeleted = await handlePublicProfilePursuitLifecycleRequest(postRequest("pursuits/lifecycle", {
+    pursuitId: "pursuit-1",
+    action: "deleted",
+  }), {
+    now: () => now,
+    getSession: async () => authed(),
+    repositoryRequest,
+    loadAggregate: async () => agg,
+    loadPursuit: async () => savedPursuit(),
+    persistTransition: async (_request, result) => {
+      persistedLifecycleDeleted = result;
+    },
+  });
+  assert.equal(pursuitLifecycleDeleted.status, 200);
+  const pursuitLifecycleDeletedJson = await body(pursuitLifecycleDeleted);
+  assert.equal((pursuitLifecycleDeletedJson.pursuit as Record<string, unknown>).status, "deleted");
+  assert.equal((pursuitLifecycleDeletedJson.event as Record<string, unknown>).eventType, "deleted");
+  assert.equal((persistedLifecycleDeleted as { pursuit: Pursuit }).pursuit.status, "deleted");
 
   // ---- Identity & Search (full GET/PATCH coverage) ----
   const identityView = identitySearchSection(agg);
