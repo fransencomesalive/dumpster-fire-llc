@@ -1,6 +1,7 @@
 import type { PublicProfileRepositoryRequest } from "../repository";
 import type {
   CreatePursuitInput,
+  HumanPathContact,
   Pursuit,
   PursuitEvent,
   PursuitTransitionResult,
@@ -112,6 +113,24 @@ function usageEventBody(event: PursuitUsageEvent) {
   };
 }
 
+function contactSuggestionBody(pursuit: Pursuit, contact: HumanPathContact, updatedAt: string) {
+  return {
+    pursuit_id: pursuit.id,
+    job_id: pursuit.jobId,
+    name: contact.name,
+    title: contact.title,
+    company_name: contact.companyName,
+    linkedin_url: contact.linkedinUrl ?? null,
+    email: contact.email ?? null,
+    contact_type: contact.contactType,
+    confidence: contact.confidence,
+    relevance_reason: contact.relevanceReason,
+    role_connection: contact.roleConnection,
+    verification_notes: contact.verificationNotes,
+    updated_at: updatedAt,
+  };
+}
+
 export async function loadPursuitByIdForUser(
   request: PublicProfileRepositoryRequest,
   userId: string,
@@ -168,6 +187,26 @@ export async function persistPursuitTransition(
     await request("usage_ledger", {
       method: "POST",
       body: result.usageEvents.map(usageEventBody),
+    });
+  }
+}
+
+export async function persistHumanPathGeneration(
+  request: PublicProfileRepositoryRequest,
+  result: Extract<PursuitTransitionResult, { ok: true }>,
+  contacts: HumanPathContact[],
+) {
+  await persistPursuitTransition(request, result);
+
+  await request("contact_suggestions", {
+    method: "DELETE",
+    query: qs({ pursuit_id: `eq.${result.pursuit.id}` }),
+  });
+
+  if (contacts.length > 0) {
+    await request("contact_suggestions", {
+      method: "POST",
+      body: contacts.map((contact) => contactSuggestionBody(result.pursuit, contact, result.pursuit.updatedAt)),
     });
   }
 }

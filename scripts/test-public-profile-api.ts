@@ -11,6 +11,7 @@ import {
   handleOutreachGeneratorRequest,
   handlePublicProfileMatchRequest,
   handlePublicProfilePursuitCreateRequest,
+  handlePublicProfilePursuitHumanPathRequest,
   handlePublicProfilePursuitReviewRequest,
   handlePublicProfileBootstrapRequest,
   handlePublicProfileRegenerationRequest,
@@ -28,7 +29,9 @@ import {
   handleWritingSamplesSectionPatchRequest,
 } from "../lib/public-profile/api";
 import type { PublicProfileRepositoryRequest } from "../lib/public-profile/repository";
-import type { Pursuit } from "../lib/public-profile/pursuits/types";
+import type { HumanPathContact, Pursuit } from "../lib/public-profile/pursuits/types";
+import type { PublicJobRecord } from "../lib/public-jobs/types";
+import type { SubscriptionContext, UsageLedgerEntry } from "../lib/public-profile/subscription/types";
 import type { PublicProfileRegenerationResult } from "../lib/public-profile/service";
 import {
   fitSignalsSection,
@@ -87,6 +90,56 @@ function savedPursuit(overrides: Partial<Pursuit> = {}): Pursuit {
     createdAt: now,
     updatedAt: now,
     ...overrides,
+  };
+}
+
+function publicJob(overrides: Partial<PublicJobRecord> = {}): PublicJobRecord {
+  return {
+    id: "job-1",
+    source: "fixture",
+    sourceUrl: "https://jobs.example/1",
+    companyName: "Useful Studio",
+    title: "Program Director",
+    description: "Lead stakeholder alignment.",
+    scrapedAt: now,
+    firstSeenAt: now,
+    lastSeenAt: now,
+    saved: false,
+    ...overrides,
+  };
+}
+
+function humanPathContact(overrides: Partial<HumanPathContact> = {}): HumanPathContact {
+  return {
+    name: "Dana Lee",
+    title: "VP Product",
+    companyName: "Useful Studio",
+    linkedinUrl: "https://linkedin.example/dana",
+    contactType: "likely_hiring_manager",
+    confidence: "high",
+    relevanceReason: "Owns the program area.",
+    roleConnection: "Likely sponsor for cross-functional delivery.",
+    verificationNotes: ["Title matches the function."],
+    ...overrides,
+  };
+}
+
+function activeBasicSubscription(overrides: Partial<SubscriptionContext> = {}): SubscriptionContext {
+  return {
+    planName: "basic",
+    status: "active",
+    currentPeriodStart: "2026-06-01T00:00:00.000Z",
+    currentPeriodEnd: "2026-07-01T00:00:00.000Z",
+    ...overrides,
+  };
+}
+
+function usage(usageType: UsageLedgerEntry["usageType"], quantity: number): UsageLedgerEntry {
+  return {
+    userId: "user-1",
+    usageType,
+    quantity,
+    createdAt: now,
   };
 }
 
@@ -620,6 +673,145 @@ async function main() {
   assert.equal((reviewCompleteJson.pursuit as Record<string, unknown>).selectedResumeId, "resume-1");
   assert.equal((reviewCompleteJson.pursuit as Record<string, unknown>).selectedWorkExampleId, "example-1");
   assert.deepEqual((persistedReview as { pursuit: Pursuit }).pursuit.recommendedWorkExampleIds, ["example-1"]);
+
+  // ---- Pursuit Human Path route ----
+  const humanPathValidation = await handlePublicProfilePursuitHumanPathRequest(postRequest("pursuits/human-path", {}), {
+    getSession: async () => authed(),
+    repositoryRequest,
+    loadAggregate: async () => { throw new Error("should not load aggregate on validation error"); },
+    loadPursuit: async () => { throw new Error("should not load pursuit on validation error"); },
+  });
+  assert.equal(humanPathValidation.status, 400);
+  assert.equal((await body(humanPathValidation)).status, "validation_error");
+
+  const humanPathUnauthorized = await handlePublicProfilePursuitHumanPathRequest(postRequest("pursuits/human-path", { pursuitId: "pursuit-1" }), {
+    getSession: async () => ({ status: "unauthenticated", reason: "Missing bearer token." }),
+  });
+  assert.equal(humanPathUnauthorized.status, 401);
+
+  const humanPathRepoConfig = await handlePublicProfilePursuitHumanPathRequest(postRequest("pursuits/human-path", { pursuitId: "pursuit-1" }), {
+    getSession: async () => authed(),
+    env: {} as NodeJS.ProcessEnv,
+  });
+  assert.equal(humanPathRepoConfig.status, 503);
+
+  const humanPathMissingProfile = await handlePublicProfilePursuitHumanPathRequest(postRequest("pursuits/human-path", { pursuitId: "pursuit-1" }), {
+    getSession: async () => authed(),
+    repositoryRequest,
+    loadAggregate: async () => undefined,
+  });
+  assert.equal(humanPathMissingProfile.status, 404);
+
+  const humanPathIncomplete = await handlePublicProfilePursuitHumanPathRequest(postRequest("pursuits/human-path", { pursuitId: "pursuit-1" }), {
+    now: () => now,
+    getSession: async () => authed(),
+    repositoryRequest,
+    loadAggregate: async () => incompleteProfileResult.aggregate,
+  });
+  assert.equal(humanPathIncomplete.status, 409);
+  assert.equal((await body(humanPathIncomplete)).status, "profile_incomplete");
+
+  const humanPathMissingPursuit = await handlePublicProfilePursuitHumanPathRequest(postRequest("pursuits/human-path", { pursuitId: "pursuit-404" }), {
+    getSession: async () => authed(),
+    repositoryRequest,
+    loadAggregate: async () => agg,
+    loadPursuit: async () => undefined,
+  });
+  assert.equal(humanPathMissingPursuit.status, 404);
+
+  const humanPathMissingJob = await handlePublicProfilePursuitHumanPathRequest(postRequest("pursuits/human-path", { pursuitId: "pursuit-1" }), {
+    getSession: async () => authed(),
+    repositoryRequest,
+    loadAggregate: async () => agg,
+    loadPursuit: async () => savedPursuit({ status: "review_complete" }),
+    loadJob: async () => undefined,
+  });
+  assert.equal(humanPathMissingJob.status, 404);
+
+  let providerCalledAfterLimit = false;
+  const humanPathLimitReached = await handlePublicProfilePursuitHumanPathRequest(postRequest("pursuits/human-path", { pursuitId: "pursuit-1" }), {
+    now: () => now,
+    getSession: async () => authed(),
+    repositoryRequest,
+    loadAggregate: async () => agg,
+    loadPursuit: async () => savedPursuit({ status: "review_complete" }),
+    loadJob: async () => publicJob(),
+    loadSubscriptionContext: async () => activeBasicSubscription(),
+    loadUsageEntries: async () => [usage("human_path", 50)],
+    humanPathProvider: async () => {
+      providerCalledAfterLimit = true;
+      return { status: "generated", contacts: [humanPathContact()] };
+    },
+  });
+  assert.equal(humanPathLimitReached.status, 429);
+  assert.equal((await body(humanPathLimitReached)).status, "limit_reached");
+  assert.equal(providerCalledAfterLimit, false);
+
+  const humanPathProviderUnavailable = await handlePublicProfilePursuitHumanPathRequest(postRequest("pursuits/human-path", { pursuitId: "pursuit-1" }), {
+    now: () => now,
+    getSession: async () => authed(),
+    repositoryRequest,
+    loadAggregate: async () => agg,
+    loadPursuit: async () => savedPursuit({ status: "review_complete" }),
+    loadJob: async () => publicJob(),
+    loadSubscriptionContext: async () => activeBasicSubscription(),
+    loadUsageEntries: async () => [],
+  });
+  assert.equal(humanPathProviderUnavailable.status, 503);
+  assert.equal((await body(humanPathProviderUnavailable)).status, "provider_unavailable");
+
+  const humanPathTransitionError = await handlePublicProfilePursuitHumanPathRequest(postRequest("pursuits/human-path", { pursuitId: "pursuit-1" }), {
+    now: () => now,
+    getSession: async () => authed(),
+    repositoryRequest,
+    loadAggregate: async () => agg,
+    loadPursuit: async () => savedPursuit({ status: "saved" }),
+    loadJob: async () => publicJob(),
+    loadSubscriptionContext: async () => activeBasicSubscription(),
+    loadUsageEntries: async () => [],
+    humanPathProvider: async () => ({ status: "generated", contacts: [humanPathContact()] }),
+  });
+  assert.equal(humanPathTransitionError.status, 409);
+  assert.equal((await body(humanPathTransitionError)).status, "transition_error");
+
+  let persistedHumanPath: unknown;
+  let persistedContacts: unknown;
+  let usageOptions: unknown;
+  const humanPathGenerated = await handlePublicProfilePursuitHumanPathRequest(postRequest("pursuits/human-path", { pursuitId: "pursuit-1" }), {
+    now: () => now,
+    getSession: async () => authed(),
+    repositoryRequest,
+    loadAggregate: async () => agg,
+    loadPursuit: async () => savedPursuit({ status: "review_complete" }),
+    loadJob: async () => publicJob(),
+    loadSubscriptionContext: async () => activeBasicSubscription(),
+    loadUsageEntries: async (_request, _userId, options) => {
+      usageOptions = options;
+      return [usage("human_path", 12)];
+    },
+    humanPathProvider: async ({ job, pursuit }) => {
+      assert.equal(job.companyName, "Useful Studio");
+      assert.equal(pursuit.status, "review_complete");
+      return { status: "generated", contacts: [humanPathContact()] };
+    },
+    persistHumanPath: async (_request, result, contacts) => {
+      persistedHumanPath = result;
+      persistedContacts = contacts;
+    },
+  });
+  assert.equal(humanPathGenerated.status, 200);
+  assert.deepEqual(usageOptions, {
+    at: now,
+    periodStart: "2026-06-01T00:00:00.000Z",
+    periodEnd: "2026-07-01T00:00:00.000Z",
+  });
+  const humanPathJson = await body(humanPathGenerated);
+  assert.equal(humanPathJson.status, "human_path_generated");
+  assert.equal((humanPathJson.pursuit as Record<string, unknown>).status, "human_path_generated");
+  assert.equal((humanPathJson.event as Record<string, unknown>).usageType, "human_path");
+  assert.deepEqual((persistedHumanPath as { pursuit: Pursuit }).pursuit.status, "human_path_generated");
+  assert.equal((persistedContacts as HumanPathContact[]).length, 1);
+  assert.equal(((humanPathJson.contacts as HumanPathContact[])[0]).name, "Dana Lee");
 
   // ---- Identity & Search (full GET/PATCH coverage) ----
   const identityView = identitySearchSection(agg);

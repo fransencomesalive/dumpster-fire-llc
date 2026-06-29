@@ -7,7 +7,11 @@ import {
   expireInactivePursuit,
   transitionPursuit,
 } from "../lib/public-profile/pursuits/state-machine";
-import { createPursuitForJob, persistPursuitTransition } from "../lib/public-profile/pursuits/repository";
+import {
+  createPursuitForJob,
+  persistHumanPathGeneration,
+  persistPursuitTransition,
+} from "../lib/public-profile/pursuits/repository";
 
 const now = "2026-06-29T12:00:00.000Z";
 const later = "2026-06-29T13:00:00.000Z";
@@ -127,6 +131,27 @@ async function main() {
   assert.equal(calls[0].method, "PATCH");
   assert.equal(calls[1].table, "pursuit_events");
   assert.equal(calls.some((call) => call.table === "usage_ledger"), false);
+
+  if (!humanPath.ok) throw new Error("human path pursuit should be available for repository test");
+  calls.length = 0;
+  await persistHumanPathGeneration(request, humanPath, [{
+    name: "Dana Lee",
+    title: "VP Product",
+    companyName: "Useful Studio",
+    contactType: "likely_hiring_manager",
+    confidence: "high",
+    relevanceReason: "Owns the program area.",
+    roleConnection: "Likely sponsor for cross-functional delivery.",
+    verificationNotes: ["Title matches the function."],
+  }]);
+  assert.equal(calls[0].table, "pursuits");
+  assert.equal(calls[0].method, "PATCH");
+  assert.equal(calls[1].table, "pursuit_events");
+  assert.equal(calls[2].table, "usage_ledger");
+  assert.equal(calls[3].table, "contact_suggestions");
+  assert.equal(calls[3].method, "DELETE");
+  assert.equal(calls[4].table, "contact_suggestions");
+  assert.equal(calls[4].method, "POST");
 
   console.log("public profile pursuits: all assertions passed");
 }

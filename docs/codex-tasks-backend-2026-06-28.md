@@ -210,3 +210,11 @@ metering ledger, status updated here. No UI, no live billing integration.
   `node scripts/test-public-profile-api.mjs`, `node scripts/test-public-profile-pursuits.mjs`,
   `npx tsc --noEmit --incremental false`, `npm run lint` (7 existing warnings, 0 errors), and
   `git diff --check`.
+- 2026-06-29 — Codex added the next Human Path backend slice: `POST
+  /api/public-profile/pursuits/human-path` validates a reviewed pursuit, enforces the Human Path
+  subscription limit before provider work, calls the injectable Human Path provider boundary
+  (defaulting to the provider-unavailable stub), persists the `human_path_generated` transition,
+  usage ledger event, and refreshed contact suggestions on success. Verified
+  `node scripts/test-public-profile-api.mjs`, `node scripts/test-public-profile-pursuits.mjs`,
+  `node scripts/test-public-profile-subscription.mjs`, `npx tsc --noEmit --incremental false`,
+  `npm run lint` (7 existing warnings, 0 errors), and `git diff --check`.

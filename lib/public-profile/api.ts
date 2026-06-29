@@ -22,15 +22,29 @@ import {
 import {
   createPursuitForJob,
   loadPursuitByIdForUser,
+  persistHumanPathGeneration,
   persistPursuitTransition,
 } from "./pursuits/repository";
-import { completeReview } from "./pursuits/state-machine";
+import { unavailableHumanPathProvider } from "./pursuits/human-path";
+import { completeReview, transitionPursuit } from "./pursuits/state-machine";
 import type {
   CompleteReviewInput,
   CreatePursuitInput,
+  HumanPathContact,
+  HumanPathProvider,
   Pursuit,
   PursuitTransitionResult,
 } from "./pursuits/types";
+import { enforceSubscriptionFeature } from "./subscription/enforcement";
+import {
+  loadSubscriptionContextForUser,
+  loadUsageLedgerForUser,
+} from "./subscription/repository";
+import type {
+  SubscriptionContext,
+  SubscriptionEnforcementResult,
+  UsageLedgerEntry,
+} from "./subscription/types";
 import {
   generateOutreachMessageForUser,
   parseOutreachRequest,
@@ -389,6 +403,26 @@ export type PublicProfilePursuitsHandlerOptions = PublicProfileMatchHandlerOptio
     request: PublicProfileRepositoryRequest,
     result: Extract<PursuitTransitionResult, { ok: true }>,
   ) => Promise<void>;
+  humanPathProvider?: HumanPathProvider;
+  persistHumanPath?: (
+    request: PublicProfileRepositoryRequest,
+    result: Extract<PursuitTransitionResult, { ok: true }>,
+    contacts: HumanPathContact[],
+  ) => Promise<void>;
+  loadSubscriptionContext?: (
+    request: PublicProfileRepositoryRequest,
+    userId: string,
+  ) => Promise<SubscriptionContext>;
+  loadUsageEntries?: (
+    request: PublicProfileRepositoryRequest,
+    userId: string,
+    options: { at: string; periodStart?: string; periodEnd?: string },
+  ) => Promise<UsageLedgerEntry[]>;
+  enforceSubscription?: (
+    context: SubscriptionContext,
+    entries: UsageLedgerEntry[],
+    at: string,
+  ) => SubscriptionEnforcementResult;
   createId?: () => string;
 };
 
@@ -522,6 +556,17 @@ function validateCompleteReviewInput(
   }
 
   return issues;
+}
+
+function subscriptionBlockedResponse(result: Exclude<SubscriptionEnforcementResult, { status: "allowed" }>) {
+  const status = result.status === "limit_reached" ? 429 : 402;
+  return json({
+    error: result.status === "limit_reached"
+      ? "Human Path limit reached."
+      : "Subscription does not allow this action.",
+    status: result.status,
+    subscription: result,
+  }, { status });
 }
 
 function profileIncompleteResponse(aggregate: CandidateProfileAggregate, profileQuality: ReturnType<typeof evaluateCandidateProfileQuality>, action: string) {
@@ -811,6 +856,108 @@ export async function handlePublicProfilePursuitReviewRequest(
     profileId: aggregate.profile.id,
     pursuit: result.pursuit,
     event: result.event,
+  });
+}
+
+export async function handlePublicProfilePursuitHumanPathRequest(
+  request: Request,
+  options: PublicProfilePursuitsHandlerOptions = {},
+) {
+  const session = await sessionForRequest(request, options);
+  if (session.status !== "authenticated") return authErrorResponse(session);
+
+  const repositoryRequest = repositoryRequestForOptions(options);
+  if (!repositoryRequest) return repositoryConfigErrorResponse();
+
+  const input = await request.json().catch(() => null) as Record<string, unknown> | null;
+  const pursuitId = optionalString(input?.pursuitId);
+  if (!pursuitId) {
+    return json({
+      error: "Expected pursuitId.",
+      status: "validation_error",
+      issues: [{ field: "pursuitId", message: "pursuitId is required." }],
+    }, { status: 400 });
+  }
+
+  const loadAggregate = options.loadAggregate ?? loadCandidateProfileAggregate;
+  const aggregate = await loadAggregate(repositoryRequest, session.userId);
+  if (!aggregate) {
+    return json({ error: "Candidate profile not found.", status: "not_found" }, { status: 404 });
+  }
+
+  const generatedAt = options.now?.() ?? new Date().toISOString();
+  const profileQuality = aggregate.profileQuality ?? evaluateCandidateProfileQuality(aggregate, generatedAt);
+  if (profileQuality.status !== "complete") {
+    return profileIncompleteResponse(aggregate, profileQuality, "generating Human Path contacts");
+  }
+
+  const loadPursuit = options.loadPursuit ?? loadPursuitByIdForUser;
+  const pursuit = await loadPursuit(repositoryRequest, session.userId, pursuitId);
+  if (!pursuit || pursuit.profileId !== aggregate.profile.id) {
+    return json({ error: "Pursuit not found.", status: "not_found" }, { status: 404 });
+  }
+
+  const loadJob = options.loadJob ?? loadPublicJobById;
+  const job = await loadJob(repositoryRequest, pursuit.jobId);
+  if (!job) {
+    return json({ error: "Job not found.", status: "not_found" }, { status: 404 });
+  }
+
+  const loadSubscriptionContext = options.loadSubscriptionContext ?? loadSubscriptionContextForUser;
+  const loadUsageEntries = options.loadUsageEntries ?? loadUsageLedgerForUser;
+  const subscriptionContext = await loadSubscriptionContext(repositoryRequest, session.userId);
+  const usageEntries = await loadUsageEntries(repositoryRequest, session.userId, {
+    at: generatedAt,
+    periodStart: subscriptionContext.currentPeriodStart,
+    periodEnd: subscriptionContext.currentPeriodEnd,
+  });
+  const enforceSubscription = options.enforceSubscription
+    ?? ((context, entries, at) => enforceSubscriptionFeature(context, entries, "human_path", { at }));
+  const enforcement = enforceSubscription(subscriptionContext, usageEntries, generatedAt);
+  if (enforcement.status !== "allowed") {
+    return subscriptionBlockedResponse(enforcement);
+  }
+
+  const provider = options.humanPathProvider ?? unavailableHumanPathProvider;
+  const providerResult = await provider({
+    pursuit,
+    job: {
+      id: job.id,
+      title: job.title,
+      companyName: job.companyName,
+      description: job.description,
+    },
+  });
+  if (providerResult.status === "provider_unavailable") {
+    return json({
+      error: providerResult.reason,
+      status: "provider_unavailable",
+    }, { status: 503 });
+  }
+
+  const result = transitionPursuit(pursuit, "human_path_generated", generatedAt, {
+    contactCount: providerResult.contacts.length,
+    contacts: providerResult.contacts,
+  });
+  if (result.ok === false) {
+    return json({
+      error: "Could not generate Human Path.",
+      status: "transition_error",
+      issues: result.issues,
+    }, { status: 409 });
+  }
+
+  const persistHumanPath = options.persistHumanPath ?? persistHumanPathGeneration;
+  await persistHumanPath(repositoryRequest, result, providerResult.contacts);
+
+  return json({
+    status: "human_path_generated",
+    profileId: aggregate.profile.id,
+    job,
+    pursuit: result.pursuit,
+    contacts: providerResult.contacts,
+    event: result.event,
+    subscription: enforcement,
   });
 }
 
