@@ -19,8 +19,18 @@ import {
   loadCandidateProfileAggregate,
   type PublicProfileRepositoryRequest,
 } from "./repository";
-import { createPursuitForJob } from "./pursuits/repository";
-import type { CreatePursuitInput, PursuitTransitionResult } from "./pursuits/types";
+import {
+  createPursuitForJob,
+  loadPursuitByIdForUser,
+  persistPursuitTransition,
+} from "./pursuits/repository";
+import { completeReview } from "./pursuits/state-machine";
+import type {
+  CompleteReviewInput,
+  CreatePursuitInput,
+  Pursuit,
+  PursuitTransitionResult,
+} from "./pursuits/types";
 import {
   generateOutreachMessageForUser,
   parseOutreachRequest,
@@ -370,6 +380,15 @@ export type PublicProfilePursuitsHandlerOptions = PublicProfileMatchHandlerOptio
     request: PublicProfileRepositoryRequest,
     input: CreatePursuitInput,
   ) => Promise<PursuitTransitionResult>;
+  loadPursuit?: (
+    request: PublicProfileRepositoryRequest,
+    userId: string,
+    pursuitId: string,
+  ) => Promise<Pursuit | undefined>;
+  persistTransition?: (
+    request: PublicProfileRepositoryRequest,
+    result: Extract<PursuitTransitionResult, { ok: true }>,
+  ) => Promise<void>;
   createId?: () => string;
 };
 
@@ -442,6 +461,67 @@ function workExampleRecommendationIds(match: MatchResult) {
     match.recommendations.workExample?.workExample.id,
     ...match.recommendations.alternativeWorkExamples.map((recommendation) => recommendation.workExample.id),
   ].filter((id): id is string => Boolean(id));
+}
+
+function stringArray(value: unknown) {
+  if (!Array.isArray(value)) return undefined;
+  return value.filter((item): item is string => typeof item === "string").map((item) => item.trim()).filter(Boolean);
+}
+
+function optionalString(value: unknown) {
+  return typeof value === "string" && value.trim() ? value.trim() : undefined;
+}
+
+function parseCompleteReviewInput(input: Record<string, unknown>): CompleteReviewInput {
+  return {
+    selectedRoleTrackId: optionalString(input.selectedRoleTrackId),
+    selectedResumeId: optionalString(input.selectedResumeId),
+    selectedWorkExampleId: optionalString(input.selectedWorkExampleId),
+    fitSummary: optionalString(input.fitSummary),
+    risks: stringArray(input.risks),
+    recommendedWorkExampleIds: stringArray(input.recommendedWorkExampleIds),
+    outreachAngle: optionalString(input.outreachAngle),
+  };
+}
+
+function validateCompleteReviewInput(
+  aggregate: CandidateProfileAggregate,
+  input: CompleteReviewInput,
+) {
+  const issues: { field: string; message: string }[] = [];
+  const roleTrack = input.selectedRoleTrackId
+    ? aggregate.roleTracks.find((candidate) => candidate.id === input.selectedRoleTrackId)
+    : undefined;
+  const resume = input.selectedResumeId
+    ? aggregate.resumes.find((candidate) => candidate.id === input.selectedResumeId)
+    : undefined;
+  const workExample = input.selectedWorkExampleId
+    ? aggregate.workExamples.find((candidate) => candidate.id === input.selectedWorkExampleId)
+    : undefined;
+
+  if (input.selectedRoleTrackId && !roleTrack) {
+    issues.push({ field: "selectedRoleTrackId", message: "selectedRoleTrackId must reference an existing Role Track." });
+  }
+  if (input.selectedResumeId && !resume) {
+    issues.push({ field: "selectedResumeId", message: "selectedResumeId must reference an existing resume." });
+  }
+  if (input.selectedWorkExampleId && !workExample) {
+    issues.push({ field: "selectedWorkExampleId", message: "selectedWorkExampleId must reference an existing Work Example." });
+  }
+  for (const id of input.recommendedWorkExampleIds ?? []) {
+    if (!aggregate.workExamples.some((candidate) => candidate.id === id)) {
+      issues.push({ field: "recommendedWorkExampleIds", message: `recommendedWorkExampleIds contains unknown Work Example id: ${id}.` });
+    }
+  }
+  if (roleTrack && resume) {
+    const linkedByTrack = roleTrack.resumeIds.includes(resume.id);
+    const linkedByResume = resume.associatedRoleTrackIds.includes(roleTrack.id);
+    if (!linkedByTrack && !linkedByResume) {
+      issues.push({ field: "selectedResumeId", message: "selectedResumeId must be associated with selectedRoleTrackId." });
+    }
+  }
+
+  return issues;
 }
 
 function profileIncompleteResponse(aggregate: CandidateProfileAggregate, profileQuality: ReturnType<typeof evaluateCandidateProfileQuality>, action: string) {
@@ -664,6 +744,74 @@ export async function handlePublicProfilePursuitCreateRequest(
     match,
     pursuit: result.pursuit,
   }, { status: 201 });
+}
+
+export async function handlePublicProfilePursuitReviewRequest(
+  request: Request,
+  options: PublicProfilePursuitsHandlerOptions = {},
+) {
+  const session = await sessionForRequest(request, options);
+  if (session.status !== "authenticated") return authErrorResponse(session);
+
+  const repositoryRequest = repositoryRequestForOptions(options);
+  if (!repositoryRequest) return repositoryConfigErrorResponse();
+
+  const input = await request.json().catch(() => null) as Record<string, unknown> | null;
+  const pursuitId = optionalString(input?.pursuitId);
+  if (!pursuitId) {
+    return json({
+      error: "Expected pursuitId.",
+      status: "validation_error",
+      issues: [{ field: "pursuitId", message: "pursuitId is required." }],
+    }, { status: 400 });
+  }
+
+  const loadAggregate = options.loadAggregate ?? loadCandidateProfileAggregate;
+  const aggregate = await loadAggregate(repositoryRequest, session.userId);
+  if (!aggregate) {
+    return json({ error: "Candidate profile not found.", status: "not_found" }, { status: 404 });
+  }
+
+  const reviewedAt = options.now?.() ?? new Date().toISOString();
+  const profileQuality = aggregate.profileQuality ?? evaluateCandidateProfileQuality(aggregate, reviewedAt);
+  if (profileQuality.status !== "complete") {
+    return profileIncompleteResponse(aggregate, profileQuality, "reviewing pursuits");
+  }
+
+  const loadPursuit = options.loadPursuit ?? loadPursuitByIdForUser;
+  const pursuit = await loadPursuit(repositoryRequest, session.userId, pursuitId);
+  if (!pursuit || pursuit.profileId !== aggregate.profile.id) {
+    return json({ error: "Pursuit not found.", status: "not_found" }, { status: 404 });
+  }
+
+  const reviewInput = parseCompleteReviewInput(input ?? {});
+  const issues = validateCompleteReviewInput(aggregate, reviewInput);
+  if (issues.length > 0) {
+    return json({
+      error: "Review selection is invalid.",
+      status: "validation_error",
+      issues,
+    }, { status: 400 });
+  }
+
+  const result = completeReview(pursuit, reviewInput, reviewedAt);
+  if (result.ok === false) {
+    return json({
+      error: "Could not complete pursuit review.",
+      status: "transition_error",
+      issues: result.issues,
+    }, { status: 409 });
+  }
+
+  const persistTransition = options.persistTransition ?? persistPursuitTransition;
+  await persistTransition(repositoryRequest, result);
+
+  return json({
+    status: "review_complete",
+    profileId: aggregate.profile.id,
+    pursuit: result.pursuit,
+    event: result.event,
+  });
 }
 
 export async function handlePublicProfileRegenerationRequest(

@@ -11,6 +11,7 @@ import {
   handleOutreachGeneratorRequest,
   handlePublicProfileMatchRequest,
   handlePublicProfilePursuitCreateRequest,
+  handlePublicProfilePursuitReviewRequest,
   handlePublicProfileBootstrapRequest,
   handlePublicProfileRegenerationRequest,
   handleResumeUploadsSectionGetRequest,
@@ -27,6 +28,7 @@ import {
   handleWritingSamplesSectionPatchRequest,
 } from "../lib/public-profile/api";
 import type { PublicProfileRepositoryRequest } from "../lib/public-profile/repository";
+import type { Pursuit } from "../lib/public-profile/pursuits/types";
 import type { PublicProfileRegenerationResult } from "../lib/public-profile/service";
 import {
   fitSignalsSection,
@@ -67,6 +69,24 @@ function completeQuality(): ProfileQuality {
     completeFields: ["identity.fullName"],
     weakResponseCount: 0,
     lastCheckedAt: now,
+  };
+}
+
+function savedPursuit(overrides: Partial<Pursuit> = {}): Pursuit {
+  return {
+    id: "pursuit-1",
+    userId: "user-1",
+    profileId: "profile-1",
+    jobId: "job-1",
+    status: "saved",
+    fitSummary: "Strong match.",
+    risks: ["Easy Apply volume"],
+    recommendedWorkExampleIds: ["example-1"],
+    outreachAngle: "Use this Role Track.",
+    lastActivityAt: now,
+    createdAt: now,
+    updatedAt: now,
+    ...overrides,
   };
 }
 
@@ -492,6 +512,114 @@ async function main() {
   const pursuitJson = await body(pursuitCreated);
   assert.equal(pursuitJson.status, "created");
   assert.equal((pursuitJson.pursuit as Record<string, unknown>).id, "pursuit-1");
+
+  // ---- Pursuit review route ----
+  const reviewValidation = await handlePublicProfilePursuitReviewRequest(postRequest("pursuits/review", {}), {
+    getSession: async () => authed(),
+    repositoryRequest,
+    loadAggregate: async () => { throw new Error("should not load aggregate on validation error"); },
+    loadPursuit: async () => { throw new Error("should not load pursuit on validation error"); },
+  });
+  assert.equal(reviewValidation.status, 400);
+  assert.equal((await body(reviewValidation)).status, "validation_error");
+
+  const reviewUnauthorized = await handlePublicProfilePursuitReviewRequest(postRequest("pursuits/review", { pursuitId: "pursuit-1" }), {
+    getSession: async () => ({ status: "unauthenticated", reason: "Missing bearer token." }),
+  });
+  assert.equal(reviewUnauthorized.status, 401);
+
+  const reviewRepoConfig = await handlePublicProfilePursuitReviewRequest(postRequest("pursuits/review", { pursuitId: "pursuit-1" }), {
+    getSession: async () => authed(),
+    env: {} as NodeJS.ProcessEnv,
+  });
+  assert.equal(reviewRepoConfig.status, 503);
+
+  const reviewMissingProfile = await handlePublicProfilePursuitReviewRequest(postRequest("pursuits/review", { pursuitId: "pursuit-1" }), {
+    getSession: async () => authed(),
+    repositoryRequest,
+    loadAggregate: async () => undefined,
+  });
+  assert.equal(reviewMissingProfile.status, 404);
+
+  const reviewIncomplete = await handlePublicProfilePursuitReviewRequest(postRequest("pursuits/review", { pursuitId: "pursuit-1" }), {
+    now: () => now,
+    getSession: async () => authed(),
+    repositoryRequest,
+    loadAggregate: async () => incompleteProfileResult.aggregate,
+  });
+  assert.equal(reviewIncomplete.status, 409);
+  assert.equal((await body(reviewIncomplete)).status, "profile_incomplete");
+
+  const reviewMissingPursuit = await handlePublicProfilePursuitReviewRequest(postRequest("pursuits/review", { pursuitId: "pursuit-404" }), {
+    getSession: async () => authed(),
+    repositoryRequest,
+    loadAggregate: async () => agg,
+    loadPursuit: async () => undefined,
+  });
+  assert.equal(reviewMissingPursuit.status, 404);
+
+  const reviewWrongProfile = await handlePublicProfilePursuitReviewRequest(postRequest("pursuits/review", { pursuitId: "pursuit-1" }), {
+    getSession: async () => authed(),
+    repositoryRequest,
+    loadAggregate: async () => agg,
+    loadPursuit: async () => savedPursuit({ profileId: "profile-2" }),
+  });
+  assert.equal(reviewWrongProfile.status, 404);
+
+  const reviewInvalidSelection = await handlePublicProfilePursuitReviewRequest(postRequest("pursuits/review", {
+    pursuitId: "pursuit-1",
+    selectedRoleTrackId: "track-404",
+    selectedResumeId: "resume-404",
+    selectedWorkExampleId: "example-404",
+    recommendedWorkExampleIds: ["example-404"],
+  }), {
+    getSession: async () => authed(),
+    repositoryRequest,
+    loadAggregate: async () => agg,
+    loadPursuit: async () => savedPursuit(),
+  });
+  assert.equal(reviewInvalidSelection.status, 400);
+  const reviewInvalidJson = await body(reviewInvalidSelection);
+  assert.equal(reviewInvalidJson.status, "validation_error");
+  assert.equal((reviewInvalidJson.issues as unknown[]).length, 4);
+
+  const reviewTransitionError = await handlePublicProfilePursuitReviewRequest(postRequest("pursuits/review", { pursuitId: "pursuit-1" }), {
+    getSession: async () => authed(),
+    repositoryRequest,
+    loadAggregate: async () => agg,
+    loadPursuit: async () => savedPursuit({ status: "outreach_ready" }),
+  });
+  assert.equal(reviewTransitionError.status, 409);
+  assert.equal((await body(reviewTransitionError)).status, "transition_error");
+
+  let persistedReview: unknown;
+  const reviewComplete = await handlePublicProfilePursuitReviewRequest(postRequest("pursuits/review", {
+    pursuitId: "pursuit-1",
+    selectedRoleTrackId: "track-1",
+    selectedResumeId: "resume-1",
+    selectedWorkExampleId: "example-1",
+    fitSummary: "Reviewed and ready.",
+    risks: ["Volume risk"],
+    recommendedWorkExampleIds: ["example-1"],
+    outreachAngle: "Lead with operational clarity.",
+  }), {
+    now: () => now,
+    getSession: async () => authed(),
+    repositoryRequest,
+    loadAggregate: async () => agg,
+    loadPursuit: async () => savedPursuit(),
+    persistTransition: async (_request, result) => {
+      persistedReview = result;
+    },
+  });
+  assert.equal(reviewComplete.status, 200);
+  const reviewCompleteJson = await body(reviewComplete);
+  assert.equal(reviewCompleteJson.status, "review_complete");
+  assert.equal((reviewCompleteJson.pursuit as Record<string, unknown>).status, "review_complete");
+  assert.equal((reviewCompleteJson.pursuit as Record<string, unknown>).selectedRoleTrackId, "track-1");
+  assert.equal((reviewCompleteJson.pursuit as Record<string, unknown>).selectedResumeId, "resume-1");
+  assert.equal((reviewCompleteJson.pursuit as Record<string, unknown>).selectedWorkExampleId, "example-1");
+  assert.deepEqual((persistedReview as { pursuit: Pursuit }).pursuit.recommendedWorkExampleIds, ["example-1"]);
 
   // ---- Identity & Search (full GET/PATCH coverage) ----
   const identityView = identitySearchSection(agg);

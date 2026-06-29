@@ -203,3 +203,10 @@ metering ledger, status updated here. No UI, no live billing integration.
   features for inactive subscriptions. Verified `node scripts/test-public-profile-subscription.mjs`
   plus the full backend validation set listed above; `npm run lint` still has 7 existing warnings,
   0 errors.
+- 2026-06-29 — Codex added the next pursuit API slice: `POST /api/public-profile/pursuits`
+  creates a metered pursuit from a matched job, and `POST /api/public-profile/pursuits/review`
+  completes review by validating selected Role Track, resume, and Work Example ids against the
+  user's aggregate before persisting the `review_complete` transition. Verified
+  `node scripts/test-public-profile-api.mjs`, `node scripts/test-public-profile-pursuits.mjs`,
+  `npx tsc --noEmit --incremental false`, `npm run lint` (7 existing warnings, 0 errors), and
+  `git diff --check`.
