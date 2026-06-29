@@ -15,7 +15,9 @@ import {
   handlePublicProfilePursuitHumanPathRequest,
   handlePublicProfilePursuitLifecycleRequest,
   handlePublicProfilePursuitOutreachRequest,
+  handlePublicProfilePursuitReadRequest,
   handlePublicProfilePursuitReviewRequest,
+  handlePublicProfilePursuitsListRequest,
   handlePublicProfilePursuitStatusRequest,
   handlePublicProfileBootstrapRequest,
   handlePublicProfileRegenerationRequest,
@@ -33,7 +35,7 @@ import {
   handleWritingSamplesSectionPatchRequest,
 } from "../lib/public-profile/api";
 import type { PublicProfileRepositoryRequest } from "../lib/public-profile/repository";
-import type { GeneratedOutreachDraft, HumanPathContact, HumanPathContactSuggestion, Pursuit } from "../lib/public-profile/pursuits/types";
+import type { GeneratedOutreachDraft, HumanPathContact, HumanPathContactSuggestion, OutreachMessageRecord, Pursuit, PursuitEvent } from "../lib/public-profile/pursuits/types";
 import type { PublicJobRecord } from "../lib/public-jobs/types";
 import type { SubscriptionContext, UsageLedgerEntry } from "../lib/public-profile/subscription/types";
 import type { PublicProfileRegenerationResult } from "../lib/public-profile/service";
@@ -433,6 +435,118 @@ async function main() {
   assert.equal(matchJson.profileId, "profile-1");
   assert.equal((matchJson.job as Record<string, unknown>).id, "job-1");
   assert.equal((matchJson.match as Record<string, unknown>).label, "Strong Match");
+
+  // ---- Pursuit list route ----
+  const pursuitsListUnauthorized = await handlePublicProfilePursuitsListRequest(getRequest("pursuits"), {
+    getSession: async () => ({ status: "unauthenticated", reason: "Missing bearer token." }),
+  });
+  assert.equal(pursuitsListUnauthorized.status, 401);
+
+  const pursuitsListRepoConfig = await handlePublicProfilePursuitsListRequest(getRequest("pursuits"), {
+    getSession: async () => authed(),
+    env: {} as NodeJS.ProcessEnv,
+  });
+  assert.equal(pursuitsListRepoConfig.status, 503);
+
+  const pursuitsListBadStatus = await handlePublicProfilePursuitsListRequest(getRequest("pursuits?status=banana"), {
+    getSession: async () => authed(),
+    repositoryRequest,
+    loadPursuits: async () => { throw new Error("should not load on validation error"); },
+  });
+  assert.equal(pursuitsListBadStatus.status, 400);
+  assert.equal((await body(pursuitsListBadStatus)).status, "validation_error");
+
+  let listOptionsSeen: { status?: string; includeDeleted?: boolean } | undefined;
+  const pursuitsListOk = await handlePublicProfilePursuitsListRequest(getRequest("pursuits?status=outreach_sent"), {
+    getSession: async () => authed(),
+    repositoryRequest,
+    loadPursuits: async (_request, _userId, listOptions) => {
+      listOptionsSeen = listOptions;
+      return [savedPursuit({ id: "pursuit-1", jobId: "job-1", status: "outreach_sent" })];
+    },
+    loadJobs: async () => new Map([["job-1", publicJob({ id: "job-1" })]]),
+  });
+  assert.equal(pursuitsListOk.status, 200);
+  assert.equal(listOptionsSeen?.status, "outreach_sent");
+  const pursuitsListJson = await body(pursuitsListOk);
+  assert.equal(pursuitsListJson.status, "ok");
+  assert.equal(pursuitsListJson.total, 1);
+  assert.deepEqual(pursuitsListJson.counts, { outreach_sent: 1 });
+  const listItems = pursuitsListJson.pursuits as Array<Record<string, unknown>>;
+  assert.equal((listItems[0].pursuit as Record<string, unknown>).id, "pursuit-1");
+  assert.equal((listItems[0].job as Record<string, unknown>).id, "job-1");
+
+  const pursuitsListMissingJob = await handlePublicProfilePursuitsListRequest(getRequest("pursuits"), {
+    getSession: async () => authed(),
+    repositoryRequest,
+    loadPursuits: async () => [savedPursuit({ id: "pursuit-1", jobId: "job-gone" })],
+    loadJobs: async () => new Map(),
+  });
+  assert.equal(pursuitsListMissingJob.status, 200);
+  const missingJobItems = (await body(pursuitsListMissingJob)).pursuits as Array<Record<string, unknown>>;
+  assert.equal(missingJobItems[0].job, null);
+
+  // ---- Pursuit read route ----
+  const pursuitReadUnauthorized = await handlePublicProfilePursuitReadRequest(getRequest("pursuits/pursuit-1"), "pursuit-1", {
+    getSession: async () => ({ status: "unauthenticated", reason: "Missing bearer token." }),
+  });
+  assert.equal(pursuitReadUnauthorized.status, 401);
+
+  const pursuitReadValidation = await handlePublicProfilePursuitReadRequest(getRequest("pursuits/"), "  ", {
+    getSession: async () => authed(),
+    repositoryRequest,
+    loadPursuit: async () => { throw new Error("should not load on validation error"); },
+  });
+  assert.equal(pursuitReadValidation.status, 400);
+
+  const pursuitReadNotFound = await handlePublicProfilePursuitReadRequest(getRequest("pursuits/pursuit-404"), "pursuit-404", {
+    getSession: async () => authed(),
+    repositoryRequest,
+    loadPursuit: async () => undefined,
+  });
+  assert.equal(pursuitReadNotFound.status, 404);
+
+  const readOutreachMessage: OutreachMessageRecord = {
+    id: "message-1",
+    pursuitId: "pursuit-1",
+    contactSuggestionId: "contact-1",
+    recipientType: "likely_hiring_manager",
+    channel: "email",
+    message: "Hi Dana.",
+    status: "draft",
+    selectedRoleTrackId: "track-1",
+    selectedResumeId: "resume-1",
+    selectedWorkExampleId: "example-1",
+    createdAt: now,
+    updatedAt: now,
+  };
+  const readEvent: PursuitEvent = {
+    id: "event-1",
+    pursuitId: "pursuit-1",
+    userId: "user-1",
+    eventType: "created",
+    toStatus: "saved",
+    usageType: "pursuit",
+    payload: {},
+    createdAt: now,
+  };
+  const pursuitReadOk = await handlePublicProfilePursuitReadRequest(getRequest("pursuits/pursuit-1"), "pursuit-1", {
+    getSession: async () => authed(),
+    repositoryRequest,
+    loadPursuit: async () => savedPursuit({ id: "pursuit-1", jobId: "job-1" }),
+    loadJob: async () => publicJob({ id: "job-1" }),
+    loadContactSuggestions: async () => [contactSuggestion({ id: "contact-1", selectedForOutreach: true })],
+    loadOutreachMessages: async () => [readOutreachMessage],
+    loadPursuitEvents: async () => [readEvent],
+  });
+  assert.equal(pursuitReadOk.status, 200);
+  const pursuitReadJson = await body(pursuitReadOk);
+  assert.equal(pursuitReadJson.status, "ok");
+  assert.equal((pursuitReadJson.pursuit as Record<string, unknown>).id, "pursuit-1");
+  assert.equal((pursuitReadJson.job as Record<string, unknown>).id, "job-1");
+  assert.equal((pursuitReadJson.contacts as unknown[]).length, 1);
+  assert.equal(((pursuitReadJson.outreachMessages as Array<Record<string, unknown>>)[0]).id, "message-1");
+  assert.equal(((pursuitReadJson.events as Array<Record<string, unknown>>)[0]).eventType, "created");
 
   // ---- Pursuit create route ----
   const pursuitValidation = await handlePublicProfilePursuitCreateRequest(postRequest("pursuits", {}), {

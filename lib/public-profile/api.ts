@@ -2,7 +2,7 @@ import {
   getPublicAuthSession,
   type PublicAuthSession,
 } from "../public-auth/session";
-import { loadPublicJobById } from "../public-jobs/repository";
+import { loadPublicJobById, loadPublicJobsByIds } from "../public-jobs/repository";
 import type { PublicJobRecord } from "../public-jobs/types";
 import {
   searchIndustries,
@@ -22,7 +22,10 @@ import {
 import {
   createPursuitForJob,
   loadContactSuggestionsForPursuit,
+  loadOutreachMessagesForPursuit,
   loadPursuitByIdForUser,
+  loadPursuitEventsForPursuit,
+  loadPursuitsForUser,
   persistContactSelection,
   persistHumanPathGeneration,
   persistOutreachGeneration,
@@ -37,9 +40,12 @@ import type {
   HumanPathContact,
   HumanPathContactSuggestion,
   HumanPathProvider,
+  OutreachMessageRecord,
   OutreachRecipientType,
   Pursuit,
+  PursuitEvent,
   PursuitEventType,
+  PursuitStatus,
   PursuitTransitionResult,
 } from "./pursuits/types";
 import { enforceSubscriptionFeature } from "./subscription/enforcement";
@@ -410,6 +416,23 @@ export type PublicProfilePursuitsHandlerOptions = PublicProfileMatchHandlerOptio
     userId: string,
     pursuitId: string,
   ) => Promise<Pursuit | undefined>;
+  loadPursuits?: (
+    request: PublicProfileRepositoryRequest,
+    userId: string,
+    options: { status?: PursuitStatus; includeDeleted?: boolean },
+  ) => Promise<Pursuit[]>;
+  loadJobs?: (
+    request: PublicProfileRepositoryRequest,
+    jobIds: string[],
+  ) => Promise<Map<string, PublicJobRecord>>;
+  loadOutreachMessages?: (
+    request: PublicProfileRepositoryRequest,
+    pursuitId: string,
+  ) => Promise<OutreachMessageRecord[]>;
+  loadPursuitEvents?: (
+    request: PublicProfileRepositoryRequest,
+    pursuitId: string,
+  ) => Promise<PursuitEvent[]>;
   persistTransition?: (
     request: PublicProfileRepositoryRequest,
     result: Extract<PursuitTransitionResult, { ok: true }>,
@@ -815,6 +838,124 @@ export async function handlePublicProfileMatchRequest(
     profileId: aggregate.profile.id,
     job,
     match,
+  });
+}
+
+const PURSUIT_STATUSES: PursuitStatus[] = [
+  "discovered",
+  "saved",
+  "review_complete",
+  "human_path_generated",
+  "outreach_ready",
+  "outreach_sent",
+  "applied",
+  "responded",
+  "interviewing",
+  "offer",
+  "rejected",
+  "expired",
+  "deleted",
+];
+
+function parsePursuitStatusFilter(value: string | null): PursuitStatus | undefined {
+  if (!value) return undefined;
+  return PURSUIT_STATUSES.find((status) => status === value);
+}
+
+export async function handlePublicProfilePursuitsListRequest(
+  request: Request,
+  options: PublicProfilePursuitsHandlerOptions = {},
+) {
+  const session = await sessionForRequest(request, options);
+  if (session.status !== "authenticated") return authErrorResponse(session);
+
+  const repositoryRequest = repositoryRequestForOptions(options);
+  if (!repositoryRequest) return repositoryConfigErrorResponse();
+
+  const url = new URL(request.url);
+  const statusParam = url.searchParams.get("status");
+  if (statusParam && !parsePursuitStatusFilter(statusParam)) {
+    return json({
+      error: "Unknown pursuit status filter.",
+      status: "validation_error",
+      issues: [{ field: "status", message: `status must be one of: ${PURSUIT_STATUSES.join(", ")}.` }],
+    }, { status: 400 });
+  }
+  const statusFilter = parsePursuitStatusFilter(statusParam);
+  const includeDeleted = url.searchParams.get("includeDeleted") === "true";
+
+  const loadPursuits = options.loadPursuits ?? loadPursuitsForUser;
+  const pursuits = await loadPursuits(repositoryRequest, session.userId, {
+    status: statusFilter,
+    includeDeleted,
+  });
+
+  const loadJobs = options.loadJobs ?? loadPublicJobsByIds;
+  const jobsById = await loadJobs(repositoryRequest, pursuits.map((pursuit) => pursuit.jobId));
+
+  const items = pursuits.map((pursuit) => ({
+    pursuit,
+    job: jobsById.get(pursuit.jobId) ?? null,
+  }));
+
+  const counts = pursuits.reduce<Record<string, number>>((accumulator, pursuit) => {
+    accumulator[pursuit.status] = (accumulator[pursuit.status] ?? 0) + 1;
+    return accumulator;
+  }, {});
+
+  return json({
+    status: "ok",
+    total: pursuits.length,
+    counts,
+    pursuits: items,
+  });
+}
+
+export async function handlePublicProfilePursuitReadRequest(
+  request: Request,
+  pursuitId: string,
+  options: PublicProfilePursuitsHandlerOptions = {},
+) {
+  const session = await sessionForRequest(request, options);
+  if (session.status !== "authenticated") return authErrorResponse(session);
+
+  const repositoryRequest = repositoryRequestForOptions(options);
+  if (!repositoryRequest) return repositoryConfigErrorResponse();
+
+  const trimmedId = pursuitId.trim();
+  if (!trimmedId) {
+    return json({
+      error: "Expected pursuit id.",
+      status: "validation_error",
+      issues: [{ field: "id", message: "id is required." }],
+    }, { status: 400 });
+  }
+
+  const loadPursuit = options.loadPursuit ?? loadPursuitByIdForUser;
+  const pursuit = await loadPursuit(repositoryRequest, session.userId, trimmedId);
+  if (!pursuit) {
+    return json({ error: "Pursuit not found.", status: "not_found" }, { status: 404 });
+  }
+
+  const loadJob = options.loadJob ?? loadPublicJobById;
+  const loadContactSuggestions = options.loadContactSuggestions ?? loadContactSuggestionsForPursuit;
+  const loadOutreachMessages = options.loadOutreachMessages ?? loadOutreachMessagesForPursuit;
+  const loadEvents = options.loadPursuitEvents ?? loadPursuitEventsForPursuit;
+
+  const [job, contacts, outreachMessages, events] = await Promise.all([
+    loadJob(repositoryRequest, pursuit.jobId),
+    loadContactSuggestions(repositoryRequest, pursuit.id),
+    loadOutreachMessages(repositoryRequest, pursuit.id),
+    loadEvents(repositoryRequest, pursuit.id),
+  ]);
+
+  return json({
+    status: "ok",
+    pursuit,
+    job: job ?? null,
+    contacts,
+    outreachMessages,
+    events,
   });
 }
 

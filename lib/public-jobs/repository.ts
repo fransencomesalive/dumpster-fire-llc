@@ -213,6 +213,15 @@ export async function loadPublicJobById(
   return row ? mapPublicJobRecord(row) : undefined;
 }
 
+export async function loadPublicJobsByIds(
+  request: PublicProfileRepositoryRequest,
+  jobIds: string[],
+): Promise<Map<string, PublicJobRecord>> {
+  const uniqueIds = [...new Set(jobIds)];
+  const rows = await jobsById(request, uniqueIds);
+  return new Map(rows.map((row) => [row.id, mapPublicJobRecord(row)]));
+}
+
 function summaryForJobs(jobs: PublicJobRecord[], scanParameters: string[]): PublicJobsSummary {
   const lastScanAt = jobs
     .map((job) => job.lastSeenAt)

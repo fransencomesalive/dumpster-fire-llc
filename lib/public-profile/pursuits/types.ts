@@ -134,6 +134,24 @@ export type GeneratedOutreachDraft = {
   createdAt: string;
 };
 
+export type OutreachMessageStatus = "draft" | "approved" | "sent" | "rejected";
+
+export type OutreachMessageRecord = {
+  id: string;
+  pursuitId: string;
+  contactSuggestionId?: string;
+  recipientType: OutreachRecipientType;
+  channel: string;
+  message: string;
+  status: OutreachMessageStatus;
+  rejectionReason?: string;
+  selectedRoleTrackId?: string;
+  selectedResumeId?: string;
+  selectedWorkExampleId?: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type HumanPathProviderInput = {
   pursuit: Pursuit;
   job: {

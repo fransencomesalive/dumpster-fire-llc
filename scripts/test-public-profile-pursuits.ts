@@ -10,6 +10,9 @@ import {
 import {
   createPursuitForJob,
   loadContactSuggestionsForPursuit,
+  loadOutreachMessagesForPursuit,
+  loadPursuitEventsForPursuit,
+  loadPursuitsForUser,
   persistContactSelection,
   persistHumanPathGeneration,
   persistOutreachGeneration,
@@ -248,6 +251,87 @@ async function main() {
     created_at: outreach.pursuit.updatedAt,
     updated_at: outreach.pursuit.updatedAt,
   }]);
+
+  const listCalls: Array<{ table: string; query?: string }> = [];
+  const listRequest: PublicProfileRepositoryRequest = async <T>(
+    table: string,
+    requestOptions: Parameters<PublicProfileRepositoryRequest>[1],
+  ) => {
+    listCalls.push({ table, query: requestOptions.query });
+    return [{
+      id: "pursuit-1",
+      user_id: "user-1",
+      profile_id: "profile-1",
+      job_id: "job-1",
+      selected_role_track_id: null,
+      selected_resume_id: null,
+      selected_work_example_id: null,
+      status: "saved",
+      fit_summary: null,
+      risks: [],
+      recommended_work_example_ids: [],
+      outreach_angle: null,
+      last_activity_at: now,
+      created_at: now,
+      updated_at: now,
+    }] as T;
+  };
+
+  const defaultList = await loadPursuitsForUser(listRequest, "user-1");
+  assert.equal(listCalls[0].table, "pursuits");
+  assert.ok(listCalls[0].query?.includes("user_id=eq.user-1"));
+  assert.ok(listCalls[0].query?.includes("status=neq.deleted"));
+  assert.ok(listCalls[0].query?.includes("order=last_activity_at.desc"));
+  assert.equal(defaultList[0].id, "pursuit-1");
+  assert.equal(defaultList[0].status, "saved");
+
+  listCalls.length = 0;
+  await loadPursuitsForUser(listRequest, "user-1", { status: "outreach_sent" });
+  assert.ok(listCalls[0].query?.includes("status=eq.outreach_sent"));
+  assert.equal(listCalls[0].query?.includes("status=neq.deleted"), false);
+
+  listCalls.length = 0;
+  await loadPursuitsForUser(listRequest, "user-1", { includeDeleted: true });
+  assert.equal(listCalls[0].query?.includes("status="), false);
+
+  const outreachRequest: PublicProfileRepositoryRequest = async <T>() => [{
+    id: "message-1",
+    pursuit_id: "pursuit-1",
+    contact_suggestion_id: "contact-1",
+    recipient_type: "likely_hiring_manager",
+    channel: "email",
+    message: "Hi Dana.",
+    status: "draft",
+    rejection_reason: null,
+    selected_role_track_id: "track-1",
+    selected_resume_id: "resume-1",
+    selected_work_example_id: "example-1",
+    created_at: now,
+    updated_at: now,
+  }] as T;
+  const outreachMessages = await loadOutreachMessagesForPursuit(outreachRequest, "pursuit-1");
+  assert.equal(outreachMessages[0].id, "message-1");
+  assert.equal(outreachMessages[0].recipientType, "likely_hiring_manager");
+  assert.equal(outreachMessages[0].contactSuggestionId, "contact-1");
+  assert.equal(outreachMessages[0].rejectionReason, undefined);
+  assert.equal(outreachMessages[0].selectedWorkExampleId, "example-1");
+
+  const eventsRequest: PublicProfileRepositoryRequest = async <T>() => [{
+    id: "event-1",
+    pursuit_id: "pursuit-1",
+    user_id: "user-1",
+    event_type: "created",
+    from_status: null,
+    to_status: "saved",
+    usage_type: "pursuit",
+    payload: {},
+    created_at: now,
+  }] as T;
+  const pursuitEvents = await loadPursuitEventsForPursuit(eventsRequest, "pursuit-1");
+  assert.equal(pursuitEvents[0].id, "event-1");
+  assert.equal(pursuitEvents[0].eventType, "created");
+  assert.equal(pursuitEvents[0].toStatus, "saved");
+  assert.equal(pursuitEvents[0].fromStatus, undefined);
 
   console.log("public profile pursuits: all assertions passed");
 }

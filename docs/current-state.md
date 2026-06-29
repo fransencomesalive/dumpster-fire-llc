@@ -1,5 +1,43 @@
 # Current State
 
+## 2026-06-29 - Pursuit read/list API (Claude)
+
+Added the read/list API layer for public pursuits so future pursuit dashboard UI has data to
+consume. Backend-only, no migrations, no UI, no design-gated surfaces touched.
+
+- `GET /api/public-profile/pursuits` lists the user's pursuits (newest activity first), excludes
+  `deleted` by default, supports `?status=<status>` filter and `?includeDeleted=true`, and returns
+  each pursuit with its job summary plus per-status `counts`.
+- `GET /api/public-profile/pursuits/[id]` returns full detail: pursuit + job + contacts +
+  outreach messages + event timeline. First dynamic route in the app (Next 16 `params: Promise`).
+- Repository: `loadPursuitsForUser`, `loadOutreachMessagesForPursuit`, `loadPursuitEventsForPursuit`
+  in `lib/public-profile/pursuits/repository.ts`; batch `loadPublicJobsByIds` exported from
+  `lib/public-jobs/repository.ts`; `OutreachMessageRecord` type added to pursuits/types.ts.
+- Handlers `handlePublicProfilePursuitsListRequest` / `handlePublicProfilePursuitReadRequest` in
+  `lib/public-profile/api.ts` with injectable loader seams.
+- Tests extended in `scripts/test-public-profile-pursuits.ts` (repository) and
+  `scripts/test-public-profile-api.ts` (handlers).
+
+Validation: all public-profile test suites + `test:public-jobs` pass; `tsc --noEmit` clean;
+`npm run lint` 0 errors / 7 pre-existing warnings; `npm run build` registers both new routes;
+`git diff --check` clean.
+
+Next backend-adjacent options remain: wire external connector ingestion into `/api/jobs/scan`,
+or move to the design-gated pursuit dashboard UI track.
+
+## 2026-06-29 - Codex backend brief complete
+
+Codex completed and pushed the backend-only brief from
+`docs/codex-tasks-backend-2026-06-28.md`. Matching, pursuit state machine/API slices,
+Human Path provider boundary, contact selection, outreach generation persistence, status
+tracking, lifecycle actions, and subscription enforcement are implemented and tested as backend
+foundation.
+
+Claude restart note: read `docs/claude-handoff-codex-backend-completion-2026-06-29.md` before
+deciding the next track. The backend brief is complete, but public matching/pursuit/Human
+Path/outreach UI remains unbuilt and design-gated. A sensible backend continuation, if explicitly
+approved, is a read/list API for public pursuits so future dashboard work has data to consume.
+
 ## 2026-06-26 - Active session rules
 
 Use this top section as the active session memory. Older `NEXT SESSION`, `RESUME HERE`, handoff, or dated markers in this file are historical notes only and must not be treated as the active resume point unless Randall explicitly names one.

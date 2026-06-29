@@ -4,10 +4,15 @@ import type {
   GeneratedOutreachDraft,
   HumanPathContact,
   HumanPathContactSuggestion,
+  OutreachMessageRecord,
+  OutreachRecipientType,
   Pursuit,
   PursuitEvent,
+  PursuitEventType,
+  PursuitStatus,
   PursuitTransitionResult,
   PursuitUsageEvent,
+  PursuitUsageType,
 } from "./types";
 import { createPursuit } from "./state-machine";
 
@@ -27,6 +32,34 @@ type PursuitRow = {
   last_activity_at: string;
   created_at: string;
   updated_at: string;
+};
+
+type OutreachMessageRow = {
+  id: string;
+  pursuit_id: string;
+  contact_suggestion_id: string | null;
+  recipient_type: OutreachRecipientType;
+  channel: string;
+  message: string;
+  status: OutreachMessageRecord["status"];
+  rejection_reason: string | null;
+  selected_role_track_id: string | null;
+  selected_resume_id: string | null;
+  selected_work_example_id: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+type PursuitEventRow = {
+  id: string;
+  pursuit_id: string;
+  user_id: string;
+  event_type: PursuitEventType;
+  from_status: PursuitStatus | null;
+  to_status: PursuitStatus | null;
+  usage_type: PursuitUsageType | null;
+  payload: Record<string, unknown>;
+  created_at: string;
 };
 
 type ContactSuggestionRow = {
@@ -213,6 +246,85 @@ export async function loadContactSuggestionsForPursuit(
     }),
   });
   return rows.map(mapContactSuggestion);
+}
+
+function mapOutreachMessage(row: OutreachMessageRow): OutreachMessageRecord {
+  return {
+    id: row.id,
+    pursuitId: row.pursuit_id,
+    contactSuggestionId: defined(row.contact_suggestion_id),
+    recipientType: row.recipient_type,
+    channel: row.channel,
+    message: row.message,
+    status: row.status,
+    rejectionReason: defined(row.rejection_reason),
+    selectedRoleTrackId: defined(row.selected_role_track_id),
+    selectedResumeId: defined(row.selected_resume_id),
+    selectedWorkExampleId: defined(row.selected_work_example_id),
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+function mapPursuitEvent(row: PursuitEventRow): PursuitEvent {
+  return {
+    id: row.id,
+    pursuitId: row.pursuit_id,
+    userId: row.user_id,
+    eventType: row.event_type,
+    fromStatus: defined(row.from_status),
+    toStatus: defined(row.to_status),
+    usageType: defined(row.usage_type),
+    payload: row.payload,
+    createdAt: row.created_at,
+  };
+}
+
+export async function loadPursuitsForUser(
+  request: PublicProfileRepositoryRequest,
+  userId: string,
+  options: { status?: PursuitStatus; includeDeleted?: boolean } = {},
+): Promise<Pursuit[]> {
+  const query: Record<string, string> = {
+    user_id: `eq.${userId}`,
+    select: "id,user_id,profile_id,job_id,selected_role_track_id,selected_resume_id,selected_work_example_id,status,fit_summary,risks,recommended_work_example_ids,outreach_angle,last_activity_at,created_at,updated_at",
+    order: "last_activity_at.desc",
+  };
+  if (options.status) {
+    query.status = `eq.${options.status}`;
+  } else if (!options.includeDeleted) {
+    query.status = "neq.deleted";
+  }
+  const rows = await request<PursuitRow[]>("pursuits", { query: qs(query) });
+  return rows.map(mapPursuit);
+}
+
+export async function loadOutreachMessagesForPursuit(
+  request: PublicProfileRepositoryRequest,
+  pursuitId: string,
+): Promise<OutreachMessageRecord[]> {
+  const rows = await request<OutreachMessageRow[]>("outreach_messages", {
+    query: qs({
+      pursuit_id: `eq.${pursuitId}`,
+      select: "id,pursuit_id,contact_suggestion_id,recipient_type,channel,message,status,rejection_reason,selected_role_track_id,selected_resume_id,selected_work_example_id,created_at,updated_at",
+      order: "created_at.asc",
+    }),
+  });
+  return rows.map(mapOutreachMessage);
+}
+
+export async function loadPursuitEventsForPursuit(
+  request: PublicProfileRepositoryRequest,
+  pursuitId: string,
+): Promise<PursuitEvent[]> {
+  const rows = await request<PursuitEventRow[]>("pursuit_events", {
+    query: qs({
+      pursuit_id: `eq.${pursuitId}`,
+      select: "id,pursuit_id,user_id,event_type,from_status,to_status,usage_type,payload,created_at",
+      order: "created_at.asc",
+    }),
+  });
+  return rows.map(mapPursuitEvent);
 }
 
 export async function createPursuitForJob(

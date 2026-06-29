@@ -20,6 +20,12 @@ Canonical planning sources remain:
 
 Finish the Step 2 Profile Management follow-ups, then clarify and build Step 3 Jobs and Saved Jobs.
 
+2026-06-29 backend update: the backend-only matching, pursuit, Human Path boundary, outreach
+persistence, and subscription enforcement work from `docs/codex-tasks-backend-2026-06-28.md` is
+complete. Read `docs/claude-handoff-codex-backend-completion-2026-06-29.md` before using the
+Phase 4 through Phase 8 unchecked items below; several now need pruning or reclassification as
+UI, provider, billing, or product-decision work rather than Codex backend implementation.
+
 ## Near-Term (scheduled)
 
 - [x] **Apply `20260626000100_public_job_scan_results.sql` to production** — DONE 2026-06-28.
@@ -183,10 +189,12 @@ Finish the Step 2 Profile Management follow-ups, then clarify and build Step 3 J
 - [x] Add save/unsave route for active user scan results.
 - [x] Apply public job scan results migration to Supabase. (2026-06-28)
 - [ ] Wire external/public connector ingestion into `/api/jobs/scan`; current provider scans the normalized public `jobs` table.
-- [ ] Add Pursuits.
-- [ ] Add pursuit stages for review, Human Path, contacts, outreach, and tracking.
+- [x] Add Pursuits. (backend: create/state machine + read/list API)
+- [x] Add pursuit stages for review, Human Path, contacts, outreach, and tracking. (backend API slices)
+- [x] Add pursuit read/list API for dashboard consumption: `GET /api/public-profile/pursuits` (list + counts) and `GET /api/public-profile/pursuits/[id]` (full detail). (2026-06-29)
 - [ ] Keep Saved Jobs free and separate from metered Pursuits.
-- [ ] Add pursuit state tests.
+- [x] Add pursuit state tests.
+- [ ] Build pursuit dashboard/list/read UI (design-gated).
 
 ## Phase 6 — Human Path Engine
 

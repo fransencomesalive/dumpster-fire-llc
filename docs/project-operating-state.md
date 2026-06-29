@@ -51,15 +51,26 @@ Built or partly built:
   - `POST /api/jobs/scan`
   - `POST /api/jobs/save`
   - dashboard Jobs list and Saved Jobs panel
+- Public matching backend:
+  - framework-neutral matching engine
+  - `POST /api/public-profile/match`
+- Public pursuit backend foundation:
+  - pursuit state machine and event persistence
+  - create/review/Human Path boundary/contact selection/outreach/status/lifecycle APIs
+  - contact-selection and outreach-message persistence migrations
+- Subscription enforcement backend:
+  - Tester/Basic/Pro plan rules
+  - Human Path and outreach limit checks
+  - Pursued Jobs Export gate as data-returning enforcement
 - Private `/scans` remains legacy-active private machinery and is not public-product completion.
 
 Not yet built as public workflows:
 
-- Public matching.
-- Pursuits.
-- Human Path.
-- Public outreach generation.
-- Subscription enforcement.
+- Public matching UI.
+- Pursuit dashboard/list/read workflow UI.
+- Real Human Path provider integration.
+- Public outreach UI and review workflow.
+- Billing provider, checkout, portal, and webhooks.
 - Pursued Jobs Export backend.
 - Final launch landing page and pricing page.
 - Production OAuth polish.
@@ -103,6 +114,11 @@ Q1/Q4 + 3-bucket samples + word counter + tone tags; Work Examples: title/oneHit
 **Delegated to Codex:** see `docs/codex-tasks-sync-2026-06-27.md` for two tightly-scoped, guardrailed
 tasks — (1) validate the A4 migration against a LOCAL db (no SQL edits, never prod), and (2) build the
 D3 catalogue data + lookup lib + read-only search API (no onboarding UI). Both are backend/data only.
+
+**Codex backend brief complete (2026-06-29):** matching, pursuits, Human Path boundary,
+outreach persistence, and subscription enforcement backend work from
+`docs/codex-tasks-backend-2026-06-28.md` is complete and handed back to Claude in
+`docs/claude-handoff-codex-backend-completion-2026-06-29.md`.
 
 Summary of the approved redesign: legacy 14 onboarding sections collapse to ~7; the 5-section
 personality cluster collapses into one **Voice & Personality** section (Q1 + Q4 + writing samples
