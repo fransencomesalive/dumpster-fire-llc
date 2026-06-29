@@ -15,6 +15,7 @@ import {
   handlePublicProfilePursuitHumanPathRequest,
   handlePublicProfilePursuitOutreachRequest,
   handlePublicProfilePursuitReviewRequest,
+  handlePublicProfilePursuitStatusRequest,
   handlePublicProfileBootstrapRequest,
   handlePublicProfileRegenerationRequest,
   handleResumeUploadsSectionGetRequest,
@@ -1095,6 +1096,103 @@ async function main() {
   assert.equal((persistedDrafts as GeneratedOutreachDraft[]).length, 2);
   assert.deepEqual((persistedDrafts as GeneratedOutreachDraft[]).map((draft) => draft.recipientType), ["likely_hiring_manager", "recruiter"]);
   assert.equal((persistedDrafts as GeneratedOutreachDraft[])[0].selectedWorkExampleId, "example-1");
+
+  // ---- Pursuit status route ----
+  const pursuitStatusValidation = await handlePublicProfilePursuitStatusRequest(postRequest("pursuits/status", {}), {
+    getSession: async () => authed(),
+    repositoryRequest,
+    loadAggregate: async () => { throw new Error("should not load aggregate on validation error"); },
+    loadPursuit: async () => { throw new Error("should not load pursuit on validation error"); },
+  });
+  assert.equal(pursuitStatusValidation.status, 400);
+  const pursuitStatusValidationJson = await body(pursuitStatusValidation);
+  assert.equal(pursuitStatusValidationJson.status, "validation_error");
+  assert.equal((pursuitStatusValidationJson.issues as unknown[]).length, 2);
+
+  const pursuitStatusInvalidAction = await handlePublicProfilePursuitStatusRequest(postRequest("pursuits/status", {
+    pursuitId: "pursuit-1",
+    action: "made_up",
+  }), {
+    getSession: async () => authed(),
+    repositoryRequest,
+    loadAggregate: async () => { throw new Error("should not load aggregate on validation error"); },
+  });
+  assert.equal(pursuitStatusInvalidAction.status, 400);
+  assert.equal((await body(pursuitStatusInvalidAction)).status, "validation_error");
+
+  const pursuitStatusUnauthorized = await handlePublicProfilePursuitStatusRequest(postRequest("pursuits/status", {
+    pursuitId: "pursuit-1",
+    action: "outreach_sent",
+  }), {
+    getSession: async () => ({ status: "unauthenticated", reason: "Missing bearer token." }),
+  });
+  assert.equal(pursuitStatusUnauthorized.status, 401);
+
+  const pursuitStatusMissingProfile = await handlePublicProfilePursuitStatusRequest(postRequest("pursuits/status", {
+    pursuitId: "pursuit-1",
+    action: "outreach_sent",
+  }), {
+    getSession: async () => authed(),
+    repositoryRequest,
+    loadAggregate: async () => undefined,
+  });
+  assert.equal(pursuitStatusMissingProfile.status, 404);
+
+  const pursuitStatusMissingPursuit = await handlePublicProfilePursuitStatusRequest(postRequest("pursuits/status", {
+    pursuitId: "pursuit-404",
+    action: "outreach_sent",
+  }), {
+    getSession: async () => authed(),
+    repositoryRequest,
+    loadAggregate: async () => agg,
+    loadPursuit: async () => undefined,
+  });
+  assert.equal(pursuitStatusMissingPursuit.status, 404);
+
+  const pursuitStatusWrongProfile = await handlePublicProfilePursuitStatusRequest(postRequest("pursuits/status", {
+    pursuitId: "pursuit-1",
+    action: "outreach_sent",
+  }), {
+    getSession: async () => authed(),
+    repositoryRequest,
+    loadAggregate: async () => agg,
+    loadPursuit: async () => savedPursuit({ profileId: "profile-2", status: "outreach_ready" }),
+  });
+  assert.equal(pursuitStatusWrongProfile.status, 404);
+
+  const pursuitStatusTransitionError = await handlePublicProfilePursuitStatusRequest(postRequest("pursuits/status", {
+    pursuitId: "pursuit-1",
+    action: "responded",
+  }), {
+    now: () => now,
+    getSession: async () => authed(),
+    repositoryRequest,
+    loadAggregate: async () => agg,
+    loadPursuit: async () => savedPursuit({ status: "outreach_ready" }),
+  });
+  assert.equal(pursuitStatusTransitionError.status, 409);
+  assert.equal((await body(pursuitStatusTransitionError)).status, "transition_error");
+
+  let persistedStatus: unknown;
+  const pursuitStatusUpdated = await handlePublicProfilePursuitStatusRequest(postRequest("pursuits/status", {
+    pursuitId: "pursuit-1",
+    action: "outreach_sent",
+  }), {
+    now: () => now,
+    getSession: async () => authed(),
+    repositoryRequest,
+    loadAggregate: async () => agg,
+    loadPursuit: async () => savedPursuit({ status: "outreach_ready" }),
+    persistTransition: async (_request, result) => {
+      persistedStatus = result;
+    },
+  });
+  assert.equal(pursuitStatusUpdated.status, 200);
+  const pursuitStatusJson = await body(pursuitStatusUpdated);
+  assert.equal(pursuitStatusJson.status, "updated");
+  assert.equal((pursuitStatusJson.pursuit as Record<string, unknown>).status, "outreach_sent");
+  assert.equal((pursuitStatusJson.event as Record<string, unknown>).eventType, "outreach_sent");
+  assert.equal((persistedStatus as { pursuit: Pursuit }).pursuit.status, "outreach_sent");
 
   // ---- Identity & Search (full GET/PATCH coverage) ----
   const identityView = identitySearchSection(agg);

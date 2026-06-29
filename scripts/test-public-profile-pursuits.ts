@@ -87,6 +87,31 @@ const sent = transitionPursuit(outreach.pursuit, "outreach_sent", "2026-06-29T17
 assert.equal(sent.ok, true);
 if (sent.ok) assert.equal(sent.pursuit.status, "outreach_sent");
 
+if (!sent.ok) throw new Error("sent pursuit should be available for tracking tests");
+const applied = transitionPursuit(sent.pursuit, "applied", "2026-06-29T18:00:00.000Z");
+assert.equal(applied.ok, true);
+if (applied.ok) assert.equal(applied.pursuit.status, "applied");
+
+if (!applied.ok) throw new Error("applied pursuit should be available for tracking tests");
+const responded = transitionPursuit(applied.pursuit, "responded", "2026-06-29T19:00:00.000Z");
+assert.equal(responded.ok, true);
+if (responded.ok) assert.equal(responded.pursuit.status, "responded");
+
+if (!responded.ok) throw new Error("responded pursuit should be available for tracking tests");
+const interviewing = transitionPursuit(responded.pursuit, "interviewing", "2026-06-29T20:00:00.000Z");
+assert.equal(interviewing.ok, true);
+if (interviewing.ok) assert.equal(interviewing.pursuit.status, "interviewing");
+
+if (!interviewing.ok) throw new Error("interviewing pursuit should be available for tracking tests");
+const offer = transitionPursuit(interviewing.pursuit, "offer", "2026-06-29T21:00:00.000Z");
+assert.equal(offer.ok, true);
+if (offer.ok) assert.equal(offer.pursuit.status, "offer");
+
+if (!offer.ok) throw new Error("offer pursuit should be available for tracking tests");
+const rejected = transitionPursuit(offer.pursuit, "rejected", "2026-06-29T22:00:00.000Z");
+assert.equal(rejected.ok, true);
+if (rejected.ok) assert.equal(rejected.pursuit.status, "rejected");
+
 const badTransition = transitionPursuit(created.pursuit, "outreach_generated", later);
 assert.equal(badTransition.ok, false);
 if (badTransition.ok === false) assert.ok(badTransition.issues[0].includes("Cannot apply outreach_generated"));

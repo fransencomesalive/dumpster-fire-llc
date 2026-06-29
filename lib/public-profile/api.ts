@@ -39,6 +39,7 @@ import type {
   HumanPathProvider,
   OutreachRecipientType,
   Pursuit,
+  PursuitEventType,
   PursuitTransitionResult,
 } from "./pursuits/types";
 import { enforceSubscriptionFeature } from "./subscription/enforcement";
@@ -558,6 +559,22 @@ function parseCompleteReviewInput(input: Record<string, unknown>): CompleteRevie
     recommendedWorkExampleIds: stringArray(input.recommendedWorkExampleIds),
     outreachAngle: optionalString(input.outreachAngle),
   };
+}
+
+const TRACKING_ACTIONS = {
+  outreach_sent: "outreach_sent",
+  applied: "applied",
+  responded: "responded",
+  interviewing: "interviewing",
+  offer: "offer",
+  rejected: "rejected",
+} satisfies Record<string, PursuitEventType>;
+
+function parseTrackingAction(value: unknown): PursuitEventType | undefined {
+  const action = optionalString(value);
+  return action && action in TRACKING_ACTIONS
+    ? TRACKING_ACTIONS[action as keyof typeof TRACKING_ACTIONS]
+    : undefined;
 }
 
 function validateCompleteReviewInput(
@@ -1258,6 +1275,68 @@ export async function handlePublicProfilePursuitOutreachRequest(
     })),
     event: result.event,
     subscription: enforcement,
+  });
+}
+
+export async function handlePublicProfilePursuitStatusRequest(
+  request: Request,
+  options: PublicProfilePursuitsHandlerOptions = {},
+) {
+  const session = await sessionForRequest(request, options);
+  if (session.status !== "authenticated") return authErrorResponse(session);
+
+  const repositoryRequest = repositoryRequestForOptions(options);
+  if (!repositoryRequest) return repositoryConfigErrorResponse();
+
+  const input = await request.json().catch(() => null) as Record<string, unknown> | null;
+  const pursuitId = optionalString(input?.pursuitId);
+  const action = parseTrackingAction(input?.action);
+  const issues: { field: string; message: string }[] = [];
+  if (!pursuitId) issues.push({ field: "pursuitId", message: "pursuitId is required." });
+  if (!action) {
+    issues.push({
+      field: "action",
+      message: "action must be one of outreach_sent, applied, responded, interviewing, offer, rejected.",
+    });
+  }
+  if (issues.length > 0) {
+    return json({
+      error: "Expected pursuitId and tracking action.",
+      status: "validation_error",
+      issues,
+    }, { status: 400 });
+  }
+
+  const loadAggregate = options.loadAggregate ?? loadCandidateProfileAggregate;
+  const aggregate = await loadAggregate(repositoryRequest, session.userId);
+  if (!aggregate) {
+    return json({ error: "Candidate profile not found.", status: "not_found" }, { status: 404 });
+  }
+
+  const updatedAt = options.now?.() ?? new Date().toISOString();
+  const loadPursuit = options.loadPursuit ?? loadPursuitByIdForUser;
+  const pursuit = await loadPursuit(repositoryRequest, session.userId, pursuitId as string);
+  if (!pursuit || pursuit.profileId !== aggregate.profile.id) {
+    return json({ error: "Pursuit not found.", status: "not_found" }, { status: 404 });
+  }
+
+  const result = transitionPursuit(pursuit, action as PursuitEventType, updatedAt, { action });
+  if (result.ok === false) {
+    return json({
+      error: "Could not update pursuit status.",
+      status: "transition_error",
+      issues: result.issues,
+    }, { status: 409 });
+  }
+
+  const persistTransition = options.persistTransition ?? persistPursuitTransition;
+  await persistTransition(repositoryRequest, result);
+
+  return json({
+    status: "updated",
+    profileId: aggregate.profile.id,
+    pursuit: result.pursuit,
+    event: result.event,
   });
 }
 
