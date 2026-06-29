@@ -2,6 +2,8 @@ import {
   getPublicAuthSession,
   type PublicAuthSession,
 } from "../public-auth/session";
+import { loadPublicJobById } from "../public-jobs/repository";
+import type { PublicJobRecord } from "../public-jobs/types";
 import {
   searchIndustries,
   searchLocations,
@@ -22,6 +24,9 @@ import {
   parseOutreachRequest,
   type OutreachGenerationResult,
 } from "./outreach-generator";
+import { evaluateMatch } from "./matching/engine";
+import type { MatchJob, MatchResult } from "./matching/types";
+import { evaluateCandidateProfileQuality } from "./profile-quality";
 import {
   regeneratePublicProfileForUser,
   type PublicProfileRegenerationResult,
@@ -73,6 +78,7 @@ import {
   type PublicProfileWritingSamplesUpdateResult,
 } from "./section-service";
 import type { QualitySection } from "./types";
+import type { CandidateProfileAggregate } from "./types";
 
 export type PublicProfileRegenerationHandlerOptions = {
   env?: NodeJS.ProcessEnv;
@@ -337,6 +343,26 @@ export type PublicProfileCatalogueSearchHandlerOptions = {
   ) => SkillSearchResult[] | IndustrySearchResult[] | LocationSearchResult[];
 };
 
+export type PublicProfileMatchHandlerOptions = {
+  env?: NodeJS.ProcessEnv;
+  now?: () => string;
+  getSession?: (request: Request) => Promise<PublicAuthSession>;
+  repositoryRequest?: PublicProfileRepositoryRequest;
+  loadAggregate?: (
+    request: PublicProfileRepositoryRequest,
+    userId: string,
+  ) => Promise<CandidateProfileAggregate | undefined>;
+  loadJob?: (
+    request: PublicProfileRepositoryRequest,
+    jobId: string,
+  ) => Promise<PublicJobRecord | undefined>;
+  evaluate?: (input: {
+    profile: CandidateProfileAggregate;
+    job: MatchJob;
+    evaluatedAt: string;
+  }) => MatchResult;
+};
+
 function json(body: unknown, init: ResponseInit = {}) {
   return Response.json(body, {
     ...init,
@@ -382,6 +408,22 @@ function regeneratedResponse(result: Extract<PublicProfileRegenerationResult, { 
     profileStatus: result.generation.profileQuality.status,
     version: result.generation.profileVersion.version,
     generatedAt: result.generation.generatedMarkdown.generatedAt,
+  };
+}
+
+function matchJobFromPublicJob(job: PublicJobRecord): MatchJob {
+  return {
+    id: job.id,
+    title: job.title,
+    companyName: job.companyName,
+    description: job.description,
+    location: job.location,
+    remoteType: job.remoteType,
+    employmentType: job.employmentType,
+    compensationText: job.compensationText,
+    postedAt: job.postedAt,
+    scrapedAt: job.scrapedAt,
+    sourceUrl: job.sourceUrl,
   };
 }
 
@@ -464,6 +506,68 @@ export async function handlePublicProfileCatalogueSearchRequest(
     query,
     limit,
     results: query ? catalogueSearch(query, limit) : [],
+  });
+}
+
+export async function handlePublicProfileMatchRequest(
+  request: Request,
+  options: PublicProfileMatchHandlerOptions = {},
+) {
+  const session = await sessionForRequest(request, options);
+  if (session.status !== "authenticated") return authErrorResponse(session);
+
+  const repositoryRequest = repositoryRequestForOptions(options);
+  if (!repositoryRequest) return repositoryConfigErrorResponse();
+
+  const input = await request.json().catch(() => null) as { jobId?: unknown } | null;
+  const jobId = typeof input?.jobId === "string" ? input.jobId.trim() : "";
+  if (!jobId) {
+    return json({
+      error: "Expected jobId.",
+      status: "validation_error",
+      issues: [{ field: "jobId", message: "jobId is required." }],
+    }, { status: 400 });
+  }
+
+  const loadAggregate = options.loadAggregate ?? loadCandidateProfileAggregate;
+  const aggregate = await loadAggregate(repositoryRequest, session.userId);
+  if (!aggregate) {
+    return json({ error: "Candidate profile not found.", status: "not_found" }, { status: 404 });
+  }
+
+  const evaluatedAt = options.now?.() ?? new Date().toISOString();
+  const profileQuality = aggregate.profileQuality ?? evaluateCandidateProfileQuality(aggregate, evaluatedAt);
+  if (profileQuality.status !== "complete") {
+    return json({
+      error: "A complete profile is required before matching jobs.",
+      status: "profile_incomplete",
+      profileId: aggregate.profile.id,
+      profileStatus: profileQuality.status,
+      incompleteReasons: profileQuality.incompleteReasons,
+      weakFields: profileQuality.weakFields,
+      weakResponseCount: profileQuality.weakResponseCount,
+      lastCheckedAt: profileQuality.lastCheckedAt,
+    }, { status: 409 });
+  }
+
+  const loadJob = options.loadJob ?? loadPublicJobById;
+  const job = await loadJob(repositoryRequest, jobId);
+  if (!job) {
+    return json({ error: "Job not found.", status: "not_found" }, { status: 404 });
+  }
+
+  const evaluate = options.evaluate ?? ((matchInput) => evaluateMatch(matchInput));
+  const match = evaluate({
+    profile: aggregate,
+    job: matchJobFromPublicJob(job),
+    evaluatedAt,
+  });
+
+  return json({
+    status: "matched",
+    profileId: aggregate.profile.id,
+    job,
+    match,
   });
 }
 

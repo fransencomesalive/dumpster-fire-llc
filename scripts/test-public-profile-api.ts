@@ -9,6 +9,7 @@ import {
   handleOutreachRulesSectionGetRequest,
   handleOutreachRulesSectionPatchRequest,
   handleOutreachGeneratorRequest,
+  handlePublicProfileMatchRequest,
   handlePublicProfileBootstrapRequest,
   handlePublicProfileRegenerationRequest,
   handleResumeUploadsSectionGetRequest,
@@ -79,7 +80,14 @@ function patchRequest(path: string, payload: unknown) {
   });
 }
 
-function incompleteResult(): PublicProfileRegenerationResult {
+function postRequest(path: string, payload: unknown) {
+  return new Request(`https://app.example/api/public-profile/${path}`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+function incompleteResult(): Extract<PublicProfileRegenerationResult, { status: "incomplete" }> {
   return {
     status: "incomplete",
     userId: "user-1",
@@ -241,6 +249,101 @@ async function main() {
   assert.equal((await body(bootstrap)).status, "ready");
 
   const agg = completeCandidateProfileAggregate(now);
+
+  // ---- Match route ----
+  const matchValidation = await handlePublicProfileMatchRequest(postRequest("match", {}), {
+    getSession: async () => authed(),
+    repositoryRequest,
+    loadAggregate: async () => { throw new Error("should not load aggregate on validation error"); },
+    loadJob: async () => { throw new Error("should not load job on validation error"); },
+  });
+  assert.equal(matchValidation.status, 400);
+  assert.equal((await body(matchValidation)).status, "validation_error");
+
+  const matchUnauthorized = await handlePublicProfileMatchRequest(postRequest("match", { jobId: "job-1" }), {
+    getSession: async () => ({ status: "unauthenticated", reason: "Missing bearer token." }),
+  });
+  assert.equal(matchUnauthorized.status, 401);
+
+  const matchRepoConfig = await handlePublicProfileMatchRequest(postRequest("match", { jobId: "job-1" }), {
+    getSession: async () => authed(),
+    env: {} as NodeJS.ProcessEnv,
+  });
+  assert.equal(matchRepoConfig.status, 503);
+
+  const matchMissingProfile = await handlePublicProfileMatchRequest(postRequest("match", { jobId: "job-1" }), {
+    getSession: async () => authed(),
+    repositoryRequest,
+    loadAggregate: async () => undefined,
+  });
+  assert.equal(matchMissingProfile.status, 404);
+
+  const incompleteProfileResult = incompleteResult();
+  const matchIncomplete = await handlePublicProfileMatchRequest(postRequest("match", { jobId: "job-1" }), {
+    now: () => now,
+    getSession: async () => authed(),
+    repositoryRequest,
+    loadAggregate: async () => incompleteProfileResult.aggregate,
+  });
+  assert.equal(matchIncomplete.status, 409);
+  assert.equal((await body(matchIncomplete)).status, "profile_incomplete");
+
+  const matchMissingJob = await handlePublicProfileMatchRequest(postRequest("match", { jobId: "job-404" }), {
+    getSession: async () => authed(),
+    repositoryRequest,
+    loadAggregate: async () => agg,
+    loadJob: async () => undefined,
+  });
+  assert.equal(matchMissingJob.status, 404);
+
+  let matchedJobTitle = "";
+  let matchedAt = "";
+  const matchOk = await handlePublicProfileMatchRequest(postRequest("match", { jobId: "job-1" }), {
+    now: () => now,
+    getSession: async () => authed(),
+    repositoryRequest,
+    loadAggregate: async () => agg,
+    loadJob: async () => ({
+      id: "job-1",
+      source: "fixture",
+      sourceUrl: "https://jobs.example/1",
+      companyName: "Useful Studio",
+      title: "Program Director",
+      location: "Remote",
+      remoteType: "remote",
+      employmentType: "full_time",
+      compensationText: "$170k-$190k",
+      description: "Lead stakeholder alignment.",
+      postedAt: "2026-06-22T00:00:00.000Z",
+      scrapedAt: now,
+      firstSeenAt: now,
+      lastSeenAt: now,
+      saved: false,
+    }),
+    evaluate: ({ job, evaluatedAt }) => {
+      matchedJobTitle = job.title;
+      matchedAt = evaluatedAt;
+      return {
+        internalScore: 84,
+        label: "Strong Match",
+        categoryFits: [],
+        recommendations: { alternativeWorkExamples: [] },
+        risks: [],
+        whyMatched: ["Title lines up with Program Director."],
+        whyNotMatched: [],
+        softExclusions: [],
+        explanation: "Strong match.",
+      };
+    },
+  });
+  assert.equal(matchOk.status, 200);
+  assert.equal(matchedJobTitle, "Program Director");
+  assert.equal(matchedAt, now);
+  const matchJson = await body(matchOk);
+  assert.equal(matchJson.status, "matched");
+  assert.equal(matchJson.profileId, "profile-1");
+  assert.equal((matchJson.job as Record<string, unknown>).id, "job-1");
+  assert.equal((matchJson.match as Record<string, unknown>).label, "Strong Match");
 
   // ---- Identity & Search (full GET/PATCH coverage) ----
   const identityView = identitySearchSection(agg);

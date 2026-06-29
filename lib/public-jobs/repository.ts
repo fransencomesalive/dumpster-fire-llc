@@ -133,6 +133,26 @@ function mapJob(job: JobRow, result: JobScanResultRow, savedJobIds: Set<string>)
   };
 }
 
+function mapPublicJobRecord(job: JobRow, saved = false): PublicJobRecord {
+  return {
+    id: job.id,
+    source: job.source,
+    sourceUrl: job.source_url,
+    companyName: job.company_name,
+    title: job.title,
+    location: defined(job.location),
+    remoteType: defined(job.remote_type),
+    employmentType: defined(job.employment_type),
+    compensationText: defined(job.compensation_text),
+    description: job.description,
+    postedAt: defined(job.posted_at),
+    scrapedAt: job.scraped_at,
+    firstSeenAt: job.created_at,
+    lastSeenAt: job.updated_at,
+    saved,
+  };
+}
+
 async function ensureReadyProfile(
   request: PublicProfileRepositoryRequest,
   userId: string,
@@ -182,6 +202,15 @@ async function jobsById(request: PublicProfileRepositoryRequest, jobIds: string[
       select: "id,source,source_url,company_name,title,location,remote_type,employment_type,compensation_text,description,posted_at,scraped_at,created_at,updated_at",
     }),
   });
+}
+
+export async function loadPublicJobById(
+  request: PublicProfileRepositoryRequest,
+  jobId: string,
+): Promise<PublicJobRecord | undefined> {
+  const rows = await jobsById(request, [jobId]);
+  const row = rows[0];
+  return row ? mapPublicJobRecord(row) : undefined;
 }
 
 function summaryForJobs(jobs: PublicJobRecord[], scanParameters: string[]): PublicJobsSummary {

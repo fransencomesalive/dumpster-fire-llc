@@ -1,3 +1,4 @@
+import { cpSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import path from "node:path";
 
@@ -12,6 +13,7 @@ const compileArgs = [
   "--moduleResolution",
   "node",
   "--esModuleInterop",
+  "--resolveJsonModule",
   "--skipLibCheck",
   "--outDir",
   outDir,
@@ -43,4 +45,9 @@ function run(command, args, options = {}) {
 }
 
 run("npx", compileArgs);
+cpSync(
+  path.join(rootDir, "lib/public-profile/catalogues"),
+  path.join(outDir, "lib/public-profile/catalogues"),
+  { recursive: true },
+);
 run("node", [path.join(outDir, "scripts/test-public-profile-api.js")]);

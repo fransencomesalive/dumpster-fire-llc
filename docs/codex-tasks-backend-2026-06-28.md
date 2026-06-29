@@ -51,18 +51,18 @@ redesign. When following them, translate:
 - **Fit Signals are SOFT score contributors, not hard filters.** Poor-fit jobs still surface,
   rated lower, with the poor-fit reason shown as context. See [[matching-spectrum-no-hard-filters]].
 
-### Open decisions for Randall (do NOT resolve creatively — stop and ask)
+### Resolved decisions
 
 - **D-MATCH-1: Hard exclusions vs all-soft.** `matching-engine-spec.md` has a "Hard Exclusion
   Rules" section (salary floor, remote preference, blacklisted companies) AND Phase 4 of the
   roadmap lists "hard exclusion handling." But the standing product rule is "no hard filters —
-  everything surfaces." **Reconcile before implementing exclusions:** are salary/remote/blacklist
-  hard drops, or just strong negative score contributors that still surface with a clear flag?
-  Implement the scoring first; gate the exclusion behavior behind this decision.
+  everything surfaces." **Resolved by Randall 2026-06-29:** salary floor, remote preference, and
+  blacklisted/avoid companies are **soft negative signals**. Jobs still surface, score drops hard,
+  and the result carries clear flags/context. No hard drops.
 
 ---
 
-## TASK 1 — Matching Engine  ·  status: NOT STARTED
+## TASK 1 — Matching Engine  ·  status: DONE
 
 **Goal.** A framework-neutral service that scores one normalized job against a complete
 candidate profile and returns the match output defined in `matching-engine-spec.md`.
@@ -82,11 +82,11 @@ candidate profile and returns the match output defined in `matching-engine-spec.
   fixture-backed tests reusing `scripts/fixtures/public-profile.ts`.
 
 **Build order within the task.**
-1. Types + the per-category scorers (each returns a 0–1 or labelled score + reasons).
-2. The three recommenders (which Role Track / resume / work example to lead with).
-3. Risks + plain-English match explanation (spec §205–254).
-4. Hard-exclusion behavior — **only after D-MATCH-1 is resolved.**
-5. Full fixture test suite: strong-fit, weak-fit, exclusion-edge, missing-data cases.
+1. Types + the per-category scorers (each returns a 0–1 or labelled score + reasons). **DONE 2026-06-28.**
+2. The three recommenders (which Role Track / resume / work example to lead with). **DONE 2026-06-28.**
+3. Risks + plain-English match explanation (spec §205–254). **DONE 2026-06-28.**
+4. Hard-exclusion behavior — **RESOLVED 2026-06-29:** all soft negative signals; no hard drops.
+5. Full fixture test suite: strong-fit, weak-fit, exclusion-edge, missing-data cases. **ENGINE COVERAGE DONE 2026-06-28.**
 
 **Do NOT** add an API route or any UI in Task 1 — pure service + tests. (The route is Task 1b
 below, do it only once the engine is green.)
@@ -100,14 +100,15 @@ below, do it only once the engine is green.)
 - `app/api/public-profile/match/route.ts` — authenticated `POST` that loads the aggregate +
   the job (by id) via the repository seam and returns `evaluateMatch(...)`. Mirror the auth +
   repository-config + error mapping in `lib/public-profile/api.ts` (401/404/503 patterns).
-- Extend `scripts/test-public-profile-api.mjs` with match-route cases.
+  **DONE 2026-06-28.**
+- Extend `scripts/test-public-profile-api.mjs` with match-route cases. **DONE 2026-06-28.**
 
 **Definition of done.** Engine + recommenders + explanation implemented to spec (with D-MATCH-1
 honored), API route gated and tested, full validation green, status updated to DONE here.
 
 ---
 
-## TASK 2 — Pursuit Workflow backend  ·  status: BLOCKED on Task 1
+## TASK 2 — Pursuit Workflow backend  ·  status: DONE
 
 **Goal.** The data model + state machine + metering for pursuits, per
 `docs/pursuit-workflow-spec.md`. No UI — the Apply Wizard UI is a later design-gated effort.
@@ -144,7 +145,7 @@ implemented + tested, status updated here. Stop before any pursuit UI.
 
 ---
 
-## TASK 3 — Subscription enforcement  ·  status: BLOCKED on Task 2
+## TASK 3 — Subscription enforcement  ·  status: DONE
 
 **Goal.** Enforce Tester / Basic / Pro limits on pursuits, human-path, outreach, and the
 Pursued-Jobs export gate, per `docs/subscription-enforcement-matrix.md`.
@@ -171,3 +172,34 @@ metering ledger, status updated here. No UI, no live billing integration.
 
 - 2026-06-28 — Guide created (Claude). All three tasks NOT STARTED. Build order locked
   Matching → Pursuits → Subscription. D-MATCH-1 open for Randall.
+- 2026-06-28 — Codex implemented the framework-neutral Matching Engine under
+  `lib/public-profile/matching/` plus `scripts/test-public-profile-matching.mjs/.ts`.
+  Verified `node scripts/test-public-profile-matching.mjs`, `npx tsc --noEmit --incremental false`,
+  and `npm run lint` (7 existing warnings, 0 errors). Hard-exclusion behavior remains blocked on
+  D-MATCH-1; Task 1b API route not started.
+- 2026-06-28 — Codex implemented Task 1b: `POST /api/public-profile/match`, public-job lookup
+  helper, and match-route API tests. Verified `node scripts/test-public-profile-api.mjs`,
+  `node scripts/test-public-profile-matching.mjs`, `npm run test:public-jobs`,
+  `npx tsc --noEmit --incremental false`, `npm run lint` (7 existing warnings, 0 errors), and
+  `git diff --check`. Task 1 remains blocked only on D-MATCH-1 hard-exclusion behavior.
+- 2026-06-29 — Randall resolved D-MATCH-1 as soft negative signals: salary floor, remote
+  preference, and company blacklist/avoid-company rules still surface with score penalties and
+  flags/context; no hard drops. Task 1 marked DONE. Task 2 unblocked.
+- 2026-06-29 — Codex implemented Task 2 backend/data: defensive
+  `20260629000100_pursuit_events.sql` migration, `lib/public-profile/pursuits/` types,
+  state machine, Human Path provider stub, repository seam, and
+  `scripts/test-public-profile-pursuits.mjs/.ts`. Existing foundation tables were preserved;
+  migration only adds Work Example columns and `pursuit_events`. Verified
+  `node scripts/test-public-profile-pursuits.mjs`, `node scripts/test-public-profile-api.mjs`,
+  `node scripts/test-public-profile-matching.mjs`, `npm run test:public-jobs`,
+  `npx tsc --noEmit --incremental false`, `npm run lint` (7 existing warnings, 0 errors), and
+  `git diff --check`. Local migration validation used a disposable Postgres 16 cluster on port
+  55432 with minimal Supabase auth stubs; first apply stopped at missing `auth.uid()` in the
+  plain-Postgres stub, after adding that stub the migration reran cleanly/idempotently.
+- 2026-06-29 — Codex implemented Task 3 subscription enforcement under
+  `lib/public-profile/subscription/` plus `scripts/test-public-profile-subscription.mjs/.ts`.
+  Tester/Basic/Pro plan rules enforce Human Path and outreach limits, keep pursuits metered but
+  unlimited unless a plan rule sets a cap, gate Pursued Jobs Export to Pro+, and freeze metered
+  features for inactive subscriptions. Verified `node scripts/test-public-profile-subscription.mjs`
+  plus the full backend validation set listed above; `npm run lint` still has 7 existing warnings,
+  0 errors.
