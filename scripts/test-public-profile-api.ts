@@ -10,6 +10,7 @@ import {
   handleOutreachRulesSectionPatchRequest,
   handleOutreachGeneratorRequest,
   handlePublicProfileMatchRequest,
+  handlePublicProfilePursuitContactSelectionRequest,
   handlePublicProfilePursuitCreateRequest,
   handlePublicProfilePursuitHumanPathRequest,
   handlePublicProfilePursuitReviewRequest,
@@ -29,7 +30,7 @@ import {
   handleWritingSamplesSectionPatchRequest,
 } from "../lib/public-profile/api";
 import type { PublicProfileRepositoryRequest } from "../lib/public-profile/repository";
-import type { HumanPathContact, Pursuit } from "../lib/public-profile/pursuits/types";
+import type { HumanPathContact, HumanPathContactSuggestion, Pursuit } from "../lib/public-profile/pursuits/types";
 import type { PublicJobRecord } from "../lib/public-jobs/types";
 import type { SubscriptionContext, UsageLedgerEntry } from "../lib/public-profile/subscription/types";
 import type { PublicProfileRegenerationResult } from "../lib/public-profile/service";
@@ -120,6 +121,17 @@ function humanPathContact(overrides: Partial<HumanPathContact> = {}): HumanPathC
     relevanceReason: "Owns the program area.",
     roleConnection: "Likely sponsor for cross-functional delivery.",
     verificationNotes: ["Title matches the function."],
+    ...overrides,
+  };
+}
+
+function contactSuggestion(overrides: Partial<HumanPathContactSuggestion> = {}): HumanPathContactSuggestion {
+  return {
+    id: "contact-1",
+    ...humanPathContact(),
+    selectedForOutreach: false,
+    createdAt: now,
+    updatedAt: now,
     ...overrides,
   };
 }
@@ -812,6 +824,112 @@ async function main() {
   assert.deepEqual((persistedHumanPath as { pursuit: Pursuit }).pursuit.status, "human_path_generated");
   assert.equal((persistedContacts as HumanPathContact[]).length, 1);
   assert.equal(((humanPathJson.contacts as HumanPathContact[])[0]).name, "Dana Lee");
+
+  // ---- Pursuit contact selection route ----
+  const contactSelectionValidation = await handlePublicProfilePursuitContactSelectionRequest(postRequest("pursuits/contacts", {}), {
+    getSession: async () => authed(),
+    repositoryRequest,
+    loadAggregate: async () => { throw new Error("should not load aggregate on validation error"); },
+    loadPursuit: async () => { throw new Error("should not load pursuit on validation error"); },
+  });
+  assert.equal(contactSelectionValidation.status, 400);
+  const contactSelectionValidationJson = await body(contactSelectionValidation);
+  assert.equal(contactSelectionValidationJson.status, "validation_error");
+  assert.equal((contactSelectionValidationJson.issues as unknown[]).length, 2);
+
+  const contactSelectionUnauthorized = await handlePublicProfilePursuitContactSelectionRequest(postRequest("pursuits/contacts", {
+    pursuitId: "pursuit-1",
+    contactIds: ["contact-1"],
+  }), {
+    getSession: async () => ({ status: "unauthenticated", reason: "Missing bearer token." }),
+  });
+  assert.equal(contactSelectionUnauthorized.status, 401);
+
+  const contactSelectionMissingProfile = await handlePublicProfilePursuitContactSelectionRequest(postRequest("pursuits/contacts", {
+    pursuitId: "pursuit-1",
+    contactIds: ["contact-1"],
+  }), {
+    getSession: async () => authed(),
+    repositoryRequest,
+    loadAggregate: async () => undefined,
+  });
+  assert.equal(contactSelectionMissingProfile.status, 404);
+
+  const contactSelectionIncomplete = await handlePublicProfilePursuitContactSelectionRequest(postRequest("pursuits/contacts", {
+    pursuitId: "pursuit-1",
+    contactIds: ["contact-1"],
+  }), {
+    now: () => now,
+    getSession: async () => authed(),
+    repositoryRequest,
+    loadAggregate: async () => incompleteProfileResult.aggregate,
+  });
+  assert.equal(contactSelectionIncomplete.status, 409);
+  assert.equal((await body(contactSelectionIncomplete)).status, "profile_incomplete");
+
+  const contactSelectionMissingPursuit = await handlePublicProfilePursuitContactSelectionRequest(postRequest("pursuits/contacts", {
+    pursuitId: "pursuit-404",
+    contactIds: ["contact-1"],
+  }), {
+    getSession: async () => authed(),
+    repositoryRequest,
+    loadAggregate: async () => agg,
+    loadPursuit: async () => undefined,
+  });
+  assert.equal(contactSelectionMissingPursuit.status, 404);
+
+  const contactSelectionUnknownContact = await handlePublicProfilePursuitContactSelectionRequest(postRequest("pursuits/contacts", {
+    pursuitId: "pursuit-1",
+    contactIds: ["contact-404"],
+  }), {
+    getSession: async () => authed(),
+    repositoryRequest,
+    loadAggregate: async () => agg,
+    loadPursuit: async () => savedPursuit({ status: "human_path_generated" }),
+    loadContactSuggestions: async () => [contactSuggestion()],
+  });
+  assert.equal(contactSelectionUnknownContact.status, 400);
+  assert.equal((await body(contactSelectionUnknownContact)).status, "validation_error");
+
+  const contactSelectionTransitionError = await handlePublicProfilePursuitContactSelectionRequest(postRequest("pursuits/contacts", {
+    pursuitId: "pursuit-1",
+    contactIds: ["contact-1"],
+  }), {
+    now: () => now,
+    getSession: async () => authed(),
+    repositoryRequest,
+    loadAggregate: async () => agg,
+    loadPursuit: async () => savedPursuit({ status: "saved" }),
+    loadContactSuggestions: async () => [contactSuggestion()],
+  });
+  assert.equal(contactSelectionTransitionError.status, 409);
+  assert.equal((await body(contactSelectionTransitionError)).status, "transition_error");
+
+  let persistedContactSelection: unknown;
+  let persistedContactIds: unknown;
+  const contactSelection = await handlePublicProfilePursuitContactSelectionRequest(postRequest("pursuits/contacts", {
+    pursuitId: "pursuit-1",
+    contactIds: ["contact-1", "contact-1"],
+  }), {
+    now: () => now,
+    getSession: async () => authed(),
+    repositoryRequest,
+    loadAggregate: async () => agg,
+    loadPursuit: async () => savedPursuit({ status: "human_path_generated" }),
+    loadContactSuggestions: async () => [contactSuggestion(), contactSuggestion({ id: "contact-2", name: "Riley Chen" })],
+    persistContactSelection: async (_request, result, contactIds) => {
+      persistedContactSelection = result;
+      persistedContactIds = contactIds;
+    },
+  });
+  assert.equal(contactSelection.status, 200);
+  const contactSelectionJson = await body(contactSelection);
+  assert.equal(contactSelectionJson.status, "outreach_ready");
+  assert.deepEqual(contactSelectionJson.selectedContactIds, ["contact-1"]);
+  assert.equal((contactSelectionJson.pursuit as Record<string, unknown>).status, "outreach_ready");
+  assert.equal((contactSelectionJson.event as Record<string, unknown>).eventType, "contacts_selected");
+  assert.deepEqual(persistedContactIds, ["contact-1"]);
+  assert.equal((persistedContactSelection as { pursuit: Pursuit }).pursuit.status, "outreach_ready");
 
   // ---- Identity & Search (full GET/PATCH coverage) ----
   const identityView = identitySearchSection(agg);

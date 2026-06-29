@@ -110,6 +110,13 @@ export type HumanPathContact = {
   verificationNotes: string[];
 };
 
+export type HumanPathContactSuggestion = HumanPathContact & {
+  id: string;
+  selectedForOutreach: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type HumanPathProviderInput = {
   pursuit: Pursuit;
   job: {

@@ -2,6 +2,7 @@ import type { PublicProfileRepositoryRequest } from "../repository";
 import type {
   CreatePursuitInput,
   HumanPathContact,
+  HumanPathContactSuggestion,
   Pursuit,
   PursuitEvent,
   PursuitTransitionResult,
@@ -23,6 +24,23 @@ type PursuitRow = {
   recommended_work_example_ids: string[];
   outreach_angle: string | null;
   last_activity_at: string;
+  created_at: string;
+  updated_at: string;
+};
+
+type ContactSuggestionRow = {
+  id: string;
+  name: string;
+  title: string;
+  company_name: string;
+  linkedin_url: string | null;
+  email: string | null;
+  contact_type: HumanPathContact["contactType"];
+  confidence: HumanPathContact["confidence"];
+  relevance_reason: string;
+  role_connection: string;
+  verification_notes: string[];
+  selected_for_outreach: boolean;
   created_at: string;
   updated_at: string;
 };
@@ -131,6 +149,25 @@ function contactSuggestionBody(pursuit: Pursuit, contact: HumanPathContact, upda
   };
 }
 
+function mapContactSuggestion(row: ContactSuggestionRow): HumanPathContactSuggestion {
+  return {
+    id: row.id,
+    name: row.name,
+    title: row.title,
+    companyName: row.company_name,
+    linkedinUrl: defined(row.linkedin_url),
+    email: defined(row.email),
+    contactType: row.contact_type,
+    confidence: row.confidence,
+    relevanceReason: row.relevance_reason,
+    roleConnection: row.role_connection,
+    verificationNotes: row.verification_notes,
+    selectedForOutreach: row.selected_for_outreach,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
 export async function loadPursuitByIdForUser(
   request: PublicProfileRepositoryRequest,
   userId: string,
@@ -146,6 +183,20 @@ export async function loadPursuitByIdForUser(
   });
   const row = first(rows);
   return row ? mapPursuit(row) : undefined;
+}
+
+export async function loadContactSuggestionsForPursuit(
+  request: PublicProfileRepositoryRequest,
+  pursuitId: string,
+): Promise<HumanPathContactSuggestion[]> {
+  const rows = await request<ContactSuggestionRow[]>("contact_suggestions", {
+    query: qs({
+      pursuit_id: `eq.${pursuitId}`,
+      select: "id,name,title,company_name,linkedin_url,email,contact_type,confidence,relevance_reason,role_connection,verification_notes,selected_for_outreach,created_at,updated_at",
+      order: "created_at.asc",
+    }),
+  });
+  return rows.map(mapContactSuggestion);
 }
 
 export async function createPursuitForJob(
@@ -189,6 +240,35 @@ export async function persistPursuitTransition(
       body: result.usageEvents.map(usageEventBody),
     });
   }
+}
+
+export async function persistContactSelection(
+  request: PublicProfileRepositoryRequest,
+  result: Extract<PursuitTransitionResult, { ok: true }>,
+  contactIds: string[],
+) {
+  await persistPursuitTransition(request, result);
+
+  await request("contact_suggestions", {
+    method: "PATCH",
+    query: qs({ pursuit_id: `eq.${result.pursuit.id}` }),
+    body: {
+      selected_for_outreach: false,
+      updated_at: result.pursuit.updatedAt,
+    },
+  });
+
+  await request("contact_suggestions", {
+    method: "PATCH",
+    query: qs({
+      pursuit_id: `eq.${result.pursuit.id}`,
+      id: `in.(${contactIds.join(",")})`,
+    }),
+    body: {
+      selected_for_outreach: true,
+      updated_at: result.pursuit.updatedAt,
+    },
+  });
 }
 
 export async function persistHumanPathGeneration(

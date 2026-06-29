@@ -218,3 +218,13 @@ metering ledger, status updated here. No UI, no live billing integration.
   `node scripts/test-public-profile-api.mjs`, `node scripts/test-public-profile-pursuits.mjs`,
   `node scripts/test-public-profile-subscription.mjs`, `npx tsc --noEmit --incremental false`,
   `npm run lint` (7 existing warnings, 0 errors), and `git diff --check`.
+- 2026-06-29 — Codex added the next contacts backend slice: defensive
+  `20260629000200_contact_selection.sql` migration adds `selected_for_outreach` to contact
+  suggestions, `POST /api/public-profile/pursuits/contacts` validates selected Human Path contact
+  ids against the owned pursuit, marks selected contacts, and persists the `contacts_selected`
+  transition to `outreach_ready`. Verified `node scripts/test-public-profile-api.mjs`,
+  `node scripts/test-public-profile-pursuits.mjs`, `node scripts/test-public-profile-subscription.mjs`,
+  `npm run test:public-jobs`, `npx tsc --noEmit --incremental false`, `npm run lint`
+  (7 existing warnings, 0 errors), and `git diff --check`. Local migration validation used a
+  disposable Postgres 16 cluster on port 55433 with a minimal `contact_suggestions` table; the
+  migration applied cleanly and reapplied idempotently, then the cluster was stopped.

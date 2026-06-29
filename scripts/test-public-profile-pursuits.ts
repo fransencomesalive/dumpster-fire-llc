@@ -9,6 +9,8 @@ import {
 } from "../lib/public-profile/pursuits/state-machine";
 import {
   createPursuitForJob,
+  loadContactSuggestionsForPursuit,
+  persistContactSelection,
   persistHumanPathGeneration,
   persistPursuitTransition,
 } from "../lib/public-profile/pursuits/repository";
@@ -103,12 +105,12 @@ async function main() {
   });
   assert.equal(providerResult.status, "provider_unavailable");
 
-  const calls: Array<{ table: string; method: string; body: unknown }> = [];
+  const calls: Array<{ table: string; method: string; query?: string; body: unknown }> = [];
   const request: PublicProfileRepositoryRequest = async <T>(
     table: string,
     options: Parameters<PublicProfileRepositoryRequest>[1],
   ) => {
-    calls.push({ table, method: options.method ?? "GET", body: options.body });
+    calls.push({ table, method: options.method ?? "GET", query: options.query, body: options.body });
     return [] as T;
   };
 
@@ -152,6 +154,45 @@ async function main() {
   assert.equal(calls[3].method, "DELETE");
   assert.equal(calls[4].table, "contact_suggestions");
   assert.equal(calls[4].method, "POST");
+
+  const contactRowsRequest: PublicProfileRepositoryRequest = async <T>() => [{
+    id: "contact-1",
+    name: "Dana Lee",
+    title: "VP Product",
+    company_name: "Useful Studio",
+    linkedin_url: "https://linkedin.example/dana",
+    email: null,
+    contact_type: "likely_hiring_manager",
+    confidence: "high",
+    relevance_reason: "Owns the program area.",
+    role_connection: "Likely sponsor for cross-functional delivery.",
+    verification_notes: ["Title matches the function."],
+    selected_for_outreach: true,
+    created_at: now,
+    updated_at: now,
+  }] as T;
+  const loadedContacts = await loadContactSuggestionsForPursuit(contactRowsRequest, "pursuit-1");
+  assert.equal(loadedContacts[0].id, "contact-1");
+  assert.equal(loadedContacts[0].companyName, "Useful Studio");
+  assert.equal(loadedContacts[0].selectedForOutreach, true);
+
+  if (!contacts.ok) throw new Error("contact selection pursuit should be available for repository test");
+  calls.length = 0;
+  await persistContactSelection(request, contacts, ["contact-1"]);
+  assert.equal(calls[0].table, "pursuits");
+  assert.equal(calls[1].table, "pursuit_events");
+  assert.equal(calls[2].table, "contact_suggestions");
+  assert.equal(calls[2].method, "PATCH");
+  assert.deepEqual(calls[2].body, {
+    selected_for_outreach: false,
+    updated_at: contacts.pursuit.updatedAt,
+  });
+  assert.equal(calls[3].table, "contact_suggestions");
+  assert.equal(calls[3].method, "PATCH");
+  assert.deepEqual(calls[3].body, {
+    selected_for_outreach: true,
+    updated_at: contacts.pursuit.updatedAt,
+  });
 
   console.log("public profile pursuits: all assertions passed");
 }

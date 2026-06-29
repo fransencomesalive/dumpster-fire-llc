@@ -21,7 +21,9 @@ import {
 } from "./repository";
 import {
   createPursuitForJob,
+  loadContactSuggestionsForPursuit,
   loadPursuitByIdForUser,
+  persistContactSelection,
   persistHumanPathGeneration,
   persistPursuitTransition,
 } from "./pursuits/repository";
@@ -31,6 +33,7 @@ import type {
   CompleteReviewInput,
   CreatePursuitInput,
   HumanPathContact,
+  HumanPathContactSuggestion,
   HumanPathProvider,
   Pursuit,
   PursuitTransitionResult,
@@ -409,6 +412,15 @@ export type PublicProfilePursuitsHandlerOptions = PublicProfileMatchHandlerOptio
     result: Extract<PursuitTransitionResult, { ok: true }>,
     contacts: HumanPathContact[],
   ) => Promise<void>;
+  loadContactSuggestions?: (
+    request: PublicProfileRepositoryRequest,
+    pursuitId: string,
+  ) => Promise<HumanPathContactSuggestion[]>;
+  persistContactSelection?: (
+    request: PublicProfileRepositoryRequest,
+    result: Extract<PursuitTransitionResult, { ok: true }>,
+    contactIds: string[],
+  ) => Promise<void>;
   loadSubscriptionContext?: (
     request: PublicProfileRepositoryRequest,
     userId: string,
@@ -500,6 +512,18 @@ function workExampleRecommendationIds(match: MatchResult) {
 function stringArray(value: unknown) {
   if (!Array.isArray(value)) return undefined;
   return value.filter((item): item is string => typeof item === "string").map((item) => item.trim()).filter(Boolean);
+}
+
+function uniqueStringArray(value: unknown) {
+  const values = stringArray(value) ?? [];
+  const seen = new Set<string>();
+  const output: string[] = [];
+  for (const value of values) {
+    if (seen.has(value)) continue;
+    seen.add(value);
+    output.push(value);
+  }
+  return output;
 }
 
 function optionalString(value: unknown) {
@@ -824,7 +848,7 @@ export async function handlePublicProfilePursuitReviewRequest(
   }
 
   const loadPursuit = options.loadPursuit ?? loadPursuitByIdForUser;
-  const pursuit = await loadPursuit(repositoryRequest, session.userId, pursuitId);
+  const pursuit = await loadPursuit(repositoryRequest, session.userId, pursuitId as string);
   if (!pursuit || pursuit.profileId !== aggregate.profile.id) {
     return json({ error: "Pursuit not found.", status: "not_found" }, { status: 404 });
   }
@@ -892,7 +916,7 @@ export async function handlePublicProfilePursuitHumanPathRequest(
   }
 
   const loadPursuit = options.loadPursuit ?? loadPursuitByIdForUser;
-  const pursuit = await loadPursuit(repositoryRequest, session.userId, pursuitId);
+  const pursuit = await loadPursuit(repositoryRequest, session.userId, pursuitId as string);
   if (!pursuit || pursuit.profileId !== aggregate.profile.id) {
     return json({ error: "Pursuit not found.", status: "not_found" }, { status: 404 });
   }
@@ -958,6 +982,88 @@ export async function handlePublicProfilePursuitHumanPathRequest(
     contacts: providerResult.contacts,
     event: result.event,
     subscription: enforcement,
+  });
+}
+
+export async function handlePublicProfilePursuitContactSelectionRequest(
+  request: Request,
+  options: PublicProfilePursuitsHandlerOptions = {},
+) {
+  const session = await sessionForRequest(request, options);
+  if (session.status !== "authenticated") return authErrorResponse(session);
+
+  const repositoryRequest = repositoryRequestForOptions(options);
+  if (!repositoryRequest) return repositoryConfigErrorResponse();
+
+  const input = await request.json().catch(() => null) as Record<string, unknown> | null;
+  const pursuitId = optionalString(input?.pursuitId);
+  const contactIds = uniqueStringArray(input?.contactIds);
+  const issues: { field: string; message: string }[] = [];
+  if (!pursuitId) issues.push({ field: "pursuitId", message: "pursuitId is required." });
+  if (contactIds.length === 0) issues.push({ field: "contactIds", message: "At least one contactId is required." });
+  if (issues.length > 0) {
+    return json({
+      error: "Expected pursuitId and contactIds.",
+      status: "validation_error",
+      issues,
+    }, { status: 400 });
+  }
+
+  const loadAggregate = options.loadAggregate ?? loadCandidateProfileAggregate;
+  const aggregate = await loadAggregate(repositoryRequest, session.userId);
+  if (!aggregate) {
+    return json({ error: "Candidate profile not found.", status: "not_found" }, { status: 404 });
+  }
+
+  const selectedAt = options.now?.() ?? new Date().toISOString();
+  const profileQuality = aggregate.profileQuality ?? evaluateCandidateProfileQuality(aggregate, selectedAt);
+  if (profileQuality.status !== "complete") {
+    return profileIncompleteResponse(aggregate, profileQuality, "selecting Human Path contacts");
+  }
+
+  const loadPursuit = options.loadPursuit ?? loadPursuitByIdForUser;
+  const pursuit = await loadPursuit(repositoryRequest, session.userId, pursuitId as string);
+  if (!pursuit || pursuit.profileId !== aggregate.profile.id) {
+    return json({ error: "Pursuit not found.", status: "not_found" }, { status: 404 });
+  }
+
+  const loadContactSuggestions = options.loadContactSuggestions ?? loadContactSuggestionsForPursuit;
+  const contacts = await loadContactSuggestions(repositoryRequest, pursuit.id);
+  const contactIdsForPursuit = new Set(contacts.map((contact) => contact.id));
+  const unknownContactIds = contactIds.filter((contactId) => !contactIdsForPursuit.has(contactId));
+  if (unknownContactIds.length > 0) {
+    return json({
+      error: "Contact selection is invalid.",
+      status: "validation_error",
+      issues: unknownContactIds.map((contactId) => ({
+        field: "contactIds",
+        message: `contactIds contains unknown contact id: ${contactId}.`,
+      })),
+    }, { status: 400 });
+  }
+
+  const result = transitionPursuit(pursuit, "contacts_selected", selectedAt, {
+    contactIds,
+    contactCount: contactIds.length,
+  });
+  if (result.ok === false) {
+    return json({
+      error: "Could not select contacts.",
+      status: "transition_error",
+      issues: result.issues,
+    }, { status: 409 });
+  }
+
+  const persistSelection = options.persistContactSelection ?? persistContactSelection;
+  await persistSelection(repositoryRequest, result, contactIds);
+
+  return json({
+    status: "outreach_ready",
+    profileId: aggregate.profile.id,
+    pursuit: result.pursuit,
+    selectedContactIds: contactIds,
+    contacts: contacts.filter((contact) => contactIdsForPursuit.has(contact.id) && contactIds.includes(contact.id)),
+    event: result.event,
   });
 }
 
