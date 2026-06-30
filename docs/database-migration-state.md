@@ -44,6 +44,9 @@ re-run a psql-applied migration through the CLI — A4 in particular is non-idem
   (2105 jobs upserted). See `docs/current-state.md`.
 - `20260630000100_subscription_plans_rls.sql` — RLS enabled on subscription_plans (Security
   Advisor fix). Anon read now returns `[]`; service role still reads it.
+- `20260630000200_jobs_posting_sections.sql` — adds `responsibilities`/`required_experience text[]`
+  to `jobs` (posting parser). Applied via Management API + recorded; backfilled by re-running the
+  source scan (2102 jobs).
 
 As of 2026-06-30, **every migration in `supabase/migrations/` is applied and recorded** — prod
 schema matches the repo (reconciled by comparing files to `schema_migrations`).

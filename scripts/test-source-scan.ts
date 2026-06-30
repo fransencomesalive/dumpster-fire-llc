@@ -100,6 +100,9 @@ async function main() {
     assert.equal(rows[0].salary_min, 120000);
     assert.equal(rows[0].salary_max, 150000);
     assert.equal(rows[0].scraped_at, now);
+    // Posting sections are parsed + stored (empty here — fixture description has no headings).
+    assert.deepEqual(rows[0].responsibilities, []);
+    assert.deepEqual(rows[0].required_experience, []);
 
     const mark = calls.find((call) => call.table === "job_sources");
     assert.ok(mark, "source should be marked ingested");

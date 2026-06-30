@@ -1,5 +1,26 @@
 # Current State
 
+## 2026-06-30 - Posting parser: Responsibilities + Required experience (Claude)
+
+High-priority per Randall: match cards must show Responsibilities + Required experience (the legacy
+match-card spec). Phase 1 (heuristic) built and live in prod.
+
+- `lib/scan/sources/parse-posting.ts` — `parsePosting(description)` splits a posting into
+  `responsibilities[]` + `requiredExperience[]` by detecting section headings (heading set adapted
+  from legacy `app/scans/near-miss-review.ts`), bucketing responsibility vs requirement headings,
+  filtering boilerplate, capping 6/section. Blurb headings (About the Role/Team) are boundaries.
+  Heading-less postings degrade to empty (Phase 2 LLM will cover those).
+- Wired into `runSourceScan`. Migration `20260630000200_jobs_posting_sections.sql` adds
+  `responsibilities`/`required_experience text[]` to `jobs` — applied to prod + recorded.
+  Backfilled by re-running the source scan (2102 jobs); most yield ~6 responsibilities + ~6
+  required-experience items from real postings.
+- Read path: `PublicJobRecord` gains `responsibilities`/`requiredExperience`; returned by scan/read.
+- Tests: `scripts/test-parse-posting.{ts,mjs}`. All suites pass; tsc clean; lint baseline; build OK.
+
+Next: Phase 2 LLM refinement (callModel/opus, graceful no-key) for heading-less/messy postings;
+DashboardClient UI rebuild to the approved card (waiting on card approval; match-term highlighting
+lands with the UI).
+
 ## 2026-06-30 - All migrations applied to prod; direct DDL capability (Claude)
 
 Prod schema is now fully in sync with `supabase/migrations/`.

@@ -23,6 +23,8 @@ type JobRow = {
   scraped_at: string;
   created_at: string;
   updated_at: string;
+  responsibilities: string[] | null;
+  required_experience: string[] | null;
 };
 
 type JobScanResultRow = {
@@ -132,6 +134,8 @@ function mapJob(job: JobRow, result: JobScanResultRow, savedJobIds: Set<string>)
     firstSeenAt: result.first_seen_at,
     lastSeenAt: result.last_seen_at,
     saved: savedJobIds.has(job.id),
+    responsibilities: job.responsibilities ?? [],
+    requiredExperience: job.required_experience ?? [],
   };
 }
 
@@ -152,6 +156,8 @@ function mapPublicJobRecord(job: JobRow, saved = false): PublicJobRecord {
     firstSeenAt: job.created_at,
     lastSeenAt: job.updated_at,
     saved,
+    responsibilities: job.responsibilities ?? [],
+    requiredExperience: job.required_experience ?? [],
   };
 }
 
@@ -201,7 +207,7 @@ async function jobsById(request: PublicProfileRepositoryRequest, jobIds: string[
   return request<JobRow[]>("jobs", {
     query: qs({
       id: `in.(${jobIds.join(",")})`,
-      select: "id,source,source_url,company_name,title,location,remote_type,employment_type,compensation_text,description,posted_at,scraped_at,created_at,updated_at",
+      select: "id,source,source_url,company_name,title,location,remote_type,employment_type,compensation_text,description,posted_at,scraped_at,created_at,updated_at,responsibilities,required_experience",
     }),
   });
 }

@@ -111,6 +111,8 @@ function publicJob(overrides: Partial<PublicJobRecord> = {}): PublicJobRecord {
     firstSeenAt: now,
     lastSeenAt: now,
     saved: false,
+    responsibilities: [],
+    requiredExperience: [],
     ...overrides,
   };
 }
@@ -410,6 +412,8 @@ async function main() {
       firstSeenAt: now,
       lastSeenAt: now,
       saved: false,
+      responsibilities: [],
+      requiredExperience: [],
     }),
     evaluate: ({ job, evaluatedAt }) => {
       matchedJobTitle = job.title;
@@ -608,6 +612,8 @@ async function main() {
       firstSeenAt: now,
       lastSeenAt: now,
       saved: false,
+      responsibilities: [],
+      requiredExperience: [],
     }),
     createPursuit: async () => ({ ok: false, issues: ["Nope."] }),
   });
@@ -631,6 +637,8 @@ async function main() {
       firstSeenAt: now,
       lastSeenAt: now,
       saved: false,
+      responsibilities: [],
+      requiredExperience: [],
     }),
     createId: () => "pursuit-1",
     evaluate: () => ({

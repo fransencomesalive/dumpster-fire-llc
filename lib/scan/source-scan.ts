@@ -2,6 +2,7 @@ import type { PublicProfileRepositoryRequest } from "../public-profile/repositor
 import { fetchNormalizedConnectorJobs, type FetchConnectorJobsOptions } from "./sources/runner";
 import type { JobSource, NormalizedConnectorJob } from "./sources/types";
 import { loadActiveJobSources, markJobSourceScanned, type JobSourceRecord } from "./sources/registry";
+import { parsePosting } from "./sources/parse-posting";
 
 export type SourceScanSourceResult = {
   sourceId: string;
@@ -37,6 +38,7 @@ export type SourceScanOptions = {
 const DEFAULT_MAX_JOBS_PER_SOURCE = 200;
 
 function jobRowBody(job: NormalizedConnectorJob, scrapedAt: string) {
+  const parsed = parsePosting(job.descriptionText);
   return {
     source: job.sourceProvider,
     source_url: job.sourceUrl,
@@ -52,6 +54,8 @@ function jobRowBody(job: NormalizedConnectorJob, scrapedAt: string) {
     department: job.department || null,
     salary_min: job.salaryMin ?? null,
     salary_max: job.salaryMax ?? null,
+    responsibilities: parsed.responsibilities,
+    required_experience: parsed.requiredExperience,
     scraped_at: scrapedAt,
     updated_at: scrapedAt,
   };

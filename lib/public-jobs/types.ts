@@ -21,6 +21,10 @@ export type PublicJobRecord = {
   firstSeenAt: string;
   lastSeenAt: string;
   saved: boolean;
+  // Parsed from the posting at source-scan time (heuristic). Empty when the posting had no
+  // recognizable section headings.
+  responsibilities: string[];
+  requiredExperience: string[];
   // Set when jobs are returned to a user (read/scan): the profile-driven match score + label used
   // to rank and annotate results. Absent on bare records (e.g. ingestion mapping).
   match?: PublicJobMatchSummary;
