@@ -1,5 +1,24 @@
 # Current State
 
+## 2026-06-30 - All migrations applied to prod; direct DDL capability (Claude)
+
+Prod schema is now fully in sync with `supabase/migrations/`.
+
+- Applied the three pursuit migrations (`20260629000100/200/300`) to prod and recorded all five
+  recent versions (000100/200/300/400 + 20260630000100 RLS) in `supabase_migrations`. Verified:
+  pursuit_events present with RLS + owner policy; pursuits/contact_suggestions/outreach_messages
+  columns present. `docs/database-migration-state.md`: every migration applied + recorded, none
+  outstanding.
+- **New capability:** migrations can now be applied directly from the working environment via the
+  Supabase Management API (runs SQL as `postgres`), using a personal access token in
+  `.env.local` (`SUPABASE_ACCESS_TOKEN`, gitignored). No more hand-applying SQL in the dashboard.
+  Method documented in `docs/database-migration-state.md`.
+- Security: `subscription_plans` RLS fix verified live (anon read -> `[]`).
+
+Note: `ANTHROPIC_API_KEY` was inadvertently surfaced in a 2026-06-30 chat transcript while fixing a
+malformed `.env.local` line — add to the existing key-rotation list (see project-todo "Rotate
+exposed credentials").
+
 ## 2026-06-30 - Match scoring wired into scan ranking (Claude)
 
 Per-user scans now rank and annotate results with the rich matching engine instead of only the

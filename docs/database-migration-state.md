@@ -33,27 +33,41 @@ re-run a psql-applied migration through the CLI — A4 in particular is non-idem
 - `20260626000100_public_job_scan_results.sql` — applied 2026-06-28 via psql, recorded.
 - `20260627000100_generator_redesign_profile_schema.sql` — applied via psql (prior session), recorded 2026-06-28.
 
-## Applied 2026-06-30
+## Applied 2026-06-30 (all confirmed + recorded in schema_migrations)
 
-- `20260629000400_public_job_sources.sql` — DDL **applied to prod via the dashboard SQL editor by
-  Randall** (job_sources table + new jobs columns: external_job_id, apply_url, department,
-  salary_min, salary_max). **Bookkeeping NOT yet recorded** in
-  `supabase_migrations.schema_migrations` (PostgREST cannot reach that schema, so it could not be
-  recorded programmatically). To record it, run in the SQL editor:
-  ```sql
-  insert into supabase_migrations.schema_migrations (version, name, statements) values
-    ('20260629000400', 'public_job_sources', array['-- applied via dashboard 2026-06-30'])
-  on conflict (version) do nothing;
-  ```
-- After applying, `job_sources` was seeded with 16 starter companies (Greenhouse/Ashby/Lever) and a
-  first source scan was run manually against prod (2105 jobs upserted). See `docs/current-state.md`.
+- `20260629000100_pursuit_events.sql`, `20260629000200_contact_selection.sql`,
+  `20260629000300_outreach_work_examples.sql` — pursuit/outreach schema. Applied via the Supabase
+  **Management API** (`POST /v1/projects/{ref}/database/query`). `pursuit_events` confirmed present
+  with RLS + `pursuit_events_owner` policy.
+- `20260629000400_public_job_sources.sql` — applied via dashboard by Randall (job_sources + new
+  jobs columns). Then `job_sources` seeded with 16 starter companies and a first source scan run
+  (2105 jobs upserted). See `docs/current-state.md`.
+- `20260630000100_subscription_plans_rls.sql` — RLS enabled on subscription_plans (Security
+  Advisor fix). Anon read now returns `[]`; service role still reads it.
+
+As of 2026-06-30, **every migration in `supabase/migrations/` is applied and recorded** — prod
+schema matches the repo (reconciled by comparing files to `schema_migrations`).
+
+## How to apply migrations (current method)
+
+Migrations can now be applied **programmatically from the working environment** via the Supabase
+Management API, which runs SQL as `postgres` (full DDL):
+
+```bash
+set -a; . ./.env.local; set +a   # provides SUPABASE_ACCESS_TOKEN (personal access token, gitignored)
+curl -s -X POST "https://api.supabase.com/v1/projects/ngftlvlslhjsyjcbuuwv/database/query" \
+  -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" -H "Content-Type: application/json" \
+  -d "$(jq -Rs '{query: .}' < supabase/migrations/<file>.sql)"
+```
+
+After applying, insert the row into `supabase_migrations.schema_migrations (version, name,
+statements)` via the same API so `supabase db push` stays in sync. `SUPABASE_ACCESS_TOKEN` lives in
+`.env.local` only (gitignored); it is not committed and not synced across machines — regenerate at
+https://supabase.com/dashboard/account/tokens if missing.
 
 ## NOT yet applied to production
 
-- `20260629000100_pursuit_events.sql`, `20260629000200_contact_selection.sql`,
-  `20260629000300_outreach_work_examples.sql` (Codex pursuit/outreach migrations) — needed before
-  the pursuit features work in prod. Apply via dashboard/psql, then record each in
-  `schema_migrations` per the lesson above.
+- None outstanding.
 
 ## How the app connects (context)
 

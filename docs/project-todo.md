@@ -33,7 +33,10 @@ UI, provider, billing, or product-decision work rather than Codex backend implem
   A4 `...627` now recorded in `supabase_migrations`). See `docs/database-migration-state.md`.
 - [ ] **Rotate exposed credentials before sending invites / full launch** — Supabase
   service_role + anon keys, DB password, and `ANTHROPIC_API_KEY` were entered locally on
-  2026-06-28 and surfaced in a chat transcript. Deferred by Randall to invite time.
+  2026-06-28 and surfaced in a chat transcript. `ANTHROPIC_API_KEY` surfaced again 2026-06-30
+  while fixing a malformed `.env.local`. Deferred by Randall to invite time. (The
+  `SUPABASE_ACCESS_TOKEN` added 2026-06-30 stays in `.env.local` only; revoke/rotate it too at
+  cleanup time.)
 
 ## Phase 1 — Foundation
 
