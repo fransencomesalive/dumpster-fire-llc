@@ -1,0 +1,329 @@
+<!-- @dsCard group="Components" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Components · Dashboard Jobs + Matches</title>
+<link rel="stylesheet" href="../tokens/tokens.css" />
+<link rel="stylesheet" href="../lib/base.css" />
+<style>
+  /* Page ground carries the halftone; panel + cards sit on top, opaque. */
+  body { padding: var(--space-6); background: var(--c-paper); }
+  body::before { content:""; position: fixed; inset: 0; z-index: -1;
+    background-image: radial-gradient(var(--halftone-color) var(--halftone-dot),
+      transparent calc(var(--halftone-dot) + 0.5px)); background-size: var(--halftone-size) var(--halftone-size); }
+  /* ↓↓↓ verbatim from app/dashboard/dashboard.module.css (class names mirror DashboardClient.tsx) ↓↓↓ */
+/* Dashboard Jobs + matches — styled to the DS specs (match-card, panel, badges),
+   token-driven, applied to the dashboard's own markup. No dark literals. */
+
+.jobsPanel {
+  max-width: 1120px;
+  margin: 0 auto var(--space-6);
+  padding: 0 var(--space-5);
+}
+
+/* Panel header — single uppercase subhead title (no eyebrow), action on the right. */
+.panelHeaderRow {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  padding-bottom: var(--space-3);
+  border-bottom: var(--line-reg) solid var(--c-ink);
+  margin-bottom: var(--space-4);
+}
+
+.panelTitle {
+  font-family: var(--font-subhead);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 1.45rem;
+  color: var(--c-ink);
+  margin: 0;
+}
+
+.panelLede {
+  font-family: var(--font-body);
+  color: var(--role-text-muted);
+  max-width: 60ch;
+  margin: var(--space-2) 0 0;
+}
+
+/* Run scan — primary CTA (tomato role-action), ink outline, hard offset. */
+.runScanBtn {
+  flex: none;
+  font-family: var(--font-display);
+  font-size: 0.98rem;
+  color: var(--role-action-text);
+  background-color: var(--role-action);
+  background-image: var(--fiber-img), var(--grain-img);
+  background-blend-mode: normal, soft-light;
+  background-size: 170px 170px, 46px 46px;
+  border: var(--line-bold) solid var(--c-ink);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
+  padding: var(--space-2) var(--space-5);
+  cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease-snap), box-shadow var(--dur-fast) var(--ease-snap);
+}
+.runScanBtn:hover:not(:disabled) { background-color: var(--role-info); box-shadow: var(--reg-box); }
+.runScanBtn:disabled { opacity: 0.6; cursor: default; }
+
+/* Summary stats row */
+.panelHeaderRow > div { min-width: 0; }
+
+.summaryGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-4);
+  margin-bottom: var(--space-5);
+}
+.summaryStat {
+  background-color: var(--c-paper);
+  border: var(--line-hair) solid var(--c-paper-edge);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+}
+.summaryStat span {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  line-height: 1.1;
+  color: var(--c-ink);
+}
+.summaryStat small {
+  font-family: var(--font-subhead);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 0.8rem;
+  color: var(--c-teal);
+}
+
+.message { font-family: var(--font-body); color: var(--role-text-muted); margin: 0 0 var(--space-4); }
+.error {
+  font-family: var(--font-body);
+  color: var(--c-ink);
+  background: var(--c-paper);
+  border: var(--line-hair) solid var(--c-paper-edge);
+  border-left: var(--line-bold) solid var(--c-tomato);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3) var(--space-4);
+  margin: 0 0 var(--space-4);
+}
+
+/* Two columns — Jobs (ranked) + Saved Jobs */
+.jobsGrid { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: var(--space-5); align-items: start; }
+.column { min-width: 0; }
+.columnTitle {
+  font-family: var(--font-subhead);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 1.05rem;
+  color: var(--c-ink);
+  margin: 0 0 var(--space-4);
+}
+.empty {
+  font-family: var(--font-body);
+  color: var(--role-text-muted);
+  background: var(--c-paper);
+  border: var(--line-hair) dashed var(--c-paper-edge);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+}
+.cardList { display: grid; gap: var(--space-4); }
+
+/* Job card — match-card surface */
+.jobCard {
+  position: relative;
+  background-color: var(--c-paper-deep);
+  background-image: var(--fiber-img), var(--grain-img);
+  background-blend-mode: normal, soft-light;
+  background-size: 170px 170px, 46px 46px;
+  border: var(--line-reg) solid var(--c-ink);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  padding: var(--space-5);
+}
+
+.jobCardHeader { display: flex; align-items: flex-start; gap: var(--space-3); }
+/* Rank disc — teal, grain, mustard misregistered outline; numeral knocks out. */
+.rankNumber {
+  position: relative;
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-pill);
+  background-color: var(--c-teal);
+  background-image: var(--fiber-img), var(--grain-img);
+  background-blend-mode: normal, soft-light;
+  background-size: 170px 170px, 46px 46px;
+  font-family: var(--font-subhead);
+  font-size: 1.05rem;
+  line-height: 1;
+  color: var(--c-paper-deep);
+}
+.rankNumber::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-pill);
+  border: var(--line-reg) solid var(--c-mustard);
+  transform: translate(calc(-1 * var(--reg-shift-x)), calc(-1 * var(--reg-shift-y)));
+}
+.jobTitle { font-family: var(--font-display); font-size: 1.25rem; line-height: 1.15; color: var(--c-ink); margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.titleDivider {
+  display: inline-block; width: 9px; height: 9px; margin: 0 9px;
+  background: var(--c-teal); border: 1px solid var(--c-ink);
+  transform: rotate(45deg); vertical-align: 0.1em;
+}
+.companyName { font-family: var(--font-body); font-weight: 400; color: var(--c-ink); }
+
+/* Fit — teal label + numeric score + tier badge */
+.fitRow { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; margin: var(--space-4) 0; }
+.fitLabel { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.9rem; color: var(--c-teal); }
+.fitScore { font-family: var(--font-display); font-size: 1.1rem; color: var(--c-ink); }
+.fitScore small { font-family: var(--font-body); font-size: 0.85rem; color: var(--role-text-muted); }
+.matchBadge {
+  font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.05em;
+  font-size: 0.78rem; line-height: 1; border: var(--line-reg) solid var(--c-ink);
+  border-radius: var(--radius-pill); padding: 5px 11px;
+}
+.matchStrong { background-color: var(--c-teal); color: var(--c-paper); }
+.matchPotential { background-color: var(--c-bluebird); color: var(--c-paper); }
+.matchWeak { background-color: var(--c-paper); color: var(--role-text-muted); }
+.matchLow { background-color: var(--c-paper); color: var(--role-text-muted); border-style: dashed; }
+
+/* Meta grid */
+.metaGrid {
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-3);
+  margin: 0 0 var(--space-4); padding: var(--space-3) 0;
+  border-top: var(--line-reg) solid var(--c-ink);
+  border-bottom: var(--line-reg) solid var(--c-ink);
+}
+.metaGrid > div { min-width: 0; }
+.metaGrid dt { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.04em; font-size: 0.82rem; color: var(--c-teal); margin-bottom: 3px; }
+.metaGrid dd { margin: 0; font-family: var(--font-body); font-size: 0.95rem; color: var(--c-ink); overflow-wrap: anywhere; }
+
+.descriptionBox {
+  background-color: var(--c-paper);
+  background-image: var(--fiber-img), var(--grain-img);
+  background-blend-mode: normal, soft-light; background-size: 170px 170px, 46px 46px;
+  border: var(--line-hair) solid var(--c-paper-edge);
+  border-radius: var(--radius-md); padding: var(--space-4); margin-bottom: var(--space-4);
+}
+.descriptionText { margin: 0; font-family: var(--font-body); font-size: 0.92rem; color: var(--role-text-muted); }
+
+/* Action rail */
+.actionRail { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: center; }
+.actionRail a, .actionRail button {
+  font-family: var(--font-display); font-size: 0.92rem; border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-4); cursor: pointer; text-decoration: none;
+  transition: background-color var(--dur-fast) var(--ease-snap), box-shadow var(--dur-fast) var(--ease-snap);
+}
+.btnSave { color: var(--c-ink); background: var(--c-paper); border: var(--line-reg) solid var(--c-ink); }
+.btnSave:hover:not(:disabled) { background: color-mix(in srgb, var(--c-teal) 18%, var(--c-paper)); }
+.btnSaved { color: var(--c-paper); background: var(--c-teal); border: var(--line-reg) solid var(--c-ink); }
+.btnSource { position: relative; color: var(--c-ink); background: transparent; border: var(--line-reg) solid transparent; margin-left: auto; padding-bottom: 5px; }
+.btnSource::after {
+  content: ""; position: absolute; left: var(--space-4); right: var(--space-4); bottom: 4px;
+  height: var(--line-reg); background: var(--role-accent); mix-blend-mode: multiply;
+  transition: box-shadow var(--dur-fast) var(--ease-snap);
+}
+.btnSource:hover::after { box-shadow: var(--reg-shadow); }
+.actionRail button:disabled { opacity: 0.6; cursor: default; }
+
+@media (max-width: 900px) {
+  .jobsGrid { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 560px) {
+  .summaryGrid { grid-template-columns: minmax(0, 1fr); }
+  .metaGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: var(--space-3); }
+  .panelHeaderRow { flex-direction: column; align-items: stretch; }
+  .runScanBtn { width: 100%; }
+}
+</style>
+</head>
+<body>
+<section class="jobsPanel">
+  <div class="panelHeaderRow">
+    <div>
+      <h2 class="panelTitle">Scan results &amp; Saved Jobs</h2>
+      <p class="panelLede">Scan uses your current profile targets and constraints. New scans merge with unsaved, unactioned prior results so useful jobs do not disappear between sessions.</p>
+    </div>
+    <button class="runScanBtn" type="button">Run scan</button>
+  </div>
+
+  <div class="summaryGrid">
+    <div class="summaryStat"><span>2105</span><small>Active jobs</small></div>
+    <div class="summaryStat"><span>3</span><small>Saved for later</small></div>
+    <div class="summaryStat"><span>Jun 30, 2026</span><small>Last scan</small></div>
+  </div>
+
+  <div class="jobsGrid">
+    <div class="column">
+      <h3 class="columnTitle">Jobs</h3>
+      <div class="cardList">
+        <article class="jobCard">
+          <div class="jobCardHeader">
+            <span class="rankNumber" aria-hidden="true">1</span>
+            <h4 class="jobTitle">Senior Product Designer<span class="titleDivider" aria-hidden="true"></span><span class="companyName">Stripe</span></h4>
+          </div>
+          <div class="fitRow"><span class="fitLabel">Fit</span><span class="fitScore">84<small>/100</small></span><span class="matchBadge matchStrong">Strong Match</span></div>
+          <dl class="metaGrid">
+            <div><dt>Source</dt><dd>greenhouse</dd></div>
+            <div><dt>Salary</dt><dd>$140,000 - $165,000</dd></div>
+            <div><dt>Remote</dt><dd>remote</dd></div>
+            <div><dt>Location</dt><dd>Remote - US</dd></div>
+          </dl>
+          <div class="descriptionBox"><p class="descriptionText">Lead end-to-end design for a new B2B analytics product, partnering with PM and engineering from discovery through ship. Own the design system and mentor two designers.</p></div>
+          <div class="actionRail">
+            <button class="btnSave" type="button">Save for later</button>
+            <a class="btnSource" href="#">Open posting ↗</a>
+          </div>
+        </article>
+        <article class="jobCard">
+          <div class="jobCardHeader">
+            <span class="rankNumber" aria-hidden="true">2</span>
+            <h4 class="jobTitle">Program Director, Creative Operations<span class="titleDivider" aria-hidden="true"></span><span class="companyName">Anthropic</span></h4>
+          </div>
+          <div class="fitRow"><span class="fitLabel">Fit</span><span class="fitScore">61<small>/100</small></span><span class="matchBadge matchPotential">Potential Match</span></div>
+          <dl class="metaGrid">
+            <div><dt>Source</dt><dd>ashby</dd></div>
+            <div><dt>Salary</dt><dd>Not listed</dd></div>
+            <div><dt>Remote</dt><dd>hybrid</dd></div>
+            <div><dt>Location</dt><dd>San Francisco, CA</dd></div>
+          </dl>
+          <div class="actionRail">
+            <button class="btnSaved" type="button">Saved</button>
+            <a class="btnSource" href="#">Open posting ↗</a>
+          </div>
+        </article>
+      </div>
+    </div>
+
+    <aside class="column">
+      <h3 class="columnTitle">Saved Jobs</h3>
+      <div class="cardList">
+        <article class="jobCard">
+          <h4 class="jobTitle">Staff Engineer<span class="titleDivider" aria-hidden="true"></span><span class="companyName">Spotify</span></h4>
+          <dl class="metaGrid">
+            <div><dt>Source</dt><dd>lever</dd></div>
+            <div><dt>Salary</dt><dd>$180k+</dd></div>
+            <div><dt>Remote</dt><dd>onsite</dd></div>
+            <div><dt>Location</dt><dd>New York, NY</dd></div>
+          </dl>
+          <div class="actionRail">
+            <button class="btnSaved" type="button">Unsave</button>
+            <a class="btnSource" href="#">Open posting ↗</a>
+          </div>
+        </article>
+      </div>
+    </aside>
+  </div>
+</section>
+</body>
+</html>

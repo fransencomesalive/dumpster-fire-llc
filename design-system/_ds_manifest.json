@@ -20,6 +20,10 @@
       "group": "Components"
     },
     {
+      "path": "components/dashboard-jobs.html",
+      "group": "Components"
+    },
+    {
       "path": "components/panel.html",
       "group": "Components"
     },
