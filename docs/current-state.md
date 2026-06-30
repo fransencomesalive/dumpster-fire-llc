@@ -1,5 +1,48 @@
 # Current State
 
+## 2026-06-29 - Public job ingestion engine, Slice 1 (Claude)
+
+Built the public product's own job ingestion so the public `jobs` table can be fed independently
+of the legacy `/scans` system (Randall: nothing should rely on a legacy DB/system; do not reduce
+functionality). Backend-only foundation; no UI.
+
+Context that drove this: the mature connectors in `app/scans/` only ever fill the legacy
+`job_search_jobs` table, while the public scanner (`lib/public-jobs/runPublicJobsScanForUser`)
+only ever reads the separate public `jobs` table — which nothing populated. This slice closes that
+gap with an independent ingestion path.
+
+- New independent connector engine `lib/job-connectors/` (no `app/scans` import): full port of all
+  providers (Greenhouse, Lever, Ashby, Workday, iCIMS, Magnit, HTML, RSS, Rippling, Adzuna,
+  Workable) plus salary/HTML/JSON-LD extraction and the fetch runner (retries, Workday
+  title-variant fan-out, Himalayas pagination, Adzuna credential injection). The legacy
+  relevance/scoring layer is intentionally not ported — the public app matches at scan time with
+  its own engine. Legacy `app/scans` connectors are left untouched; de-duplication via a shared
+  module is a later isolated refactor.
+- `lib/public-jobs/ingestion.ts` `runJobIngestion` + `lib/public-jobs/job-sources.ts`: load active
+  `job_sources`, fetch + normalize per source, upsert into public `jobs`
+  (`on_conflict=source,source_url`), mark each source ingested, isolate per-source errors. Empty or
+  paused source list is a safe no-op. Injectable `loadSources`/`fetchSource`/`markIngested` seams.
+- Migration `supabase/migrations/20260629000400_public_job_sources.sql`: new `job_sources` config
+  table (RLS-enabled, service-role only, no seed rows) and extends public `jobs` with
+  `external_job_id`, `apply_url`, `department`, `salary_min`, `salary_max` so no normalized field is
+  dropped. Validated on a throwaway local Postgres: non-destructive ALTER, idempotent re-apply, RLS
+  on, check constraints enforced. Not yet applied to prod.
+- Tests: `scripts/test-job-connectors.{ts,mjs}` (per-provider parser fixtures + plan endpoints +
+  salary parsing) and `scripts/test-public-jobs-ingestion.{ts,mjs}` (orchestration: upsert shape,
+  dedupe, empty no-op, error isolation, Workday variant passthrough, cap).
+
+Validation: new + existing test suites pass; `tsc --noEmit` clean; `npm run lint` 0 errors / 7
+pre-existing warnings; `npm run build` compiles; migration validated locally; `git diff --check`
+clean.
+
+Slice 1b (NOT built, needs Randall):
+- Trigger: a protected `POST /api/jobs/ingest` endpoint for a scheduler/cron (needs a
+  trigger-secret/auth approach decision). Ingestion is intended to run scheduled/admin, not inline
+  on user scans (keeps `/api/jobs/scan` fast).
+- Seed data: the actual list of companies + ATS board tokens to scan (Randall provides).
+- Later: wire ingestion ahead of / alongside `/api/jobs/scan`, and de-duplicate the connector
+  engine shared with legacy `app/scans`.
+
 ## 2026-06-29 - Pursuit read/list API (Claude)
 
 Added the read/list API layer for public pursuits so future pursuit dashboard UI has data to
