@@ -1,5 +1,23 @@
 # Current State
 
+## 2026-06-30 - Match scoring wired into scan ranking (Claude)
+
+Per-user scans now rank and annotate results with the rich matching engine instead of only the
+coarse keyword filter.
+
+- `readPublicJobsForUser` (which both `GET /api/jobs` and `runPublicJobsScanForUser` return through)
+  now scores each result via `evaluateMatch` against the candidate profile, attaches a compact
+  `match` summary (`{ score, label }`) to each `PublicJobRecord`, and sorts best-first.
+- The coarse `jobMatchesProfile` filter still governs which jobs enter scan results; scoring is a
+  spectrum and never hard-filters — poor-fit jobs still surface, annotated with their score/label.
+- `PublicJobRecord.match?` added (`PublicJobMatchSummary`). Repository test asserts the annotation.
+
+Validation: all 8 test suites pass; `tsc` clean; `npm run lint` 0 errors / 7 pre-existing warnings;
+`npm run build` compiles; `git diff --check` clean.
+
+Remaining open: apply the three Codex pursuit migrations to prod (`20260629000100/200/300`); record
+the `000400` bookkeeping row. Both need the Supabase dashboard.
+
 ## 2026-06-30 - Source scan LIVE in prod (Claude)
 
 The source scan pipeline is running against production data.

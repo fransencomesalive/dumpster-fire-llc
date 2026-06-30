@@ -1,10 +1,12 @@
 import { evaluateCandidateProfileQuality } from "../public-profile/profile-quality";
+import { evaluateMatch } from "../public-profile/matching/engine";
+import type { MatchJob } from "../public-profile/matching/types";
 import {
   loadCandidateProfileAggregate,
   type PublicProfileRepositoryRequest,
 } from "../public-profile/repository";
 import type { CandidateProfileAggregate } from "../public-profile/types";
-import type { PublicJobRecord, PublicJobsResponse, PublicJobsScanResponse, PublicJobsSummary } from "./types";
+import type { PublicJobMatchSummary, PublicJobRecord, PublicJobsResponse, PublicJobsScanResponse, PublicJobsSummary } from "./types";
 
 type JobRow = {
   id: string;
@@ -236,6 +238,37 @@ function summaryForJobs(jobs: PublicJobRecord[], scanParameters: string[]): Publ
   };
 }
 
+function matchJobFromRecord(job: PublicJobRecord): MatchJob {
+  return {
+    id: job.id,
+    title: job.title,
+    companyName: job.companyName,
+    description: job.description,
+    location: job.location,
+    remoteType: job.remoteType,
+    employmentType: job.employmentType,
+    compensationText: job.compensationText,
+    postedAt: job.postedAt,
+    scrapedAt: job.scrapedAt,
+    sourceUrl: job.sourceUrl,
+  };
+}
+
+// Score each result against the candidate profile, annotate it, and rank best-first. Scoring is a
+// spectrum — poor-fit jobs are still returned (with their score/label), never hard-filtered out.
+function rankJobsForProfile(
+  jobs: PublicJobRecord[],
+  aggregate: CandidateProfileAggregate,
+  evaluatedAt: string,
+): PublicJobRecord[] {
+  const annotated = jobs.map((job): PublicJobRecord => {
+    const result = evaluateMatch({ profile: aggregate, job: matchJobFromRecord(job), evaluatedAt });
+    const match: PublicJobMatchSummary = { score: result.internalScore, label: result.label };
+    return { ...job, match };
+  });
+  return annotated.sort((a, b) => (b.match?.score ?? 0) - (a.match?.score ?? 0));
+}
+
 export async function readPublicJobsForUser(
   request: PublicProfileRepositoryRequest,
   userId: string,
@@ -255,9 +288,11 @@ export async function readPublicJobsForUser(
     })
     .filter((job): job is PublicJobRecord => Boolean(job));
 
+  const rankedJobs = rankJobsForProfile(jobs, readiness.aggregate, checkedAt);
+
   return {
-    jobs,
-    summary: summaryForJobs(jobs, readiness.scanParameters),
+    jobs: rankedJobs,
+    summary: summaryForJobs(rankedJobs, readiness.scanParameters),
   };
 }
 

@@ -271,6 +271,9 @@ async function main() {
   assert.equal(scan.jobs.length, 1);
   assert.equal(scan.jobs[0].id, "job-1");
   assert.equal(scan.jobs[0].saved, false);
+  // Scan results are annotated with a profile-driven match score + label for ranking.
+  assert.equal(typeof scan.jobs[0].match?.score, "number");
+  assert.equal(typeof scan.jobs[0].match?.label, "string");
 
   const saved = await setPublicJobSavedForUser(request, userId, "job-1", true, now);
   assert.equal("status" in saved, false);

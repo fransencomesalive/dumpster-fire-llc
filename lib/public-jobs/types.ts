@@ -1,3 +1,10 @@
+import type { MatchLabel } from "../public-profile/matching/types";
+
+export type PublicJobMatchSummary = {
+  score: number;
+  label: MatchLabel;
+};
+
 export type PublicJobRecord = {
   id: string;
   source: string;
@@ -14,6 +21,9 @@ export type PublicJobRecord = {
   firstSeenAt: string;
   lastSeenAt: string;
   saved: boolean;
+  // Set when jobs are returned to a user (read/scan): the profile-driven match score + label used
+  // to rank and annotate results. Absent on bare records (e.g. ingestion mapping).
+  match?: PublicJobMatchSummary;
 };
 
 export type PublicJobsSummary = {
