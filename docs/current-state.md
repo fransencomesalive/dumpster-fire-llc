@@ -1,5 +1,31 @@
 # Current State
 
+## 2026-06-30 - Source scan LIVE in prod (Claude)
+
+The source scan pipeline is running against production data.
+
+- Migration `20260629000400` DDL applied to prod (by Randall, dashboard). Bookkeeping row in
+  `supabase_migrations.schema_migrations` still pending — see `docs/database-migration-state.md`.
+- `job_sources` seeded with 16 starter companies (verified working public boards):
+  - Greenhouse: Stripe, Airbnb, Dropbox, Coinbase, Robinhood, GitLab, Databricks, Figma, Discord,
+    Anthropic
+  - Ashby: Ramp, Linear, Notion, Runway, OpenAI
+  - Lever: Spotify
+  - Starter set — Randall can add/remove/pause rows in `job_sources` anytime (see
+    `docs/scan-sources-setup.md`).
+- First source scan run manually against prod (via the real `runSourceScan` code): all 16 sources
+  succeeded (0 errors), 3702 fetched, **2105 jobs upserted**. 1018 carry parsed salary; remote-type
+  classification populated. Verified the new `jobs` columns and `job_sources.last_scanned_at`.
+
+The one remaining piece for automation needs Randall's Vercel account: **set `CRON_SECRET` in Vercel,
+then redeploy** so the `vercel.json` cron registers. No Vercel CLI/token exists in the working
+environment, so it cannot be done from here. The endpoint + cron are deployed in code; prod is
+already populated from the manual run, and the daily cron just keeps it fresh. Instructions:
+`docs/scan-sources-setup.md`.
+
+Also still pending (separate from source scan): the three Codex pursuit migrations
+(`20260629000100/200/300`) are not applied to prod yet — needed before pursuit features work live.
+
 ## 2026-06-29 - Public source scan engine, Slice 1 (Claude)
 
 Built the public product's own job source scan so the public `jobs` table can be fed independently

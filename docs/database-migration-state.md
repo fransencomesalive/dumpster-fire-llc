@@ -33,11 +33,27 @@ re-run a psql-applied migration through the CLI — A4 in particular is non-idem
 - `20260626000100_public_job_scan_results.sql` — applied 2026-06-28 via psql, recorded.
 - `20260627000100_generator_redesign_profile_schema.sql` — applied via psql (prior session), recorded 2026-06-28.
 
+## Applied 2026-06-30
+
+- `20260629000400_public_job_sources.sql` — DDL **applied to prod via the dashboard SQL editor by
+  Randall** (job_sources table + new jobs columns: external_job_id, apply_url, department,
+  salary_min, salary_max). **Bookkeeping NOT yet recorded** in
+  `supabase_migrations.schema_migrations` (PostgREST cannot reach that schema, so it could not be
+  recorded programmatically). To record it, run in the SQL editor:
+  ```sql
+  insert into supabase_migrations.schema_migrations (version, name, statements) values
+    ('20260629000400', 'public_job_sources', array['-- applied via dashboard 2026-06-30'])
+  on conflict (version) do nothing;
+  ```
+- After applying, `job_sources` was seeded with 16 starter companies (Greenhouse/Ashby/Lever) and a
+  first source scan was run manually against prod (2105 jobs upserted). See `docs/current-state.md`.
+
 ## NOT yet applied to production
 
-- None outstanding. Future pursuit/subscription migrations (see
-  `docs/codex-tasks-backend-2026-06-28.md`) will be written next; apply them via the CLI or
-  record them manually per the lesson above.
+- `20260629000100_pursuit_events.sql`, `20260629000200_contact_selection.sql`,
+  `20260629000300_outreach_work_examples.sql` (Codex pursuit/outreach migrations) — needed before
+  the pursuit features work in prod. Apply via dashboard/psql, then record each in
+  `schema_migrations` per the lesson above.
 
 ## How the app connects (context)
 
