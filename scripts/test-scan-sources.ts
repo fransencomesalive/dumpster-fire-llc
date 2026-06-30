@@ -12,8 +12,8 @@ import {
   normalizeWorkdayJob,
   parseRssJobs,
   salaryRangeFromText,
-} from "../lib/job-connectors/connectors";
-import type { JobSource } from "../lib/job-connectors/types";
+} from "../lib/scan/sources/connectors";
+import type { JobSource } from "../lib/scan/sources/types";
 
 function source(overrides: Partial<JobSource> = {}): JobSource {
   return {
@@ -221,4 +221,4 @@ assert.equal(rss[0].title, "Remote Producer");
 assert.equal(rss[0].companyName, "Acme Co");
 assert.equal(rss[0].sourceUrl, "https://jobs.example/rss/1");
 
-console.log("job connectors: all assertions passed");
+console.log("scan sources: all assertions passed");

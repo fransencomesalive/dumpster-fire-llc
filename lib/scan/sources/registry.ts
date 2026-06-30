@@ -1,7 +1,7 @@
-import type { PublicProfileRepositoryRequest } from "../public-profile/repository";
-import type { JobSource, SourceProvider } from "../job-connectors/types";
+import type { PublicProfileRepositoryRequest } from "../../public-profile/repository";
+import type { JobSource, SourceProvider } from "./types";
 
-// A configured connector source plus the ingestion-control fields the public app owns.
+// A configured scan source plus the scan-control fields the public app owns.
 export type JobSourceRecord = JobSource & {
   status: "active" | "paused";
   workdayVariants: string[];
@@ -48,7 +48,7 @@ export async function loadActiveJobSources(
   return rows.map(mapJobSource);
 }
 
-export async function markJobSourceIngested(
+export async function markJobSourceScanned(
   request: PublicProfileRepositoryRequest,
   sourceId: string,
   options: { at: string; error?: string },
@@ -57,7 +57,7 @@ export async function markJobSourceIngested(
     method: "PATCH",
     query: qs({ id: `eq.${sourceId}` }),
     body: {
-      last_ingested_at: options.at,
+      last_scanned_at: options.at,
       last_error: options.error ?? null,
       updated_at: options.at,
     },

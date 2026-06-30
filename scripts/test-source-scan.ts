@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import type { PublicProfileRepositoryRequest } from "../lib/public-profile/repository";
-import { runJobIngestion } from "../lib/public-jobs/ingestion";
-import type { JobSourceRecord } from "../lib/public-jobs/job-sources";
-import type { JobSource, NormalizedConnectorJob } from "../lib/job-connectors/types";
+import { runSourceScan } from "../lib/scan/source-scan";
+import type { JobSourceRecord } from "../lib/scan/sources/registry";
+import type { JobSource, NormalizedConnectorJob } from "../lib/scan/sources/types";
 
 const now = "2026-06-29T12:00:00.000Z";
 
@@ -60,7 +60,7 @@ async function main() {
   // ---- Empty source list is a safe no-op ----
   {
     const { request, calls } = recordingRequest();
-    const result = await runJobIngestion(request, {
+    const result = await runSourceScan(request, {
       now: () => now,
       loadSources: async () => [],
       fetchSource: async () => { throw new Error("should not fetch with no sources"); },
@@ -74,7 +74,7 @@ async function main() {
   {
     const { request, calls } = recordingRequest();
     const fetched: Array<{ source: JobSource; options: unknown }> = [];
-    const result = await runJobIngestion(request, {
+    const result = await runSourceScan(request, {
       now: () => now,
       loadSources: async () => [jobSource({ id: "src-1" })],
       fetchSource: async (source, options) => {
@@ -104,16 +104,16 @@ async function main() {
     const mark = calls.find((call) => call.table === "job_sources");
     assert.ok(mark, "source should be marked ingested");
     assert.equal(mark?.method, "PATCH");
-    assert.deepEqual(mark?.body, { last_ingested_at: now, last_error: null, updated_at: now });
+    assert.deepEqual(mark?.body, { last_scanned_at: now, last_error: null, updated_at: now });
 
     assert.equal(result.totalUpserted, 1);
-    assert.equal(result.sources[0].status, "ingested");
+    assert.equal(result.sources[0].status, "scanned");
   }
 
   // ---- Dedupe by source_url, drop empty source_url ----
   {
     const { request, calls } = recordingRequest();
-    await runJobIngestion(request, {
+    await runSourceScan(request, {
       now: () => now,
       loadSources: async () => [jobSource()],
       fetchSource: async () => [
@@ -132,7 +132,7 @@ async function main() {
   // ---- maxJobsPerSource cap ----
   {
     const { request, calls } = recordingRequest();
-    await runJobIngestion(request, {
+    await runSourceScan(request, {
       now: () => now,
       maxJobsPerSource: 1,
       loadSources: async () => [jobSource()],
@@ -148,7 +148,7 @@ async function main() {
   // ---- Per-source error isolation ----
   {
     const { request, calls } = recordingRequest();
-    const result = await runJobIngestion(request, {
+    const result = await runSourceScan(request, {
       now: () => now,
       loadSources: async () => [
         jobSource({ id: "src-bad", companyName: "Bad Co" }),
@@ -165,7 +165,7 @@ async function main() {
     const good = result.sources.find((entry) => entry.sourceId === "src-good");
     assert.equal(bad?.status, "error");
     assert.equal(bad?.error, "Source returned 500.");
-    assert.equal(good?.status, "ingested");
+    assert.equal(good?.status, "scanned");
     assert.equal(good?.upserted, 1);
 
     // The failed source is still marked (with its error), and the good source still upserts.
@@ -179,7 +179,7 @@ async function main() {
   {
     const { request } = recordingRequest();
     let seenVariants: string[] | undefined;
-    await runJobIngestion(request, {
+    await runSourceScan(request, {
       now: () => now,
       loadSources: async () => [jobSource({ atsProvider: "workday", workdayVariants: ["producer", "director"] })],
       fetchSource: async (_source, options) => {
@@ -190,7 +190,7 @@ async function main() {
     assert.deepEqual(seenVariants, ["producer", "director"]);
   }
 
-  console.log("public jobs ingestion: all assertions passed");
+  console.log("public jobs source scan: all assertions passed");
 }
 
 main().catch((error) => {

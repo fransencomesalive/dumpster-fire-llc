@@ -188,11 +188,12 @@ UI, provider, billing, or product-decision work rather than Codex backend implem
 - [x] Add Saved Jobs as "pursue later" only, separate from pursuit creation.
 - [x] Add save/unsave route for active user scan results.
 - [x] Apply public job scan results migration to Supabase. (2026-06-28)
-- [~] Wire external/public connector ingestion into the public `jobs` table. Slice 1 DONE
-  (2026-06-29): independent `lib/job-connectors/` engine (all providers ported) + `runJobIngestion`
-  service + `job_sources` migration. Remaining (Slice 1b): protected scheduled/admin ingest
-  endpoint (needs trigger-secret decision), seed company/board list (Randall), and wiring ingestion
-  ahead of `/api/jobs/scan`. See `docs/current-state.md` 2026-06-29 ingestion entry.
+- [~] Feed the public `jobs` table via the Scan paradigm. Slice 1 DONE (2026-06-29): independent
+  `lib/scan/sources/` engine (all providers ported) + `runSourceScan` (`lib/scan/source-scan.ts`)
+  + `job_sources` migration. Remaining (Slice 1b): protected scheduled/admin source-scan endpoint
+  (needs trigger-secret decision), seed company/board list (Randall), wire source scan ahead of
+  `/api/jobs/scan`, and wire `evaluateMatch` into scan-result ranking. See `docs/current-state.md`
+  2026-06-29 source scan entry.
 - [x] Add Pursuits. (backend: create/state machine + read/list API)
 - [x] Add pursuit stages for review, Human Path, contacts, outreach, and tracking. (backend API slices)
 - [x] Add pursuit read/list API for dashboard consumption: `GET /api/public-profile/pursuits` (list + counts) and `GET /api/public-profile/pursuits/[id]` (full detail). (2026-06-29)

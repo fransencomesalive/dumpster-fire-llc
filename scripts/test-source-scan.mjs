@@ -2,7 +2,7 @@ import { spawnSync } from "node:child_process";
 import path from "node:path";
 
 const rootDir = process.cwd();
-const outDir = "/private/tmp/job-connectors-test-build";
+const outDir = "/private/tmp/source-scan-test-build";
 const compileArgs = [
   "tsc",
   "--target",
@@ -17,7 +17,7 @@ const compileArgs = [
   "ES2022,DOM",
   "--outDir",
   outDir,
-  "scripts/test-job-connectors.ts",
+  "scripts/test-source-scan.ts",
 ];
 
 function run(command, args) {
@@ -32,4 +32,4 @@ function run(command, args) {
 }
 
 run("npx", compileArgs);
-run("node", [path.join(outDir, "scripts/test-job-connectors.js")]);
+run("node", [path.join(outDir, "scripts/test-source-scan.js")]);

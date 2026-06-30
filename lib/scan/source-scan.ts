@@ -1,30 +1,30 @@
 import type { PublicProfileRepositoryRequest } from "../public-profile/repository";
-import { fetchNormalizedConnectorJobs, type FetchConnectorJobsOptions } from "../job-connectors/runner";
-import type { JobSource, NormalizedConnectorJob } from "../job-connectors/types";
-import { loadActiveJobSources, markJobSourceIngested, type JobSourceRecord } from "./job-sources";
+import { fetchNormalizedConnectorJobs, type FetchConnectorJobsOptions } from "./sources/runner";
+import type { JobSource, NormalizedConnectorJob } from "./sources/types";
+import { loadActiveJobSources, markJobSourceScanned, type JobSourceRecord } from "./sources/registry";
 
-export type JobIngestionSourceResult = {
+export type SourceScanSourceResult = {
   sourceId: string;
   companyName: string;
   provider: string;
-  status: "ingested" | "error";
+  status: "scanned" | "error";
   fetched: number;
   upserted: number;
   error?: string;
 };
 
-export type JobIngestionResult = {
+export type SourceScanResult = {
   ranAt: string;
   totalSources: number;
   totalFetched: number;
   totalUpserted: number;
-  sources: JobIngestionSourceResult[];
+  sources: SourceScanSourceResult[];
 };
 
-export type JobIngestionOptions = {
+export type SourceScanOptions = {
   loadSources?: (request: PublicProfileRepositoryRequest) => Promise<JobSourceRecord[]>;
   fetchSource?: (source: JobSource, options: FetchConnectorJobsOptions) => Promise<NormalizedConnectorJob[]>;
-  markIngested?: (
+  markScanned?: (
     request: PublicProfileRepositoryRequest,
     sourceId: string,
     options: { at: string; error?: string },
@@ -75,21 +75,21 @@ function ingestableJobs(jobs: NormalizedConnectorJob[], limit: number): Normaliz
   return output;
 }
 
-// Fetch from each active connector source and upsert normalized postings into the public `jobs`
-// table. Per-source failures are isolated and recorded; an empty/paused source list is a safe
-// no-op. This is the system-wide ingestion step; user scans match against the populated table.
-export async function runJobIngestion(
+// Fetch from each active scan source and upsert normalized postings into the public `jobs` table.
+// Per-source failures are isolated and recorded; an empty/paused source list is a safe no-op. This
+// is the system-wide source scan; per-user scans match against the populated table.
+export async function runSourceScan(
   request: PublicProfileRepositoryRequest,
-  options: JobIngestionOptions = {},
-): Promise<JobIngestionResult> {
+  options: SourceScanOptions = {},
+): Promise<SourceScanResult> {
   const now = options.now?.() ?? new Date().toISOString();
   const loadSources = options.loadSources ?? loadActiveJobSources;
   const fetchSource = options.fetchSource ?? fetchNormalizedConnectorJobs;
-  const markIngested = options.markIngested ?? markJobSourceIngested;
+  const markScanned = options.markScanned ?? markJobSourceScanned;
   const limit = options.maxJobsPerSource ?? DEFAULT_MAX_JOBS_PER_SOURCE;
 
   const sources = await loadSources(request);
-  const results: JobIngestionSourceResult[] = [];
+  const results: SourceScanSourceResult[] = [];
   let totalFetched = 0;
   let totalUpserted = 0;
 
@@ -107,20 +107,20 @@ export async function runJobIngestion(
         });
       }
 
-      await markIngested(request, source.id, { at: now });
+      await markScanned(request, source.id, { at: now });
       totalFetched += jobs.length;
       totalUpserted += upsertable.length;
       results.push({
         sourceId: source.id,
         companyName: source.companyName,
         provider: source.atsProvider,
-        status: "ingested",
+        status: "scanned",
         fetched: jobs.length,
         upserted: upsertable.length,
       });
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Unable to ingest source.";
-      await markIngested(request, source.id, { at: now, error: message });
+      const message = error instanceof Error ? error.message : "Unable to scan source.";
+      await markScanned(request, source.id, { at: now, error: message });
       results.push({
         sourceId: source.id,
         companyName: source.companyName,

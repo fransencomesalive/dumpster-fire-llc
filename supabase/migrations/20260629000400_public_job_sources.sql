@@ -19,7 +19,7 @@ create table if not exists public.job_sources (
   ats_board_token text not null default '',
   status text not null default 'active' check (status in ('active', 'paused')),
   workday_variants text[] not null default '{}',
-  last_ingested_at timestamptz,
+  last_scanned_at timestamptz,
   last_error text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
