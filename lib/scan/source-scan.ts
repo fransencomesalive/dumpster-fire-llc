@@ -103,12 +103,36 @@ export async function runSourceScan(
       const upsertable = ingestableJobs(jobs, limit);
 
       if (upsertable.length > 0) {
-        await request("jobs", {
-          method: "POST",
-          query: "?on_conflict=source,source_url",
-          headers: { Prefer: "resolution=merge-duplicates" },
-          body: upsertable.map((job) => jobRowBody(job, now)),
-        });
+        const rows = upsertable.map((job) => jobRowBody(job, now));
+        // Rows whose heuristic produced sections carry them; rows with empty sections OMIT those
+        // columns so the daily scan never clobbers an LLM gap-fill (on conflict, omitted columns
+        // are preserved). See lib/scan/refine-postings.ts.
+        const withSections = rows.filter((row) => row.responsibilities.length > 0 || row.required_experience.length > 0);
+        const withoutSections = rows
+          .filter((row) => row.responsibilities.length === 0 && row.required_experience.length === 0)
+          .map((row) => {
+            const copy = { ...row } as Record<string, unknown>;
+            delete copy.responsibilities;
+            delete copy.required_experience;
+            return copy;
+          });
+
+        if (withSections.length > 0) {
+          await request("jobs", {
+            method: "POST",
+            query: "?on_conflict=source,source_url",
+            headers: { Prefer: "resolution=merge-duplicates" },
+            body: withSections,
+          });
+        }
+        if (withoutSections.length > 0) {
+          await request("jobs", {
+            method: "POST",
+            query: "?on_conflict=source,source_url",
+            headers: { Prefer: "resolution=merge-duplicates" },
+            body: withoutSections,
+          });
+        }
       }
 
       await markScanned(request, source.id, { at: now });

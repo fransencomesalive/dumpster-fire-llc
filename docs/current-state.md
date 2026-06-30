@@ -1,5 +1,30 @@
 # Current State
 
+## 2026-06-30 - Posting parser Phase 2: LLM gap-fill (Claude)
+
+Gap-fill (Randall's choice): LLM extracts Responsibilities / Required experience only for postings
+the heuristic left empty (~40% missing responsibilities, ~57% missing required experience, ~30%
+both — measured in prod).
+
+- `lib/scan/sources/llm-extract-posting.ts` — `extractPostingSectionsLLM` (callModel convention:
+  lazy Anthropic SDK, claude-opus-4-8, graceful no-key → empty). Returns the two lists from any
+  format/language. `parsePostingModelJson` tolerates code fences/preamble, cleans + caps items.
+- `lib/scan/refine-postings.ts` — `runPostingRefinement` loads jobs with an empty bucket (bounded
+  limit), LLM-extracts, fills ONLY the empty bucket (never overwrites heuristic results). Injectable
+  loader/extract/callModel seams.
+- `GET|POST /api/jobs/refine-postings` (CRON_SECRET-guarded, `?limit=`) + daily `vercel.json` cron
+  at 07:00 UTC (after the 06:00 source scan).
+- **Clobber fix:** source-scan now splits its upsert — rows with parsed sections include the
+  columns; rows with empty sections OMIT them, so the daily scan never wipes an LLM gap-fill (on
+  conflict, omitted columns are preserved).
+- Validated end-to-end against prod (ESM run): 3/3 empty jobs filled, incl. Japanese postings.
+  Tests: `test-llm-extract-posting`, `test-refine-postings`, updated `test-source-scan`. tsc/lint/
+  build clean.
+- Backfill: the daily cron chips away (limit-bounded for function-timeout safety); for a faster
+  one-time fill, hit `/api/jobs/refine-postings?limit=100` repeatedly after deploy. NOTE: the
+  CommonJS test-harness can't lazy-import the ESM SDK, so local `.mjs` validation of the live
+  callModel no-ops — validate via the deployed endpoint or an ESM run (as done here).
+
 ## 2026-06-30 - Dashboard rebuilt to the match-card/scan-page design (Claude)
 
 Implemented the live dashboard to the existing approved match-card/scan-page design (Randall: the

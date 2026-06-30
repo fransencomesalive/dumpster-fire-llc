@@ -79,7 +79,10 @@ async function main() {
       loadSources: async () => [jobSource({ id: "src-1" })],
       fetchSource: async (source, options) => {
         fetched.push({ source, options });
-        return [connectorJob({ sourceUrl: "https://boards.greenhouse.io/usefulstudio/jobs/1" })];
+        return [connectorJob({
+          sourceUrl: "https://boards.greenhouse.io/usefulstudio/jobs/1",
+          descriptionText: "Responsibilities Own the roadmap end to end. Requirements 5+ years of product experience.",
+        })];
       },
     });
 
@@ -100,9 +103,9 @@ async function main() {
     assert.equal(rows[0].salary_min, 120000);
     assert.equal(rows[0].salary_max, 150000);
     assert.equal(rows[0].scraped_at, now);
-    // Posting sections are parsed + stored (empty here — fixture description has no headings).
-    assert.deepEqual(rows[0].responsibilities, []);
-    assert.deepEqual(rows[0].required_experience, []);
+    // Posting sections are parsed + stored (heuristic) when the description has headings.
+    assert.deepEqual(rows[0].responsibilities, ["Own the roadmap end to end"]);
+    assert.deepEqual(rows[0].required_experience, ["5+ years of product experience."]);
 
     const mark = calls.find((call) => call.table === "job_sources");
     assert.ok(mark, "source should be marked ingested");
@@ -191,6 +194,25 @@ async function main() {
       },
     });
     assert.deepEqual(seenVariants, ["producer", "director"]);
+  }
+
+  // ---- Empty-section rows omit the section columns (so LLM gap-fills aren't clobbered) ----
+  {
+    const { request, calls } = recordingRequest();
+    await runSourceScan(request, {
+      now: () => now,
+      loadSources: async () => [jobSource()],
+      fetchSource: async () => [
+        connectorJob({ externalJobId: "a", sourceUrl: "https://x/withheadings", descriptionText: "Responsibilities Own delivery end to end across teams." }),
+        connectorJob({ externalJobId: "b", sourceUrl: "https://x/plain", descriptionText: "Just a short blurb with no recognizable headings at all." }),
+      ],
+    });
+    const allRows = calls.filter((call) => call.table === "jobs").flatMap((call) => call.body as Array<Record<string, unknown>>);
+    const withHeadings = allRows.find((row) => row.source_url === "https://x/withheadings");
+    const plain = allRows.find((row) => row.source_url === "https://x/plain") ?? {};
+    assert.ok((withHeadings?.responsibilities as string[]).length > 0);
+    assert.equal("responsibilities" in plain, false);
+    assert.equal("required_experience" in plain, false);
   }
 
   console.log("public jobs source scan: all assertions passed");

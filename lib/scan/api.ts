@@ -4,6 +4,7 @@ import {
   type PublicProfileRepositoryRequest,
 } from "../public-profile/repository";
 import { runSourceScan, type SourceScanOptions, type SourceScanResult } from "./source-scan";
+import { runPostingRefinement, type PostingRefinementOptions, type PostingRefinementResult } from "./refine-postings";
 
 export type SourceScanHandlerOptions = {
   env?: NodeJS.ProcessEnv;
@@ -66,6 +67,51 @@ export async function handleSourceScanRequest(
 
   const runScan = options.runScan ?? runSourceScan;
   const result = await runScan(repositoryRequest, { env, now: options.now });
+
+  return json(result);
+}
+
+export type RefinePostingsHandlerOptions = {
+  env?: NodeJS.ProcessEnv;
+  now?: () => string;
+  limit?: number;
+  repositoryRequest?: PublicProfileRepositoryRequest;
+  runRefinement?: (
+    request: PublicProfileRepositoryRequest,
+    options: PostingRefinementOptions,
+  ) => Promise<PostingRefinementResult>;
+};
+
+// LLM gap-fill for postings the heuristic left empty. Cron/admin-triggered, CRON_SECRET-guarded
+// (same application-level route guard as the source scan). Bounded per run via ?limit=.
+export async function handleRefinePostingsRequest(
+  request: Request,
+  options: RefinePostingsHandlerOptions = {},
+) {
+  const env = options.env ?? process.env;
+
+  const secret = env.CRON_SECRET?.trim();
+  if (!secret) {
+    return json({
+      error: "Posting refinement trigger is not configured.",
+      missing: ["CRON_SECRET"],
+    }, { status: 503 });
+  }
+
+  if (bearerToken(request) !== secret) {
+    return json({ error: "Unauthorized." }, { status: 401 });
+  }
+
+  const repositoryRequest = repositoryRequestForOptions(options);
+  if (!repositoryRequest) {
+    return json({ error: "Public jobs storage is not configured." }, { status: 503 });
+  }
+
+  const limitParam = Number(new URL(request.url).searchParams.get("limit"));
+  const limit = options.limit ?? (Number.isFinite(limitParam) && limitParam > 0 ? Math.min(limitParam, 100) : undefined);
+
+  const runRefinement = options.runRefinement ?? runPostingRefinement;
+  const result = await runRefinement(repositoryRequest, { now: options.now, limit });
 
   return json(result);
 }
