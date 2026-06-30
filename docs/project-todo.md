@@ -18,13 +18,21 @@ Canonical planning sources remain:
 
 ## Current Priority
 
-Finish the Step 2 Profile Management follow-ups, then clarify and build Step 3 Jobs and Saved Jobs.
+**Reconciled 2026-06-30.** The backend across Phases 4–8 is built and tested (Codex + Claude). Prod
+schema is fully migrated; source scan is live (16 sources, ~2100 jobs) with a daily cron; per-user
+scans rank by match score; the subscription_plans RLS finding is fixed.
 
-2026-06-29 backend update: the backend-only matching, pursuit, Human Path boundary, outreach
-persistence, and subscription enforcement work from `docs/codex-tasks-backend-2026-06-28.md` is
-complete. Read `docs/claude-handoff-codex-backend-completion-2026-06-29.md` before using the
-Phase 4 through Phase 8 unchecked items below; several now need pruning or reclassification as
-UI, provider, billing, or product-decision work rather than Codex backend implementation.
+What actually remains splits three ways:
+1. **Design-gated UI** (the bulk): pursuit dashboard/list/detail, match results surfacing, outreach
+   review workflow, subscription upgrade states, profile-management editor follow-ups, onboarding
+   quality UI, landing + pricing pages. All need an approved design source before edits (AGENTS.md
+   Design Authority + `docs/design-state.md`).
+2. **Decision-blocked:** Human Path contact-discovery provider; billing provider + webhooks;
+   resume storage/parsing provider; Google/Apple OAuth.
+3. **Unblocked backend** (small): pre-launch copy/scaffold audit (Phase 9 verify item); profile
+   regeneration action wiring; outreach version pruning, etc.
+
+Next-task selection should pick from #3, or move into #1 once Randall provides/approves design.
 
 ## Near-Term (scheduled)
 
@@ -175,15 +183,18 @@ UI, provider, billing, or product-decision work rather than Codex backend implem
 - [ ] Add desktop and mobile screenshot validation for the profile editor.
 - [x] Remove profile export from Profile Management scope.
 
-## Phase 4 — Matching Engine
+## Phase 4 — Matching Engine  (BACKEND DONE — `lib/public-profile/matching/`)
 
-- [ ] Add role fit evaluation service.
-- [ ] Add Role Track recommendation.
-- [ ] Add resume recommendation.
-- [ ] Add proof object recommendation.
-- [ ] Add risk and mismatch explanation.
-- [ ] Add hard exclusion handling for salary, remote preference, and blacklisted companies.
-- [ ] Add matching fixture tests.
+- [x] Add role fit evaluation service. (`engine.ts` `evaluateMatch` + `scorers.ts`)
+- [x] Add Role Track recommendation. (`recommend.ts`)
+- [x] Add resume recommendation. (`recommend.ts`)
+- [x] Add proof object recommendation. (work-example recommendation, `recommend.ts`)
+- [x] Add risk and mismatch explanation. (`MatchResult.risks/whyNotMatched/explanation`)
+- [~] ~~Add hard exclusion handling~~ — SUPERSEDED: Randall chose soft negative signals, not hard
+  drops (salary floor / remote / avoided companies are soft). See matching-spectrum decision.
+- [x] Add matching fixture tests. (`scripts/test-public-profile-matching`)
+- [x] Wire `evaluateMatch` into per-user scan-result ranking/annotation. (2026-06-30)
+- [ ] Surface match results in UI (design-gated).
 
 ## Phase 5 — Pursuit Workflow
 
@@ -191,13 +202,13 @@ UI, provider, billing, or product-decision work rather than Codex backend implem
 - [x] Add Saved Jobs as "pursue later" only, separate from pursuit creation.
 - [x] Add save/unsave route for active user scan results.
 - [x] Apply public job scan results migration to Supabase. (2026-06-28)
-- [~] Feed the public `jobs` table via the Scan paradigm. Slice 1 + 1b DONE (2026-06-29):
-  independent `lib/scan/sources/` engine (all providers ported) + `runSourceScan`
-  (`lib/scan/source-scan.ts`) + `job_sources` migration + scheduled `GET|POST /api/jobs/source-scan`
-  (CRON_SECRET-guarded) + `vercel.json` daily cron. Remaining: set `CRON_SECRET` in Vercel + add
-  real `job_sources` rows (Randall — see `docs/scan-sources-setup.md`); apply migration to prod;
-  then wire `evaluateMatch` into per-user scan-result ranking. See `docs/current-state.md`
-  2026-06-29 entries.
+- [x] Feed the public `jobs` table via the Scan paradigm — LIVE (2026-06-30). Independent
+  `lib/scan/sources/` engine (all providers) + `runSourceScan` + `job_sources` (migration applied to
+  prod) + scheduled `GET|POST /api/jobs/source-scan` (CRON_SECRET set in Vercel + daily cron). 16
+  sources seeded; first run upserted ~2105 jobs; per-user scans rank by `evaluateMatch`. Curate
+  `job_sources` anytime (see `docs/scan-sources-setup.md`).
+- [ ] Wire external connector ingestion into the per-user scan flow if desired (currently source
+  scan fills the shared pool on a schedule; per-user `/api/jobs/scan` reads + ranks it).
 - [x] Add Pursuits. (backend: create/state machine + read/list API)
 - [x] Add pursuit stages for review, Human Path, contacts, outreach, and tracking. (backend API slices)
 - [x] Add pursuit read/list API for dashboard consumption: `GET /api/public-profile/pursuits` (list + counts) and `GET /api/public-profile/pursuits/[id]` (full detail). (2026-06-29)
@@ -205,31 +216,37 @@ UI, provider, billing, or product-decision work rather than Codex backend implem
 - [x] Add pursuit state tests.
 - [ ] Build pursuit dashboard/list/read UI (design-gated).
 
-## Phase 6 — Human Path Engine
+## Phase 6 — Human Path Engine  (BOUNDARY DONE — `lib/public-profile/pursuits/human-path.ts`)
 
-- [ ] Add contact discovery provider boundary.
-- [ ] Add hiring manager, functional leader, recruiter, and executive sponsor contact types.
-- [ ] Add confidence scoring and reasoning.
-- [ ] Add contact ranking by company context.
-- [ ] Add Human Path usage ledger integration.
+- [x] Add contact discovery provider boundary. (`HumanPathProvider` seam; default
+  `unavailableHumanPathProvider`)
+- [x] Add hiring manager, functional leader, recruiter, and executive sponsor contact types.
+  (`HumanPathContact` types)
+- [x] Add confidence scoring and reasoning. (contact confidence + reason fields in the contract)
+- [x] Add Human Path usage ledger integration. (`human_path` usage events)
+- [ ] **BLOCKED (decision):** choose + integrate a real contact-discovery provider. Until then the
+  provider degrades gracefully (provider_unavailable). Contact ranking by company context lands with
+  the real provider.
 
-## Phase 7 — Outreach Generation
+## Phase 7 — Outreach Generation  (BACKEND DONE — `lib/public-profile/outreach-generator.ts`)
 
-- [ ] Add message generation service.
-- [ ] Generate contact-specific outreach from profile, role track, resume, proof, and contact type.
-- [ ] Add outreach version/history storage.
-- [ ] Add outreach usage ledger integration.
-- [ ] Add fixture tests for tone, proof selection, and contact specificity.
+- [x] Add message generation service. (`outreach-generator.ts`, injected callModel, graceful no-key)
+- [x] Generate contact-specific outreach from profile, role track, resume, work example, contact type.
+- [x] Add outreach version/history storage. (`outreach_messages` + `saved_message_feedback`)
+- [x] Add outreach usage ledger integration. (`outreach_message` usage events)
+- [x] Add fixture tests for tone, proof selection, and contact specificity.
+  (`scripts/test-public-profile-outreach`)
+- [ ] Outreach UI + review workflow (design-gated).
 
-## Phase 8 — Subscription System
+## Phase 8 — Subscription System  (ENFORCEMENT DONE — `lib/public-profile/subscription/`)
 
-- [ ] Implement Tester, Basic, and Pro plan rules.
-- [ ] Enforce pursuit limits.
-- [ ] Enforce Human Path limits.
-- [ ] Enforce outreach limits.
-- [ ] Enforce Pursued Jobs Export gate.
-- [ ] Add upgrade states for limit reached and Pursued Jobs Export locked.
-- [ ] Add webhook processing after billing provider is chosen.
+- [x] Implement Tester, Basic, and Pro plan rules. (`rules.ts`)
+- [x] Enforce pursuit limits. (`enforcement.ts`)
+- [x] Enforce Human Path limits.
+- [x] Enforce outreach limits.
+- [x] Enforce Pursued Jobs Export gate. (data-returning enforcement)
+- [ ] Add upgrade states for limit reached and Pursued Jobs Export locked (UI, design-gated).
+- [ ] **BLOCKED (decision):** billing provider + webhook processing.
 
 ## Phase 9 — Public Site
 
