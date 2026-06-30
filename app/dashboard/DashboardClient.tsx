@@ -8,6 +8,7 @@ import { requestPublicProfileApi } from "@/lib/public-profile/client";
 import { publicProfileOnboardingSections } from "@/lib/public-profile/onboarding";
 import OnboardingClient from "../onboarding/OnboardingClient";
 import styles from "../site.module.css";
+import jobsStyles from "./dashboard.module.css";
 import type { PublicJobRecord, PublicJobsResponse, PublicJobsScanResponse } from "@/lib/public-jobs/types";
 
 type BootstrapResponse = {
@@ -36,6 +37,31 @@ function formatJobDate(value?: string) {
     day: "numeric",
     year: "numeric",
   }).format(new Date(value));
+}
+
+function truncateText(value: string, max = 240) {
+  const clean = value.replace(/\s+/g, " ").trim();
+  return clean.length > max ? `${clean.slice(0, max).trimEnd()}…` : clean;
+}
+
+function matchBadgeClass(label?: string) {
+  switch (label) {
+    case "Strong Match": return jobsStyles.matchStrong;
+    case "Potential Match": return jobsStyles.matchPotential;
+    case "Weak Match": return jobsStyles.matchWeak;
+    default: return jobsStyles.matchLow;
+  }
+}
+
+function JobMetaGrid({ job }: { job: PublicJobRecord }) {
+  return (
+    <dl className={jobsStyles.metaGrid}>
+      <div><dt>Source</dt><dd>{job.source}</dd></div>
+      <div><dt>Salary</dt><dd>{job.compensationText || "Not listed"}</dd></div>
+      <div><dt>Remote</dt><dd>{job.remoteType || "Unknown"}</dd></div>
+      <div><dt>Location</dt><dd>{job.location || "Unknown"}</dd></div>
+    </dl>
+  );
 }
 
 export default function DashboardClient() {
@@ -196,71 +222,80 @@ export default function DashboardClient() {
         </div>
       </section>
       {guardState.status === "complete" ? (
-        <section className={styles.jobsPanel} aria-labelledby="jobs-title">
-          <div className={styles.jobsPanelHeader}>
+        <section className={jobsStyles.jobsPanel} aria-labelledby="jobs-title">
+          <div className={jobsStyles.panelHeaderRow}>
             <div>
-              <p className={styles.status}>Jobs</p>
-              <h2 id="jobs-title">Scan results and Saved Jobs.</h2>
-              <p>
-                Scan uses your current profile targets and constraints. New scans merge with unsaved and
+              <h2 className={jobsStyles.panelTitle} id="jobs-title">Scan results &amp; Saved Jobs</h2>
+              <p className={jobsStyles.panelLede}>
+                Scan uses your current profile targets and constraints. New scans merge with unsaved,
                 unactioned prior results so useful jobs do not disappear between sessions.
               </p>
             </div>
-            <button className={styles.linkButton} disabled={jobsBusy} onClick={runScan} type="button">
+            <button className={jobsStyles.runScanBtn} disabled={jobsBusy} onClick={runScan} type="button">
               {jobsBusy ? "Scanning…" : "Run scan"}
             </button>
           </div>
 
-          <div className={styles.jobsSummaryGrid}>
-            <div>
+          <div className={jobsStyles.summaryGrid}>
+            <div className={jobsStyles.summaryStat}>
               <span>{jobsResponse?.summary.totalJobs ?? 0}</span>
               <small>Active jobs</small>
             </div>
-            <div>
+            <div className={jobsStyles.summaryStat}>
               <span>{jobsResponse?.summary.savedJobs ?? 0}</span>
               <small>Saved for later</small>
             </div>
-            <div>
+            <div className={jobsStyles.summaryStat}>
               <span>{jobsResponse?.summary.lastScanAt ? formatJobDate(jobsResponse.summary.lastScanAt) : "Not scanned"}</span>
               <small>Last scan</small>
             </div>
           </div>
 
           {jobsState.status === "loading" ? (
-            <p className={styles.jobsMessage}>Loading jobs…</p>
+            <p className={jobsStyles.message}>Loading jobs…</p>
           ) : null}
           {jobsState.status === "error" ? (
-            <p className={styles.jobsError}>{jobsState.message}</p>
+            <p className={jobsStyles.error}>{jobsState.message}</p>
           ) : null}
           {jobsState.status === "ready" && jobsState.message ? (
-            <p className={styles.jobsMessage}>{jobsState.message}</p>
+            <p className={jobsStyles.message}>{jobsState.message}</p>
           ) : null}
 
-          <div className={styles.jobsGrid}>
-            <div className={styles.jobsColumn}>
-              <h3>Jobs</h3>
+          <div className={jobsStyles.jobsGrid}>
+            <div className={jobsStyles.column}>
+              <h3 className={jobsStyles.columnTitle}>Jobs</h3>
               {jobs.length === 0 ? (
-                <p className={styles.jobsEmpty}>No active jobs yet. Run a scan after your profile search requirements are ready.</p>
+                <p className={jobsStyles.empty}>No active jobs yet. Run a scan after your profile search requirements are ready.</p>
               ) : (
-                <div className={styles.jobCardList}>
-                  {jobs.map((job) => (
-                    <article className={styles.jobCard} key={job.id}>
-                      <div>
-                        <p>{job.companyName}</p>
-                        <h4>{job.title}</h4>
+                <div className={jobsStyles.cardList}>
+                  {jobs.map((job, index) => (
+                    <article className={jobsStyles.jobCard} key={job.id}>
+                      <div className={jobsStyles.jobCardHeader}>
+                        <span className={jobsStyles.rankNumber} aria-hidden="true">{index + 1}</span>
+                        <h4 className={jobsStyles.jobTitle}>
+                          {job.title}
+                          <span className={jobsStyles.titleDivider} aria-hidden="true" />
+                          <span className={jobsStyles.companyName}>{job.companyName}</span>
+                        </h4>
                       </div>
-                      <dl>
-                        <div><dt>Location</dt><dd>{job.location || job.remoteType || "Unknown"}</dd></div>
-                        <div><dt>Source</dt><dd>{job.source}</dd></div>
-                        <div><dt>First seen</dt><dd>{formatJobDate(job.firstSeenAt)}</dd></div>
-                        <div><dt>Last seen</dt><dd>{formatJobDate(job.lastSeenAt)}</dd></div>
-                      </dl>
-                      {job.compensationText ? <p className={styles.jobMetaText}>{job.compensationText}</p> : null}
-                      <div className={styles.jobActions}>
-                        <a href={job.sourceUrl} rel="noreferrer" target="_blank">Open posting</a>
-                        <button disabled={jobsBusy} onClick={() => setJobSaved(job, !job.saved)} type="button">
+                      {job.match ? (
+                        <div className={jobsStyles.fitRow}>
+                          <span className={jobsStyles.fitLabel}>Fit</span>
+                          <span className={jobsStyles.fitScore}>{job.match.score}<small>/100</small></span>
+                          <span className={`${jobsStyles.matchBadge} ${matchBadgeClass(job.match.label)}`}>{job.match.label}</span>
+                        </div>
+                      ) : null}
+                      <JobMetaGrid job={job} />
+                      {job.description ? (
+                        <div className={jobsStyles.descriptionBox}>
+                          <p className={jobsStyles.descriptionText}>{truncateText(job.description)}</p>
+                        </div>
+                      ) : null}
+                      <div className={jobsStyles.actionRail}>
+                        <button className={job.saved ? jobsStyles.btnSaved : jobsStyles.btnSave} disabled={jobsBusy} onClick={() => setJobSaved(job, !job.saved)} type="button">
                           {job.saved ? "Saved" : "Save for later"}
                         </button>
+                        <a className={jobsStyles.btnSource} href={job.sourceUrl} rel="noreferrer" target="_blank">Open posting ↗</a>
                       </div>
                     </article>
                   ))}
@@ -268,24 +303,25 @@ export default function DashboardClient() {
               )}
             </div>
 
-            <aside className={styles.jobsColumn}>
-              <h3>Saved Jobs</h3>
+            <aside className={jobsStyles.column}>
+              <h3 className={jobsStyles.columnTitle}>Saved Jobs</h3>
               {savedJobs.length === 0 ? (
-                <p className={styles.jobsEmpty}>Save jobs you want to revisit before deciding whether to pursue them.</p>
+                <p className={jobsStyles.empty}>Save jobs you want to revisit before deciding whether to pursue them.</p>
               ) : (
-                <div className={styles.jobCardList}>
+                <div className={jobsStyles.cardList}>
                   {savedJobs.map((job) => (
-                    <article className={styles.jobCard} key={`saved-${job.id}`}>
-                      <div>
-                        <p>{job.companyName}</p>
-                        <h4>{job.title}</h4>
-                      </div>
-                      <p className={styles.jobMetaText}>Saved for later review.</p>
-                      <div className={styles.jobActions}>
-                        <a href={job.sourceUrl} rel="noreferrer" target="_blank">Open posting</a>
-                        <button disabled={jobsBusy} onClick={() => setJobSaved(job, false)} type="button">
+                    <article className={jobsStyles.jobCard} key={`saved-${job.id}`}>
+                      <h4 className={jobsStyles.jobTitle}>
+                        {job.title}
+                        <span className={jobsStyles.titleDivider} aria-hidden="true" />
+                        <span className={jobsStyles.companyName}>{job.companyName}</span>
+                      </h4>
+                      <JobMetaGrid job={job} />
+                      <div className={jobsStyles.actionRail}>
+                        <button className={jobsStyles.btnSaved} disabled={jobsBusy} onClick={() => setJobSaved(job, false)} type="button">
                           Unsave
                         </button>
+                        <a className={jobsStyles.btnSource} href={job.sourceUrl} rel="noreferrer" target="_blank">Open posting ↗</a>
                       </div>
                     </article>
                   ))}
