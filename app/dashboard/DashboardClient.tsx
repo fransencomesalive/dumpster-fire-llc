@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { clearPublicProfileAccessToken, readPublicProfileAccessToken } from "@/lib/public-profile/browser-session";
 import { requestPublicProfileApi } from "@/lib/public-profile/client";
@@ -39,23 +39,76 @@ function formatJobDate(value?: string) {
   }).format(new Date(value));
 }
 
-function truncateText(value: string, max = 240) {
+function formatRemotePreference(value: string) {
+  switch (value) {
+    case "remote_only": return "Remote only";
+    case "remote_preferred": return "Remote preferred";
+    case "hybrid_ok": return "Hybrid OK";
+    case "onsite_ok": return "Onsite OK";
+    default: return value;
+  }
+}
+
+function truncateText(value: string, max = 220) {
   const clean = value.replace(/\s+/g, " ").trim();
   return clean.length > max ? `${clean.slice(0, max).trimEnd()}…` : clean;
 }
 
-function matchBadgeClass(label?: string) {
-  switch (label) {
-    case "Strong Match": return jobsStyles.matchStrong;
-    case "Potential Match": return jobsStyles.matchPotential;
-    case "Weak Match": return jobsStyles.matchWeak;
-    default: return jobsStyles.matchLow;
-  }
+const STAR_POINTS = "12 2 15 9 22 9.3 16.5 14 18.5 21 12 17 5.5 21 7.5 14 2 9.3 9 9";
+
+function starsFromScore(score: number) {
+  return Math.max(1, Math.min(5, Math.round(score / 20)));
+}
+
+function StarRow({ score }: { score: number }) {
+  const filled = starsFromScore(score);
+  return (
+    <span className={jobsStyles.starIconRow} title={`${score}/100`} aria-hidden="true">
+      {[0, 1, 2, 3, 4].map((index) => (
+        <svg key={index} width="15" height="15" viewBox="0 0 24 24" fill={index < filled ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.5">
+          <polygon points={STAR_POINTS} />
+        </svg>
+      ))}
+    </span>
+  );
+}
+
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+// Wrap occurrences of the candidate's matched signals in a mustard highlight.
+function highlightText(text: string, signals: string[]): ReactNode {
+  const terms = signals.map((signal) => signal.trim()).filter((signal) => signal.length >= 3);
+  if (terms.length === 0) return text;
+  const escaped = [...terms].sort((a, b) => b.length - a.length).map(escapeRegExp);
+  const splitter = new RegExp(`(${escaped.join("|")})`, "gi");
+  const matcher = new RegExp(`^(${escaped.join("|")})$`, "i");
+  return text
+    .split(splitter)
+    .filter((part) => part !== "")
+    .map((part, index) =>
+      matcher.test(part)
+        ? <mark key={index} className={jobsStyles.matchHighlight} style={{ "--rot": `${index % 2 ? 1.4 : -1.6}deg` } as CSSProperties}>{part}</mark>
+        : <span key={index}>{part}</span>,
+    );
+}
+
+function MatchSection({ label, items, signals }: { label: string; items: string[]; signals: string[] }) {
+  if (items.length === 0) return null;
+  return (
+    <div className={jobsStyles.matchSection}>
+      <span className={jobsStyles.matchSectionLabel}>{label}</span>
+      <ul className={jobsStyles.matchSectionList}>
+        {items.map((item, index) => <li key={index}>{highlightText(item, signals)}</li>)}
+      </ul>
+    </div>
+  );
 }
 
 function JobMetaGrid({ job }: { job: PublicJobRecord }) {
   return (
-    <dl className={jobsStyles.metaGrid}>
+    <dl className={jobsStyles.jobMetaGrid}>
       <div><dt>Source</dt><dd>{job.source}</dd></div>
       <div><dt>Salary</dt><dd>{job.compensationText || "Not listed"}</dd></div>
       <div><dt>Remote</dt><dd>{job.remoteType || "Unknown"}</dd></div>
@@ -70,6 +123,8 @@ export default function DashboardClient() {
   const [jobsState, setJobsState] = useState<JobsState>({ status: "idle" });
   const [jobsBusy, setJobsBusy] = useState(false);
   const [isProfileEditorOpen, setIsProfileEditorOpen] = useState(false);
+  const [fitFilter, setFitFilter] = useState<number | null>(null);
+  const [savedOnly, setSavedOnly] = useState(false);
 
   async function loadJobs(accessToken: string, message?: string) {
     setJobsState((state) => state.status === "ready" ? { ...state, message } : { status: "loading" });
@@ -176,9 +231,41 @@ export default function DashboardClient() {
     }
   }
 
+  async function startPursuit(job: PublicJobRecord) {
+    const accessToken = readPublicProfileAccessToken();
+    if (!accessToken) {
+      router.replace("/onboarding");
+      return;
+    }
+
+    setJobsBusy(true);
+    try {
+      await requestPublicProfileApi("/api/public-profile/pursuits", {
+        method: "POST",
+        accessToken,
+        body: { jobId: job.id },
+      });
+      setJobsState((state) => state.status === "ready" ? { ...state, message: `Pursuit started for ${job.title}.` } : state);
+    } catch (error) {
+      setJobsState((state) => state.status === "ready"
+        ? { ...state, message: error instanceof Error ? error.message : "Could not start pursuit." }
+        : state);
+    } finally {
+      setJobsBusy(false);
+    }
+  }
+
   const jobsResponse = jobsState.status === "ready" ? jobsState.response : undefined;
   const jobs = jobsResponse?.jobs ?? [];
   const savedJobs = jobs.filter((job) => job.saved);
+  const searchSettings = jobsResponse?.searchSettings;
+  const tierCounts = [5, 4, 3, 2, 1].map((tier) => ({
+    tier,
+    count: jobs.filter((job) => starsFromScore(job.match?.score ?? 0) === tier).length,
+  }));
+  const visibleJobs = savedOnly
+    ? savedJobs
+    : (fitFilter ? jobs.filter((job) => starsFromScore(job.match?.score ?? 0) === fitFilter) : jobs);
 
   return (
     <main className={styles.page}>
@@ -222,33 +309,12 @@ export default function DashboardClient() {
         </div>
       </section>
       {guardState.status === "complete" ? (
-        <section className={jobsStyles.jobsPanel} aria-labelledby="jobs-title">
-          <div className={jobsStyles.panelHeaderRow}>
-            <div>
-              <h2 className={jobsStyles.panelTitle} id="jobs-title">Scan results &amp; Saved Jobs</h2>
-              <p className={jobsStyles.panelLede}>
-                Scan uses your current profile targets and constraints. New scans merge with unsaved,
-                unactioned prior results so useful jobs do not disappear between sessions.
-              </p>
-            </div>
-            <button className={jobsStyles.runScanBtn} disabled={jobsBusy} onClick={runScan} type="button">
-              {jobsBusy ? "Scanning…" : "Run scan"}
-            </button>
-          </div>
-
-          <div className={jobsStyles.summaryGrid}>
-            <div className={jobsStyles.summaryStat}>
-              <span>{jobsResponse?.summary.totalJobs ?? 0}</span>
-              <small>Active jobs</small>
-            </div>
-            <div className={jobsStyles.summaryStat}>
-              <span>{jobsResponse?.summary.savedJobs ?? 0}</span>
-              <small>Saved for later</small>
-            </div>
-            <div className={jobsStyles.summaryStat}>
-              <span>{jobsResponse?.summary.lastScanAt ? formatJobDate(jobsResponse.summary.lastScanAt) : "Not scanned"}</span>
-              <small>Last scan</small>
-            </div>
+        <section className={jobsStyles.pageWrap} aria-labelledby="jobs-title">
+          <div className={jobsStyles.sectionHead}>
+            <h2 id="jobs-title">{savedOnly ? "Saved jobs" : "Your best matches"}</h2>
+            {jobsResponse?.summary.lastScanAt ? (
+              <p className={jobsStyles.lastScan}>Last scan {formatJobDate(jobsResponse.summary.lastScanAt)}</p>
+            ) : null}
           </div>
 
           {jobsState.status === "loading" ? (
@@ -261,72 +327,151 @@ export default function DashboardClient() {
             <p className={jobsStyles.message}>{jobsState.message}</p>
           ) : null}
 
-          <div className={jobsStyles.jobsGrid}>
-            <div className={jobsStyles.column}>
-              <h3 className={jobsStyles.columnTitle}>Jobs</h3>
-              {jobs.length === 0 ? (
-                <p className={jobsStyles.empty}>No active jobs yet. Run a scan after your profile search requirements are ready.</p>
-              ) : (
-                <div className={jobsStyles.cardList}>
-                  {jobs.map((job, index) => (
-                    <article className={jobsStyles.jobCard} key={job.id}>
-                      <div className={jobsStyles.jobCardHeader}>
-                        <span className={jobsStyles.rankNumber} aria-hidden="true">{index + 1}</span>
-                        <h4 className={jobsStyles.jobTitle}>
-                          {job.title}
-                          <span className={jobsStyles.titleDivider} aria-hidden="true" />
-                          <span className={jobsStyles.companyName}>{job.companyName}</span>
-                        </h4>
-                      </div>
-                      {job.match ? (
-                        <div className={jobsStyles.fitRow}>
-                          <span className={jobsStyles.fitLabel}>Fit</span>
-                          <span className={jobsStyles.fitScore}>{job.match.score}<small>/100</small></span>
-                          <span className={`${jobsStyles.matchBadge} ${matchBadgeClass(job.match.label)}`}>{job.match.label}</span>
-                        </div>
-                      ) : null}
-                      <JobMetaGrid job={job} />
-                      {job.description ? (
-                        <div className={jobsStyles.descriptionBox}>
-                          <p className={jobsStyles.descriptionText}>{truncateText(job.description)}</p>
-                        </div>
-                      ) : null}
-                      <div className={jobsStyles.actionRail}>
-                        <button className={job.saved ? jobsStyles.btnSaved : jobsStyles.btnSave} disabled={jobsBusy} onClick={() => setJobSaved(job, !job.saved)} type="button">
-                          {job.saved ? "Saved" : "Save for later"}
-                        </button>
-                        <a className={jobsStyles.btnSource} href={job.sourceUrl} rel="noreferrer" target="_blank">Open posting ↗</a>
-                      </div>
-                    </article>
+          <div className={jobsStyles.dashboardGrid}>
+            <div className={jobsStyles.dashboardMain}>
+              {!savedOnly && jobs.length > 0 ? (
+                <div className={jobsStyles.ratingFilterGrid} aria-label="Filter matches by fit">
+                  {tierCounts.map(({ tier, count }) => (
+                    <button
+                      key={tier}
+                      type="button"
+                      aria-pressed={fitFilter === tier}
+                      className={`${jobsStyles.ratingFilterBtn} ${fitFilter === tier ? jobsStyles.ratingFilterBtnActive : ""}`}
+                      onClick={() => setFitFilter((current) => current === tier ? null : tier)}
+                    >
+                      <span className={jobsStyles.ratingStars}>
+                        <span className={jobsStyles.on}>{"★".repeat(tier)}</span>
+                        <span className={jobsStyles.off}>{"★".repeat(5 - tier)}</span>
+                      </span>
+                      <strong>{count}</strong>
+                      <span className={jobsStyles.ratingCount}>roles</span>
+                    </button>
                   ))}
+                </div>
+              ) : null}
+
+              {visibleJobs.length === 0 ? (
+                <p className={jobsStyles.empty}>
+                  {savedOnly
+                    ? "No saved jobs yet. Save matches you want to revisit before deciding whether to pursue them."
+                    : "No active jobs yet. Run a scan once your profile search settings are ready."}
+                </p>
+              ) : (
+                <div className={jobsStyles.matchList}>
+                  {visibleJobs.map((job) => {
+                    const signals = job.match?.signals ?? [];
+                    const isWildcard = job.match?.label === "Probably Not Worth Your Time";
+                    return (
+                      <article className={`${jobsStyles.card} ${jobsStyles.jobCard}`} key={job.id}>
+                        {isWildcard ? (
+                          <span className={jobsStyles.weirdMatchTag} aria-label="Wildcard match">
+                            {"WEIRD".split("").map((letter, index) => <span key={`w${index}`}>{letter}</span>)}
+                            <span className={jobsStyles.sp} />
+                            {"MATCH".split("").map((letter, index) => <span key={`m${index}`}>{letter}</span>)}
+                          </span>
+                        ) : null}
+                        <div className={jobsStyles.jobCardHeader}>
+                          <div className={jobsStyles.jobNumberTitle}>
+                            <span className={jobsStyles.jobNumber} aria-hidden="true">{jobs.indexOf(job) + 1}</span>
+                            <h3 className={jobsStyles.jobTitle}>
+                              {job.title}
+                              <span className={jobsStyles.titleDivider} aria-hidden="true" />
+                              <span className={jobsStyles.companyName}>{job.companyName}</span>
+                            </h3>
+                          </div>
+                        </div>
+
+                        {job.match ? (
+                          <div className={jobsStyles.stars}>
+                            <span className={jobsStyles.starLabel}>Fit</span>
+                            <span className={jobsStyles.starScore}>{job.match.score}<small>/100</small></span>
+                            <StarRow score={job.match.score} />
+                          </div>
+                        ) : null}
+
+                        <JobMetaGrid job={job} />
+
+                        {job.description ? (
+                          <div className={jobsStyles.descriptionBox}>
+                            <p className={jobsStyles.descriptionText}>{truncateText(job.description)}</p>
+                            {signals.length > 0 ? (
+                              <div className={jobsStyles.keywordPills}>
+                                {signals.slice(0, 5).map((signal) => (
+                                  <span className={jobsStyles.keywordPill} key={signal}>{signal}</span>
+                                ))}
+                              </div>
+                            ) : null}
+                          </div>
+                        ) : null}
+
+                        {job.responsibilities.length > 0 || job.requiredExperience.length > 0 ? (
+                          <div className={jobsStyles.matchSections}>
+                            <MatchSection label="Responsibilities" items={job.responsibilities} signals={signals} />
+                            <MatchSection label="Required experience" items={job.requiredExperience} signals={signals} />
+                          </div>
+                        ) : null}
+
+                        <div className={jobsStyles.actionRail}>
+                          <button className={jobsStyles.btnSave} disabled={jobsBusy} onClick={() => setJobSaved(job, !job.saved)} type="button">
+                            {job.saved ? "Saved" : "Save"}
+                          </button>
+                          <a className={jobsStyles.btnSource} href={job.sourceUrl} rel="noreferrer" target="_blank">Open posting ↗</a>
+                          <button className={jobsStyles.btnApply} disabled={jobsBusy} onClick={() => startPursuit(job)} type="button">Pursue</button>
+                        </div>
+                      </article>
+                    );
+                  })}
                 </div>
               )}
             </div>
 
-            <aside className={jobsStyles.column}>
-              <h3 className={jobsStyles.columnTitle}>Saved Jobs</h3>
-              {savedJobs.length === 0 ? (
-                <p className={jobsStyles.empty}>Save jobs you want to revisit before deciding whether to pursue them.</p>
-              ) : (
-                <div className={jobsStyles.cardList}>
-                  {savedJobs.map((job) => (
-                    <article className={jobsStyles.jobCard} key={`saved-${job.id}`}>
-                      <h4 className={jobsStyles.jobTitle}>
-                        {job.title}
-                        <span className={jobsStyles.titleDivider} aria-hidden="true" />
-                        <span className={jobsStyles.companyName}>{job.companyName}</span>
-                      </h4>
-                      <JobMetaGrid job={job} />
-                      <div className={jobsStyles.actionRail}>
-                        <button className={jobsStyles.btnSaved} disabled={jobsBusy} onClick={() => setJobSaved(job, false)} type="button">
-                          Unsave
-                        </button>
-                        <a className={jobsStyles.btnSource} href={job.sourceUrl} rel="noreferrer" target="_blank">Open posting ↗</a>
-                      </div>
-                    </article>
-                  ))}
+            <aside className={jobsStyles.dashboardSidebar}>
+              <div className={jobsStyles.card}>
+                <div className={jobsStyles.panelHeaderRow}>
+                  <h3 className={jobsStyles.sidebarHeading}>Overview</h3>
                 </div>
-              )}
+                <div className={jobsStyles.ovScanRow}>
+                  <span className={jobsStyles.dim}>Last scan</span>
+                  <span className={jobsStyles.date}>{jobsResponse?.summary.lastScanAt ? formatJobDate(jobsResponse.summary.lastScanAt) : "Not scanned"}</span>
+                </div>
+                <div className={jobsStyles.ovSources}>
+                  <span><strong>{jobsResponse?.summary.totalJobs ?? 0}</strong> active jobs</span>
+                  <span><strong>{jobsResponse?.summary.savedJobs ?? 0}</strong> saved</span>
+                </div>
+                <button className={jobsStyles.scanNowBtn} disabled={jobsBusy} onClick={runScan} type="button">
+                  {jobsBusy ? "Scanning…" : "Run scan"}
+                </button>
+                <button className={jobsStyles.scanSecondaryBtn} onClick={() => setSavedOnly((current) => !current)} type="button">
+                  {savedOnly ? "Show all jobs" : "View saved jobs"}
+                </button>
+              </div>
+
+              {searchSettings ? (
+                <div className={jobsStyles.card}>
+                  <div className={jobsStyles.panelHeaderRow}>
+                    <h3 className={jobsStyles.sidebarHeading}>Search settings</h3>
+                    <button className={jobsStyles.editBtn} onClick={() => setIsProfileEditorOpen(true)} type="button">Edit</button>
+                  </div>
+                  <div className={jobsStyles.configStats}>
+                    <div className={jobsStyles.configStat}>
+                      <span className={jobsStyles.metaLabel}>Remote</span>
+                      <strong className={jobsStyles.metaValue}>{formatRemotePreference(searchSettings.remotePreference)}</strong>
+                    </div>
+                    <div className={jobsStyles.configStat}>
+                      <span className={jobsStyles.metaLabel}>Salary floor</span>
+                      <strong className={jobsStyles.metaValue}>{searchSettings.salaryFloor ? `$${Math.round(searchSettings.salaryFloor / 1000)}k` : "Any"}</strong>
+                    </div>
+                    <div className={jobsStyles.configStat}>
+                      <span className={jobsStyles.metaLabel}>Target titles</span>
+                      <strong className={jobsStyles.metaValue}>{searchSettings.targetTitleCount}</strong>
+                    </div>
+                    <div className={jobsStyles.configStat}>
+                      <span className={jobsStyles.metaLabel}>Avoided cos.</span>
+                      <strong className={jobsStyles.metaValue}>{searchSettings.avoidedCompanyCount}</strong>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
             </aside>
           </div>
         </section>

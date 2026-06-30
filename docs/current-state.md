@@ -1,5 +1,27 @@
 # Current State
 
+## 2026-06-30 - Dashboard rebuilt to the match-card/scan-page design (Claude)
+
+Implemented the live dashboard to the existing approved match-card/scan-page design (Randall: the
+design was already done; no new card approval needed — fix the backend and build it in full).
+
+- `app/dashboard/DashboardClient.tsx` + `dashboard.module.css` rebuilt to the scan-page layout:
+  match-card stack (main, `minmax(0,1.4fr)`) + 300px Overview/Search-settings sidebar. Cards now
+  show rank disc, fit score + star row, meta grid, description + keyword pills (from match signals),
+  the **Responsibilities + Required experience sub-cards** (real parsed data) with **match-term
+  highlighting**, and a Save / Open posting / Pursue action rail. Rating-filter tabs (functional, by
+  fit tier). Wildcard ("weird match") flag on lowest-tier matches. Sidebar: Overview (last scan,
+  active/saved counts, Run scan, View saved toggle) + Search settings (remote/salary floor/target
+  titles/avoided, Edit -> profile editor).
+- Backend support added: `PublicJobMatchSummary.signals` (matched terms for highlighting, from
+  `evaluateMatch` categoryFits) and an optional `searchSettings` summary on the jobs read response
+  (from the candidate aggregate). `Pursue` posts to `/api/public-profile/pursuits`.
+- Verified: card synced to Claude Design matches (screenshotted 1120/560); tsc clean; lint baseline;
+  build compiles; all job/match/parser suites pass.
+
+Still open: Phase 2 LLM posting-parser refinement for heading-less postings; Edit Profile modal +
+dashboard hero are still on `site.module.css` (separate slices; hero still has an eyebrow label).
+
 ## 2026-06-30 - Posting parser: Responsibilities + Required experience (Claude)
 
 High-priority per Randall: match cards must show Responsibilities + Required experience (the legacy

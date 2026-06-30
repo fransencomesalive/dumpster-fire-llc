@@ -6,7 +6,7 @@ import {
   type PublicProfileRepositoryRequest,
 } from "../public-profile/repository";
 import type { CandidateProfileAggregate } from "../public-profile/types";
-import type { PublicJobMatchSummary, PublicJobRecord, PublicJobsResponse, PublicJobsScanResponse, PublicJobsSummary } from "./types";
+import type { PublicJobMatchSummary, PublicJobRecord, PublicJobSearchSettings, PublicJobsResponse, PublicJobsScanResponse, PublicJobsSummary } from "./types";
 
 type JobRow = {
   id: string;
@@ -269,10 +269,21 @@ function rankJobsForProfile(
 ): PublicJobRecord[] {
   const annotated = jobs.map((job): PublicJobRecord => {
     const result = evaluateMatch({ profile: aggregate, job: matchJobFromRecord(job), evaluatedAt });
-    const match: PublicJobMatchSummary = { score: result.internalScore, label: result.label };
+    const signals = unique(result.categoryFits.flatMap((fit) => fit.matchedSignals)).slice(0, 12);
+    const match: PublicJobMatchSummary = { score: result.internalScore, label: result.label, signals };
     return { ...job, match };
   });
   return annotated.sort((a, b) => (b.match?.score ?? 0) - (a.match?.score ?? 0));
+}
+
+function searchSettingsForAggregate(aggregate: CandidateProfileAggregate): PublicJobSearchSettings {
+  const targetTitles = unique(aggregate.roleTracks.flatMap((track) => track.targetTitles));
+  return {
+    remotePreference: aggregate.profile.remotePreference,
+    salaryFloor: aggregate.profile.targetCompensationMin,
+    targetTitleCount: targetTitles.length,
+    avoidedCompanyCount: (aggregate.preferences?.avoidCompanies ?? []).length,
+  };
 }
 
 export async function readPublicJobsForUser(
@@ -299,6 +310,7 @@ export async function readPublicJobsForUser(
   return {
     jobs: rankedJobs,
     summary: summaryForJobs(rankedJobs, readiness.scanParameters),
+    searchSettings: searchSettingsForAggregate(readiness.aggregate),
   };
 }
 

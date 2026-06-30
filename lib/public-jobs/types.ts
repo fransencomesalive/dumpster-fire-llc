@@ -3,6 +3,9 @@ import type { MatchLabel } from "../public-profile/matching/types";
 export type PublicJobMatchSummary = {
   score: number;
   label: MatchLabel;
+  // Distinctive profile signals that matched this posting — used to highlight terms in the
+  // responsibilities / required-experience lists.
+  signals: string[];
 };
 
 export type PublicJobRecord = {
@@ -37,9 +40,17 @@ export type PublicJobsSummary = {
   scanParameters: string[];
 };
 
+export type PublicJobSearchSettings = {
+  remotePreference: string;
+  salaryFloor?: number;
+  targetTitleCount: number;
+  avoidedCompanyCount: number;
+};
+
 export type PublicJobsResponse = {
   jobs: PublicJobRecord[];
   summary: PublicJobsSummary;
+  searchSettings?: PublicJobSearchSettings;
 };
 
 export type PublicJobsScanResponse = PublicJobsResponse & {
