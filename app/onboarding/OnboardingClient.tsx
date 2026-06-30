@@ -1457,8 +1457,8 @@ export default function OnboardingClient({
                         {roleTracks.map((track) => (<option key={track.id} value={track.id}>{track.name || track.id}</option>))}
                       </select></label>
                       <label>Rules<textarea value={listToText(rule.rules)} onChange={(event) => setOutreachRules((section) => ({ ...section, roleTrackSpecificRules: section.roleTrackSpecificRules.map((item) => item.id === rule.id ? { ...item, rules: textToList(event.target.value) } : item) }))} /></label>
-                      <label>Preferred proof types<textarea value={listToText(rule.preferredProofTypes)} onChange={(event) => setOutreachRules((section) => ({ ...section, roleTrackSpecificRules: section.roleTrackSpecificRules.map((item) => item.id === rule.id ? { ...item, preferredProofTypes: textToList(event.target.value) } : item) }))} /></label>
-                      <label>Avoid proof types<textarea value={listToText(rule.avoidProofTypes)} onChange={(event) => setOutreachRules((section) => ({ ...section, roleTrackSpecificRules: section.roleTrackSpecificRules.map((item) => item.id === rule.id ? { ...item, avoidProofTypes: textToList(event.target.value) } : item) }))} /></label>
+                      <label>Preferred work example types<textarea value={listToText(rule.preferredProofTypes)} onChange={(event) => setOutreachRules((section) => ({ ...section, roleTrackSpecificRules: section.roleTrackSpecificRules.map((item) => item.id === rule.id ? { ...item, preferredProofTypes: textToList(event.target.value) } : item) }))} /></label>
+                      <label>Avoid work example types<textarea value={listToText(rule.avoidProofTypes)} onChange={(event) => setOutreachRules((section) => ({ ...section, roleTrackSpecificRules: section.roleTrackSpecificRules.map((item) => item.id === rule.id ? { ...item, avoidProofTypes: textToList(event.target.value) } : item) }))} /></label>
                     </div>
                   </div>
                 ))}
