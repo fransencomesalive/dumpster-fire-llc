@@ -48,13 +48,29 @@ Validation: new + existing test suites pass; `tsc --noEmit` clean; `npm run lint
 pre-existing warnings; `npm run build` compiles; migration validated locally; `git diff --check`
 clean.
 
-Slice 1b (NOT built, needs Randall):
-- Trigger: a protected `POST /api/jobs/ingest` (or `/scan-sources`) endpoint for a scheduler/cron
-  (needs a trigger-secret/auth approach decision). Source scan runs scheduled/admin, not inline on
-  user scans (keeps per-user `/api/jobs/scan` fast).
-- Seed data: the actual list of companies + ATS board tokens to scan (Randall provides).
-- Later: wire source scan ahead of / alongside `/api/jobs/scan`; wire `evaluateMatch` into
-  scan-result ranking; de-duplicate the connector engine shared with legacy `app/scans`.
+## 2026-06-29 - Source scan trigger, Slice 1b (Claude)
+
+Added the scheduled trigger for the source scan. Backend/infra only.
+
+- `GET|POST /api/jobs/source-scan` ([app/api/jobs/source-scan/route.ts](../app/api/jobs/source-scan/route.ts))
+  guarded by `CRON_SECRET` (Vercel Cron sends `Authorization: Bearer ${CRON_SECRET}`). Handler
+  `handleSourceScanRequest` in [lib/scan/api.ts](../lib/scan/api.ts): 503 if `CRON_SECRET` unset,
+  401 on bad/missing bearer, 503 if storage unconfigured, else runs `runSourceScan` and returns the
+  summary. This is an application-level route guard, not server-level auth.
+- `vercel.json` schedules it daily at 06:00 UTC (`0 6 * * *`; Hobby-compatible, bump to `0 */6 * * *`
+  on Pro).
+- Tests: `scripts/test-scan-api.{ts,mjs}` (not-configured / unauthorized / storage-missing /
+  authorized-run).
+- Setup doc: [docs/scan-sources-setup.md](scan-sources-setup.md) — how to set `CRON_SECRET`, the
+  schedule, and the `job_sources` seeding shape per provider.
+
+Still needed before it produces data (Randall):
+- Set `CRON_SECRET` in Vercel env.
+- Add the real `job_sources` rows (companies + ATS board tokens) — see the setup doc. Until then the
+  trigger runs and is a safe no-op.
+
+Still open (later): wire `evaluateMatch` into per-user scan-result ranking/annotation;
+de-duplicate the connector engine shared with legacy `app/scans`.
 
 ## 2026-06-29 - Pursuit read/list API (Claude)
 

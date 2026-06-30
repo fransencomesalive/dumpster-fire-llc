@@ -188,12 +188,13 @@ UI, provider, billing, or product-decision work rather than Codex backend implem
 - [x] Add Saved Jobs as "pursue later" only, separate from pursuit creation.
 - [x] Add save/unsave route for active user scan results.
 - [x] Apply public job scan results migration to Supabase. (2026-06-28)
-- [~] Feed the public `jobs` table via the Scan paradigm. Slice 1 DONE (2026-06-29): independent
-  `lib/scan/sources/` engine (all providers ported) + `runSourceScan` (`lib/scan/source-scan.ts`)
-  + `job_sources` migration. Remaining (Slice 1b): protected scheduled/admin source-scan endpoint
-  (needs trigger-secret decision), seed company/board list (Randall), wire source scan ahead of
-  `/api/jobs/scan`, and wire `evaluateMatch` into scan-result ranking. See `docs/current-state.md`
-  2026-06-29 source scan entry.
+- [~] Feed the public `jobs` table via the Scan paradigm. Slice 1 + 1b DONE (2026-06-29):
+  independent `lib/scan/sources/` engine (all providers ported) + `runSourceScan`
+  (`lib/scan/source-scan.ts`) + `job_sources` migration + scheduled `GET|POST /api/jobs/source-scan`
+  (CRON_SECRET-guarded) + `vercel.json` daily cron. Remaining: set `CRON_SECRET` in Vercel + add
+  real `job_sources` rows (Randall — see `docs/scan-sources-setup.md`); apply migration to prod;
+  then wire `evaluateMatch` into per-user scan-result ranking. See `docs/current-state.md`
+  2026-06-29 entries.
 - [x] Add Pursuits. (backend: create/state machine + read/list API)
 - [x] Add pursuit stages for review, Human Path, contacts, outreach, and tracking. (backend API slices)
 - [x] Add pursuit read/list API for dashboard consumption: `GET /api/public-profile/pursuits` (list + counts) and `GET /api/public-profile/pursuits/[id]` (full detail). (2026-06-29)
