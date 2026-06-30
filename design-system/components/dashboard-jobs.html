@@ -8,319 +8,348 @@
 <link rel="stylesheet" href="../tokens/tokens.css" />
 <link rel="stylesheet" href="../lib/base.css" />
 <style>
-  /* Page ground carries the halftone; panel + cards sit on top, opaque. */
-  body { padding: var(--space-6); background: var(--c-paper); }
-  body::before { content:""; position: fixed; inset: 0; z-index: -1;
-    background-image: radial-gradient(var(--halftone-color) var(--halftone-dot),
-      transparent calc(var(--halftone-dot) + 0.5px)); background-size: var(--halftone-size) var(--halftone-size); }
-  /* ↓↓↓ verbatim from app/dashboard/dashboard.module.css (class names mirror DashboardClient.tsx) ↓↓↓ */
-/* Dashboard Jobs + matches — styled to the DS specs (match-card, panel, badges),
-   token-driven, applied to the dashboard's own markup. No dark literals. */
+  /* Public dashboard Jobs surface — adapts the scan-page pattern: match-card stack (main)
+     + a 300px Overview/Search-settings sidebar. Curated for the public app (no internal
+     matcher/rules/tuning). Class names mirror DashboardClient.tsx so CSS ports back. */
+  body { margin:0; background:var(--c-paper); color:var(--c-ink); font-family:var(--font-body); padding:var(--space-6) 0; }
+  body::before { content:""; position:fixed; inset:0; z-index:-1;
+    background-image: radial-gradient(var(--halftone-color) var(--halftone-dot), transparent calc(var(--halftone-dot) + 0.5px));
+    background-size: var(--halftone-size) var(--halftone-size); }
+  .pageWrap { width:min(1080px, calc(100% - 48px)); margin:0 auto; }
 
-.jobsPanel {
-  max-width: 1120px;
-  margin: 0 auto var(--space-6);
-  padding: 0 var(--space-5);
-}
+  /* Section header · headline first, scan line + badge beneath. No eyebrow. */
+  .sectionHead { display:flex; align-items:baseline; flex-wrap:wrap; gap:var(--space-3) var(--space-4); margin-bottom:var(--space-5); }
+  .sectionHead h2 { font-family:var(--font-display); font-size:var(--type-h2); color:var(--c-ink); margin:0; }
+  .lastScan { font-family:var(--font-subhead); text-transform:uppercase; letter-spacing:var(--tracking-subhead);
+    font-size:1.1rem; color:var(--c-tomato); margin:0; }
+  .scanBadge { font-family:var(--font-subhead); text-transform:uppercase; letter-spacing:0.05em;
+    font-size:0.8rem; line-height:1; color:var(--c-paper); background-color:var(--c-teal);
+    border:var(--line-reg) solid var(--c-ink); border-radius:var(--radius-pill); padding:5px 12px;
+    background-image:var(--fiber-img), var(--grain-img); background-blend-mode:normal, soft-light; background-size:170px 170px, 46px 46px; }
 
-/* Panel header — single uppercase subhead title (no eyebrow), action on the right. */
-.panelHeaderRow {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: var(--space-4);
-  flex-wrap: wrap;
-  padding-bottom: var(--space-3);
-  border-bottom: var(--line-reg) solid var(--c-ink);
-  margin-bottom: var(--space-4);
-}
+  /* Grid shell · main + 300px sidebar */
+  .dashboardGrid { display:grid; grid-template-columns:minmax(0,1.4fr) 300px; gap:var(--space-5); align-items:start; }
+  .dashboardMain { min-width:0; }
 
-.panelTitle {
-  font-family: var(--font-subhead);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  font-size: 1.45rem;
-  color: var(--c-ink);
-  margin: 0;
-}
+  /* Rating-filter tabs · paper chips, teal stars; active = teal fill */
+  .ratingFilterGrid { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:var(--space-2); margin-bottom:var(--space-4); }
+  .ratingFilterBtn { display:flex; flex-direction:column; align-items:center; gap:5px; min-width:0;
+    padding:var(--space-3) var(--space-2); font:inherit; cursor:pointer;
+    background-color:var(--c-paper); border:var(--line-reg) solid var(--c-ink); border-radius:var(--radius-md); box-shadow:var(--shadow-card); }
+  .ratingStars { font-size:0.92rem; letter-spacing:1px; line-height:1; white-space:nowrap; }
+  .ratingStars .on { color:var(--c-teal); }
+  .ratingStars .off { color:var(--c-paper-edge); }
+  .ratingFilterBtn strong { font-family:var(--font-display); font-size:1.2rem; line-height:1; color:var(--c-ink); }
+  .ratingCount { font-family:var(--font-subhead); text-transform:uppercase; letter-spacing:0.04em; font-size:0.74rem; color:var(--role-text-faint); }
+  .ratingFilterBtnActive { background-color:var(--c-teal); border-color:var(--c-ink); box-shadow:var(--reg-box); }
+  .ratingFilterBtnActive .on { color:var(--c-paper); }
+  .ratingFilterBtnActive .off { color:rgba(243,232,210,0.45); }
+  .ratingFilterBtnActive strong, .ratingFilterBtnActive .ratingCount { color:var(--c-paper); }
 
-.panelLede {
-  font-family: var(--font-body);
-  color: var(--role-text-muted);
-  max-width: 60ch;
-  margin: var(--space-2) 0 0;
-}
+  .matchList { display:grid; gap:var(--space-4); }
 
-/* Run scan — primary CTA (tomato role-action), ink outline, hard offset. */
-.runScanBtn {
-  flex: none;
-  font-family: var(--font-display);
-  font-size: 0.98rem;
-  color: var(--role-action-text);
-  background-color: var(--role-action);
-  background-image: var(--fiber-img), var(--grain-img);
-  background-blend-mode: normal, soft-light;
-  background-size: 170px 170px, 46px 46px;
-  border: var(--line-bold) solid var(--c-ink);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-card);
-  padding: var(--space-2) var(--space-5);
-  cursor: pointer;
-  transition: background-color var(--dur-fast) var(--ease-snap), box-shadow var(--dur-fast) var(--ease-snap);
-}
-.runScanBtn:hover:not(:disabled) { background-color: var(--role-info); box-shadow: var(--reg-box); }
-.runScanBtn:disabled { opacity: 0.6; cursor: default; }
+  /* Match card */
+  .card { background-color:var(--c-paper-deep); background-image:var(--fiber-img), var(--grain-img);
+    background-blend-mode:normal, soft-light; background-size:170px 170px, 46px 46px;
+    border:var(--line-reg) solid var(--c-ink); border-radius:var(--radius-lg); box-shadow:var(--shadow-card); padding:var(--space-5); }
+  .jobCard { position:relative; padding-right:var(--space-7); }
+  .jobCardHeader { display:flex; align-items:flex-start; justify-content:space-between; gap:var(--space-4); }
+  .jobNumberTitle { display:flex; align-items:center; gap:var(--space-3); min-width:0; }
+  .jobNumber { position:relative; flex:none; display:grid; place-items:center; width:30px; height:30px;
+    border-radius:var(--radius-pill); background-color:var(--c-teal);
+    background-image:var(--fiber-img), var(--grain-img); background-blend-mode:normal, soft-light; background-size:170px 170px, 46px 46px;
+    font-family:var(--font-subhead); font-size:1.1rem; line-height:1; color:var(--c-paper-deep); }
+  .jobNumber::after { content:""; position:absolute; inset:0; border-radius:var(--radius-pill);
+    border:var(--line-reg) solid var(--c-mustard); transform:translate(calc(-1 * var(--reg-shift-x)), calc(-1 * var(--reg-shift-y))); }
+  .jobTitle { font-family:var(--font-display); font-size:1.25rem; line-height:1.15; color:var(--c-ink); margin:0; min-width:0; overflow-wrap:anywhere; }
+  .titleDivider { display:inline-block; width:9px; height:9px; margin:0 9px; background:var(--c-teal);
+    border:1px solid var(--c-ink); transform:rotate(45deg); vertical-align:0.1em; }
+  .companyName { font-family:var(--font-body); font-weight:400; color:var(--c-ink); }
 
-/* Summary stats row */
-.panelHeaderRow > div { min-width: 0; }
+  .weirdMatchTag { position:absolute; top:calc(-1 * var(--line-reg)); right:var(--space-5);
+    display:flex; flex-direction:column; align-items:center;
+    background-color:var(--c-mustard); background-image:var(--fiber-img), var(--grain-img);
+    background-blend-mode:normal, soft-light; background-size:170px 170px, 46px 46px; color:var(--c-ink);
+    border:var(--line-reg) solid var(--c-ink); border-top:none; border-radius:0 0 var(--radius-sm) var(--radius-sm);
+    padding:var(--space-2) 6px var(--space-3); box-shadow:var(--shadow-card); }
+  .weirdMatchTag span { font-family:var(--font-display-accent); text-transform:uppercase; font-size:0.72rem; line-height:1.04; letter-spacing:0.01em; }
+  .weirdMatchTag .sp { height:6px; }
 
-.summaryGrid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--space-4);
-  margin-bottom: var(--space-5);
-}
-.summaryStat {
-  background-color: var(--c-paper);
-  border: var(--line-hair) solid var(--c-paper-edge);
-  border-radius: var(--radius-md);
-  padding: var(--space-3) var(--space-4);
-}
-.summaryStat span {
-  display: block;
-  font-family: var(--font-display);
-  font-size: 1.5rem;
-  line-height: 1.1;
-  color: var(--c-ink);
-}
-.summaryStat small {
-  font-family: var(--font-subhead);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  font-size: 0.8rem;
-  color: var(--c-teal);
-}
+  .stars { display:flex; align-items:center; gap:var(--space-3); margin:var(--space-4) 0; flex-wrap:wrap; }
+  .starLabel { font-family:var(--font-subhead); text-transform:uppercase; letter-spacing:0.05em; font-size:0.9rem; color:var(--c-teal); }
+  .starScore { font-family:var(--font-display); font-size:1.05rem; color:var(--c-ink); }
+  .starScore small { font-family:var(--font-body); font-size:0.85rem; color:var(--role-text-muted); }
+  .starIconRow { display:inline-flex; gap:3px; color:var(--c-teal); }
 
-.message { font-family: var(--font-body); color: var(--role-text-muted); margin: 0 0 var(--space-4); }
-.error {
-  font-family: var(--font-body);
-  color: var(--c-ink);
-  background: var(--c-paper);
-  border: var(--line-hair) solid var(--c-paper-edge);
-  border-left: var(--line-bold) solid var(--c-tomato);
-  border-radius: var(--radius-sm);
-  padding: var(--space-3) var(--space-4);
-  margin: 0 0 var(--space-4);
-}
+  .jobMetaGrid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:var(--space-3); margin:0 0 var(--space-4);
+    padding:var(--space-3) 0; border-top:var(--line-reg) solid var(--c-ink); border-bottom:var(--line-reg) solid var(--c-ink); }
+  .jobMetaGrid > div { min-width:0; }
+  .jobMetaGrid dt { font-family:var(--font-subhead); text-transform:uppercase; letter-spacing:0.04em; font-size:0.85rem; color:var(--c-teal); margin-bottom:3px; }
+  .jobMetaGrid dd { margin:0; font-family:var(--font-body); font-size:0.95rem; color:var(--c-ink); overflow-wrap:anywhere; }
 
-/* Two columns — Jobs (ranked) + Saved Jobs */
-.jobsGrid { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: var(--space-5); align-items: start; }
-.column { min-width: 0; }
-.columnTitle {
-  font-family: var(--font-subhead);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  font-size: 1.05rem;
-  color: var(--c-ink);
-  margin: 0 0 var(--space-4);
-}
-.empty {
-  font-family: var(--font-body);
-  color: var(--role-text-muted);
-  background: var(--c-paper);
-  border: var(--line-hair) dashed var(--c-paper-edge);
-  border-radius: var(--radius-md);
-  padding: var(--space-4);
-}
-.cardList { display: grid; gap: var(--space-4); }
+  .descriptionBox { background-color:var(--c-paper); background-image:var(--fiber-img), var(--grain-img);
+    background-blend-mode:normal, soft-light; background-size:170px 170px, 46px 46px;
+    border:var(--line-hair) solid var(--c-paper-edge); border-radius:var(--radius-md); padding:var(--space-4); margin-bottom:var(--space-4); }
+  .descriptionText { margin:0 0 var(--space-3); font-family:var(--font-body); font-size:0.95rem; color:var(--role-text-muted); }
+  .keywordPills { display:flex; flex-wrap:wrap; gap:var(--space-3) var(--space-5); }
+  .keywordPill { font-family:var(--font-display); font-size:0.9rem; line-height:1.1; color:var(--c-ink); border-bottom:2.5px dotted var(--c-teal); padding-bottom:1px; }
 
-/* Job card — match-card surface */
-.jobCard {
-  position: relative;
-  background-color: var(--c-paper-deep);
-  background-image: var(--fiber-img), var(--grain-img);
-  background-blend-mode: normal, soft-light;
-  background-size: 170px 170px, 46px 46px;
-  border: var(--line-reg) solid var(--c-ink);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-card);
-  padding: var(--space-5);
-}
+  .matchSections { display:grid; grid-template-columns:1fr 1fr; gap:var(--space-4); margin-bottom:var(--space-4); }
+  .matchSection { background-color:var(--c-paper); background-image:var(--fiber-img), var(--grain-img);
+    background-blend-mode:normal, soft-light; background-size:170px 170px, 46px 46px;
+    border:var(--line-reg) solid var(--c-ink); border-radius:var(--radius-md); padding:var(--space-4); }
+  .matchSectionLabel { display:block; font-family:var(--font-subhead); text-transform:uppercase; letter-spacing:0.05em;
+    font-size:0.95rem; color:var(--c-teal); padding-bottom:var(--space-2); margin-bottom:var(--space-2);
+    border-bottom:var(--line-hair) solid var(--c-paper-edge); }
+  .matchSectionList { margin:0; padding-left:1.1em; font-family:var(--font-body); font-size:0.92rem; color:var(--c-ink); }
+  .matchSectionList li { margin-bottom:var(--space-2); }
+  .matchSectionList li:last-child { margin-bottom:0; }
+  .matchHighlight { position:relative; color:var(--c-ink); background:transparent; z-index:0; }
+  .matchHighlight::before { content:""; position:absolute; z-index:-1; inset:-0.14em -0.24em -0.02em -0.2em;
+    background:var(--c-mustard); border-radius:0.6em 0.95em 0.5em 0.85em / 0.9em 0.5em 0.95em 0.55em; transform:rotate(var(--rot, -1.4deg)); }
 
-.jobCardHeader { display: flex; align-items: flex-start; gap: var(--space-3); }
-/* Rank disc — teal, grain, mustard misregistered outline; numeral knocks out. */
-.rankNumber {
-  position: relative;
-  flex: none;
-  display: grid;
-  place-items: center;
-  width: 30px;
-  height: 30px;
-  border-radius: var(--radius-pill);
-  background-color: var(--c-teal);
-  background-image: var(--fiber-img), var(--grain-img);
-  background-blend-mode: normal, soft-light;
-  background-size: 170px 170px, 46px 46px;
-  font-family: var(--font-subhead);
-  font-size: 1.05rem;
-  line-height: 1;
-  color: var(--c-paper-deep);
-}
-.rankNumber::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: var(--radius-pill);
-  border: var(--line-reg) solid var(--c-mustard);
-  transform: translate(calc(-1 * var(--reg-shift-x)), calc(-1 * var(--reg-shift-y)));
-}
-.jobTitle { font-family: var(--font-display); font-size: 1.25rem; line-height: 1.15; color: var(--c-ink); margin: 0; min-width: 0; overflow-wrap: anywhere; }
-.titleDivider {
-  display: inline-block; width: 9px; height: 9px; margin: 0 9px;
-  background: var(--c-teal); border: 1px solid var(--c-ink);
-  transform: rotate(45deg); vertical-align: 0.1em;
-}
-.companyName { font-family: var(--font-body); font-weight: 400; color: var(--c-ink); }
+  .fitSummary { font-family:var(--font-body); font-style:italic; color:var(--c-ink); margin:var(--space-4) 0; }
+  .flagRow { display:flex; align-items:center; gap:var(--space-3); background:var(--c-paper);
+    border:var(--line-hair) solid var(--c-paper-edge); border-left:var(--line-bold) solid var(--c-bluebird);
+    border-radius:var(--radius-sm); padding:var(--space-3) var(--space-4); margin-bottom:var(--space-4); }
+  .flagRow::before { content:"Note"; flex:none; font-family:var(--font-subhead); text-transform:uppercase; letter-spacing:0.05em; font-size:0.72rem; color:var(--c-bluebird); }
+  .flagText { font-family:var(--font-body); font-size:0.9rem; color:var(--c-ink-soft); }
 
-/* Fit — teal label + numeric score + tier badge */
-.fitRow { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; margin: var(--space-4) 0; }
-.fitLabel { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.9rem; color: var(--c-teal); }
-.fitScore { font-family: var(--font-display); font-size: 1.1rem; color: var(--c-ink); }
-.fitScore small { font-family: var(--font-body); font-size: 0.85rem; color: var(--role-text-muted); }
-.matchBadge {
-  font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.05em;
-  font-size: 0.78rem; line-height: 1; border: var(--line-reg) solid var(--c-ink);
-  border-radius: var(--radius-pill); padding: 5px 11px;
-}
-.matchStrong { background-color: var(--c-teal); color: var(--c-paper); }
-.matchPotential { background-color: var(--c-bluebird); color: var(--c-paper); }
-.matchWeak { background-color: var(--c-paper); color: var(--role-text-muted); }
-.matchLow { background-color: var(--c-paper); color: var(--role-text-muted); border-style: dashed; }
+  .actionRail { display:flex; flex-wrap:wrap; gap:var(--space-3); align-items:center; }
+  .actionRail button, .actionRail a { font-family:var(--font-display); font-size:0.95rem; border-radius:var(--radius-md);
+    padding:var(--space-2) var(--space-4); cursor:pointer; text-decoration:none; }
+  .btnApply { color:var(--role-action-text); background-color:var(--role-action);
+    background-image:var(--fiber-img), var(--grain-img); background-blend-mode:normal, soft-light; background-size:170px 170px, 46px 46px;
+    border:var(--line-bold) solid var(--c-ink); box-shadow:var(--shadow-card); margin-left:auto; }
+  .btnSave { color:var(--c-ink); background:var(--c-paper); border:var(--line-reg) solid var(--c-ink); }
+  .btnSkip { color:var(--role-text-muted); background:transparent; border:var(--line-reg) solid transparent; }
+  .btnSource { position:relative; color:var(--c-ink); background:transparent; padding-bottom:3px; }
 
-/* Meta grid */
-.metaGrid {
-  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-3);
-  margin: 0 0 var(--space-4); padding: var(--space-3) 0;
-  border-top: var(--line-reg) solid var(--c-ink);
-  border-bottom: var(--line-reg) solid var(--c-ink);
-}
-.metaGrid > div { min-width: 0; }
-.metaGrid dt { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.04em; font-size: 0.82rem; color: var(--c-teal); margin-bottom: 3px; }
-.metaGrid dd { margin: 0; font-family: var(--font-body); font-size: 0.95rem; color: var(--c-ink); overflow-wrap: anywhere; }
+  /* Sidebar */
+  .dashboardSidebar { position:sticky; top:var(--space-5); display:flex; flex-direction:column; gap:var(--space-4); }
+  .panelHeaderRow { display:flex; align-items:center; justify-content:space-between; gap:var(--space-3);
+    margin-bottom:var(--space-4); padding-bottom:var(--space-3); border-bottom:var(--line-hair) solid var(--c-paper-edge); }
+  .sidebarHeading { margin:0; font-family:var(--font-display); font-size:1.25rem; color:var(--c-ink); }
+  .editBtn { font-family:var(--font-subhead); text-transform:uppercase; letter-spacing:0.04em; font-size:0.78rem;
+    color:var(--c-ink); background:var(--c-paper); border:var(--line-reg) solid var(--c-ink);
+    border-radius:var(--radius-sm); box-shadow:2px 2px 0 var(--c-ink); padding:4px 10px; cursor:pointer; }
+  .ovScanRow { display:flex; align-items:center; flex-wrap:wrap; gap:var(--space-2) var(--space-3); margin-bottom:var(--space-3); }
+  .ovScanRow .dim { font-family:var(--font-subhead); text-transform:uppercase; letter-spacing:var(--tracking-subhead); font-size:0.78rem; color:var(--role-text-faint); }
+  .ovScanRow .date { font-family:var(--font-body); font-size:0.95rem; color:var(--c-ink); }
+  .ovSources { display:flex; flex-wrap:wrap; gap:var(--space-2) var(--space-4); margin-bottom:var(--space-4);
+    font-family:var(--font-body); font-size:var(--type-small); color:var(--role-text-muted); }
+  .ovSources strong { font-family:var(--font-display); color:var(--c-ink); }
+  .scanNowBtn { display:block; width:100%; box-sizing:border-box; font-family:var(--font-display); font-size:1.15rem;
+    color:var(--role-action-text); background-color:var(--role-action);
+    background-image:var(--fiber-img), var(--grain-img); background-blend-mode:normal, soft-light; background-size:170px 170px, 46px 46px;
+    border:var(--line-bold) solid var(--c-ink); border-radius:var(--radius-md); box-shadow:var(--shadow-card); padding:var(--space-3) var(--space-4); cursor:pointer; margin-bottom:var(--space-3); }
+  .scanSecondaryBtn { display:block; width:100%; box-sizing:border-box; text-align:center; font-family:var(--font-display);
+    font-size:0.95rem; color:var(--c-ink); background:var(--c-paper); border:var(--line-reg) solid var(--c-ink);
+    border-radius:var(--radius-md); box-shadow:var(--shadow-card); padding:var(--space-2) var(--space-4); cursor:pointer; text-decoration:none; }
+  .configStats { display:grid; grid-template-columns:1fr 1fr; gap:var(--space-4) var(--space-3); }
+  .configStat { display:flex; flex-direction:column; gap:2px; min-width:0; }
+  .metaLabel { font-family:var(--font-subhead); text-transform:uppercase; letter-spacing:0.04em; font-size:0.78rem; color:var(--c-teal); }
+  .metaValue { font-family:var(--font-display); font-size:1.05rem; color:var(--c-ink); }
 
-.descriptionBox {
-  background-color: var(--c-paper);
-  background-image: var(--fiber-img), var(--grain-img);
-  background-blend-mode: normal, soft-light; background-size: 170px 170px, 46px 46px;
-  border: var(--line-hair) solid var(--c-paper-edge);
-  border-radius: var(--radius-md); padding: var(--space-4); margin-bottom: var(--space-4);
-}
-.descriptionText { margin: 0; font-family: var(--font-body); font-size: 0.92rem; color: var(--role-text-muted); }
-
-/* Action rail */
-.actionRail { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: center; }
-.actionRail a, .actionRail button {
-  font-family: var(--font-display); font-size: 0.92rem; border-radius: var(--radius-md);
-  padding: var(--space-2) var(--space-4); cursor: pointer; text-decoration: none;
-  transition: background-color var(--dur-fast) var(--ease-snap), box-shadow var(--dur-fast) var(--ease-snap);
-}
-.btnSave { color: var(--c-ink); background: var(--c-paper); border: var(--line-reg) solid var(--c-ink); }
-.btnSave:hover:not(:disabled) { background: color-mix(in srgb, var(--c-teal) 18%, var(--c-paper)); }
-.btnSaved { color: var(--c-paper); background: var(--c-teal); border: var(--line-reg) solid var(--c-ink); }
-.btnSource { position: relative; color: var(--c-ink); background: transparent; border: var(--line-reg) solid transparent; margin-left: auto; padding-bottom: 5px; }
-.btnSource::after {
-  content: ""; position: absolute; left: var(--space-4); right: var(--space-4); bottom: 4px;
-  height: var(--line-reg); background: var(--role-accent); mix-blend-mode: multiply;
-  transition: box-shadow var(--dur-fast) var(--ease-snap);
-}
-.btnSource:hover::after { box-shadow: var(--reg-shadow); }
-.actionRail button:disabled { opacity: 0.6; cursor: default; }
-
-@media (max-width: 900px) {
-  .jobsGrid { grid-template-columns: minmax(0, 1fr); }
-}
-@media (max-width: 560px) {
-  .summaryGrid { grid-template-columns: minmax(0, 1fr); }
-  .metaGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: var(--space-3); }
-  .panelHeaderRow { flex-direction: column; align-items: stretch; }
-  .runScanBtn { width: 100%; }
-}
+  @media (max-width:900px){
+    .dashboardGrid { grid-template-columns:minmax(0,1fr); }
+    .dashboardSidebar { position:static; }
+  }
+  @media (max-width:560px){
+    .matchSections { grid-template-columns:minmax(0,1fr); }
+    .jobMetaGrid { grid-template-columns:repeat(2,minmax(0,1fr)); row-gap:var(--space-3); }
+    .ratingStars { font-size:0.78rem; letter-spacing:0; }
+    .ratingFilterBtn strong { font-size:1.05rem; }
+  }
 </style>
 </head>
 <body>
-<section class="jobsPanel">
-  <div class="panelHeaderRow">
-    <div>
-      <h2 class="panelTitle">Scan results &amp; Saved Jobs</h2>
-      <p class="panelLede">Scan uses your current profile targets and constraints. New scans merge with unsaved, unactioned prior results so useful jobs do not disappear between sessions.</p>
-    </div>
-    <button class="runScanBtn" type="button">Run scan</button>
+<section class="pageWrap">
+  <div class="sectionHead">
+    <h2>Your best matches</h2>
+    <p class="lastScan">Last scan Jun 30, 9:14 AM</p>
+    <span class="scanBadge">Completed</span>
   </div>
 
-  <div class="summaryGrid">
-    <div class="summaryStat"><span>2105</span><small>Active jobs</small></div>
-    <div class="summaryStat"><span>3</span><small>Saved for later</small></div>
-    <div class="summaryStat"><span>Jun 30, 2026</span><small>Last scan</small></div>
-  </div>
+  <div class="dashboardGrid">
+    <div class="dashboardMain">
+      <div class="ratingFilterGrid" aria-label="Filter matches by fit">
+        <button type="button" class="ratingFilterBtn ratingFilterBtnActive" aria-pressed="true">
+          <span class="ratingStars"><span class="on">★★★★★</span></span><strong>6</strong><span class="ratingCount">roles</span>
+        </button>
+        <button type="button" class="ratingFilterBtn">
+          <span class="ratingStars"><span class="on">★★★★</span><span class="off">★</span></span><strong>11</strong><span class="ratingCount">roles</span>
+        </button>
+        <button type="button" class="ratingFilterBtn">
+          <span class="ratingStars"><span class="on">★★★</span><span class="off">★★</span></span><strong>18</strong><span class="ratingCount">roles</span>
+        </button>
+        <button type="button" class="ratingFilterBtn">
+          <span class="ratingStars"><span class="on">★★</span><span class="off">★★★</span></span><strong>9</strong><span class="ratingCount">roles</span>
+        </button>
+        <button type="button" class="ratingFilterBtn">
+          <span class="ratingStars"><span class="on">★</span><span class="off">★★★★</span></span><strong>5</strong><span class="ratingCount">roles</span>
+        </button>
+      </div>
 
-  <div class="jobsGrid">
-    <div class="column">
-      <h3 class="columnTitle">Jobs</h3>
-      <div class="cardList">
-        <article class="jobCard">
+      <div class="matchList">
+        <!-- Strong match · full card -->
+        <article class="card jobCard">
           <div class="jobCardHeader">
-            <span class="rankNumber" aria-hidden="true">1</span>
-            <h4 class="jobTitle">Senior Product Designer<span class="titleDivider" aria-hidden="true"></span><span class="companyName">Stripe</span></h4>
+            <div class="jobNumberTitle">
+              <span class="jobNumber" aria-hidden="true">1</span>
+              <h3 class="jobTitle">Senior Product Designer<span class="titleDivider" aria-hidden="true"></span><span class="companyName">Stripe</span></h3>
+            </div>
           </div>
-          <div class="fitRow"><span class="fitLabel">Fit</span><span class="fitScore">84<small>/100</small></span><span class="matchBadge matchStrong">Strong Match</span></div>
-          <dl class="metaGrid">
-            <div><dt>Source</dt><dd>greenhouse</dd></div>
-            <div><dt>Salary</dt><dd>$140,000 - $165,000</dd></div>
-            <div><dt>Remote</dt><dd>remote</dd></div>
-            <div><dt>Location</dt><dd>Remote - US</dd></div>
+          <div class="stars">
+            <span class="starLabel">Fit</span>
+            <span class="starScore">84<small>/100</small></span>
+            <span class="starIconRow" title="84/100" aria-hidden="true">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5"><polygon points="12 2 15 9 22 9.3 16.5 14 18.5 21 12 17 5.5 21 7.5 14 2 9.3 9 9"/></svg>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5"><polygon points="12 2 15 9 22 9.3 16.5 14 18.5 21 12 17 5.5 21 7.5 14 2 9.3 9 9"/></svg>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5"><polygon points="12 2 15 9 22 9.3 16.5 14 18.5 21 12 17 5.5 21 7.5 14 2 9.3 9 9"/></svg>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5"><polygon points="12 2 15 9 22 9.3 16.5 14 18.5 21 12 17 5.5 21 7.5 14 2 9.3 9 9"/></svg>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="12 2 15 9 22 9.3 16.5 14 18.5 21 12 17 5.5 21 7.5 14 2 9.3 9 9"/></svg>
+            </span>
+          </div>
+          <dl class="jobMetaGrid">
+            <div><dt>Source</dt><dd>Greenhouse</dd></div>
+            <div><dt>Salary</dt><dd>$140k – $165k</dd></div>
+            <div><dt>Remote</dt><dd>Remote (US)</dd></div>
+            <div><dt>Location</dt><dd>Remote</dd></div>
           </dl>
-          <div class="descriptionBox"><p class="descriptionText">Lead end-to-end design for a new B2B analytics product, partnering with PM and engineering from discovery through ship. Own the design system and mentor two designers.</p></div>
+          <div class="descriptionBox">
+            <p class="descriptionText">Lead end-to-end design for a new B2B analytics product, partnering with PM and engineering from discovery through ship. Own the design system and mentor two designers.</p>
+            <div class="keywordPills">
+              <span class="keywordPill">Design systems</span>
+              <span class="keywordPill">B2B</span>
+              <span class="keywordPill">0→1</span>
+              <span class="keywordPill">Mentorship</span>
+            </div>
+          </div>
+          <div class="matchSections">
+            <div class="matchSection">
+              <span class="matchSectionLabel">Responsibilities</span>
+              <ul class="matchSectionList">
+                <li>Own the <mark class="matchHighlight" style="--rot:-1.8deg">design system</mark> across web and mobile.</li>
+                <li>Drive <mark class="matchHighlight" style="--rot:1.3deg">0→1</mark> product discovery with PM and research.</li>
+                <li>Partner with engineering from concept through ship.</li>
+              </ul>
+            </div>
+            <div class="matchSection">
+              <span class="matchSectionLabel">Required experience</span>
+              <ul class="matchSectionList">
+                <li>7+ years in <mark class="matchHighlight" style="--rot:-1deg">B2B</mark> product design.</li>
+                <li>Proven <mark class="matchHighlight" style="--rot:1.7deg">design systems</mark> ownership at scale.</li>
+                <li>Comfortable with <mark class="matchHighlight" style="--rot:-2.1deg">0→1</mark> ambiguity.</li>
+              </ul>
+            </div>
+          </div>
+          <p class="fitSummary">Strong fit on systems and 0→1 work; salary band and remote both clear.</p>
           <div class="actionRail">
-            <button class="btnSave" type="button">Save for later</button>
-            <a class="btnSource" href="#">Open posting ↗</a>
+            <button type="button" class="btnSave">Save</button>
+            <a href="#" class="btnSource">Open posting ↗</a>
+            <button type="button" class="btnApply">Pursue</button>
           </div>
         </article>
-        <article class="jobCard">
+
+        <!-- Off-target surfaced with context · weird-match flag -->
+        <article class="card jobCard">
+          <span class="weirdMatchTag" aria-label="Weird match">
+            <span>W</span><span>E</span><span>I</span><span>R</span><span>D</span><span class="sp"></span><span>M</span><span>A</span><span>T</span><span>C</span><span>H</span>
+          </span>
           <div class="jobCardHeader">
-            <span class="rankNumber" aria-hidden="true">2</span>
-            <h4 class="jobTitle">Program Director, Creative Operations<span class="titleDivider" aria-hidden="true"></span><span class="companyName">Anthropic</span></h4>
+            <div class="jobNumberTitle">
+              <span class="jobNumber" aria-hidden="true">2</span>
+              <h3 class="jobTitle">Program Director, Creative Ops<span class="titleDivider" aria-hidden="true"></span><span class="companyName">Anthropic</span></h3>
+            </div>
           </div>
-          <div class="fitRow"><span class="fitLabel">Fit</span><span class="fitScore">61<small>/100</small></span><span class="matchBadge matchPotential">Potential Match</span></div>
-          <dl class="metaGrid">
-            <div><dt>Source</dt><dd>ashby</dd></div>
+          <div class="stars">
+            <span class="starLabel">Fit</span>
+            <span class="starScore">61<small>/100</small></span>
+            <span class="starIconRow" title="61/100" aria-hidden="true">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5"><polygon points="12 2 15 9 22 9.3 16.5 14 18.5 21 12 17 5.5 21 7.5 14 2 9.3 9 9"/></svg>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5"><polygon points="12 2 15 9 22 9.3 16.5 14 18.5 21 12 17 5.5 21 7.5 14 2 9.3 9 9"/></svg>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5"><polygon points="12 2 15 9 22 9.3 16.5 14 18.5 21 12 17 5.5 21 7.5 14 2 9.3 9 9"/></svg>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="12 2 15 9 22 9.3 16.5 14 18.5 21 12 17 5.5 21 7.5 14 2 9.3 9 9"/></svg>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="12 2 15 9 22 9.3 16.5 14 18.5 21 12 17 5.5 21 7.5 14 2 9.3 9 9"/></svg>
+            </span>
+          </div>
+          <dl class="jobMetaGrid">
+            <div><dt>Source</dt><dd>Ashby</dd></div>
             <div><dt>Salary</dt><dd>Not listed</dd></div>
-            <div><dt>Remote</dt><dd>hybrid</dd></div>
-            <div><dt>Location</dt><dd>San Francisco, CA</dd></div>
+            <div><dt>Remote</dt><dd>Hybrid</dd></div>
+            <div><dt>Location</dt><dd>San Francisco</dd></div>
           </dl>
+          <div class="descriptionBox">
+            <p class="descriptionText">Run cross-functional creative delivery across brand and product marketing, owning timelines, staffing, and stakeholder alignment for high-visibility launches.</p>
+            <div class="keywordPills">
+              <span class="keywordPill">Program delivery</span>
+              <span class="keywordPill">Stakeholders</span>
+              <span class="keywordPill">Launches</span>
+            </div>
+          </div>
+          <div class="matchSections">
+            <div class="matchSection">
+              <span class="matchSectionLabel">Responsibilities</span>
+              <ul class="matchSectionList">
+                <li>Own <mark class="matchHighlight" style="--rot:-1.5deg">cross-functional delivery</mark> for launches.</li>
+                <li>Drive <mark class="matchHighlight" style="--rot:1.2deg">stakeholder alignment</mark> across teams.</li>
+                <li>Manage staffing and timelines end to end.</li>
+              </ul>
+            </div>
+            <div class="matchSection">
+              <span class="matchSectionLabel">Required experience</span>
+              <ul class="matchSectionList">
+                <li>8+ years in <mark class="matchHighlight" style="--rot:-1.1deg">program / delivery</mark> leadership.</li>
+                <li>Track record running large <mark class="matchHighlight" style="--rot:1.6deg">launches</mark>.</li>
+                <li>Agency or in-house creative background.</li>
+              </ul>
+            </div>
+          </div>
+          <p class="fitSummary">Delivery and stakeholder strengths line up; creative-marketing domain is a stretch from your track.</p>
+          <div class="flagRow">
+            <span class="flagText">Surfaced as a wildcard — strong on your operating skills, off your stated target titles.</span>
+          </div>
           <div class="actionRail">
-            <button class="btnSaved" type="button">Saved</button>
-            <a class="btnSource" href="#">Open posting ↗</a>
+            <button type="button" class="btnSave">Save</button>
+            <button type="button" class="btnSkip">Skip</button>
+            <a href="#" class="btnSource">Open posting ↗</a>
+            <button type="button" class="btnApply">Pursue</button>
           </div>
         </article>
       </div>
     </div>
 
-    <aside class="column">
-      <h3 class="columnTitle">Saved Jobs</h3>
-      <div class="cardList">
-        <article class="jobCard">
-          <h4 class="jobTitle">Staff Engineer<span class="titleDivider" aria-hidden="true"></span><span class="companyName">Spotify</span></h4>
-          <dl class="metaGrid">
-            <div><dt>Source</dt><dd>lever</dd></div>
-            <div><dt>Salary</dt><dd>$180k+</dd></div>
-            <div><dt>Remote</dt><dd>onsite</dd></div>
-            <div><dt>Location</dt><dd>New York, NY</dd></div>
-          </dl>
-          <div class="actionRail">
-            <button class="btnSaved" type="button">Unsave</button>
-            <a class="btnSource" href="#">Open posting ↗</a>
-          </div>
-        </article>
+    <!-- SIDEBAR · Overview + Search settings (public-curated) -->
+    <aside class="dashboardSidebar">
+      <div class="card">
+        <div class="panelHeaderRow">
+          <h3 class="sidebarHeading">Overview</h3>
+        </div>
+        <div class="ovScanRow">
+          <span class="dim">Last scan</span>
+          <span class="date">Jun 30, 9:14 AM</span>
+          <span class="scanBadge">Completed</span>
+        </div>
+        <div class="ovSources">
+          <span><strong>49</strong> active jobs</span>
+          <span><strong>6</strong> saved</span>
+        </div>
+        <button type="button" class="scanNowBtn">Run scan</button>
+        <a class="scanSecondaryBtn" href="#">View saved jobs</a>
+      </div>
+
+      <div class="card">
+        <div class="panelHeaderRow">
+          <h3 class="sidebarHeading">Search settings</h3>
+          <button type="button" class="editBtn">Edit</button>
+        </div>
+        <div class="configStats">
+          <div class="configStat"><span class="metaLabel">Remote</span><strong class="metaValue">Remote only</strong></div>
+          <div class="configStat"><span class="metaLabel">Salary floor</span><strong class="metaValue">$140k</strong></div>
+          <div class="configStat"><span class="metaLabel">Target titles</span><strong class="metaValue">5</strong></div>
+          <div class="configStat"><span class="metaLabel">Avoided cos.</span><strong class="metaValue">6</strong></div>
+        </div>
       </div>
     </aside>
   </div>
