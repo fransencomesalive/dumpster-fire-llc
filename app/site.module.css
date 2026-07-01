@@ -1,10 +1,10 @@
 .publicLandingPage {
-  --landing-ink: #171006;
-  --landing-copy: #4b392b;
-  --landing-muted: #76583c;
-  --landing-line: #7b5b38;
-  --landing-paper: #f3e8d2;
-  --landing-sand: #efe0c3;
+  --landing-ink: var(--c-ink);
+  --landing-copy: var(--c-ink-soft);
+  --landing-muted: var(--c-ink-faint);
+  --landing-line: var(--c-ink-faint);
+  --landing-paper: var(--c-paper);
+  --landing-sand: var(--c-paper-deep);
   --landing-panel: rgb(255 248 233 / 0.58);
   --landing-panel-strong: rgb(255 248 233 / 0.78);
 
@@ -164,7 +164,7 @@
   width: clamp(210px, 24vw, 310px);
   height: auto;
   object-fit: contain;
-  filter: drop-shadow(0 14px 0 #7b5b38);
+  filter: drop-shadow(0 14px 0 var(--c-ink-faint));
 }
 
 .publicLandingHeroStrip {
@@ -424,9 +424,9 @@
 .publicLandingHumanModal {
   border: 2px solid var(--landing-line);
   border-radius: 14px;
-  background: #171006;
+  background: var(--c-ink);
   box-shadow: 0 14px 0 rgb(123 91 56 / 0.35);
-  color: #f3e8d2;
+  color: var(--c-paper);
   padding: 28px;
 }
 
@@ -439,7 +439,7 @@
 
 .publicLandingHumanModalHeader h3 {
   margin: 0;
-  color: #f3e8d2;
+  color: var(--c-paper);
   font-size: clamp(24px, 3vw, 34px);
   font-weight: 900;
   line-height: 1.05;
@@ -485,8 +485,8 @@
 }
 
 .publicLandingHumanWizardSteps .publicLandingHumanWizardStepActive {
-  border-color: #c9981f;
-  color: #f3e8d2;
+  border-color: var(--c-mustard);
+  color: var(--c-paper);
 }
 
 .publicLandingHumanModalStack {
@@ -502,7 +502,7 @@
 }
 
 .publicLandingHumanModalStack strong {
-  color: #f3e8d2;
+  color: var(--c-paper);
   font-size: 15px;
   font-weight: 900;
 }
@@ -554,7 +554,7 @@
 }
 
 .publicLandingHumanModalFooter strong {
-  background: #c9981f;
+  background: var(--c-mustard);
   color: var(--landing-ink);
 }
 
@@ -609,8 +609,8 @@
   min-height: 100svh;
   background:
     radial-gradient(circle at 12% 10%, rgb(201 152 31 / 0.16), transparent 32rem),
-    linear-gradient(135deg, #171006 0%, #2a1c10 100%);
-  color: #f3e8d2;
+    linear-gradient(135deg, var(--c-ink) 0%, var(--c-ink) 100%);
+  color: var(--c-paper);
   padding: clamp(28px, 5vw, 72px);
 }
 
@@ -628,7 +628,7 @@
 
 .copy h1 {
   margin: 0;
-  color: #f3e8d2;
+  color: var(--c-paper);
   font-size: clamp(48px, 7vw, 84px);
   font-weight: 900;
   letter-spacing: -0.055em;
@@ -646,7 +646,7 @@
 
 .status {
   margin: 0 0 18px !important;
-  color: #c9981f !important;
+  color: var(--c-mustard) !important;
   font-size: 16px !important;
   font-weight: 900 !important;
 }
@@ -665,7 +665,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: 2px solid #c9981f;
+  border: 2px solid var(--c-mustard);
   border-radius: 999px;
   padding: 0 18px;
   font: inherit;
@@ -676,8 +676,8 @@
 
 .link,
 .linkButton {
-  background: #c9981f;
-  color: #171006;
+  background: var(--c-mustard);
+  color: var(--c-ink);
 }
 
 .linkButton {
@@ -686,7 +686,7 @@
 
 .secondaryLink {
   background: transparent;
-  color: #f3e8d2;
+  color: var(--c-paper);
 }
 
 .profileEditorOverlay {
@@ -700,11 +700,11 @@
 
 .profileEditorShell {
   min-height: calc(100svh - clamp(28px, 4vw, 52px));
-  border: 2px solid #7b5b38;
+  border: 2px solid var(--c-ink-faint);
   border-radius: 18px;
-  background: #171006;
+  background: var(--c-ink);
   box-shadow: 0 18px 0 rgb(0 0 0 / 0.24);
-  color: #f3e8d2;
+  color: var(--c-paper);
 }
 
 .profileEditorHeader {
@@ -712,13 +712,13 @@
   justify-content: space-between;
   gap: 24px;
   align-items: flex-start;
-  border-bottom: 2px solid #7b5b38;
+  border-bottom: 2px solid var(--c-ink-faint);
   padding: clamp(22px, 3vw, 34px);
 }
 
 .profileEditorHeader h2 {
   margin: 0;
-  color: #f3e8d2;
+  color: var(--c-paper);
   font-size: clamp(34px, 5vw, 58px);
   font-weight: 900;
   letter-spacing: -0.045em;
@@ -736,16 +736,16 @@
 
 .profileEditorLabel {
   margin: 0 0 10px !important;
-  color: #c9981f !important;
+  color: var(--c-mustard) !important;
   font-weight: 900 !important;
 }
 
 .profileEditorClose {
   min-height: 44px;
-  border: 2px solid #c9981f;
+  border: 2px solid var(--c-mustard);
   border-radius: 999px;
   background: transparent;
-  color: #f3e8d2;
+  color: var(--c-paper);
   padding: 0 18px;
   font: inherit;
   font-weight: 900;
@@ -763,7 +763,7 @@
   top: 0;
   height: calc(100svh - clamp(28px, 4vw, 52px) - 2px);
   overflow: auto;
-  border-right: 2px solid #7b5b38;
+  border-right: 2px solid var(--c-ink-faint);
   padding: 18px;
 }
 
@@ -773,7 +773,7 @@
   border: 1px solid rgb(201 152 31 / 0.28);
   border-radius: 10px;
   padding: 12px;
-  color: #f3e8d2;
+  color: var(--c-paper);
   text-decoration: none;
 }
 
@@ -800,7 +800,7 @@
 .jobsPanel {
   width: min(1180px, 100%);
   margin: 0 auto clamp(56px, 8vw, 96px);
-  border: 2px solid #7b5b38;
+  border: 2px solid var(--c-ink-faint);
   border-radius: 18px;
   background: rgb(243 232 210 / 0.08);
   padding: clamp(22px, 4vw, 36px);
@@ -815,7 +815,7 @@
 
 .jobsPanelHeader h2 {
   margin: 0;
-  color: #f3e8d2;
+  color: var(--c-paper);
   font-size: clamp(34px, 4.5vw, 58px);
   font-weight: 900;
   letter-spacing: -0.045em;
@@ -851,7 +851,7 @@
 }
 
 .jobsSummaryGrid span {
-  color: #f3e8d2;
+  color: var(--c-paper);
   font-size: clamp(24px, 3vw, 34px);
   font-weight: 900;
   line-height: 1;
@@ -874,7 +874,7 @@
 }
 
 .jobsError {
-  color: #f1a06c;
+  color: var(--c-tomato);
 }
 
 .jobsGrid {
@@ -890,7 +890,7 @@
 
 .jobsColumn h3 {
   margin: 0 0 14px;
-  color: #c9981f;
+  color: var(--c-mustard);
   font-size: 18px;
   font-weight: 900;
 }
@@ -917,7 +917,7 @@
 
 .jobCard h4 {
   margin: 6px 0 0;
-  color: #f3e8d2;
+  color: var(--c-paper);
   font-size: clamp(22px, 2.4vw, 30px);
   font-weight: 900;
   letter-spacing: -0.03em;
@@ -932,7 +932,7 @@
 }
 
 .jobCard dt {
-  color: #c9981f;
+  color: var(--c-mustard);
   font-size: 12px;
   font-weight: 900;
 }
@@ -961,10 +961,10 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: 2px solid #c9981f;
+  border: 2px solid var(--c-mustard);
   border-radius: 999px;
   background: transparent;
-  color: #f3e8d2;
+  color: var(--c-paper);
   padding: 0 14px;
   font: inherit;
   font-size: 13px;
@@ -973,8 +973,8 @@
 }
 
 .jobActions button {
-  background: #c9981f;
-  color: #171006;
+  background: var(--c-mustard);
+  color: var(--c-ink);
   cursor: pointer;
 }
 
@@ -1021,7 +1021,7 @@
 
   .publicLandingMascot {
     width: min(180px, 55vw);
-    filter: drop-shadow(0 10px 0 #7b5b38);
+    filter: drop-shadow(0 10px 0 var(--c-ink-faint));
   }
 
   .publicLandingHeroStrip,
@@ -1095,7 +1095,7 @@
     display: grid;
     grid-template-columns: 1fr;
     border-right: 0;
-    border-bottom: 2px solid #7b5b38;
+    border-bottom: 2px solid var(--c-ink-faint);
   }
 
   .actions {

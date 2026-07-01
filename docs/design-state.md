@@ -111,10 +111,11 @@ Randall per surface.)
   off-registration teal+tomato "Dumpster Fire" wordmark, die-cut mascot, STOP APPLYING / START
   PURSUING signs, Request access. No eyebrows, no em dashes, no banned vocab; responsive/clean (the
   apparent 390 overflow was the headless-Chrome sub-~400 min-window crop artifact — clean at 480).
-  Finding (NOT changed — protected surface): `app/site.module.css` uses its own `--landing-*`
-  palette + a few literals rather than the DS `--c-*` tokens; the visual matches the cards, so
-  aligning to DS tokens would be a homepage redesign needing explicit approval, out of a
-  verification pass.
+  Follow-up (2026-06-30, protection lifted by Randall): homepage TOKENIZED — `--landing-*` now
+  point at DS `--c-*` tokens and all hardcoded hex removed (0 literals); 3 eyebrow kickers removed
+  (`publicLandingKicker`: How it works / Access / Guardrails). Visual verified unchanged (dev
+  screenshot 1280). Content revision is the remaining homepage task (Randall: current copy is ~half
+  early/low-value) — proposal pending.
 - [ ] Step 3.5 — future public pages from tokens + primitives + cards.
 
 Every surface checked at 320 / 375 / 390 / 1280 / 1440 against its DS card: no overflow,

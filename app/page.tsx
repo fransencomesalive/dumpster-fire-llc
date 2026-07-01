@@ -300,7 +300,6 @@ export default function HomePage() {
 
       <section className={styles.publicLandingSection} aria-labelledby="feature-set-title">
         <div className={styles.publicLandingSectionIntro}>
-          <p className={styles.publicLandingKicker}>How it works</p>
           <h2 id="feature-set-title">The profile makes the search less random.</h2>
           <p>Matching, Saved Jobs, Pursuits, and Human Path all work better when they start from the same source of truth.</p>
         </div>
@@ -320,7 +319,6 @@ export default function HomePage() {
 
       <section id="access" className={styles.publicLandingSection} aria-labelledby="access-title">
         <div className={styles.publicLandingSectionIntro}>
-          <p className={styles.publicLandingKicker}>Access</p>
           <h2 id="access-title">Start with the profile. Add momentum from there.</h2>
         </div>
         <div className={styles.publicLandingPricingGrid}>
@@ -336,7 +334,6 @@ export default function HomePage() {
 
       <section className={styles.publicLandingBand} aria-labelledby="guardrails-title">
         <div className={styles.publicLandingBandCopy}>
-          <p className={styles.publicLandingKicker}>Guardrails</p>
           <h2 id="guardrails-title">Built for trust before scale.</h2>
           <p>The product keeps the human in the loop and treats profile data, outreach context, and source quality as things that need to be verified.</p>
         </div>
