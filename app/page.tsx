@@ -7,42 +7,19 @@ import styles from "./site.module.css";
 const operatingLoop = [
   {
     title: "Build your profile",
-    copy: "Turn resumes, work examples, writing style, requirements, and wrong-lane signals into a better search filter.",
+    copy: "Turn your resumes, work examples, and voice into the profile every message is built from.",
   },
   {
-    title: "Scan boards, company pages, and targeted sources",
-    copy: "Scan job boards, company career pages, and target-company sources so the search is not trapped inside one portal or one watchlist.",
+    title: "Scan real sources",
+    copy: "Scan live job boards and company career pages, so your search is not trapped inside one portal or one watchlist.",
   },
   {
-    title: "Save what is worth revisiting",
-    copy: "Keep promising jobs in one place before deciding which ones deserve a real pursuit.",
+    title: "1:1 outreach",
+    copy: "Dumpster Fire finds the person to contact and drafts a powerful, informative message in your voice. Editable, never auto-sent.",
   },
   {
-    title: "Pursue with context",
-    copy: "Use work examples, voice, and contact context to make each pursuit specific. No automated application blasts.",
-  },
-];
-
-const onboardingFlow = [
-  {
-    title: "Intake",
-    copy: "Add the basics, target roles, resumes, work history, work examples, skills, writing style, and outreach preferences.",
-  },
-  {
-    title: "Shape",
-    copy: "Turn scattered experience into a profile the product can use consistently.",
-  },
-  {
-    title: "Review",
-    copy: "Resolve missing or thin sections before using the profile for jobs and outreach.",
-  },
-  {
-    title: "Activate",
-    copy: "Use the completed profile to support matching, work examples, and Human Path.",
-  },
-  {
-    title: "Improve",
-    copy: "Keep the profile current as your search, work examples, and role targets change.",
+    title: "Track your pursuits",
+    copy: "Keep every role, contact, and message in one place as you follow up.",
   },
 ];
 
@@ -103,15 +80,15 @@ const humanPathSteps = ["Review", "Contacts", "Outreach", "Track"];
 const featureSets = [
   {
     title: "Career profile",
-    items: ["Identity and search basics", "Role Tracks", "Resume and work history review", "Work Examples", "Voice and outreach rules"],
+    items: ["Identity and search basics", "Role Tracks", "Resumes and work history", "Work examples", "Voice and outreach rules"],
   },
   {
-    title: "Job review",
-    items: ["Fit labels", "Role Track context", "Resume notes", "Work examples", "Risk explanation"],
+    title: "1:1 outreach",
+    items: ["Finds the person to contact", "A message in your voice", "Draws on your work examples", "Editable draft, never auto-sent", "Clear limits"],
   },
   {
-    title: "Human Path workflow",
-    items: ["Hiring path research", "Contact selection", "Contact-specific outreach", "Pursuit tracking", "Clear limits"],
+    title: "Pursuits",
+    items: ["Save roles to pursue", "Contact and message kept per role", "Follow-up state", "One place for the whole pursuit"],
   },
 ];
 
@@ -119,17 +96,17 @@ const accessStates = [
   {
     title: "Profile setup",
     price: "Good",
-    copy: "Build the profile that supports better matching, work examples, and outreach.",
+    copy: "Build the profile your outreach is built from.",
   },
   {
     title: "Job scanning",
     price: "Gooder",
-    copy: "Scan roles against your current profile and keep track of jobs worth revisiting.",
+    copy: "Scan live boards and company pages, and keep the roles worth pursuing.",
   },
   {
-    title: "Pursuit workflow",
+    title: "1:1 outreach & pursuits",
     price: "Goodest",
-    copy: "Turn saved jobs into researched, specific pursuits with contact context and outreach support as the workflow opens.",
+    copy: "Find the person to contact, generate a powerful message in your voice, and track the pursuit.",
   },
 ];
 
@@ -215,24 +192,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className={styles.publicLandingSection} aria-labelledby="onboarding-title">
-        <div className={styles.publicLandingSectionIntro}>
-          <h2 id="onboarding-title">Onboarding</h2>
-          <p>
-            Start by building the profile that matching, work examples, and Human Path depend on.
-          </p>
-        </div>
-        <div className={styles.publicLandingOnboardingFlow} aria-label="Onboarding flow">
-          {onboardingFlow.map((step, index) => (
-            <article className={styles.publicLandingOnboardingStep} key={step.title}>
-              <span>{String(index + 1).padStart(2, "0")}</span>
-              <h3>{step.title}</h3>
-              <p>{step.copy}</p>
-            </article>
-          ))}
-        </div>
-      </section>
-
       <section id="human-path" className={styles.publicLandingSection} aria-labelledby="human-path-title">
         <div className={styles.publicLandingSectionIntro}>
           <h2 id="human-path-title">Human Path</h2>
@@ -300,8 +259,8 @@ export default function HomePage() {
 
       <section className={styles.publicLandingSection} aria-labelledby="feature-set-title">
         <div className={styles.publicLandingSectionIntro}>
-          <h2 id="feature-set-title">The profile makes the search less random.</h2>
-          <p>Matching, Saved Jobs, Pursuits, and Human Path all work better when they start from the same source of truth.</p>
+          <h2 id="feature-set-title">The profile makes the outreach specific.</h2>
+          <p>Human Path, your messages, and every pursuit pull from the same source of truth: your profile.</p>
         </div>
         <div className={styles.publicLandingFeatureSetGrid}>
           {featureSets.map((featureSet) => (

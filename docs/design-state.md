@@ -114,8 +114,13 @@ Randall per surface.)
   Follow-up (2026-06-30, protection lifted by Randall): homepage TOKENIZED — `--landing-*` now
   point at DS `--c-*` tokens and all hardcoded hex removed (0 literals); 3 eyebrow kickers removed
   (`publicLandingKicker`: How it works / Access / Guardrails). Visual verified unchanged (dev
-  screenshot 1280). Content revision is the remaining homepage task (Randall: current copy is ~half
-  early/low-value) — proposal pending.
+  screenshot 1280). Content revised (2026-06-30): value prop reframed around 1:1 outreach (find the
+  person + generate a message in the user's voice). Loop = Build profile / Scan real sources / 1:1
+  outreach / Track your pursuits. Cut the Onboarding process section and the ranked-matches step
+  (not a homepage focus per Randall). Features + pricing tiers tightened; hero subhead kept; Human
+  Path demo kept. GAP FLAGGED: contact discovery (the "find the person" half of the lead promise)
+  is not built — `unavailableHumanPathProvider` stub, no provider selected; message generation IS
+  built. Needs a contact-discovery provider decision + integration to make the homepage lead real.
 - [ ] Step 3.5 — future public pages from tokens + primitives + cards.
 
 Every surface checked at 320 / 375 / 390 / 1280 / 1440 against its DS card: no overflow,
