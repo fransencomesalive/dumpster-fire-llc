@@ -31,7 +31,7 @@ import {
   persistOutreachGeneration,
   persistPursuitTransition,
 } from "./pursuits/repository";
-import { unavailableHumanPathProvider } from "./pursuits/human-path";
+import { openAIHumanPathProvider } from "./pursuits/contact-provider";
 import { completeReview, expireInactivePursuit, transitionPursuit } from "./pursuits/state-machine";
 import type {
   CompleteReviewInput,
@@ -1160,7 +1160,7 @@ export async function handlePublicProfilePursuitHumanPathRequest(
     return subscriptionBlockedResponse(enforcement);
   }
 
-  const provider = options.humanPathProvider ?? unavailableHumanPathProvider;
+  const provider = options.humanPathProvider ?? openAIHumanPathProvider;
   const providerResult = await provider({
     pursuit,
     job: {

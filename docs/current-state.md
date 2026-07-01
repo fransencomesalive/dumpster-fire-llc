@@ -2,11 +2,34 @@
 
 ## 2026-06-30 - NEXT SESSION START HERE
 
-Priority: build Human Path **contact discovery** (the missing half of the homepage's lead value
-prop). The legacy `app/scans/api/contacts/route.ts` (OpenAI gpt-4.1 + web_search) worked — validate,
-test, then port/fix into the `HumanPathProvider` seam. Full plan +
-starting point: `docs/claude-handoff-contact-discovery-2026-06-30.md`. Follow the AGENTS.md Session
-Start Protocol first.
+Priority: **live smoke test** the new Human Path contact discovery once `OPENAI_API_KEY` is set in
+`.env.local` (line added, value blank — Randall pastes the key). Run a real discovery against a prod
+job and confirm: pursuit human-path flow returns real, cited contacts -> outreach generator drafts
+the message -> homepage lead promise works end to end. Then wire the design-gated contact-selection
+UI (still unbuilt). Rotation: `OPENAI_API_KEY` joins the pre-launch key-rotation list.
+
+## 2026-06-30 - Human Path contact discovery ported (Claude)
+
+Built the "find the person to contact" half of the homepage lead value prop. Randall chose OpenAI
+`gpt-4.1` + web_search (cheapest at ~$0.08-0.12/discovery; proven legacy path) over Anthropic web
+search, after a real per-run token-cost comparison.
+
+- `lib/public-profile/pursuits/contact-provider.ts` — real `HumanPathProvider` porting the proven
+  legacy `app/scans/api/contacts/route.ts` logic: OpenAI Responses API + `web_search` tool, two-pass
+  (initial + gap-fill when <3 contacts or no functional lead), ported system prompt +
+  chain-of-command research plan + lenient parse/rank/dedup. Maps results to the public
+  `HumanPathContact` shape (contact-type enum, low/medium/high confidence buckets, cited
+  `verificationNotes`). Injected model-call seam (mockable); **graceful no-key degradation ->
+  `provider_unavailable`** (outreach-generator convention), so nothing breaks before the key is set.
+- Wired as the default provider at `lib/public-profile/api.ts` (~line 1163), replacing the
+  `unavailableHumanPathProvider` stub. Metered Human Path subscription checks unchanged.
+- Test: `scripts/test-public-profile-contact-discovery.mjs` (no-key degradation, parse/map/rank,
+  gap-fill trigger + cross-pass dedup, junk-name filtering, prompt construction).
+- Validation: `tsc` clean; lint 0 errors / 7 pre-existing warnings; `npm run build` compiles;
+  contact-discovery + pursuits + outreach suites pass; `git diff --check` clean.
+- **NOT YET VERIFIED live** — needs `OPENAI_API_KEY` for the end-to-end smoke test (see top section).
+
+Full plan / starting point: `docs/claude-handoff-contact-discovery-2026-06-30.md`.
 
 ## 2026-06-30 - Posting parser Phase 2: LLM gap-fill (Claude)
 
