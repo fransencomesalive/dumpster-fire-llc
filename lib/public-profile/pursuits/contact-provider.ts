@@ -94,24 +94,26 @@ function clampConfidence(value: unknown): number {
 // Maps human-readable role labels and legacy contact types onto the public
 // HumanPathContact contact-type enum.
 function normalizeContactType(value: unknown): { contactType: HumanPathContact["contactType"]; rank: number } {
-  const raw = cleanString(value).toLowerCase();
-  if (raw.includes("hiring manager") || raw === "likely_hiring_manager" || raw === "hiring_manager") {
+  // Treat underscores as spaces so both "long shot" and "long_shot" (and
+  // "hiring_manager", "executive_sponsor", etc.) match the phrase checks.
+  const words = cleanString(value).toLowerCase().replace(/_/g, " ");
+  if (words.includes("hiring manager")) {
     return { contactType: "likely_hiring_manager", rank: 0 };
   }
-  if (raw.includes("functional leader") || raw === "functional_leader") {
+  if (words.includes("functional leader")) {
     return { contactType: "functional_leader", rank: 1 };
   }
-  if (raw.includes("recruit") || raw.includes("talent") || raw === "recruiter") {
+  if (words.includes("recruit") || words.includes("talent")) {
     return { contactType: "recruiter", rank: 2 };
   }
-  if (raw.includes("long shot") || raw.includes("executive") || raw.includes("sponsor") || raw === "executive_sponsor") {
+  if (words.includes("long shot") || words.includes("executive") || words.includes("sponsor")) {
     return { contactType: "executive_sponsor", rank: 3 };
   }
-  if (raw.includes("referral") || raw === "referral_candidate") {
+  if (words.includes("referral")) {
     return { contactType: "referral_candidate", rank: 3 };
   }
   // Legacy functional-leader-adjacent labels all map to functional_leader.
-  if (raw.includes("department") || raw.includes("creative") || raw.includes("production") || raw.includes("producer") || raw.includes("vp") || raw.includes("head of") || raw.includes("director")) {
+  if (words.includes("department") || words.includes("creative") || words.includes("production") || words.includes("producer") || words.includes("vp") || words.includes("head of") || words.includes("director")) {
     return { contactType: "functional_leader", rank: 1 };
   }
   return { contactType: "unknown", rank: 3 };

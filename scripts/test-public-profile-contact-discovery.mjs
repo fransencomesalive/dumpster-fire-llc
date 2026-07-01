@@ -76,6 +76,12 @@ const junk = parseResearchedContacts({
 assert.equal(junk.length, 1);
 assert.equal(junk[0].name, "Real Person");
 
+// 4b. Underscore role labels ("long_shot") map like their spaced form.
+const underscore = parseResearchedContacts({
+  contacts: [{ name: "Alex Kim", title: "Head of Growth", candidateRole: "long_shot", confidence: 50 }],
+}, "Useful Studio");
+assert.equal(underscore[0].contactType, "executive_sponsor");
+
 // 5. buildUserPrompt carries the role context and a media-specific research plan.
 const prompt = buildUserPrompt(job);
 assert.match(prompt, /Programmatic Media Director/);

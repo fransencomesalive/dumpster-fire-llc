@@ -2,11 +2,11 @@
 
 ## 2026-06-30 - NEXT SESSION START HERE
 
-Priority: **live smoke test** the new Human Path contact discovery once `OPENAI_API_KEY` is set in
-`.env.local` (line added, value blank — Randall pastes the key). Run a real discovery against a prod
-job and confirm: pursuit human-path flow returns real, cited contacts -> outreach generator drafts
-the message -> homepage lead promise works end to end. Then wire the design-gated contact-selection
-UI (still unbuilt). Rotation: `OPENAI_API_KEY` joins the pre-launch key-rotation list.
+Human Path contact discovery is **built + verified live** (OpenAI gpt-4.1 + web_search). Next:
+wire the **design-gated contact-selection UI** (still unbuilt) so users can pick discovered contacts
+for outreach — needs an approved design source first (AGENTS.md Design Authority). The backend chain
+is complete: discovery -> contact_suggestions persistence -> contact selection API -> outreach
+generator. Rotation: `OPENAI_API_KEY` joins the pre-launch key-rotation list.
 
 ## 2026-06-30 - Human Path contact discovery ported (Claude)
 
@@ -27,7 +27,12 @@ search, after a real per-run token-cost comparison.
   gap-fill trigger + cross-pass dedup, junk-name filtering, prompt construction).
 - Validation: `tsc` clean; lint 0 errors / 7 pre-existing warnings; `npm run build` compiles;
   contact-discovery + pursuits + outreach suites pass; `git diff --check` clean.
-- **NOT YET VERIFIED live** — needs `OPENAI_API_KEY` for the end-to-end smoke test (see top section).
+- **VERIFIED LIVE** with the real `OPENAI_API_KEY` (Randall set it): a discovery for "Director of
+  Product Marketing @ Notion" returned 3 real, cited contacts in ~6-11s — Head of PMM (hiring
+  manager), CMO (functional leader), GTM recruiter — each with evidence URLs + LinkedIn, ranked by
+  chain-of-command. Live smoke exposed one mapping gap (model emits `long_shot` with an underscore;
+  the normalizer only matched the spaced form) — fixed by treating `_` as a space in
+  `normalizeContactType`, with a regression test.
 
 Full plan / starting point: `docs/claude-handoff-contact-discovery-2026-06-30.md`.
 
