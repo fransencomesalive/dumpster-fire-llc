@@ -1,5 +1,13 @@
 # Current State
 
+## 2026-06-30 - NEXT SESSION START HERE
+
+Priority: build Human Path **contact discovery** (the missing half of the homepage's lead value
+prop). The legacy `app/scans/api/contacts/route.ts` (OpenAI gpt-4.1 + web_search) worked — validate,
+test, then port/fix into the `HumanPathProvider` seam. Full plan +
+starting point: `docs/claude-handoff-contact-discovery-2026-06-30.md`. Follow the AGENTS.md Session
+Start Protocol first.
+
 ## 2026-06-30 - Posting parser Phase 2: LLM gap-fill (Claude)
 
 Gap-fill (Randall's choice): LLM extracts Responsibilities / Required experience only for postings
