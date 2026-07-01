@@ -196,3 +196,41 @@
     font-size:0.68rem; color:var(--c-teal); }
   .editorContent { min-width:0; }
   @media (max-width:760px){ .editorBody { grid-template-columns:minmax(0,1fr); } .editorNav { position:static; flex-direction:row; flex-wrap:wrap; } }
+
+  /* Scan progress overlay (generic; no per-source feed) — DS scan-progress card */
+  .scanOverlay { position:fixed; inset:0; z-index:210; overflow:auto;
+    background:rgba(36,31,26,0.62); display:flex; align-items:flex-start; justify-content:center; padding:var(--space-6); }
+  .scanBox { width:min(560px, 100%); box-sizing:border-box; text-align:center;
+    background-color:var(--c-paper-deep); background-image:var(--fiber-img), var(--grain-img);
+    background-blend-mode:normal, soft-light; background-size:170px 170px, 46px 46px;
+    border:var(--line-bold) solid var(--c-ink); border-radius:var(--radius-lg);
+    box-shadow:6px 6px 0 rgba(36,31,26,0.55); padding:var(--space-6); }
+  .scanLoadingGif { display:block; width:132px; height:132px; margin:0 auto var(--space-2); object-fit:contain;
+    filter:drop-shadow(2px 0 0 var(--c-paper)) drop-shadow(-2px 0 0 var(--c-paper)) drop-shadow(0 2px 0 var(--c-paper)) drop-shadow(4px 5px 0 rgba(36,31,26,0.26)); }
+  .scanModalHead { position:relative; display:flex; align-items:center; justify-content:center; min-height:34px; margin-bottom:var(--space-4); }
+  .scanModalTitle { font-family:var(--font-display); font-size:1.6rem; line-height:1.05; color:var(--c-ink); margin:0; }
+  .scanClose { position:absolute; right:0; top:0; display:inline-flex; align-items:center; justify-content:center;
+    width:34px; height:34px; color:var(--c-ink); background-color:var(--c-paper); border:var(--line-reg) solid var(--c-ink);
+    border-radius:var(--radius-md); box-shadow:2px 2px 0 var(--c-ink); cursor:pointer; }
+  .scanProgressTrack { position:relative; height:20px; overflow:hidden; background-color:var(--c-paper);
+    border:var(--line-reg) solid var(--c-ink); border-radius:var(--radius-pill); box-shadow:inset 2px 2px 0 rgba(36,31,26,0.12); }
+  .scanProgressFill { height:100%; box-sizing:border-box; background-color:var(--c-teal);
+    background-image:var(--fiber-img), var(--grain-img); background-blend-mode:normal, soft-light; background-size:170px 170px, 46px 46px;
+    border-right:var(--line-reg) solid var(--c-ink); border-radius:var(--radius-pill); transition:width 0.6s var(--ease-snap); }
+  .scanProgressFillError { background-color:var(--c-tomato); border-right:none; }
+  .scanCounts { display:flex; flex-wrap:wrap; justify-content:center; gap:var(--space-5); margin:var(--space-4) 0 0;
+    font-family:var(--font-body); font-size:var(--type-small); color:var(--role-text-muted); }
+  .scanCounts strong { font-family:var(--font-display); font-size:1.1rem; color:var(--c-ink); }
+  .scanPhases { display:grid; grid-template-columns:repeat(3,1fr); gap:var(--space-3); margin:var(--space-5) 0 0; }
+  .scanPhase { display:flex; flex-direction:column; align-items:center; gap:7px; font-family:var(--font-subhead);
+    text-transform:uppercase; letter-spacing:var(--tracking-subhead); font-size:0.82rem; color:var(--role-text-faint); }
+  .scanPhase::before { content:""; display:block; width:100%; height:9px; background-color:var(--c-paper);
+    border:var(--line-hair) solid var(--c-ink); border-radius:var(--radius-pill); }
+  .scanPhaseDone { color:var(--c-ink); }
+  .scanPhaseDone::before { background-color:var(--c-teal); }
+  .scanPhaseActive { color:var(--c-ink); }
+  .scanPhaseActive::before { background-color:var(--c-mustard); }
+  .scanError { font-family:var(--font-body); font-size:var(--type-small); color:var(--c-tomato); margin:var(--space-4) 0 0; }
+  .scanModalFoot { display:flex; justify-content:center; margin:var(--space-5) 0 0; }
+  .scanDoneBtn { font-family:var(--font-display); font-size:1.05rem; color:var(--role-action-text); background-color:var(--role-action);
+    border:var(--line-bold) solid var(--c-ink); border-radius:var(--radius-md); box-shadow:var(--shadow-card); padding:var(--space-3) var(--space-6); cursor:pointer; }

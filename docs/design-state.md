@@ -99,7 +99,13 @@ Randall per surface.)
   X close, section nav; embeds the already-ported OnboardingClient). Verified via card + harness
   (1120/560/1180). Dead `profileEditor*`/`hero` classes remain in `site.module.css` (home still uses
   the hero ones); harmless.
-- [ ] Step 3.3 — public scan/match. Cards: match-card, scan-progress, scan-history, scan-page.
+- [~] Step 3.3 — scan progress DONE (2026-06-30). `scanProgress` overlay on the dashboard Run scan:
+  DF-small.gif mascot + teal progress bar + Fetching/Matching/Saving phase bars + complete/error
+  states (counts + View matches). Per Randall: generic/estimated progress, NO per-source feed rows
+  (the per-user scan matches the shared pool, not a live source fetch), same view for all users.
+  Styled from the `scan-progress` card; `public/DF-small.gif` added. Verified via harness.
+  scan-history NOT built — it depicts the system-wide source-scan run log (admin/ops), which has no
+  per-user data or surface; deferred (not requested for the public dashboard).
 - [ ] Step 3.4 — home verification vs hero/header/footer.
 - [ ] Step 3.5 — future public pages from tokens + primitives + cards.
 

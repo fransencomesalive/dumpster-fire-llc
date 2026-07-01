@@ -30,6 +30,14 @@ type JobsState =
   | { status: "ready"; response: PublicJobsResponse; message?: string }
   | { status: "error"; message: string };
 
+type ScanProgress =
+  | { status: "idle" }
+  | { status: "running"; phase: 0 | 1 | 2 }
+  | { status: "complete"; roles: number; fits: number }
+  | { status: "error"; message: string };
+
+const SCAN_PHASES = ["Fetching", "Matching", "Saving"] as const;
+
 function formatJobDate(value?: string) {
   if (!value) return "Unknown";
   return new Intl.DateTimeFormat("en", {
@@ -125,6 +133,7 @@ export default function DashboardClient() {
   const [isProfileEditorOpen, setIsProfileEditorOpen] = useState(false);
   const [fitFilter, setFitFilter] = useState<number | null>(null);
   const [savedOnly, setSavedOnly] = useState(false);
+  const [scanProgress, setScanProgress] = useState<ScanProgress>({ status: "idle" });
 
   async function loadJobs(accessToken: string, message?: string) {
     setJobsState((state) => state.status === "ready" ? { ...state, message } : { status: "loading" });
@@ -181,23 +190,24 @@ export default function DashboardClient() {
     }
 
     setJobsBusy(true);
-    setJobsState((state) => state.status === "ready" ? { ...state, message: "Scanning from your current profile targets..." } : { status: "loading" });
+    setScanProgress({ status: "running", phase: 0 });
+    // Estimated progress — the per-user scan is a single match pass, so the phases animate on a
+    // timer rather than reporting live per-source fetches.
+    const advance1 = setTimeout(() => setScanProgress((state) => state.status === "running" ? { status: "running", phase: 1 } : state), 700);
+    const advance2 = setTimeout(() => setScanProgress((state) => state.status === "running" ? { status: "running", phase: 2 } : state), 1600);
     try {
       const response = await requestPublicProfileApi<PublicJobsScanResponse>("/api/jobs/scan", {
         method: "POST",
         accessToken,
       });
-      setJobsState({
-        status: "ready",
-        response,
-        message: `${response.scan.matchedJobs} matched job${response.scan.matchedJobs === 1 ? "" : "s"} found. ${response.scan.mergedResults} active job${response.scan.mergedResults === 1 ? "" : "s"} available.`,
-      });
+      setJobsState({ status: "ready", response });
+      const fits = response.jobs.filter((job) => starsFromScore(job.match?.score ?? 0) >= 4).length;
+      setScanProgress({ status: "complete", roles: response.summary.totalJobs, fits });
     } catch (error) {
-      setJobsState({
-        status: "error",
-        message: error instanceof Error ? error.message : "Scan failed.",
-      });
+      setScanProgress({ status: "error", message: error instanceof Error ? error.message : "Scan failed." });
     } finally {
+      clearTimeout(advance1);
+      clearTimeout(advance2);
       setJobsBusy(false);
     }
   }
@@ -266,6 +276,9 @@ export default function DashboardClient() {
   const visibleJobs = savedOnly
     ? savedJobs
     : (fitFilter ? jobs.filter((job) => starsFromScore(job.match?.score ?? 0) === fitFilter) : jobs);
+  const scanFillWidth = scanProgress.status === "running"
+    ? (scanProgress.phase === 0 ? "30%" : scanProgress.phase === 1 ? "62%" : "88%")
+    : "100%";
 
   return (
     <main className={styles.page}>
@@ -455,6 +468,58 @@ export default function DashboardClient() {
             </aside>
           </div>
         </section>
+      ) : null}
+      {scanProgress.status !== "idle" ? (
+        <div className={jobsStyles.scanOverlay} role="dialog" aria-modal="true" aria-label="Scan progress">
+          <div className={jobsStyles.scanBox}>
+            {scanProgress.status === "running" ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img className={jobsStyles.scanLoadingGif} src="/DF-small.gif" alt="" aria-hidden="true" />
+            ) : null}
+            <div className={jobsStyles.scanModalHead}>
+              <h3 className={jobsStyles.scanModalTitle}>
+                {scanProgress.status === "running" ? "Scanning" : scanProgress.status === "complete" ? "Scan complete" : "Scan stopped"}
+              </h3>
+              {scanProgress.status !== "running" ? (
+                <button className={jobsStyles.scanClose} onClick={() => setScanProgress({ status: "idle" })} type="button" aria-label="Close">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                </button>
+              ) : null}
+            </div>
+            <div className={jobsStyles.scanProgressTrack} aria-hidden="true">
+              <div
+                className={`${jobsStyles.scanProgressFill} ${scanProgress.status === "error" ? jobsStyles.scanProgressFillError : ""}`}
+                style={{ width: scanFillWidth }}
+              />
+            </div>
+            {scanProgress.status === "complete" ? (
+              <div className={jobsStyles.scanCounts}>
+                <span><strong>{scanProgress.roles}</strong> role{scanProgress.roles === 1 ? "" : "s"}</span>
+                <span><strong>{scanProgress.fits}</strong> a fit</span>
+              </div>
+            ) : null}
+            <div className={jobsStyles.scanPhases} aria-hidden="true">
+              {SCAN_PHASES.map((label, index) => {
+                const phaseClass = scanProgress.status === "complete"
+                  ? jobsStyles.scanPhaseDone
+                  : scanProgress.status === "running"
+                    ? (index < scanProgress.phase ? jobsStyles.scanPhaseDone : index === scanProgress.phase ? jobsStyles.scanPhaseActive : "")
+                    : "";
+                return <span key={label} className={`${jobsStyles.scanPhase} ${phaseClass}`}>{label}</span>;
+              })}
+            </div>
+            {scanProgress.status === "error" ? <p className={jobsStyles.scanError}>{scanProgress.message}</p> : null}
+            {scanProgress.status !== "running" ? (
+              <div className={jobsStyles.scanModalFoot}>
+                <button className={jobsStyles.scanDoneBtn} onClick={() => setScanProgress({ status: "idle" })} type="button">
+                  {scanProgress.status === "complete" ? "View matches" : "Close"}
+                </button>
+              </div>
+            ) : null}
+          </div>
+        </div>
       ) : null}
       {isProfileEditorOpen ? (
         <div className={jobsStyles.editorOverlay} aria-labelledby="profile-editor-title" role="dialog" aria-modal="true">
