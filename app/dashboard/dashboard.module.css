@@ -155,3 +155,44 @@
     border-radius:var(--radius-sm); padding:var(--space-3) var(--space-4); margin:0 0 var(--space-4); }
   .empty { font-family:var(--font-body); color:var(--role-text-muted); background:var(--c-paper);
     border:var(--line-hair) dashed var(--c-paper-edge); border-radius:var(--radius-md); padding:var(--space-4); }
+
+  /* Dashboard top bar (replaces the old landing-style hero; no eyebrow) */
+  .topBar { width:min(1080px, calc(100% - 48px)); margin:0 auto var(--space-5);
+    display:flex; align-items:center; justify-content:space-between; gap:var(--space-4); flex-wrap:wrap;
+    padding-bottom:var(--space-4); border-bottom:var(--line-reg) solid var(--c-ink); }
+  .topTitle { margin:0; font-family:var(--font-display); font-size:var(--type-h2); color:var(--c-ink); }
+  .topActions { display:flex; align-items:center; gap:var(--space-3); flex-wrap:wrap; }
+  .topEdit { font-family:var(--font-display); font-size:0.95rem; color:var(--c-ink); background:var(--c-paper);
+    border:var(--line-reg) solid var(--c-ink); border-radius:var(--radius-md); box-shadow:var(--shadow-card);
+    padding:var(--space-2) var(--space-4); cursor:pointer; }
+  .topLink { font-family:var(--font-subhead); text-transform:uppercase; letter-spacing:0.04em; font-size:0.85rem;
+    color:var(--c-ink); text-decoration:none; border-bottom:2px solid var(--c-teal); padding-bottom:1px; }
+  .stateNote { width:min(1080px, calc(100% - 48px)); margin:0 auto var(--space-5); font-family:var(--font-body); color:var(--role-text-muted); }
+
+  /* Edit Career Profile modal — DS modal card, scaled to a full editor */
+  .editorOverlay { position:fixed; inset:0; z-index:200; overflow:auto;
+    background:rgba(36,31,26,0.62); display:flex; align-items:flex-start; justify-content:center; padding:var(--space-6); }
+  .editorBox { width:min(1080px, 100%); max-height:calc(100svh - 2 * var(--space-6)); overflow:auto;
+    background-color:var(--c-paper-deep); background-image:var(--fiber-img), var(--grain-img);
+    background-blend-mode:normal, soft-light; background-size:170px 170px, 46px 46px;
+    border:var(--line-bold) solid var(--c-ink); border-radius:var(--radius-lg);
+    box-shadow:6px 6px 0 rgba(36,31,26,0.55); padding:var(--space-6); }
+  .editorHeader { display:flex; align-items:flex-start; justify-content:space-between; gap:var(--space-4);
+    margin-bottom:var(--space-4); padding-bottom:var(--space-3); border-bottom:var(--line-hair) solid var(--c-paper-edge); }
+  .editorTitle { font-family:var(--font-display); font-size:1.5rem; line-height:1.05; color:var(--c-ink); margin:0; }
+  .editorIntro { font-family:var(--font-body); font-size:var(--type-body); color:var(--role-text-muted); margin:var(--space-2) 0 0; max-width:60ch; }
+  .editorClose { display:inline-flex; align-items:center; justify-content:center; flex:none; width:34px; height:34px;
+    color:var(--c-ink); background-color:var(--c-paper); border:var(--line-reg) solid var(--c-ink);
+    border-radius:var(--radius-md); box-shadow:2px 2px 0 var(--c-ink); cursor:pointer;
+    transition:background-color var(--dur-fast) var(--ease-snap), box-shadow var(--dur-fast) var(--ease-snap); }
+  .editorClose:hover { background-color:color-mix(in srgb, var(--c-tomato) 16%, var(--c-paper)); box-shadow:var(--reg-box); }
+  .editorBody { display:grid; grid-template-columns:220px minmax(0,1fr); gap:var(--space-5); align-items:start; }
+  .editorNav { position:sticky; top:0; display:flex; flex-direction:column; gap:2px; }
+  .editorNav a { display:flex; align-items:baseline; justify-content:space-between; gap:var(--space-3);
+    padding:var(--space-2) var(--space-3); border-radius:var(--radius-sm); text-decoration:none; color:var(--c-ink);
+    font-family:var(--font-body); font-size:0.92rem; }
+  .editorNav a:hover { background:color-mix(in srgb, var(--c-teal) 14%, var(--c-paper)); }
+  .editorNav a small { font-family:var(--font-subhead); text-transform:uppercase; letter-spacing:0.04em;
+    font-size:0.68rem; color:var(--c-teal); }
+  .editorContent { min-width:0; }
+  @media (max-width:760px){ .editorBody { grid-template-columns:minmax(0,1fr); } .editorNav { position:static; flex-direction:row; flex-wrap:wrap; } }

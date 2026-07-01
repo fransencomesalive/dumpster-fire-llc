@@ -90,11 +90,15 @@ Randall per surface.)
 - [x] Step 1 — font split applied at app-surface roots (`--font-ui`); global `body` serif kept for marketing. Onboarding `.page` now uses `--font-ui`.
 - [ ] Step 2 — shared public primitives layer (port `base.css`). Deferred: onboarding consumes tokens directly; build the shared layer with the dashboard slice.
 - [x] Step 3.1 — onboarding ported. Collapsed THREE conflicting CSS layers (dark original + two paper override layers with `!important`) into ONE clean token layer. 863→594 lines, 0 dark literals, 0 `!important`. Renders identically (preserved the winning cascade). Verified: tsc/lint/test/build all pass.
-- [~] Step 3.2 — dashboard. **Jobs + Saved Jobs DONE (2026-06-30):** `app/dashboard/dashboard.module.css`
-  styled to match-card/panel/badges specs (token-driven, 0 dark literals), surfacing rank + fit
-  score/label, ranked jobs, save/unsave, Run scan. Verified at 480/1280 (narrow single-column fits;
-  `minmax(0,1fr)` tracks prevent overflow). Remaining: Edit Profile modal (cards: modal, detail,
-  forms) + dashboard hero still on `site.module.css`.
+- [x] Step 3.2 — dashboard DONE (2026-06-30). Full scan-page layout in
+  `app/dashboard/{DashboardClient.tsx,dashboard.module.css}` (token-driven, 0 dark literals):
+  match-card stack (rank, fit score+stars, meta grid, Responsibilities/Required-experience sub-cards
+  with highlights, keyword pills, Save/Open/Pursue) + rating-filter tabs + 300px Overview/Search-
+  settings sidebar. Landing-style hero replaced with a lean token top bar (no eyebrow). Edit Career
+  Profile modal restyled to the DS modal card (ink-wash overlay, paper dialog + hard offset, printed
+  X close, section nav; embeds the already-ported OnboardingClient). Verified via card + harness
+  (1120/560/1180). Dead `profileEditor*`/`hero` classes remain in `site.module.css` (home still uses
+  the hero ones); harmless.
 - [ ] Step 3.3 — public scan/match. Cards: match-card, scan-progress, scan-history, scan-page.
 - [ ] Step 3.4 — home verification vs hero/header/footer.
 - [ ] Step 3.5 — future public pages from tokens + primitives + cards.

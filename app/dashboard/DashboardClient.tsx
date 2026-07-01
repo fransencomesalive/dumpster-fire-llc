@@ -269,45 +269,25 @@ export default function DashboardClient() {
 
   return (
     <main className={styles.page}>
-      <section className={styles.hero} aria-labelledby="dashboard-title">
-        <div className={styles.copy}>
-          <p className={styles.status}>Profile Complete</p>
-          <h1 id="dashboard-title">Your career profile is active.</h1>
-          {guardState.status === "checking" ? (
-            <p>Checking profile readiness before opening the dashboard.</p>
-          ) : null}
+      <header className={jobsStyles.topBar}>
+        <h1 className={jobsStyles.topTitle} id="dashboard-title">Your career dashboard</h1>
+        <div className={jobsStyles.topActions}>
           {guardState.status === "complete" ? (
-            <>
-              <p>
-                Dumpster Fire has enough of the picture to start working from your profile. You can keep refining it
-                as your search changes.
-              </p>
-              <p>
-                Profile check: {guardState.blockerCount} blocker{guardState.blockerCount === 1 ? "" : "s"} and{" "}
-                {guardState.weakResponseCount} weak response{guardState.weakResponseCount === 1 ? "" : "s"}.
-              </p>
-              <div className={styles.actions}>
-                <button className={styles.linkButton} onClick={() => setIsProfileEditorOpen(true)} type="button">
-                  Edit Career Profile
-                </button>
-                <Link className={styles.secondaryLink} href="/">
-                  Back to public home
-                </Link>
-              </div>
-            </>
+            <button className={jobsStyles.topEdit} onClick={() => setIsProfileEditorOpen(true)} type="button">
+              Edit Career Profile
+            </button>
           ) : null}
-          {guardState.status === "error" ? (
-            <>
-              <p>{guardState.message}</p>
-              <div className={styles.actions}>
-                <Link className={styles.link} href="/onboarding">
-                  Return to onboarding
-                </Link>
-              </div>
-            </>
-          ) : null}
+          <Link className={jobsStyles.topLink} href="/">Home</Link>
         </div>
-      </section>
+      </header>
+
+      {guardState.status === "checking" ? (
+        <p className={jobsStyles.stateNote}>Checking profile readiness before opening the dashboard.</p>
+      ) : null}
+      {guardState.status === "error" ? (
+        <p className={jobsStyles.stateNote}>{guardState.message} <Link className={jobsStyles.topLink} href="/onboarding">Return to onboarding</Link></p>
+      ) : null}
+
       {guardState.status === "complete" ? (
         <section className={jobsStyles.pageWrap} aria-labelledby="jobs-title">
           <div className={jobsStyles.sectionHead}>
@@ -477,23 +457,23 @@ export default function DashboardClient() {
         </section>
       ) : null}
       {isProfileEditorOpen ? (
-        <section className={styles.profileEditorOverlay} aria-labelledby="profile-editor-title" role="dialog" aria-modal="true">
-          <div className={styles.profileEditorShell}>
-            <header className={styles.profileEditorHeader}>
+        <div className={jobsStyles.editorOverlay} aria-labelledby="profile-editor-title" role="dialog" aria-modal="true">
+          <div className={jobsStyles.editorBox}>
+            <header className={jobsStyles.editorHeader}>
               <div>
-                <p className={styles.profileEditorLabel}>Career Profile</p>
-                <h2 id="profile-editor-title">Edit Career Profile</h2>
-                <p>
-                  Keep the profile current so scans, saved jobs, and Human Path can stay grounded in what
-                  you actually want.
+                <h2 className={jobsStyles.editorTitle} id="profile-editor-title">Edit Career Profile</h2>
+                <p className={jobsStyles.editorIntro}>
+                  Keep the profile current so scans, saved jobs, and outreach stay grounded in what you actually want.
                 </p>
               </div>
-              <button className={styles.profileEditorClose} onClick={() => setIsProfileEditorOpen(false)} type="button">
-                Close
+              <button className={jobsStyles.editorClose} onClick={() => setIsProfileEditorOpen(false)} type="button" aria-label="Close">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
               </button>
             </header>
-            <div className={styles.profileEditorBody}>
-              <nav className={styles.profileEditorNav} aria-label="Career Profile sections">
+            <div className={jobsStyles.editorBody}>
+              <nav className={jobsStyles.editorNav} aria-label="Career Profile sections">
                 {publicProfileOnboardingSections.map((section) => (
                   <a href={`#career-profile-${section.key}`} key={section.key}>
                     <span>{section.label}</span>
@@ -501,12 +481,12 @@ export default function DashboardClient() {
                   </a>
                 ))}
               </nav>
-              <div className={styles.profileEditorContent}>
+              <div className={jobsStyles.editorContent}>
                 <OnboardingClient sections={publicProfileOnboardingSections} mode="profile-editor" />
               </div>
             </div>
           </div>
-        </section>
+        </div>
       ) : null}
     </main>
   );
