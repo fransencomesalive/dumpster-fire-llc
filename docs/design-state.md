@@ -106,7 +106,15 @@ Randall per surface.)
   Styled from the `scan-progress` card; `public/DF-small.gif` added. Verified via harness.
   scan-history NOT built — it depicts the system-wide source-scan run log (admin/ops), which has no
   per-user data or surface; deferred (not requested for the public dashboard).
-- [ ] Step 3.4 — home verification vs hero/header/footer.
+- [x] Step 3.4 — home verified (2026-06-30). Live home (dev, screenshotted 1280/480) renders to the
+  approved matchbook hero + header nav + feature-list footer: paper stock, printed cover frame,
+  off-registration teal+tomato "Dumpster Fire" wordmark, die-cut mascot, STOP APPLYING / START
+  PURSUING signs, Request access. No eyebrows, no em dashes, no banned vocab; responsive/clean (the
+  apparent 390 overflow was the headless-Chrome sub-~400 min-window crop artifact — clean at 480).
+  Finding (NOT changed — protected surface): `app/site.module.css` uses its own `--landing-*`
+  palette + a few literals rather than the DS `--c-*` tokens; the visual matches the cards, so
+  aligning to DS tokens would be a homepage redesign needing explicit approval, out of a
+  verification pass.
 - [ ] Step 3.5 — future public pages from tokens + primitives + cards.
 
 Every surface checked at 320 / 375 / 390 / 1280 / 1440 against its DS card: no overflow,
