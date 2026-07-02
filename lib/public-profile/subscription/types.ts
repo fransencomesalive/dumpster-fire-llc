@@ -8,7 +8,7 @@ export type GatedFeature = MeteredFeature | "pursued_jobs_export";
 
 export type UsageLedgerEntry = {
   userId: string;
-  usageType: "pursuit" | "outreach_message" | "human_path" | "profile_export";
+  usageType: "pursuit" | "outreach_message" | "human_path" | "profile_export" | "voice_fingerprint";
   quantity: number;
   createdAt: string;
 };
