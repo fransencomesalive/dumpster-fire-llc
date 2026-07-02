@@ -92,22 +92,24 @@ const featureSets = [
   },
 ];
 
-const accessStates = [
-  {
-    title: "Profile setup",
-    price: "Good",
-    copy: "Build the profile your outreach is built from.",
-  },
-  {
-    title: "Job scanning",
-    price: "Gooder",
-    copy: "Scan live boards and company pages, and keep the roles worth pursuing.",
-  },
-  {
-    title: "1:1 outreach & pursuits",
-    price: "Goodest",
-    copy: "Find the person to contact, generate a powerful message in your voice, and track the pursuit.",
-  },
+const subscriptionTiers = [
+  { name: "Good", price: "" },
+  { name: "Gooder", price: "" },
+  { name: "Goodest", price: "" },
+];
+
+type TierCell = boolean | string;
+
+const subscriptionFeatures: { label: string; tiers: [TierCell, TierCell, TierCell] }[] = [
+  { label: "Career profile in your voice", tiers: [true, true, true] },
+  { label: "Work examples, woven into your outreach", tiers: [true, true, true] },
+  { label: "Match ratings on every role", tiers: [false, true, true] },
+  { label: "Saved jobs", tiers: [false, true, true] },
+  { label: "Contact discovery: customized outreach", tiers: [false, true, true] },
+  { label: "Generate custom outreach (1 per contact)", tiers: [false, false, true] },
+  { label: "Pursuit tracking", tiers: [false, false, true] },
+  { label: "Export history", tiers: [false, false, true] },
+  { label: "Jobs you can pursue each month", tiers: [false, false, "50"] },
 ];
 
 const guardrails = [
@@ -130,7 +132,7 @@ export default function HomePage() {
         <nav className={styles.publicLandingNavLinks} aria-label="Public sections">
           <a href="#features">Features</a>
           <a href="#human-path">Human Path</a>
-          <a href="#access">Access</a>
+          <a href="#subscription">Subscription</a>
           <Link href="/onboarding">Build profile</Link>
           <a href="mailto:randall@randallfransen.com?subject=Dumpster%20Fire%20access">Contact</a>
         </nav>
@@ -276,18 +278,42 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section id="access" className={styles.publicLandingSection} aria-labelledby="access-title">
+      <section id="subscription" className={styles.publicLandingSection} aria-labelledby="subscription-title">
         <div className={styles.publicLandingSectionIntro}>
-          <h2 id="access-title">Start with the profile. Add momentum from there.</h2>
+          <h2 id="subscription-title">Subscription tiers.</h2>
         </div>
-        <div className={styles.publicLandingPricingGrid}>
-          {accessStates.map((tier) => (
-            <article className={styles.publicLandingPricingCard} key={tier.title}>
-              <h3>{tier.title}</h3>
-              <strong>{tier.price}</strong>
-              <p>{tier.copy}</p>
-            </article>
-          ))}
+        <div className={styles.publicLandingTierTableWrap}>
+          <table className={styles.publicLandingTierTable}>
+            <thead>
+              <tr>
+                <th scope="col" aria-label="Feature" />
+                {subscriptionTiers.map((tier) => (
+                  <th scope="col" key={tier.name}>
+                    <span className={styles.publicLandingTierName}>{tier.name}</span>
+                    {tier.price ? <span className={styles.publicLandingTierPrice}>{tier.price}</span> : null}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {subscriptionFeatures.map((feature) => (
+                <tr key={feature.label}>
+                  <th scope="row">{feature.label}</th>
+                  {feature.tiers.map((cell, index) => (
+                    <td key={subscriptionTiers[index].name}>
+                      {cell === true ? (
+                        <span className={styles.publicLandingTierYes} role="img" aria-label="Included">✓</span>
+                      ) : cell === false ? (
+                        <span className={styles.publicLandingTierNo} role="img" aria-label="Not included" />
+                      ) : (
+                        <span className={styles.publicLandingTierValue}>{cell}</span>
+                      )}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </section>
 

@@ -1957,6 +1957,13 @@ export function validateSkillsInventorySectionPatch(
   return issues;
 }
 
+// Server-side ID authority: a client-supplied id is honored only when it already
+// belongs to this profile's aggregate; anything else gets a freshly minted UUID.
+// This closes the cross-tenant upsert hole (service-role writes bypass RLS).
+function resolveOwnedItemId(ownedIds: ReadonlySet<string>, id: string | undefined) {
+  return id && ownedIds.has(id) ? id : globalThis.crypto.randomUUID();
+}
+
 export function applyIdentitySearchSectionPatch(
   aggregate: CandidateProfileAggregate,
   patch: IdentitySearchSectionPatch,
@@ -2047,8 +2054,12 @@ export function applyRoleTracksSectionPatch(
   patch: RoleTracksSectionPatch,
   updatedAt = new Date().toISOString(),
 ): ApplyRoleTracksSectionResult {
+  const ownedTrackIds = new Set(aggregate.roleTracks.map((existing) => existing.id));
+  const ownedResumeIdsForTracks = new Set(aggregate.resumes.map((existing) => existing.id));
   const nextRoleTracks: RoleTrack[] = patch.roleTracks.map((track) => ({
     ...track,
+    id: resolveOwnedItemId(ownedTrackIds, track.id),
+    resumeIds: track.resumeIds.filter((resumeId) => ownedResumeIdsForTracks.has(resumeId)),
     profileId: aggregate.profile.id,
     createdAt: aggregate.roleTracks.find((existing) => existing.id === track.id)?.createdAt ?? updatedAt,
     updatedAt,
@@ -2082,8 +2093,12 @@ export function applyResumeUploadsSectionPatch(
   patch: ResumeUploadsSectionPatch,
   updatedAt = new Date().toISOString(),
 ): ApplyResumeUploadsSectionResult {
+  const ownedResumeIds = new Set(aggregate.resumes.map((existing) => existing.id));
+  const ownedTrackIdsForResumes = new Set(aggregate.roleTracks.map((existing) => existing.id));
   const nextResumes: Resume[] = patch.resumes.map((resume) => ({
     ...resume,
+    id: resolveOwnedItemId(ownedResumeIds, resume.id),
+    associatedRoleTrackIds: resume.associatedRoleTrackIds.filter((trackId) => ownedTrackIdsForResumes.has(trackId)),
     profileId: aggregate.profile.id,
     createdAt: aggregate.resumes.find((existing) => existing.id === resume.id)?.createdAt ?? updatedAt,
     updatedAt,
@@ -2123,8 +2138,10 @@ export function applyWorkExamplesSectionPatch(
   patch: WorkExamplesSectionPatch,
   updatedAt = new Date().toISOString(),
 ): ApplyWorkExamplesSectionResult {
+  const ownedExampleIds = new Set(aggregate.workExamples.map((existing) => existing.id));
   const nextWorkExamples: WorkExample[] = patch.workExamples.map((example) => ({
     ...example,
+    id: resolveOwnedItemId(ownedExampleIds, example.id),
     profileId: aggregate.profile.id,
     createdAt: aggregate.workExamples.find((existing) => existing.id === example.id)?.createdAt ?? updatedAt,
     updatedAt,
@@ -2164,8 +2181,12 @@ export function applySkillsInventorySectionPatch(
   patch: SkillsInventorySectionPatch,
   updatedAt = new Date().toISOString(),
 ): ApplySkillsInventorySectionResult {
+  const ownedSkillIds = new Set(aggregate.skills.map((existing) => existing.id));
+  const ownedExampleIdsForSkills = new Set(aggregate.workExamples.map((existing) => existing.id));
   const nextSkills: SkillProfile[] = patch.skills.map((skill) => ({
     ...skill,
+    id: resolveOwnedItemId(ownedSkillIds, skill.id),
+    relatedWorkExampleIds: skill.relatedWorkExampleIds.filter((exampleId) => ownedExampleIdsForSkills.has(exampleId)),
     profileId: aggregate.profile.id,
     createdAt: aggregate.skills.find((existing) => existing.id === skill.id)?.createdAt ?? updatedAt,
     updatedAt,
@@ -2205,8 +2226,14 @@ export function applyQualityNarrativeSectionPatch(
       .filter((field) => field.section === section)
       .map((field) => [field.id, field]),
   );
+  const existingFieldsByKey = new Map(
+    Array.from(existingFields.values()).map((existing) => [existing.fieldKey, existing]),
+  );
   const nextSectionFields: QualityScoredTextField[] = patch.fields.map((field) => ({
     ...field,
+    id: existingFields.has(field.id)
+      ? field.id
+      : existingFieldsByKey.get(field.fieldKey)?.id ?? globalThis.crypto.randomUUID(),
     profileId: aggregate.profile.id,
     section,
     feedback: field.feedback,
@@ -2285,8 +2312,10 @@ export function applyWritingSamplesSectionPatch(
   patch: WritingSamplesSectionPatch,
   updatedAt = new Date().toISOString(),
 ): ApplyWritingSamplesSectionResult {
+  const ownedSampleIds = new Set(aggregate.writingSamples.map((existing) => existing.id));
   const nextWritingSamples: WritingSample[] = patch.writingSamples.map((sample) => ({
     ...sample,
+    id: resolveOwnedItemId(ownedSampleIds, sample.id),
     profileId: aggregate.profile.id,
     createdAt: aggregate.writingSamples.find((existing) => existing.id === sample.id)?.createdAt ?? updatedAt,
     updatedAt,
@@ -2326,8 +2355,14 @@ export function applyOutreachRulesSectionPatch(
       .filter((field) => field.section === section)
       .map((field) => [field.id, field]),
   );
+  const existingFieldsByKey = new Map(
+    Array.from(existingFields.values()).map((existing) => [existing.fieldKey, existing]),
+  );
   const nextSectionFields: QualityScoredTextField[] = patch.fields.map((field) => ({
     ...field,
+    id: existingFields.has(field.id)
+      ? field.id
+      : existingFieldsByKey.get(field.fieldKey)?.id ?? globalThis.crypto.randomUUID(),
     profileId: aggregate.profile.id,
     section,
     feedback: field.feedback,
@@ -2341,8 +2376,10 @@ export function applyOutreachRulesSectionPatch(
     createdAt: aggregate.outreachRules?.createdAt ?? updatedAt,
     updatedAt,
   };
+  const ownedOutreachRuleIds = new Set(aggregate.roleTrackOutreachRules.map((existing) => existing.id));
   const nextRoleTrackOutreachRules: RoleTrackOutreachRule[] = patch.roleTrackSpecificRules.map((rule) => ({
     ...rule,
+    id: resolveOwnedItemId(ownedOutreachRuleIds, rule.id),
     createdAt: aggregate.roleTrackOutreachRules.find((existing) => existing.id === rule.id)?.createdAt ?? updatedAt,
     updatedAt,
   }));
@@ -2386,8 +2423,14 @@ export function applyLeadershipProfileSectionPatch(
       .filter((field) => field.section === section)
       .map((field) => [field.id, field]),
   );
+  const existingFieldsByKey = new Map(
+    Array.from(existingFields.values()).map((existing) => [existing.fieldKey, existing]),
+  );
   const nextSectionFields: QualityScoredTextField[] = patch.fields.map((field) => ({
     ...field,
+    id: existingFields.has(field.id)
+      ? field.id
+      : existingFieldsByKey.get(field.fieldKey)?.id ?? globalThis.crypto.randomUUID(),
     profileId: aggregate.profile.id,
     section,
     feedback: field.feedback,

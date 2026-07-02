@@ -41,7 +41,7 @@ function periodStartFor(at: string) {
 }
 
 function planName(value: string | undefined): SubscriptionPlanName {
-  return PLAN_NAMES.has(value as SubscriptionPlanName) ? value as SubscriptionPlanName : "tester";
+  return PLAN_NAMES.has(value as SubscriptionPlanName) ? value as SubscriptionPlanName : "basic";
 }
 
 function subscriptionStatus(value: string): SubscriptionStatus {
@@ -60,7 +60,7 @@ export async function loadSubscriptionContextForUser(
     }),
   });
   const subscription = first(rows);
-  if (!subscription) return { planName: "tester", status: "active" };
+  if (!subscription) return { planName: "basic", status: "active" };
 
   const plans = await request<PlanRow[]>("subscription_plans", {
     query: qs({

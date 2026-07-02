@@ -32,6 +32,19 @@ When the user says `sync`, Codex must:
 
 Do not say or imply that work is synced unless the commit and push both succeeded.
 
+### Review Presentation
+
+When asking Randall to review anything (Randall, 2026-07-02):
+
+- If the review is a set of items (decisions, findings, options, copy variants),
+  present it as a **numbered list** so he can answer by number.
+- If the review requires a **visual check**, never rely on screenshots pasted into
+  chat. Either:
+  - sync the mockup/component to the **Claude Design** project, or
+  - serve it on a **running localhost page** (updated in place) and tell him the
+    URL and where to look.
+- State explicitly which review method is being used and what feedback is needed.
+
 ### Git Truthfulness
 
 - `Committed` means `git commit` actually succeeded and produced a hash.

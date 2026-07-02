@@ -1003,6 +1003,22 @@ export async function handlePublicProfilePursuitCreateRequest(
     job: matchJobFromPublicJob(job),
     evaluatedAt: createdAt,
   });
+
+  const loadSubscriptionContext = options.loadSubscriptionContext ?? loadSubscriptionContextForUser;
+  const loadUsageEntries = options.loadUsageEntries ?? loadUsageLedgerForUser;
+  const subscriptionContext = await loadSubscriptionContext(repositoryRequest, session.userId);
+  const usageEntries = await loadUsageEntries(repositoryRequest, session.userId, {
+    at: createdAt,
+    periodStart: subscriptionContext.currentPeriodStart,
+    periodEnd: subscriptionContext.currentPeriodEnd,
+  });
+  const enforceSubscription = options.enforceSubscription
+    ?? ((context, entries, at) => enforceSubscriptionFeature(context, entries, "pursuit", { at }));
+  const enforcement = enforceSubscription(subscriptionContext, usageEntries, createdAt);
+  if (enforcement.status !== "allowed") {
+    return subscriptionBlockedResponse(enforcement);
+  }
+
   const createPursuit = options.createPursuit ?? createPursuitForJob;
   const result = await createPursuit(repositoryRequest, {
     id: options.createId?.() ?? crypto.randomUUID(),
@@ -1347,6 +1363,23 @@ export async function handlePublicProfilePursuitOutreachRequest(
     }, { status: 400 });
   }
 
+  // One generation per contact per job (Randall, 2026-07-02): contacts that
+  // already have a drafted message are never regenerated; edit the draft instead.
+  const loadOutreachMessages = options.loadOutreachMessages ?? loadOutreachMessagesForPursuit;
+  const existingMessages = await loadOutreachMessages(repositoryRequest, pursuit.id);
+  const alreadyGenerated = new Set(
+    existingMessages
+      .map((message) => message.contactSuggestionId)
+      .filter((id): id is string => Boolean(id)),
+  );
+  const contactsToGenerate = selectedContacts.filter((contact) => !alreadyGenerated.has(contact.id));
+  if (contactsToGenerate.length === 0) {
+    return json({
+      error: "Outreach was already generated for every selected contact. Edit the existing drafts instead.",
+      status: "already_generated",
+    }, { status: 409 });
+  }
+
   const loadSubscriptionContext = options.loadSubscriptionContext ?? loadSubscriptionContextForUser;
   const loadUsageEntries = options.loadUsageEntries ?? loadUsageLedgerForUser;
   const subscriptionContext = await loadSubscriptionContext(repositoryRequest, session.userId);
@@ -1358,7 +1391,7 @@ export async function handlePublicProfilePursuitOutreachRequest(
   const enforceSubscription = options.enforceSubscription
     ?? ((context, entries, at) => enforceSubscriptionFeature(context, entries, "outreach_message", {
       at,
-      quantity: selectedContacts.length,
+      quantity: contactsToGenerate.length,
     }));
   const enforcement = enforceSubscription(subscriptionContext, usageEntries, generatedAt);
   if (enforcement.status !== "allowed") {
@@ -1366,8 +1399,8 @@ export async function handlePublicProfilePursuitOutreachRequest(
   }
 
   const result = transitionPursuit(pursuit, "outreach_generated", generatedAt, {
-    contactIds: selectedContacts.map((contact) => contact.id),
-    messageCount: selectedContacts.length,
+    contactIds: contactsToGenerate.map((contact) => contact.id),
+    messageCount: contactsToGenerate.length,
   });
   if (result.ok === false) {
     return json({
@@ -1388,7 +1421,7 @@ export async function handlePublicProfilePursuitOutreachRequest(
     contact: HumanPathContactSuggestion;
     outreach: OutreachMessage;
   }> = [];
-  for (const contactSuggestion of selectedContacts) {
+  for (const contactSuggestion of contactsToGenerate) {
     const outreach = await generateOutreachForContact({
       profileMarkdown,
       job: outreachJob,

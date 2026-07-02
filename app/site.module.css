@@ -1632,3 +1632,142 @@
   justify-content: center;
   margin-top: var(--space-6);
 }
+
+.publicLandingTierTableWrap {
+  margin-top: 42px;
+  border: var(--line-bold) solid var(--c-ink);
+  border-radius: var(--radius-lg);
+  background-color: var(--c-paper-deep);
+  background-image: var(--fiber-img), var(--grain-img);
+  background-blend-mode: normal, soft-light;
+  background-size: 170px 170px, 46px 46px;
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+}
+
+.publicLandingTierTable {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.publicLandingTierTable th,
+.publicLandingTierTable td {
+  padding: 16px 18px;
+  text-align: center;
+  vertical-align: middle;
+}
+
+/* Column-first reading: ink verticals between tier columns, faint row rules */
+.publicLandingTierTable th + th,
+.publicLandingTierTable td + td {
+  border-left: var(--line-reg) solid var(--c-ink);
+}
+
+.publicLandingTierTable tbody th,
+.publicLandingTierTable tbody td {
+  border-top: 1px solid var(--c-ink-faint);
+}
+
+/* Printed header band: ink field, paper knockout */
+.publicLandingTierTable thead th {
+  padding-top: 18px;
+  padding-bottom: 16px;
+  background: var(--c-ink);
+}
+
+.publicLandingTierTable thead th + th {
+  border-left-color: var(--c-paper);
+}
+
+.publicLandingTierTable tbody th {
+  text-align: left;
+  color: var(--c-ink);
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+/* Goodest column carries the teal field (selected/positive) */
+.publicLandingTierTable thead th:last-child {
+  background: var(--c-teal);
+}
+
+.publicLandingTierTable tbody th:last-child,
+.publicLandingTierTable tbody td:last-child {
+  background: rgb(31 158 150 / 0.12);
+}
+
+.publicLandingTierName {
+  display: block;
+  color: var(--c-paper);
+  font-family: var(--font-display);
+  font-size: clamp(19px, 2vw, 25px);
+  font-weight: 900;
+  letter-spacing: 0.01em;
+  line-height: 1.1;
+}
+
+.publicLandingTierPrice {
+  display: block;
+  margin-top: 4px;
+  color: var(--c-paper);
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 800;
+  opacity: 0.85;
+}
+
+.publicLandingTierYes {
+  color: var(--c-teal);
+  font-size: 20px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.publicLandingTierNo {
+  display: inline-block;
+  width: 14px;
+  height: 3px;
+  border-radius: 1.5px;
+  background: var(--c-ink-faint);
+  vertical-align: middle;
+}
+
+.publicLandingTierValue {
+  color: var(--c-ink);
+  font-family: var(--font-display);
+  font-size: 19px;
+  font-weight: 900;
+}
+
+@media (max-width: 560px) {
+  .publicLandingTierTable th,
+  .publicLandingTierTable td {
+    padding: 12px 6px;
+  }
+
+  .publicLandingTierTable tbody th {
+    padding-left: 10px;
+    font-size: 12.5px;
+  }
+
+  .publicLandingTierTable thead th:first-child {
+    width: 34%;
+  }
+
+  .publicLandingTierName {
+    font-size: 13px;
+  }
+
+  .publicLandingTierPrice {
+    font-size: 10.5px;
+  }
+
+  .publicLandingTierYes {
+    font-size: 16px;
+  }
+
+  .publicLandingTierValue {
+    font-size: 14px;
+  }
+}

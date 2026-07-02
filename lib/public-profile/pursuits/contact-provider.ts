@@ -371,10 +371,13 @@ function toHumanPathContact(contact: ResearchedContact): HumanPathContact {
 
 const defaultCallModel: ContactModelCall = async ({ system, user }) => {
   const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) return undefined;
+  if (!apiKey) {
+    console.info("[llm:contact-discovery] skipped: no OPENAI_API_KEY");
+    return undefined;
+  }
   try {
     const { default: OpenAI } = await import("openai");
-    const client = new OpenAI({ apiKey });
+    const client = new OpenAI({ apiKey, timeout: 90_000, maxRetries: 1 });
     const response = await client.responses.create({
       model: process.env.JOB_SEARCH_CONTACT_MODEL ?? "gpt-4.1",
       tools: [{ type: "web_search" }],

@@ -2,7 +2,14 @@
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { clearPublicProfileAccessToken, readPublicProfileAccessToken, writePublicProfileAccessToken } from "@/lib/public-profile/browser-session";
+import { clearPublicProfileAccessToken, readPublicProfileAccessToken } from "@/lib/public-profile/browser-session";
+import {
+  isGoogleSignInEnabled,
+  signInWithGoogle,
+  signInWithPasswordSession,
+  signOutSupabaseSession,
+  syncPublicProfileSession,
+} from "@/lib/public-auth/supabase-browser";
 import { requestPublicProfileApi } from "@/lib/public-profile/client";
 import type { PublicProfileOnboardingSection, PublicProfileOnboardingSectionKey } from "@/lib/public-profile/onboarding";
 import styles from "./onboarding.module.css";
@@ -173,12 +180,6 @@ type SectionResponse<T> = {
   profileStatus: "incomplete" | "complete";
   section: T;
   profileQuality: ProfileQualitySummary;
-};
-
-type TokenResponse = {
-  access_token?: string;
-  error_description?: string;
-  msg?: string;
 };
 
 /* ============================================================
@@ -710,6 +711,8 @@ export default function OnboardingClient({
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [accessToken, setAccessToken] = useState("");
+  const [inviteCode, setInviteCode] = useState("");
+  const [redeemingCode, setRedeemingCode] = useState(false);
 
   const [identity, setIdentity] = useState<IdentitySearchSection>(emptyIdentity);
   const [fitSignals, setFitSignals] = useState<FitSignalsSection>(emptyFitSignals);
@@ -803,17 +806,23 @@ export default function OnboardingClient({
   }, [applyProfileQuality]);
 
   useEffect(() => {
-    const stored = readPublicProfileAccessToken();
-    if (!stored) return;
-    setAccessToken(stored);
-    setBusy(true);
-    loadProfile(stored)
+    let cancelled = false;
+    void (async () => {
+      const token = (await syncPublicProfileSession()) || readPublicProfileAccessToken();
+      if (!token || cancelled) return;
+      setAccessToken(token);
+      setBusy(true);
+      loadProfile(token)
       .catch((error) => {
-        clearPublicProfileAccessToken();
-        setAccessToken("");
-        setMessage(error instanceof Error ? error.message : "Stored session could not be restored.");
-      })
-      .finally(() => setBusy(false));
+          clearPublicProfileAccessToken();
+          setAccessToken("");
+          setMessage(error instanceof Error ? error.message : "Stored session could not be restored.");
+        })
+        .finally(() => setBusy(false));
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [loadProfile]);
 
   useEffect(() => {
@@ -826,25 +835,42 @@ export default function OnboardingClient({
     setBusy(true);
     setMessage("Signing in…");
     try {
-      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, "");
-      const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-      if (!supabaseUrl || !anonKey) throw new Error("Sign-in is not configured yet.");
-      const response = await fetch(`${supabaseUrl}/auth/v1/token?grant_type=password`, {
-        method: "POST",
-        headers: { apikey: anonKey, "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
-      const body = await response.json().catch(() => null) as TokenResponse | null;
-      if (!response.ok || !body?.access_token) {
-        throw new Error(body?.error_description || body?.msg || "Sign in failed.");
-      }
-      writePublicProfileAccessToken(body.access_token);
-      setAccessToken(body.access_token);
-      await loadProfile(body.access_token);
+      const token = await signInWithPasswordSession(email, password);
+      setAccessToken(token);
+      await loadProfile(token);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Sign in failed.");
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function signInGoogle() {
+    setBusy(true);
+    setMessage("Sending you to Google\u2026");
+    try {
+      await signInWithGoogle("/onboarding");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Google sign in failed.");
+      setBusy(false);
+    }
+  }
+
+  async function redeemInviteCode() {
+    if (!accessToken || !inviteCode.trim()) return;
+    setRedeemingCode(true);
+    try {
+      const result = await requestPublicProfileApi<{ status: string; planName: string }>(
+        "/api/account/redeem-code",
+        { method: "POST", accessToken, body: { code: inviteCode } },
+      );
+      setInviteCode("");
+      setMessage(`Access code accepted: ${result.planName} plan is active.`);
+    } catch (error) {
+      const body = (error as { body?: { error?: string } }).body;
+      setMessage(body?.error || "That code did not work.");
+    } finally {
+      setRedeemingCode(false);
     }
   }
 
@@ -862,6 +888,7 @@ export default function OnboardingClient({
   }
 
   function signOut() {
+    void signOutSupabaseSession();
     clearPublicProfileAccessToken();
     setAccessToken("");
     setIdentity(emptyIdentity);
@@ -1034,12 +1061,17 @@ export default function OnboardingClient({
               <button className={styles.secondaryButton} disabled={busy} onClick={() => router.push("/dashboard")} type="button">Go to dashboard</button>
             ) : null}
             <button className={styles.secondaryButton} onClick={signOut} type="button">Sign out</button>
+            <input aria-label="Access code" onChange={(event) => setInviteCode(event.target.value)} placeholder="Access code" type="text" value={inviteCode} />
+            <button className={styles.secondaryButton} disabled={redeemingCode || !inviteCode.trim()} onClick={redeemInviteCode} type="button">Redeem</button>
           </div>
         ) : (
           <div className={styles.authForm}>
             <input aria-label="Email" autoComplete="email" onChange={(event) => setEmail(event.target.value)} placeholder="email@example.com" type="email" value={email} />
             <input aria-label="Password" autoComplete="current-password" onChange={(event) => setPassword(event.target.value)} placeholder="Password" type="password" value={password} />
             <button className={styles.primaryButton} disabled={busy || !email || !password} onClick={signIn} type="button">Sign in</button>
+            {isGoogleSignInEnabled() ? (
+              <button className={styles.secondaryButton} disabled={busy} onClick={signInGoogle} type="button">Continue with Google</button>
+            ) : null}
           </div>
         )}
       </section>

@@ -104,10 +104,13 @@ function parseInsertedExample(value: unknown): OutreachInsertedExample | null {
 
 const defaultCallModel: OutreachModelCall = async ({ system, user }) => {
   const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) return undefined;
+  if (!apiKey) {
+    console.info("[llm:outreach] skipped: no ANTHROPIC_API_KEY");
+    return undefined;
+  }
   try {
     const { default: Anthropic } = await import("@anthropic-ai/sdk");
-    const client = new Anthropic({ apiKey });
+    const client = new Anthropic({ apiKey, timeout: 30_000, maxRetries: 1 });
     const response = await client.messages.create({
       model: "claude-opus-4-8",
       max_tokens: 1024,
@@ -116,7 +119,9 @@ const defaultCallModel: OutreachModelCall = async ({ system, user }) => {
     });
     const textBlock = response.content.find((block) => block.type === "text");
     return textBlock && "text" in textBlock ? textBlock.text : undefined;
-  } catch {
+  } catch (error) {
+    const err = error as { name?: string; status?: number; message?: string };
+    console.error("[llm:outreach] call failed", { name: err?.name, status: err?.status, message: err?.message });
     return undefined;
   }
 };

@@ -53,7 +53,7 @@ export type SubscriptionEnforcementResult =
   | {
       status: "locked";
       feature: "pursued_jobs_export";
-      requiredPlan: "pro";
+      requiredPlan: "premium";
     }
   | {
       status: "subscription_inactive";

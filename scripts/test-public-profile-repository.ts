@@ -439,7 +439,13 @@ async function main() {
     ["writing_samples", "POST"],
     ["profile_quality", "POST"],
   ]);
-  assert.ok(writingSampleCalls[1].query?.includes("id=not.in.(sample-1,sample-never-1)"));
+  // New items get server-minted UUIDs: the client id "sample-never-1" is never honored.
+  const writingSampleKeepQuery = writingSampleCalls[1].query ?? "";
+  assert.ok(writingSampleKeepQuery.includes("id=not.in.(sample-1,"));
+  assert.ok(!writingSampleKeepQuery.includes("sample-never-1"));
+  const mintedSampleId = writingSamplesUpdate.aggregate.writingSamples[1].id;
+  assert.match(mintedSampleId, /^[0-9a-f-]{36}$/);
+  assert.ok(writingSampleKeepQuery.includes(mintedSampleId));
   assert.equal((writingSampleCalls[2].body as Array<{ text: string }>)[0].text, "Updated short, direct sample.");
   assert.equal((writingSampleCalls[2].body as Array<{ bucket: string }>)[1].bucket, "never_sound");
 
@@ -478,7 +484,12 @@ async function main() {
   ]);
   assert.deepEqual((outreachCalls[1].body as { global_rules: string[] }).global_rules, ["Be specific.", "Lead with proof."]);
   assert.equal(outreachCalls[2].query, "?profile_id=eq.profile-1&section=eq.outreach_rules");
-  assert.equal(outreachCalls[4].query, "?role_track_id=in.(track-1)&id=not.in.(track-rule-2)");
+  // The new rule's client id is replaced with a server-minted UUID.
+  const mintedRuleId = outreachUpdate.aggregate.roleTrackOutreachRules
+    .map((rule) => rule.id)
+    .find((id) => id !== "track-rule-1");
+  assert.ok(mintedRuleId && /^[0-9a-f-]{36}$/.test(mintedRuleId));
+  assert.equal(outreachCalls[4].query, `?role_track_id=in.(track-1)&id=not.in.(${mintedRuleId})`);
   assert.equal((outreachCalls[5].body as Array<{ role_track_id: string }>)[0].role_track_id, "track-1");
 
   const leadershipCalls: Call[] = [];

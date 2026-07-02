@@ -145,7 +145,7 @@ function contactSuggestion(overrides: Partial<HumanPathContactSuggestion> = {}):
 
 function activeBasicSubscription(overrides: Partial<SubscriptionContext> = {}): SubscriptionContext {
   return {
-    planName: "basic",
+    planName: "premium",
     status: "active",
     currentPeriodStart: "2026-06-01T00:00:00.000Z",
     currentPeriodEnd: "2026-07-01T00:00:00.000Z",
@@ -615,6 +615,8 @@ async function main() {
       responsibilities: [],
       requiredExperience: [],
     }),
+    loadSubscriptionContext: async () => activeBasicSubscription(),
+    loadUsageEntries: async () => [],
     createPursuit: async () => ({ ok: false, issues: ["Nope."] }),
   });
   assert.equal(pursuitTransitionError.status, 409);
@@ -626,6 +628,8 @@ async function main() {
     getSession: async () => authed(),
     repositoryRequest,
     loadAggregate: async () => agg,
+    loadSubscriptionContext: async () => activeBasicSubscription(),
+    loadUsageEntries: async () => [],
     loadJob: async () => ({
       id: "job-1",
       source: "fixture",
@@ -1012,6 +1016,7 @@ async function main() {
     loadAggregate: async () => agg,
     loadPursuit: async () => savedPursuit({ status: "human_path_generated" }),
     loadContactSuggestions: async () => [contactSuggestion()],
+    loadOutreachMessages: async () => [],
   });
   assert.equal(contactSelectionUnknownContact.status, 400);
   assert.equal((await body(contactSelectionUnknownContact)).status, "validation_error");
@@ -1026,6 +1031,7 @@ async function main() {
     loadAggregate: async () => agg,
     loadPursuit: async () => savedPursuit({ status: "saved" }),
     loadContactSuggestions: async () => [contactSuggestion()],
+    loadOutreachMessages: async () => [],
   });
   assert.equal(contactSelectionTransitionError.status, 409);
   assert.equal((await body(contactSelectionTransitionError)).status, "transition_error");
@@ -1042,6 +1048,7 @@ async function main() {
     loadAggregate: async () => agg,
     loadPursuit: async () => savedPursuit({ status: "human_path_generated" }),
     loadContactSuggestions: async () => [contactSuggestion(), contactSuggestion({ id: "contact-2", name: "Riley Chen" })],
+    loadOutreachMessages: async () => [],
     persistContactSelection: async (_request, result, contactIds) => {
       persistedContactSelection = result;
       persistedContactIds = contactIds;
@@ -1121,8 +1128,9 @@ async function main() {
     loadPursuit: async () => savedPursuit({ status: "outreach_ready" }),
     loadJob: async () => publicJob(),
     loadContactSuggestions: async () => [contactSuggestion({ selectedForOutreach: true })],
+    loadOutreachMessages: async () => [],
     loadSubscriptionContext: async () => activeBasicSubscription(),
-    loadUsageEntries: async () => [usage("outreach_message", 100)],
+    loadUsageEntries: async () => [usage("outreach_message", 150)],
     generateOutreachForContact: async () => {
       outreachGeneratorCalledAfterLimit = true;
       return { message: "Nope.", insertedExample: null };
@@ -1141,6 +1149,7 @@ async function main() {
     loadPursuit: async () => savedPursuit({ status: "human_path_generated" }),
     loadJob: async () => publicJob(),
     loadContactSuggestions: async () => [contactSuggestion({ selectedForOutreach: true })],
+    loadOutreachMessages: async () => [],
     loadSubscriptionContext: async () => activeBasicSubscription(),
     loadUsageEntries: async () => [],
     generateOutreachForContact: async () => {
@@ -1160,6 +1169,7 @@ async function main() {
     loadPursuit: async () => savedPursuit({ status: "outreach_ready" }),
     loadJob: async () => publicJob(),
     loadContactSuggestions: async () => [contactSuggestion({ selectedForOutreach: true })],
+    loadOutreachMessages: async () => [],
     loadSubscriptionContext: async () => activeBasicSubscription(),
     loadUsageEntries: async () => [],
     generateOutreachForContact: async () => undefined,
@@ -1183,6 +1193,7 @@ async function main() {
       selectedWorkExampleId: "example-1",
     }),
     loadJob: async () => publicJob(),
+    loadOutreachMessages: async () => [],
     loadContactSuggestions: async () => [
       contactSuggestion({ selectedForOutreach: true }),
       contactSuggestion({ id: "contact-2", name: "Riley Chen", contactType: "recruiter", selectedForOutreach: true }),

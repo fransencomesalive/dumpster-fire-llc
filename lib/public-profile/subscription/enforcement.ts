@@ -112,7 +112,7 @@ export function enforceSubscriptionFeature(
   if (feature === "pursued_jobs_export") {
     return rules.pursuedJobsExport
       ? { status: "allowed", feature }
-      : { status: "locked", feature, requiredPlan: "pro" };
+      : { status: "locked", feature, requiredPlan: "premium" };
   }
 
   const quantity = Math.max(1, Math.round(options.quantity ?? 1));

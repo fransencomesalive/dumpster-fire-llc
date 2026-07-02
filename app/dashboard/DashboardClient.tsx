@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { clearPublicProfileAccessToken, readPublicProfileAccessToken } from "@/lib/public-profile/browser-session";
+import { syncPublicProfileSession } from "@/lib/public-auth/supabase-browser";
 import { requestPublicProfileApi } from "@/lib/public-profile/client";
 import { publicProfileOnboardingSections } from "@/lib/public-profile/onboarding";
 import OnboardingClient from "../onboarding/OnboardingClient";
@@ -145,7 +146,8 @@ export default function DashboardClient() {
   }
 
   useEffect(() => {
-    const accessToken = readPublicProfileAccessToken();
+    void (async () => {
+    const accessToken = (await syncPublicProfileSession()) || readPublicProfileAccessToken();
     if (!accessToken) {
       router.replace("/onboarding");
       return;
@@ -180,6 +182,7 @@ export default function DashboardClient() {
           message: error instanceof Error ? error.message : "Dashboard access could not be verified.",
         });
       });
+    })();
   }, [router]);
 
   async function runScan() {
