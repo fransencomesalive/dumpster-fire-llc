@@ -70,8 +70,10 @@ export async function signInWithPasswordSession(email: string, password: string)
 }
 
 export function isGoogleSignInEnabled() {
+  // The Google provider is enabled in Supabase Auth (verified 2026-07-02), so the
+  // button defaults ON. Set NEXT_PUBLIC_SUPABASE_AUTH_GOOGLE_ENABLED=0 to hide it.
   const flag = process.env.NEXT_PUBLIC_SUPABASE_AUTH_GOOGLE_ENABLED;
-  return flag === "1" || flag === "true";
+  return flag !== "0" && flag !== "false";
 }
 
 export async function signInWithGoogle(redirectPath = "/onboarding"): Promise<void> {
