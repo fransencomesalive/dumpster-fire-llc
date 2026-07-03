@@ -1,5 +1,14 @@
 # Systems Gut Check — 2026-07-02
 
+> **NEXT SESSION STARTING POINT (set 2026-07-02, post-launch):** the homepage has
+> "some bad design choices" per Randall that must be resolved — start by getting his
+> specific critiques (the subscription matrix was approved only provisionally), review
+> live on localhost or Claude Design per AGENTS.md Review Presentation. Launch state:
+> prod live with Google OAuth + access codes (shared: DUMPSTERFRIENDS; five GOODEST-*
+> single-use); Supabase auth config verified/fixed via Management API. Still open:
+> CRON_SECRET in Vercel, key rotation, WS5 feedback backend, T&C doc, WS4 RLS
+> passthrough, pursuit wizard UI.
+
 > **LAUNCH BUILD SHIPPED 2026-07-02.** Everything from the resume plan is implemented
 > and validated (33/33 test suites, tsc clean, lint 0 errors / 7 pre-existing
 > warnings, build compiles):
