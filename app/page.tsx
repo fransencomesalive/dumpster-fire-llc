@@ -14,7 +14,7 @@ const operatingLoop = [
     copy: "Scan live job boards and company career pages, so your search is not trapped inside one portal or one watchlist.",
   },
   {
-    title: "1:1 outreach",
+    title: "1:1 custom outreach",
     copy: "Dumpster Fire finds the person to contact and drafts a powerful, informative message in your voice. Editable, never auto-sent.",
   },
   {
@@ -77,21 +77,6 @@ const humanPathSlides = [
 
 const humanPathSteps = ["Review", "Contacts", "Outreach", "Track"];
 
-const featureSets = [
-  {
-    title: "Career profile",
-    items: ["Identity and search basics", "Role Tracks", "Resumes and work history", "Work examples", "Voice and outreach rules"],
-  },
-  {
-    title: "1:1 outreach",
-    items: ["Finds the person to contact", "A message in your voice", "Draws on your work examples", "Editable draft, never auto-sent", "Clear limits"],
-  },
-  {
-    title: "Pursuits",
-    items: ["Save roles to pursue", "Contact and message kept per role", "Follow-up state", "One place for the whole pursuit"],
-  },
-];
-
 const subscriptionTiers = [
   { name: "Good", price: "" },
   { name: "Gooder", price: "" },
@@ -112,30 +97,32 @@ const subscriptionFeatures: { label: string; tiers: [TierCell, TierCell, TierCel
   { label: "Jobs you can pursue each month", tiers: [false, false, "50"] },
 ];
 
-const guardrails = [
-  "No mass apply automation.",
-  "No one-size-fits-all profile defaults.",
-  "No resume handling without a clear user-facing flow.",
-  "No pursuit or outreach help until your profile is complete.",
-  "No hiding weak-fit or excluded roles without explanation.",
-];
-
 export default function HomePage() {
   return (
     <main className={styles.publicLandingPage}>
       <HomeAuthRouter />
 
       <header className={styles.publicLandingNav} aria-label="Dumpster Fire navigation">
-        <Link className={styles.publicLandingNavBrand} href="/">
-          Dumpster Fire
-        </Link>
-        <nav className={styles.publicLandingNavLinks} aria-label="Public sections">
-          <a href="#features">Features</a>
-          <a href="#human-path">Human Path</a>
-          <a href="#subscription">Subscription</a>
-          <Link href="/onboarding">Build profile</Link>
-          <a href="mailto:randall@randallfransen.com?subject=Dumpster%20Fire%20access">Contact</a>
-        </nav>
+        <div className={styles.publicLandingNavLeft}>
+          <Link className={styles.publicLandingNavBrand} href="/" aria-label="Dumpster Fire home">
+            <Image className={styles.publicLandingNavMark} src={mascotImg} alt="" sizes="40px" />
+            <span>Home</span>
+          </Link>
+          <nav className={styles.publicLandingNavLinks} aria-label="Page sections">
+            <a href="#features">Features</a>
+            <a href="#human-path">Human Path</a>
+            <a href="#subscription">Pricing</a>
+            <a href="mailto:fransencomesalive@gmail.com?subject=Dumpster%20Fire">Contact</a>
+          </nav>
+        </div>
+        <div className={styles.publicLandingNavActions}>
+          <Link className={styles.publicLandingNavSignIn} href="/onboarding">
+            Sign in
+          </Link>
+          <Link className={styles.publicLandingNavCta} href="/onboarding">
+            Create profile
+          </Link>
+        </div>
       </header>
 
       <section className={styles.publicLandingHeroSection} aria-labelledby="home-title">
@@ -160,19 +147,7 @@ export default function HomePage() {
               <span className={styles.publicLandingSignTomato}>Stop applying</span>
               <span className={styles.publicLandingSignTeal}>Start pursuing</span>
             </div>
-            <div className={styles.publicLandingActions} aria-label="Dumpster Fire actions">
-              <a className={styles.publicLandingPrimary} href="mailto:randall@randallfransen.com?subject=Dumpster%20Fire%20access">
-                Request access
-              </a>
-            </div>
           </div>
-        </div>
-
-        <div className={styles.publicLandingHeroStrip} aria-label="Product promise">
-          <span>Detailed profile setup</span>
-          <span>Boards, company pages, and target sources</span>
-          <span>Human Path contact sourcing</span>
-          <span>Pursuit tracking</span>
         </div>
       </section>
 
@@ -259,25 +234,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className={styles.publicLandingSection} aria-labelledby="feature-set-title">
-        <div className={styles.publicLandingSectionIntro}>
-          <h2 id="feature-set-title">The profile makes the outreach specific.</h2>
-          <p>Human Path, your messages, and every pursuit pull from the same source of truth: your profile.</p>
-        </div>
-        <div className={styles.publicLandingFeatureSetGrid}>
-          {featureSets.map((featureSet) => (
-            <article className={styles.publicLandingFeatureSet} key={featureSet.title}>
-              <h3>{featureSet.title}</h3>
-              <ul>
-                {featureSet.items.map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
-            </article>
-          ))}
-        </div>
-      </section>
-
       <section id="subscription" className={styles.publicLandingSection} aria-labelledby="subscription-title">
         <div className={styles.publicLandingSectionIntro}>
           <h2 id="subscription-title">Subscription tiers.</h2>
@@ -315,18 +271,6 @@ export default function HomePage() {
             </tbody>
           </table>
         </div>
-      </section>
-
-      <section className={styles.publicLandingBand} aria-labelledby="guardrails-title">
-        <div className={styles.publicLandingBandCopy}>
-          <h2 id="guardrails-title">Built for trust before scale.</h2>
-          <p>The product keeps the human in the loop and treats profile data, outreach context, and source quality as things that need to be verified.</p>
-        </div>
-        <ul className={styles.publicLandingGuardrailList}>
-          {guardrails.map((item) => (
-            <li key={item}>{item}</li>
-          ))}
-        </ul>
       </section>
 
       <section className={styles.publicLandingFinal} aria-label="Request Dumpster Fire access">

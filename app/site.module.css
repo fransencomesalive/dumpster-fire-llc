@@ -10,7 +10,7 @@
 
   position: relative;
   min-height: 100svh;
-  overflow: hidden;
+  overflow: clip;
   background: transparent;
   color: var(--landing-ink);
   isolation: isolate;
@@ -45,34 +45,96 @@
 }
 
 .publicLandingNav {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 24px;
+  position: sticky;
+  top: 12px;
+  z-index: 30;
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  padding: 44px 0 10px;
+  gap: 14px 24px;
 }
 
-.publicLandingNavBrand,
-.publicLandingNavLinks a {
-  color: var(--landing-copy);
-  font-weight: 900;
-  line-height: 1;
-  text-decoration: none;
+.publicLandingNavLeft {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 20px;
+}
+
+.publicLandingNavActions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: auto;
 }
 
 .publicLandingNavBrand {
-  font-size: 16px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--landing-ink);
+  font-weight: 900;
+  font-size: 17px;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  text-decoration: none;
+}
+
+.publicLandingNavMark {
+  width: auto;
+  height: 34px;
+  object-fit: contain;
 }
 
 .publicLandingNavLinks {
   display: flex;
   flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 12px 22px;
+  align-items: center;
+  gap: 8px 18px;
+  padding-left: 20px;
+  border-left: var(--line-reg, 1.5px) solid var(--c-ink-faint);
 }
 
 .publicLandingNavLinks a {
+  color: var(--landing-copy);
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1;
+  text-decoration: none;
+  opacity: 0.82;
+}
+
+.publicLandingNavLinks a:hover {
+  opacity: 1;
+}
+
+.publicLandingNavSignIn {
+  color: var(--landing-ink);
+  font-weight: 800;
   font-size: 14px;
+  line-height: 1;
+  text-decoration: none;
+}
+
+.publicLandingNavSignIn:hover {
+  text-decoration: underline;
+}
+
+.publicLandingNavCta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 0 18px;
+  border: var(--line-reg, 2px) solid var(--c-ink);
+  border-radius: 999px;
+  background: var(--c-ink);
+  color: var(--c-paper);
+  font-weight: 900;
+  font-size: 14px;
+  line-height: 1;
+  text-decoration: none;
 }
 
 .publicLandingHeroSection {
@@ -249,9 +311,9 @@
 
 .publicLandingLoopItem,
 .publicLandingFeature {
-  min-height: 260px;
+  min-height: auto;
   border-right: 2px solid var(--landing-line);
-  padding: 28px 24px;
+  padding: 24px 22px;
 }
 
 .publicLandingLoopItem:last-child,
@@ -271,7 +333,7 @@
 .publicLandingOnboardingStep h3,
 .publicLandingFeatureSet h3,
 .publicLandingPricingCard h3 {
-  margin: 44px 0 0;
+  margin: 16px 0 0;
   color: var(--landing-ink);
   font-size: clamp(25px, 2.5vw, 31px);
   font-weight: 900;
@@ -279,11 +341,21 @@
   line-height: 1.08;
 }
 
+.publicLandingLoopItem h3::after {
+  content: "";
+  display: block;
+  width: 34px;
+  height: 3px;
+  margin-top: 12px;
+  border-radius: 2px;
+  background: var(--c-teal);
+}
+
 .publicLandingLoopItem p,
 .publicLandingFeature p,
 .publicLandingOnboardingStep p,
 .publicLandingPricingCard p {
-  margin: 22px 0 0;
+  margin: 12px 0 0;
   color: var(--landing-copy);
   font-size: 16px;
   font-weight: 700;
@@ -986,12 +1058,29 @@
 
 @media (max-width: 900px) {
   .publicLandingNav {
-    grid-template-columns: 1fr;
-    padding-top: 22px;
+    gap: 12px 16px;
+  }
+
+  .publicLandingNavLeft {
+    display: contents;
+  }
+
+  .publicLandingNavBrand {
+    order: 1;
+  }
+
+  .publicLandingNavActions {
+    order: 2;
+    margin-left: auto;
   }
 
   .publicLandingNavLinks {
-    justify-content: flex-start;
+    order: 3;
+    flex-basis: 100%;
+    min-width: 0;
+    padding-left: 0;
+    border-left: 0;
+    gap: 8px 16px;
   }
 
   .publicLandingHeroSection,
@@ -1659,7 +1748,8 @@
 
 /* Column-first reading: ink verticals between tier columns, faint row rules */
 .publicLandingTierTable th + th,
-.publicLandingTierTable td + td {
+.publicLandingTierTable td + td,
+.publicLandingTierTable tbody th + td {
   border-left: var(--line-reg) solid var(--c-ink);
 }
 

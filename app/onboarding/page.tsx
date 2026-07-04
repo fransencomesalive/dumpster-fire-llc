@@ -18,9 +18,6 @@ export default function OnboardingPage() {
           <Link className={styles.brand} href="/">
             The Job Market Is a Dumpster Fire
           </Link>
-          <Link className={styles.homeLink} href="/">
-            Back to public home
-          </Link>
         </nav>
 
         <section className={styles.hero} aria-labelledby="onboarding-title">
@@ -33,9 +30,6 @@ export default function OnboardingPage() {
             <div className={styles.actions}>
               <Link className={styles.primaryAction} href="#sections">
                 Review sections
-              </Link>
-              <Link className={styles.secondaryAction} href="/">
-                Back to public home
               </Link>
             </div>
           </div>

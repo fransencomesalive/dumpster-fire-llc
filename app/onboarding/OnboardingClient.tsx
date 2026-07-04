@@ -1175,7 +1175,7 @@ export default function OnboardingClient({
               <button className={styles.secondaryButton} disabled={!accessToken || busy} onClick={() => setRoleTracks((tracks) => [...tracks, emptyRoleTrack()])} type="button">Add Role Track</button>
             ))}
             {roleTracks.length === 0 ? (
-              <p className={styles.emptyState}>No Role Tracks yet. Add one credible lane to start connecting resumes, work examples, and outreach rules.</p>
+              <p className={styles.emptyState}>No Role Tracks yet. A Role Track is one credible lane you pursue, connecting the resumes, work examples, and outreach rules that fit it. For example, apply as a Project Manager in one Role Track and as a Producer in another.</p>
             ) : (
               <div className={styles.roleTrackList}>
                 {roleTracks.map((track, index) => (
