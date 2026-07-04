@@ -1,0 +1,119 @@
+<!-- @dsCard group="Components" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Components · QA Feedback Panel</title>
+<link rel="stylesheet" href="../tokens/tokens.css" />
+<link rel="stylesheet" href="../lib/base.css" />
+<style>
+  /* No page background: the app grain ground owns that layer. Mirrors QAFeedbackWidget
+     in app/QAFeedbackWidget.tsx; class names match so it ports back wholesale. The dock
+     launcher itself is the PhredBot dock from footer.html — this card documents the panel
+     it opens plus the wired dock states. Live wiring: panel posts to /api/qa-report,
+     which relays to the QA agent (source "qa-feedback-widget"). */
+  body { margin: 0; color: var(--c-ink); font-family: var(--font-ui); }
+  .wrap { max-width: 640px; margin: 0 auto; padding: var(--space-6) var(--space-5); display: grid; gap: var(--space-5); }
+  h1.page { font-family: var(--font-display); font-size: var(--type-h1); margin: 0 0 var(--space-2); }
+  .lede { font-family: var(--font-body); color: var(--role-text-muted); margin: 0; }
+  .stateLabel { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: var(--tracking-subhead);
+    font-size: 0.82rem; color: var(--c-teal); margin: 0 0 var(--space-2); }
+
+  /* ===== panel · the comment box the dock opens ===== */
+  .panel { display: grid; gap: var(--space-3);
+    width: min(360px, calc(100vw - 2 * var(--space-4)));
+    padding: var(--space-3) var(--space-4);
+    background-color: var(--c-paper); background-image: var(--fiber-img), var(--grain-img);
+    background-blend-mode: normal, soft-light; background-size: 170px 170px, 46px 46px;
+    border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-md);
+    box-shadow: var(--shadow-card); }
+  .header { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3);
+    font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.05em;
+    font-size: 0.92rem; color: var(--c-teal); }
+  .header small { font-family: var(--font-ui); text-transform: none; letter-spacing: 0;
+    font-size: 0.78rem; color: var(--role-text-faint); }
+  .field { display: grid; gap: var(--space-2); }
+  .field span { font-family: var(--font-ui); font-size: 0.85rem; line-height: 1.4; color: var(--role-text-muted); }
+  .field textarea, .field input { width: 100%; box-sizing: border-box; padding: var(--space-3);
+    font: inherit; font-family: var(--font-ui); font-size: 0.9rem; line-height: 1.45;
+    color: var(--c-ink); background-color: var(--c-paper);
+    border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-md); }
+  .field textarea { min-height: 64px; resize: vertical; }
+  .field textarea:focus, .field input:focus { outline: none; border-color: var(--c-teal);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--c-teal) 28%, transparent); }
+  .errorNote { margin: 0; font-family: var(--font-ui); font-size: 0.85rem; line-height: 1.4;
+    color: var(--role-text-muted); }
+  .actions { display: flex; justify-content: flex-end; }
+  .submit { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: var(--tracking-subhead);
+    font-size: 0.82rem; color: var(--c-paper); padding: var(--space-2) var(--space-4); cursor: pointer;
+    background-color: var(--c-teal); border: var(--line-reg) solid var(--c-ink);
+    border-radius: var(--radius-md); box-shadow: 2px 2px 0 var(--c-ink);
+    transition: box-shadow var(--dur-fast) var(--ease-snap); }
+  .submit:hover:not(:disabled) { box-shadow: var(--reg-box); }
+  .submit:disabled { opacity: 0.58; cursor: not-allowed; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div>
+    <h1 class="page">QA Feedback Panel</h1>
+    <p class="lede">The persistent comment box the PhredBot dock (footer.html) opens on every page, for every
+    user. Free-text report plus optional email; submissions relay to the QA agent as tickets. Fails soft:
+    if the relay is unreachable the note appears and the app is never disturbed.</p>
+  </div>
+
+  <!-- Open · empty -->
+  <section>
+    <p class="stateLabel">Open · awaiting input</p>
+    <div class="panel">
+      <div class="header"><span>Something broken? Tell us</span></div>
+      <label class="field">
+        <span>What happened?</span>
+        <textarea rows="3" placeholder="What broke, what looked off, what you expected."></textarea>
+      </label>
+      <label class="field">
+        <span>Email for updates (optional)</span>
+        <input type="email" placeholder="you@example.com" />
+      </label>
+      <div class="actions"><button type="button" class="submit">Send feedback</button></div>
+    </div>
+  </section>
+
+  <!-- Saved -->
+  <section>
+    <p class="stateLabel">Submitted · saved confirmation</p>
+    <div class="panel">
+      <div class="header"><span>Something broken? Tell us</span><small>Feedback saved</small></div>
+      <label class="field">
+        <span>What happened?</span>
+        <textarea rows="3" placeholder="What broke, what looked off, what you expected."></textarea>
+      </label>
+      <label class="field">
+        <span>Email for updates (optional)</span>
+        <input type="email" placeholder="you@example.com" />
+      </label>
+      <div class="actions"><button type="button" class="submit" disabled>Send feedback</button></div>
+    </div>
+  </section>
+
+  <!-- Error · fail soft -->
+  <section>
+    <p class="stateLabel">Relay unreachable · fail soft</p>
+    <div class="panel">
+      <div class="header"><span>Something broken? Tell us</span></div>
+      <label class="field">
+        <span>What happened?</span>
+        <textarea rows="3">The scan history page lost my last scan.</textarea>
+      </label>
+      <label class="field">
+        <span>Email for updates (optional)</span>
+        <input type="email" placeholder="you@example.com" />
+      </label>
+      <p class="errorNote">Couldn't send right now. Try again later.</p>
+      <div class="actions"><button type="button" class="submit">Send feedback</button></div>
+    </div>
+  </section>
+</div>
+</body>
+</html>

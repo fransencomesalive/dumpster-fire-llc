@@ -1,5 +1,16 @@
 # Current State
 
+## 2026-07-02 - QA feedback widget + QA agent relay integrated (Claude)
+
+Persistent comment box live on every page: the PhredBot dock (design source
+`design-system/components/footer.html`) opens a QA feedback panel (new DS card
+`design-system/components/qa-feedback.html`) that posts through `app/api/qa-report/route.ts`
+to a standalone QA agent relay at `~/Sites/dumpster-fire-relay` (provisioned from
+`~/Sites/QA-AGENT`, ticket prefix JOB). Verified end-to-end locally; fails soft when the
+relay is unreachable. Full map, contract, and deferred steps (relay deploy, Telegram bot,
+Vercel `QA_AGENT_URL`) in `docs/qa-feedback-widget-integration-2026-07-02.md`. The 06-30
+"NEXT SESSION START HERE" priority below (contact-selection UI) is unchanged.
+
 ## 2026-06-30 - NEXT SESSION START HERE
 
 Human Path contact discovery is **built + verified live** (OpenAI gpt-4.1 + web_search). Next:

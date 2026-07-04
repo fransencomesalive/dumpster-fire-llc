@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import LandingBackground from "./LandingBackground";
+import QAFeedbackWidget from "./QAFeedbackWidget";
 import "./globals.css";
 import "./ds.css";
 
@@ -63,7 +64,10 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <div className="appGrainGround" aria-hidden="true">
           <LandingBackground />
         </div>
-        <div className="appContentLayer">{children}</div>
+        <div className="appContentLayer">
+          {children}
+          <QAFeedbackWidget />
+        </div>
       </body>
     </html>
   );

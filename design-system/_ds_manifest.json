@@ -73,6 +73,10 @@
     },
     {
       "group": "Components",
+      "path": "components/qa-feedback.html"
+    },
+    {
+      "group": "Components",
       "path": "components/compiler.html"
     },
     {

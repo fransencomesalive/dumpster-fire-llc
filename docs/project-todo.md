@@ -36,6 +36,34 @@ Next-task selection should pick from #3, or move into #1 once Randall provides/a
 
 ## Near-Term (scheduled)
 
+### QA feedback relay — end-to-end go-live (added 2026-07-04)
+
+The widget + proxy shipped 2026-07-02 (`docs/qa-feedback-widget-integration-2026-07-02.md`
+has the full map). Until these are done, production submits fail soft with the friendly
+error — nothing breaks. In order:
+
+- [ ] **Deploy the relay publicly** — `~/Sites/dumpster-fire-relay` is a standalone Node
+  service (Dockerfile included); it needs a persistent process, so Railway/Fly/VPS, not
+  Vercel serverless. Randall picks the host; then set `HOST=0.0.0.0` + `PUBLIC_BASE_URL`
+  in the relay `.env`. For durable storage add `DATABASE_URL` and run `npm run db:prepare`
+  (the JSON file store loses data on redeploy).
+- [ ] **Randall: create the Telegram bot via BotFather** (manual, cannot be automated) —
+  display name `the-job-market-is-a-dumpster-fire-phred`, username
+  `@TheJobMarketIsADumpsterPhredBot`. Run `npm run telegram:handoff` in the relay app for
+  the exact walkthrough, then set `TELEGRAM_BOT_TOKEN_THE_JOB_MARKET_IS_A_DUMPSTER_FIRE`
+  in the relay `.env`.
+- [ ] **Randall: wire owner notifications** — message the bot once, then in the relay app
+  run `npm run telegram:admins -- --write true` (captures the admin chat id) and
+  `npm run telegram:setup` (registers the webhook; requires `PUBLIC_BASE_URL` live).
+- [ ] **Set `QA_AGENT_URL` on Vercel** (production + preview) to the deployed relay URL,
+  redeploy, submit real feedback from the production site, and confirm the ticket lands
+  (`GET /api/tickets` on the relay) plus the Telegram notification arrives.
+- [ ] **Give the relay a git home** — `~/Sites/dumpster-fire-relay` has no repo/remote yet
+  (cross-machine sync gap). `git init`, GitHub remote, verify `.env` and `data/` stay
+  gitignored before the first push.
+- [ ] Optional: set `GITHUB_TOKEN` in the relay `.env` so approved tickets can open GitHub
+  issues on `fransencomesalive/dumpster-fire-llc`.
+
 - [x] **Apply `20260626000100_public_job_scan_results.sql` to production** — DONE 2026-06-28.
   `job_scan_results` table created with RLS; migration history reconciled (both `...626` and the
   A4 `...627` now recorded in `supabase_migrations`). See `docs/database-migration-state.md`.
