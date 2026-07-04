@@ -36,6 +36,14 @@ Next-task selection should pick from #3, or move into #1 once Randall provides/a
 
 ## Near-Term (scheduled)
 
+- [ ] **CRITICAL — Randall: repoint the custom domain (found 2026-07-04).**
+  `www.thejobmarketisadumpsterfire.com` + apex serve the Lab26 project (all real routes
+  404; homepage is a ~9-day-old edge-cached copy). The current app is live at
+  `https://dumpster-fire-llc.vercel.app`. In the Vercel dashboard, attach the domains
+  to the `dumpster-fire-llc` project / promote the latest deployment, then verify
+  `/onboarding` returns 200 on the custom domain. Blocks launch invites and the QA
+  widget on the public domain. Details in `docs/current-state.md` (2026-07-04 entry).
+
 ### QA feedback relay — end-to-end go-live (added 2026-07-04)
 
 The widget + proxy shipped 2026-07-02 (`docs/qa-feedback-widget-integration-2026-07-02.md`

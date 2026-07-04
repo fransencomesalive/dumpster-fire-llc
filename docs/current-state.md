@@ -1,5 +1,19 @@
 # Current State
 
+## 2026-07-04 - CRITICAL: custom domain is not serving this app (Claude)
+
+Found while verifying the QA widget deploy. `https://www.thejobmarketisadumpsterfire.com`
+(and apex) currently serve the **Lab26 project**: `/onboarding`, `/dashboard`, and
+`/api/account/redeem-code` (shipped in the 07-02 launch build) all return Lab26-branded
+404s. The homepage only *looks* live because a stale copy is served from edge cache
+(`age: ~9.3 days`, `x-vercel-cache: HIT`). The real app IS deployed and current at
+`https://dumpster-fire-llc.vercel.app` (verified: launch routes + QA widget present,
+`/api/qa-report` responds). This matches the prior warning in `docs/next-session.md`
+about alias promotion. **Fix (Randall, Vercel dashboard):** point the
+`thejobmarketisadumpsterfire.com` domains at the `dumpster-fire-llc` project /
+promote the latest production deployment, then re-verify `/onboarding` returns 200.
+Anyone using launch invite codes against the custom domain is hitting 404s today.
+
 ## 2026-07-02 - QA feedback widget + QA agent relay integrated (Claude)
 
 Persistent comment box live on every page: the PhredBot dock (design source
