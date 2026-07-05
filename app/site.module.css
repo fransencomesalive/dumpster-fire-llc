@@ -1884,7 +1884,9 @@
 
 .publicLandingFooterMain {
   display: flex;
-  align-items: center;
+  /* Shared baseline row (Randall, round-3): mascot bottom, wordmark, and nav
+     links all land on the "Dumpster Fire" baseline so the logo never floats. */
+  align-items: flex-end;
   gap: var(--space-5) var(--space-6);
   flex-wrap: wrap;
   padding: var(--space-5);
@@ -1892,7 +1894,7 @@
 
 .publicLandingFooterBrand {
   display: inline-flex;
-  align-items: center;
+  align-items: flex-end;
   gap: var(--space-3);
   text-decoration: none;
   color: var(--c-ink);
