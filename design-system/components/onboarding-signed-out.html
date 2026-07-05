@@ -30,17 +30,19 @@
   .brandWord .top { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.05em;
     font-size: 0.72rem; color: var(--c-tomato); }
   .brandWord .name { font-family: var(--font-display); font-size: 1.2rem; letter-spacing: var(--tracking-display); color: var(--c-ink); }
-  .navPrimary { display: flex; align-items: center; gap: var(--space-5); margin-left: var(--space-4); }
-  .navLink { font-family: var(--font-display); font-size: 1rem; }
+  .navPrimary { display: flex; align-items: center; gap: var(--space-5); margin-left: var(--space-4); flex: none; }
+  .navLink { font-family: var(--font-display); font-size: 1rem; white-space: nowrap; }
   .headerActions { margin-left: auto; display: flex; align-items: center; gap: var(--space-4); flex: none; }
-  .linkAction { font-family: var(--font-display); font-size: 1rem; }
-  .btnSm { font-size: 0.95rem; padding: var(--space-2) var(--space-4); }
+  .linkAction { font-family: var(--font-display); font-size: 1rem; white-space: nowrap; }
+  .btnSm { font-size: 0.76rem; padding: var(--space-2) var(--space-4); }
 
-  /* Teal action button — nav CTA (teal = positive; Randall 2026-07-04). */
-  .btnTeal { font-family: var(--font-display); font-size: 1.05rem; color: var(--c-paper);
+  /* Teal action button — nav CTA (teal = positive; Randall 2026-07-04).
+     Sized down 20% globally per round-3 (the CTA read as enormous). */
+  .btnTeal { font-family: var(--font-display); font-size: 0.84rem; color: var(--c-paper);
     background-color: var(--c-teal); border: var(--line-bold) solid var(--c-ink);
     border-radius: var(--radius-md); box-shadow: var(--shadow-card);
-    padding: var(--space-3) var(--space-5); cursor: pointer; text-decoration: none;
+    padding: var(--space-2) var(--space-4); cursor: pointer; text-decoration: none;
+    white-space: nowrap;
     display: inline-flex; align-items: center; justify-content: center;
     transition: background-color var(--dur-fast) var(--ease-snap), box-shadow var(--dur-fast) var(--ease-snap); }
   .btnTeal:hover { background-color: var(--role-info); box-shadow: var(--reg-box);

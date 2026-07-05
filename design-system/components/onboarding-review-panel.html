@@ -25,31 +25,32 @@
   .accountHead { display: flex; align-items: center; gap: var(--space-3);
     padding: var(--space-2) var(--space-5); border-bottom: var(--line-reg) solid var(--c-ink);
     background-color: color-mix(in srgb, var(--c-teal) 12%, var(--c-paper-deep)); }
+  /* Font sizes bumped +10% globally for this execution (round-3); pill below email, left-justified. */
   .accountHead .title { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.05em;
-    font-size: 0.9rem; color: var(--c-ink); }
+    font-size: 0.99rem; color: var(--c-ink); }
   .accountBody { display: flex; align-items: center; gap: var(--space-5) var(--space-6); flex-wrap: wrap;
     padding: var(--space-4) var(--space-5); }
   .accountWho { display: grid; gap: 3px; min-width: 0; }
   .accountWho .caption { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.05em;
-    font-size: 0.72rem; color: var(--role-text-faint); }
-  .accountWho .idRow { display: inline-flex; align-items: center; gap: var(--space-3); min-width: 0; }
-  .accountWho .email { font-family: var(--font-display); font-size: 1.15rem; color: var(--c-ink);
-    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    font-size: 0.79rem; color: var(--role-text-faint); }
+  .accountWho .idRow { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-2); min-width: 0; }
+  .accountWho .email { font-family: var(--font-display); font-size: 1.27rem; color: var(--c-ink);
+    max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .planChip { flex: none; display: inline-flex; align-items: center; font-family: var(--font-subhead);
-    text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.72rem; line-height: 1;
+    text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.79rem; line-height: 1;
     color: var(--c-paper); background-color: var(--c-teal); border: var(--line-reg) solid var(--c-ink);
     border-radius: var(--radius-pill); padding: 5px 11px; }
   .accountCode { margin-left: auto; display: grid; gap: var(--space-2); min-width: 260px; }
-  .accountCode label { font-family: var(--font-display); font-size: 0.98rem; color: var(--c-ink); }
+  .accountCode label { font-family: var(--font-display); font-size: 1.08rem; color: var(--c-ink); }
   .codeRow { display: flex; gap: var(--space-3); }
   .accountCode input { flex: 1; box-sizing: border-box; font-family: var(--font-mono, var(--font-body));
-    font-size: 0.98rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--c-ink);
+    font-size: 1.08rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--c-ink);
     background-color: var(--c-paper); border: var(--line-reg) solid var(--c-ink);
     border-radius: var(--radius-md); padding: var(--space-3) var(--space-4); }
   .accountCode input::placeholder { text-transform: none; letter-spacing: normal; color: var(--role-text-faint); }
   .accountCode input:focus { outline: none; border-color: var(--c-teal);
     box-shadow: 0 0 0 3px color-mix(in srgb, var(--c-teal) 28%, transparent); }
-  .btnRedeem { flex: none; font-family: var(--font-display); font-size: 0.98rem; color: var(--c-paper);
+  .btnRedeem { flex: none; font-family: var(--font-display); font-size: 1.08rem; color: var(--c-paper);
     background-color: var(--c-teal); border: var(--line-bold) solid var(--c-ink);
     border-radius: var(--radius-md); box-shadow: var(--shadow-card); padding: var(--space-3) var(--space-5);
     cursor: pointer; transition: background-color var(--dur-fast) var(--ease-snap), box-shadow var(--dur-fast) var(--ease-snap); }
