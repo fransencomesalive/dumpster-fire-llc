@@ -1,6 +1,5 @@
 import Image from "next/image";
 import Link from "next/link";
-import HomeAuthRouter from "./HomeAuthRouter";
 import mascotImg from "./scans/dumpsterfireguy.png";
 import styles from "./site.module.css";
 
@@ -100,8 +99,6 @@ const subscriptionFeatures: { label: string; tiers: [TierCell, TierCell, TierCel
 export default function HomePage() {
   return (
     <main className={styles.publicLandingPage}>
-      <HomeAuthRouter />
-
       <header className={styles.publicLandingNav} aria-label="Dumpster Fire navigation">
         <div className={styles.publicLandingNavLeft}>
           <Link className={styles.publicLandingNavBrand} href="/" aria-label="Dumpster Fire home">
