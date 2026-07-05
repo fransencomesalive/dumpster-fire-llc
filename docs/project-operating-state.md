@@ -16,9 +16,10 @@ When a session begins, or when Randall says "pick up where we left off", do this
 1. Run `git status --short --branch`.
 2. Report whether dirty files are docs-only or include app/code/design files.
 3. Check whether a localhost server is running only if Randall asks for a running app or visual proof.
-4. Read this file, `AGENTS.md`, `docs/current-state.md`, `docs/project-todo.md`, and `docs/public-product-gap-build-plan-2026-06-26.md`.
+4. Read this file, `AGENTS.md`, `docs/current-state.md`, `docs/project-todo.md`, `docs/public-product-gap-build-plan-2026-06-26.md`, and `docs/session-branch-map.md`.
 5. Name the single next task and the exact files that would be touched.
-6. Stop for approval before edits unless Randall explicitly named the exact task and target files.
+6. Confirm the active branch and workflow ownership before editing anything.
+7. Stop for approval before edits unless Randall explicitly named the exact task and target files.
 
 Do not treat handoff docs, roadmap docs, design docs, or "recommended next sequence" sections as authorization to edit. They are context until Randall approves a scoped task.
 
