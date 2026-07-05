@@ -110,31 +110,44 @@
 }
 
 .publicLandingNavSignIn {
-  color: var(--landing-ink);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 0 14px;
+  border: var(--line-reg, 2px) solid var(--c-ink);
+  border-radius: 999px;
+  background: var(--c-teal);
+  color: var(--c-paper);
   font-weight: 800;
-  font-size: 14px;
+  font-size: 13px;
   line-height: 1;
   text-decoration: none;
 }
 
 .publicLandingNavSignIn:hover {
-  text-decoration: underline;
+  background: var(--role-info);
 }
 
+/* Teal = positive/CTA (Randall). Was a black pill; sized down ~20% for parity. */
 .publicLandingNavCta {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 40px;
-  padding: 0 18px;
+  min-height: 34px;
+  padding: 0 15px;
   border: var(--line-reg, 2px) solid var(--c-ink);
   border-radius: 999px;
-  background: var(--c-ink);
+  background: var(--c-teal);
   color: var(--c-paper);
   font-weight: 900;
-  font-size: 14px;
+  font-size: 13px;
   line-height: 1;
   text-decoration: none;
+}
+
+.publicLandingNavCta:hover {
+  background: var(--role-info);
 }
 
 .publicLandingHeroSection {
