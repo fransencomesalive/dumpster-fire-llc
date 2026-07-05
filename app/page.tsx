@@ -280,6 +280,33 @@ export default function HomePage() {
           Build my profile
         </Link>
       </section>
+
+      <footer className={styles.publicLandingFooter} aria-label="Site footer">
+        <div className={styles.publicLandingFooterMain}>
+          <Link className={styles.publicLandingFooterBrand} href="/" aria-label="Dumpster Fire home">
+            <Image className={styles.publicLandingFooterMark} src={mascotImg} alt="" sizes="40px" />
+            <span className={styles.publicLandingFooterWord}>
+              <span className={styles.publicLandingFooterWordTop}>The Job Market Is A</span>
+              <span className={styles.publicLandingFooterWordName}>Dumpster Fire</span>
+            </span>
+          </Link>
+          <nav className={styles.publicLandingFooterNav} aria-label="Footer">
+            <a href="mailto:fransencomesalive@gmail.com?subject=Dumpster%20Fire">Contact Us</a>
+            <Link href="/legal/terms">Terms</Link>
+            <Link href="/legal/privacy">Privacy</Link>
+            <Link href="/legal/billing">Billing</Link>
+            <Link href="/legal/contact">Support</Link>
+          </nav>
+        </div>
+        <div className={styles.publicLandingFooterFine}>
+          <span>
+            {"© 2026 Dumpster Fire"}
+            <span className={styles.publicLandingFooterDot} aria-hidden="true" />
+            {"Stop applying. Start pursuing."}
+          </span>
+          <span>{"Built for people done feeding the machine."}</span>
+        </div>
+      </footer>
     </main>
   );
 }
