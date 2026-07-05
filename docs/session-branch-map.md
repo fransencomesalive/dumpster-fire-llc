@@ -4,13 +4,23 @@ Use this file to keep parallel sessions clearly separated and reviewable.
 
 ## Current mapping
 
-- Design session: `design/onboarding-2026-07-04`
-- Legal/public-app session: `feat/legal-pages-2026-07-04`
-- Default fallback: `main` only for read-only review or when no parallel session is active
+- **No active parallel sessions.** All work happens on `main`.
+- **Branches are created only when Randall explicitly asks for one.** Do not create or
+  switch branches on your own; default to `main` unless told otherwise (Randall, 2026-07-04).
+
+## History
+
+- 2026-07-04: A design workflow and a legal/public-app workflow ran at the same time. The
+  branch names `design/onboarding-2026-07-04` and `feat/legal-pages-2026-07-04` were reserved
+  in this file, but the branches were never actually created — both workflows were committed
+  directly to `main` and pushed. Nothing is outstanding on a separate branch.
 
 ## Rules
 
-- Each session must work on its own branch.
+- Default to `main`. A session gets its own branch only when Randall explicitly asks for
+  one; do not create or switch branches on your own.
+- When Randall has assigned branches for a set of parallel sessions, each of those sessions
+  stays on its assigned branch (recorded under Current mapping above) until told otherwise.
 - Do not merge one session into another without explicit review.
 - Before starting work, confirm the intended branch and workflow in this file.
 - Use the short reminder phrase `session check` whenever you need to confirm the active workflow and branch.
