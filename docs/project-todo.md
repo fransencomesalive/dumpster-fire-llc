@@ -18,6 +18,15 @@ Canonical planning sources remain:
 
 ## Current Priority
 
+**Update 2026-07-05 — onboarding auth surface shipped (prod `153dbd4`).** The round-4
+onboarding auth DS cards are now built into the live page: login-only signed-out state
+(no dead Save buttons), account panel (email + plan chip + access code), persistent
+right-column **sections rail** (new approved DS card `onboarding-sections-rail.html`),
+save-blocked review panel, Profile Readiness card removed, shared `SiteHeader` on `/` +
+`/onboarding`, and `GET /api/account/plan`. See completion-roadmap Phase 0 item 5 (done)
+and Phase 3 item 5 (built). **NOT yet verified live: the signed-in state** (needs a real
+session — ties to the Google sign-in end-to-end test).
+
 **Reconciled 2026-06-30.** The backend across Phases 4–8 is built and tested (Codex + Claude). Prod
 schema is fully migrated; source scan is live (16 sources, ~2100 jobs) with a daily cron; per-user
 scans rank by match score; the subscription_plans RLS finding is fixed.

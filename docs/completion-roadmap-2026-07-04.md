@@ -82,10 +82,10 @@ confirm section Save buttons persist (message "… saved.").
       corporate-speak), then build the sign-up UI — design-gated: needs Randall's
       design direction for the auth panel (sign-in vs create-account states).
    5. Verify: real signup → confirmation email → confirmed session → Save buttons work.
-5. [ ] Signed-out `/onboarding` UX: stop rendering silently-dead Save buttons. Gate the
-   form behind the auth panel (or disable inputs + show "Sign in to edit"). NOTE: this
-   is a UI change → design-gated per AGENTS.md; needs Randall's design direction, but the
-   *behavior* bug (silent no-op) should be named in whatever design gets approved.
+5. [x] **DONE 2026-07-05 (prod `153dbd4`).** Signed-out `/onboarding` now renders the
+   login card ONLY — the editable form no longer mounts, so there are no silently-dead
+   Save buttons. Built against the approved `onboarding-signed-out` DS card. Verified
+   signed-out at desktop + emulated-390 mobile (no overflow).
 
 ## Phase 1 — PhredBot / QA relay go-live
 
@@ -142,12 +142,20 @@ Everything here needs an approved design source first (AGENTS.md Design Authorit
 2. [ ] Pursuit dashboard/list/detail UI (backend + read APIs done).
 3. [ ] Outreach generation + review workflow UI (backend done).
 4. [ ] Subscription upgrade states (limit reached, export locked).
-5. [ ] Onboarding quality/remediation UI + the Phase-0 signed-out gating design.
-   **Randall's design-pass notes captured 2026-07-04** (auth panel placement/styling,
-   persistent header nav on onboarding, access-code input, email shown when signed in,
-   review-sections only on save errors, homepage sign-in pill → teal DS button):
-   `docs/design-pass-notes-onboarding-auth-2026-07-04.md` — that doc is the requirements
-   input for this design pass.
+5. [~] **Onboarding auth surface BUILT + DEPLOYED 2026-07-05 (prod `153dbd4`).** The
+   `docs/design-pass-notes-onboarding-auth-2026-07-04.md` requirements are now shipped:
+   login-only signed-out state, account panel on top (email + teal plan chip + styled
+   access-code, no Reload), persistent right-column **sections rail**
+   (`design-system/components/onboarding-sections-rail.html`, approved 2026-07-05, synced
+   to Claude Design) replacing the "Current blockers" text + bottom section list,
+   save-blocked review panel (only after a blocked save), Profile Readiness card removed,
+   and the persistent header extracted into shared `app/components/SiteHeader.tsx` (used by
+   `/` + `/onboarding`). New `GET /api/account/plan` feeds the email/plan chip.
+   **Still open:** (a) signed-in state not yet visually verified live — needs a real
+   Supabase session, ties to Phase 0 item 3 (Google sign-in end-to-end test);
+   (b) onboarding quality/remediation UI (weak-field guidance) is a separate later pass;
+   (c) email sign-up "Create account" button intentionally omitted until the SMTP sign-up
+   flow (Phase 0 item 4) exists — no dead buttons.
 6. [ ] Homepage design fixes (in progress per launch-state memory) + Human Path slideshow
    (blocked on design source).
 7. [ ] Final landing + pricing pages (Good/Gooder/Goodest — pricing structure language,

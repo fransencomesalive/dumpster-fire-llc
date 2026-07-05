@@ -10,6 +10,10 @@ Use this file to keep parallel sessions clearly separated and reviewable.
 
 ## History
 
+- 2026-07-05: Onboarding auth surface rebuild ran on branch
+  `design/onboarding-auth-2026-07-05` (created for the design-gated work), then merged
+  fast-forward into `main` and pushed (`153dbd4`). Nothing is outstanding on the branch;
+  it is fully merged.
 - 2026-07-04: A design workflow and a legal/public-app workflow ran at the same time. The
   branch names `design/onboarding-2026-07-04` and `feat/legal-pages-2026-07-04` were reserved
   in this file, but the branches were never actually created — both workflows were committed
