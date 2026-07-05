@@ -46,8 +46,8 @@ When more than one session is active at the same time, Codex must treat each ses
 - If two sessions touch the same files, pause and coordinate before proceeding.
 - Keep the session-to-branch map current in [docs/session-branch-map.md](docs/session-branch-map.md).
 
-Recommended reminder command at the start of any session:
-- `git status --short --branch && echo "---" && cat docs/session-branch-map.md`
+Recommended reminder phrase at the start of any session:
+- `session check`
 
 ### Review Presentation
 

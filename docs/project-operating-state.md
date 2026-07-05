@@ -19,7 +19,8 @@ When a session begins, or when Randall says "pick up where we left off", do this
 4. Read this file, `AGENTS.md`, `docs/current-state.md`, `docs/project-todo.md`, `docs/public-product-gap-build-plan-2026-06-26.md`, and `docs/session-branch-map.md`.
 5. Name the single next task and the exact files that would be touched.
 6. Confirm the active branch and workflow ownership before editing anything.
-7. Stop for approval before edits unless Randall explicitly named the exact task and target files.
+7. Use the short reminder phrase `session check` if you need a quick state reset before work.
+8. Stop for approval before edits unless Randall explicitly named the exact task and target files.
 
 Do not treat handoff docs, roadmap docs, design docs, or "recommended next sequence" sections as authorization to edit. They are context until Randall approves a scoped task.
 
