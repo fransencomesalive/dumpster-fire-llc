@@ -1,0 +1,164 @@
+<!-- @dsCard group="Onboarding" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Onboarding · Account Bar</title>
+<link rel="stylesheet" href="../tokens/tokens.css" />
+<link rel="stylesheet" href="../lib/base.css" />
+<style>
+  /* No halftone ground — rejected in all new work (Randall, 2026-07-04). Plain paper. */
+  body { margin: 0; color: var(--c-ink); font-family: var(--font-body); background: var(--c-paper); }
+
+  .wrap { max-width: 1080px; margin: 0 auto; padding: var(--space-6) var(--space-5); display: grid; gap: var(--space-6); }
+  h1.page { font-family: var(--font-display); font-size: var(--type-h1); margin: 0 0 var(--space-2); }
+  .lede { font-family: var(--font-body); color: var(--role-text-muted); max-width: 70ch; margin: 0; }
+  .stateLabel { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: var(--tracking-subhead);
+    font-size: 0.82rem; color: var(--c-tomato); margin: 0 0 var(--space-3); }
+  .scroller { overflow-x: auto; }
+  .frame { container-type: inline-size; width: 100%; min-width: 820px; display: grid; gap: var(--space-4); }
+
+  /* ======================= ACCOUNT PANEL (distinct element — NOT the header) =======================
+     Redesigned from scratch per round-2 feedback: this is its own titled panel, not the
+     header/profile-menu structure. Mapped to existing primitives — panel.html card surface,
+     forms.html input, a teal plan badge. Sits at the TOP of the profile page in every
+     signed-in state. Shows the account EMAIL (never a generic "Signed in."), the plan, and a
+     properly styled access-code field. No Reload button (the profile loads on sign-in and
+     after every save); Sign out lives in the header profile menu, not here. */
+  .accountPanel { background-color: var(--c-paper-deep); background-image: var(--fiber-img), var(--grain-img);
+    background-blend-mode: normal, soft-light; background-size: 170px 170px, 46px 46px;
+    border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-lg); box-shadow: var(--shadow-card);
+    padding: 0; overflow: hidden; }
+  .accountHead { display: flex; align-items: center; gap: var(--space-3);
+    padding: var(--space-2) var(--space-5); border-bottom: var(--line-reg) solid var(--c-ink);
+    background-color: color-mix(in srgb, var(--c-teal) 12%, var(--c-paper-deep)); }
+  .accountHead .title { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.05em;
+    font-size: 0.9rem; color: var(--c-ink); }
+  .accountBody { display: flex; align-items: center; gap: var(--space-5) var(--space-6); flex-wrap: wrap;
+    padding: var(--space-4) var(--space-5); }
+  .accountWho { display: grid; gap: 3px; min-width: 0; }
+  .accountWho .caption { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.05em;
+    font-size: 0.72rem; color: var(--role-text-faint); }
+  .accountWho .idRow { display: inline-flex; align-items: center; gap: var(--space-3); min-width: 0; }
+  .accountWho .email { font-family: var(--font-display); font-size: 1.15rem; color: var(--c-ink);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .planChip { flex: none; display: inline-flex; align-items: center; font-family: var(--font-subhead);
+    text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.72rem; line-height: 1;
+    color: var(--c-paper); background-color: var(--c-teal); border: var(--line-reg) solid var(--c-ink);
+    border-radius: var(--radius-pill); padding: 5px 11px; }
+
+  /* Access-code field — proper forms.html input treatment (round-2: needs a real input). */
+  .accountCode { margin-left: auto; display: grid; gap: var(--space-2); min-width: 260px; }
+  .accountCode label { font-family: var(--font-display); font-size: 0.98rem; color: var(--c-ink); }
+  .codeRow { display: flex; gap: var(--space-3); }
+  .accountCode input { flex: 1; box-sizing: border-box; font-family: var(--font-mono, var(--font-body));
+    font-size: 0.98rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--c-ink);
+    background-color: var(--c-paper); border: var(--line-reg) solid var(--c-ink);
+    border-radius: var(--radius-md); padding: var(--space-3) var(--space-4); }
+  .accountCode input::placeholder { text-transform: none; letter-spacing: normal; color: var(--role-text-faint); }
+  .accountCode input:focus { outline: none; border-color: var(--c-teal);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--c-teal) 28%, transparent); }
+  .btnRedeem { flex: none; font-family: var(--font-display); font-size: 0.98rem; color: var(--c-paper);
+    background-color: var(--c-teal); border: var(--line-bold) solid var(--c-ink);
+    border-radius: var(--radius-md); box-shadow: var(--shadow-card); padding: var(--space-3) var(--space-5);
+    cursor: pointer; transition: background-color var(--dur-fast) var(--ease-snap), box-shadow var(--dur-fast) var(--ease-snap); }
+  .btnRedeem:hover { background-color: var(--role-info); box-shadow: var(--reg-box);
+    text-shadow: 1px 1px 0 rgba(36,31,26,0.35); }
+
+  /* Header + form stub, for the in-context view. */
+  .siteHeader { position: relative; background-color: var(--c-paper);
+    background-image: var(--fiber-img), var(--grain-img); background-blend-mode: normal, soft-light;
+    background-size: 170px 170px, 46px 46px; border: var(--line-reg) solid var(--c-ink);
+    border-bottom-width: var(--line-bold); border-radius: var(--radius-md); box-shadow: var(--shadow-card); }
+  .headerInner { display: flex; align-items: center; gap: var(--space-5); padding: var(--space-3) var(--space-5); }
+  .brand { display: inline-flex; align-items: center; gap: var(--space-3); text-decoration: none; color: var(--c-ink); flex: none; }
+  .brand img { width: 34px; height: 34px; object-fit: contain; filter: drop-shadow(2px 2px 0 rgba(36,31,26,0.28)); }
+  .brandWord { display: flex; flex-direction: column; line-height: 1; }
+  .brandWord .top { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.68rem; color: var(--c-tomato); }
+  .brandWord .name { font-family: var(--font-display); font-size: 1.12rem; letter-spacing: var(--tracking-display); color: var(--c-ink); }
+  .headerActions { margin-left: auto; display: inline-flex; align-items: center; gap: var(--space-3);
+    font-family: var(--font-display); font-size: 0.95rem; color: var(--role-text-muted); }
+  .formStub { border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-md);
+    background-color: var(--c-paper); box-shadow: var(--shadow-card);
+    padding: var(--space-4) var(--space-5); color: var(--role-text-faint);
+    font-family: var(--font-display); font-size: 1rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div>
+    <h1 class="page">Onboarding · Account Bar</h1>
+    <p class="lede">The account element, redesigned from scratch as its own titled panel — deliberately
+    NOT the header/profile-menu structure. It sits at the top of the profile page in every signed-in
+    state and states plainly who you are (the account email, not a generic "Signed in."), your plan,
+    and a properly styled access-code field. No Reload button: the profile loads on sign-in and after
+    every save. Sign out stays in the header profile menu.</p>
+  </div>
+
+  <!-- Isolated element -->
+  <div>
+    <p class="stateLabel">The element, on its own</p>
+    <div class="scroller"><div class="frame">
+      <section class="accountPanel" aria-label="Account">
+        <div class="accountHead"><span class="title">Account</span></div>
+        <div class="accountBody">
+          <div class="accountWho">
+            <span class="caption">Signed in as</span>
+            <span class="idRow">
+              <span class="email">fransencomesalive@gmail.com</span>
+              <span class="planChip">Goodest</span>
+            </span>
+          </div>
+          <div class="accountCode">
+            <label for="oa-code">Access code</label>
+            <div class="codeRow">
+              <input id="oa-code" type="text" placeholder="Enter code" />
+              <button type="button" class="btnRedeem">Redeem</button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div></div>
+  </div>
+
+  <!-- In context -->
+  <div>
+    <p class="stateLabel">In context · header, account panel on top, form below</p>
+    <div class="scroller"><div class="frame">
+      <header class="siteHeader">
+        <div class="headerInner">
+          <a class="brand" href="#" aria-label="Dumpster Fire, home">
+            <img src="../dumpsterfireguy.png" alt="" aria-hidden="true" />
+            <span class="brandWord"><span class="top">The Job Market Is A</span><span class="name">Dumpster Fire</span></span>
+          </a>
+          <span class="headerActions">Profile menu &amp; Sign out live here</span>
+        </div>
+      </header>
+
+      <section class="accountPanel" aria-label="Account">
+        <div class="accountHead"><span class="title">Account</span></div>
+        <div class="accountBody">
+          <div class="accountWho">
+            <span class="caption">Signed in as</span>
+            <span class="idRow">
+              <span class="email">fransencomesalive@gmail.com</span>
+              <span class="planChip">Goodest</span>
+            </span>
+          </div>
+          <div class="accountCode">
+            <label for="oa-code2">Access code</label>
+            <div class="codeRow">
+              <input id="oa-code2" type="text" placeholder="Enter code" />
+              <button type="button" class="btnRedeem">Redeem</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div class="formStub">Identity &amp; Search · Role Tracks · Resumes · Work Examples · … (existing ported sections continue below)</div>
+    </div></div>
+  </div>
+</div>
+</body>
+</html>

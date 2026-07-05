@@ -123,3 +123,21 @@ For protected surfaces, Codex may inspect and report, but must not edit without 
 - Public product copy.
 
 If a needed implementation touches any protected surface, Codex must report the conflict and wait.
+
+### Design System ↔ Production Parity
+
+The design system (`design-system/`) and the live production surfaces are two views of the
+same design and must stay in parity (Randall, 2026-07-04). A change to one is not done until
+the other matches.
+
+- Any change to a shared component (footer, header, nav, cards, buttons, form controls,
+  tokens) must land in BOTH the DS card under `design-system/` AND the corresponding live
+  surface in the same pass — never one side without the other.
+- Before closing out a component change, diff the DS card against the live implementation
+  (markup, link targets, labels, layout, tokens) and reconcile any divergence.
+- When a divergence is found (one side was corrected and the other was not), bringing the
+  two back into parity IS the fix: update the stale side to match the correct side and
+  re-sync the DS card to the Claude Design project.
+- Across parallel sessions this is shared responsibility: if one session changes a live
+  surface and another owns the DS card, the change is incomplete until both are updated —
+  coordinate per the Parallel Session Workflow.

@@ -76,6 +76,18 @@
       "path": "components/qa-feedback.html"
     },
     {
+      "path": "components/onboarding-signed-out.html",
+      "group": "Onboarding"
+    },
+    {
+      "path": "components/onboarding-account-bar.html",
+      "group": "Onboarding"
+    },
+    {
+      "path": "components/onboarding-review-panel.html",
+      "group": "Onboarding"
+    },
+    {
       "group": "Components",
       "path": "components/compiler.html"
     },

@@ -1,0 +1,125 @@
+<!-- @dsCard group="Onboarding" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Onboarding · Review Panel</title>
+<link rel="stylesheet" href="../tokens/tokens.css" />
+<link rel="stylesheet" href="../lib/base.css" />
+<style>
+  /* No halftone ground — rejected in all new work (Randall, 2026-07-04). Plain paper. */
+  body { margin: 0; color: var(--c-ink); font-family: var(--font-body); background: var(--c-paper); }
+
+  .wrap { max-width: 1080px; margin: 0 auto; padding: var(--space-6) var(--space-5); display: grid; gap: var(--space-6); }
+  h1.page { font-family: var(--font-display); font-size: var(--type-h1); margin: 0 0 var(--space-2); }
+  .lede { font-family: var(--font-body); color: var(--role-text-muted); max-width: 70ch; margin: 0; }
+  .scroller { overflow-x: auto; }
+  .frame { container-type: inline-size; width: 100%; min-width: 820px; display: grid; gap: var(--space-4); }
+
+  /* Account panel — same distinct element as onboarding-account-bar.html (sits on top always). */
+  .accountPanel { background-color: var(--c-paper-deep); background-image: var(--fiber-img), var(--grain-img);
+    background-blend-mode: normal, soft-light; background-size: 170px 170px, 46px 46px;
+    border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-lg); box-shadow: var(--shadow-card);
+    padding: 0; overflow: hidden; }
+  .accountHead { display: flex; align-items: center; gap: var(--space-3);
+    padding: var(--space-2) var(--space-5); border-bottom: var(--line-reg) solid var(--c-ink);
+    background-color: color-mix(in srgb, var(--c-teal) 12%, var(--c-paper-deep)); }
+  .accountHead .title { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.05em;
+    font-size: 0.9rem; color: var(--c-ink); }
+  .accountBody { display: flex; align-items: center; gap: var(--space-5) var(--space-6); flex-wrap: wrap;
+    padding: var(--space-4) var(--space-5); }
+  .accountWho { display: grid; gap: 3px; min-width: 0; }
+  .accountWho .caption { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.05em;
+    font-size: 0.72rem; color: var(--role-text-faint); }
+  .accountWho .idRow { display: inline-flex; align-items: center; gap: var(--space-3); min-width: 0; }
+  .accountWho .email { font-family: var(--font-display); font-size: 1.15rem; color: var(--c-ink);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .planChip { flex: none; display: inline-flex; align-items: center; font-family: var(--font-subhead);
+    text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.72rem; line-height: 1;
+    color: var(--c-paper); background-color: var(--c-teal); border: var(--line-reg) solid var(--c-ink);
+    border-radius: var(--radius-pill); padding: 5px 11px; }
+  .accountCode { margin-left: auto; display: grid; gap: var(--space-2); min-width: 260px; }
+  .accountCode label { font-family: var(--font-display); font-size: 0.98rem; color: var(--c-ink); }
+  .codeRow { display: flex; gap: var(--space-3); }
+  .accountCode input { flex: 1; box-sizing: border-box; font-family: var(--font-mono, var(--font-body));
+    font-size: 0.98rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--c-ink);
+    background-color: var(--c-paper); border: var(--line-reg) solid var(--c-ink);
+    border-radius: var(--radius-md); padding: var(--space-3) var(--space-4); }
+  .accountCode input::placeholder { text-transform: none; letter-spacing: normal; color: var(--role-text-faint); }
+  .accountCode input:focus { outline: none; border-color: var(--c-teal);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--c-teal) 28%, transparent); }
+  .btnRedeem { flex: none; font-family: var(--font-display); font-size: 0.98rem; color: var(--c-paper);
+    background-color: var(--c-teal); border: var(--line-bold) solid var(--c-ink);
+    border-radius: var(--radius-md); box-shadow: var(--shadow-card); padding: var(--space-3) var(--space-5);
+    cursor: pointer; transition: background-color var(--dur-fast) var(--ease-snap), box-shadow var(--dur-fast) var(--ease-snap); }
+  .btnRedeem:hover { background-color: var(--role-info); box-shadow: var(--reg-box);
+    text-shadow: 1px 1px 0 rgba(36,31,26,0.35); }
+
+  /* ======================= REVIEW PANEL (save-blocked state only) =======================
+     Appears ONLY when a save is attempted with missing/invalid sections. Tomato =
+     negative affordance (the thing to fix). Otherwise this panel is not on the page. */
+  .reviewPanel { background-color: var(--c-paper-deep); background-image: var(--fiber-img), var(--grain-img);
+    background-blend-mode: normal, soft-light; background-size: 170px 170px, 46px 46px;
+    border: var(--line-reg) solid var(--c-ink); border-left: 6px solid var(--c-tomato);
+    border-radius: var(--radius-md); box-shadow: var(--shadow-card);
+    padding: var(--space-4) var(--space-5); }
+  .reviewPanel h3 { font-family: var(--font-display); font-size: 1.15rem; color: var(--c-ink); margin: 0 0 var(--space-2); }
+  .reviewPanel p { margin: 0 0 var(--space-3); color: var(--role-text-muted); font-size: 0.95rem; }
+  .reviewList { display: grid; gap: var(--space-2); margin: 0; padding: 0; list-style: none; }
+  .reviewList li { display: flex; align-items: center; gap: var(--space-3); }
+  .reviewList .dot { flex: none; width: 9px; height: 9px; border-radius: 999px;
+    background-color: var(--c-tomato); border: var(--line-hair) solid var(--c-ink); }
+  .reviewList a { font-family: var(--font-display); font-size: 0.98rem; color: var(--c-ink); }
+
+  .formStub { border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-md);
+    background-color: var(--c-paper); box-shadow: var(--shadow-card);
+    padding: var(--space-4) var(--space-5); color: var(--role-text-faint);
+    font-family: var(--font-display); font-size: 1rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div>
+    <h1 class="page">Onboarding · Review Panel</h1>
+    <p class="lede">The save-blocked state. When the user saves with sections still missing or
+    invalid, this review panel appears above the form and lists exactly what to fix — and nothing
+    else was lost (everything valid is already saved). When there is nothing to fix, this panel is
+    not on the page at all. The account panel stays pinned at the top as always.</p>
+  </div>
+
+  <div class="scroller"><div class="frame">
+    <section class="accountPanel" aria-label="Account">
+      <div class="accountHead"><span class="title">Account</span></div>
+      <div class="accountBody">
+        <div class="accountWho">
+          <span class="caption">Signed in as</span>
+          <span class="idRow">
+            <span class="email">fransencomesalive@gmail.com</span>
+            <span class="planChip">Goodest</span>
+          </span>
+        </div>
+        <div class="accountCode">
+          <label for="oa-code">Access code</label>
+          <div class="codeRow">
+            <input id="oa-code" type="text" placeholder="Enter code" />
+            <button type="button" class="btnRedeem">Redeem</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="reviewPanel" role="status">
+      <h3>2 sections need attention before your profile is complete</h3>
+      <p>Fix these and save again. Everything else is already saved.</p>
+      <ul class="reviewList">
+        <li><span class="dot"></span><a class="ds-link" href="#">Role Tracks — add at least one track</a></li>
+        <li><span class="dot"></span><a class="ds-link" href="#">Voice &amp; Personality — answer the two questions</a></li>
+      </ul>
+    </div>
+
+    <div class="formStub">Identity &amp; Search · Role Tracks · Resumes · Work Examples · … (sections continue below)</div>
+  </div></div>
+</div>
+</body>
+</html>
