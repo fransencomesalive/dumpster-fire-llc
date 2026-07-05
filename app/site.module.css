@@ -1897,25 +1897,28 @@
 
 .publicLandingFooterMain {
   display: flex;
-  /* Shared baseline row (Randall, round-3): mascot bottom, wordmark, and nav
-     links all land on the "Dumpster Fire" baseline so the logo never floats. */
-  align-items: flex-end;
-  gap: var(--space-5) var(--space-6);
+  /* The nav links sit on the SAME baseline as "Dumpster Fire" (Randall):
+     last-baseline aligns the nav to the wordmark's last line, not to the
+     center of the 2-line lockup. */
+  align-items: last baseline;
+  gap: var(--space-4) var(--space-6);
   flex-wrap: wrap;
-  padding: var(--space-5);
+  padding: var(--space-4) var(--space-5);
 }
 
 .publicLandingFooterBrand {
   display: inline-flex;
-  align-items: flex-end;
+  /* Mascot feet drop onto the "Dumpster Fire" baseline (shifted up), rather
+     than centering the oversized square against the text. */
+  align-items: last baseline;
   gap: var(--space-3);
   text-decoration: none;
   color: var(--c-ink);
 }
 
 .publicLandingFooterMark {
-  width: 40px;
-  height: 40px;
+  width: 30px;
+  height: 30px;
   object-fit: contain;
   filter: drop-shadow(2px 2px 0 rgba(36, 31, 26, 0.28));
 }

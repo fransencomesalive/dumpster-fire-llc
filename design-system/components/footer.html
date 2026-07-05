@@ -24,13 +24,14 @@
     background-size: 170px 170px, 46px 46px;
     border: var(--line-reg) solid var(--c-ink); border-top-width: var(--line-bold);
     border-radius: var(--radius-md); box-shadow: var(--shadow-card); overflow: hidden; }
-  /* Shared baseline row (round-3): mascot bottom + wordmark + nav on one baseline. */
-  .footerMain { display: flex; align-items: flex-end; gap: var(--space-5) var(--space-6); flex-wrap: wrap;
-    padding: var(--space-5); }
+  /* Nav links share the "Dumpster Fire" baseline (round-4): last-baseline aligns
+     nav + mascot feet to the wordmark's last line, not the center of the lockup. */
+  .footerMain { display: flex; align-items: last baseline; gap: var(--space-4) var(--space-6); flex-wrap: wrap;
+    padding: var(--space-4) var(--space-5); }
 
-  .brand { display: inline-flex; align-items: flex-end; gap: var(--space-3); text-decoration: none;
+  .brand { display: inline-flex; align-items: last baseline; gap: var(--space-3); text-decoration: none;
     color: var(--c-ink); }
-  .brand img { width: 40px; height: 40px; object-fit: contain; filter: drop-shadow(2px 2px 0 rgba(36,31,26,0.28)); }
+  .brand img { width: 30px; height: 30px; object-fit: contain; filter: drop-shadow(2px 2px 0 rgba(36,31,26,0.28)); }
   .brandWord { display: flex; flex-direction: column; line-height: 1; }
   .brandWord .top { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.05em;
     font-size: 0.72rem; color: var(--c-tomato); }
