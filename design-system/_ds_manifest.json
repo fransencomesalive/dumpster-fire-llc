@@ -88,6 +88,10 @@
       "group": "Onboarding"
     },
     {
+      "path": "components/onboarding-sections-rail.html",
+      "group": "Onboarding"
+    },
+    {
       "group": "Components",
       "path": "components/compiler.html"
     },

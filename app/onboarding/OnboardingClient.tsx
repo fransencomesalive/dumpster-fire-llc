@@ -1,7 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
+import mascotImg from "../scans/dumpsterfireguy.png";
 import { clearPublicProfileAccessToken, readPublicProfileAccessToken } from "@/lib/public-profile/browser-session";
 import {
   isGoogleSignInEnabled,
@@ -12,6 +14,7 @@ import {
 } from "@/lib/public-auth/supabase-browser";
 import { requestPublicProfileApi } from "@/lib/public-profile/client";
 import type { PublicProfileOnboardingSection, PublicProfileOnboardingSectionKey } from "@/lib/public-profile/onboarding";
+import SiteHeader from "../components/SiteHeader";
 import styles from "./onboarding.module.css";
 
 /* ============================================================
@@ -711,8 +714,11 @@ export default function OnboardingClient({
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [accessToken, setAccessToken] = useState("");
+  const [accountEmail, setAccountEmail] = useState("");
+  const [planName, setPlanName] = useState<string | null>(null);
   const [inviteCode, setInviteCode] = useState("");
   const [redeemingCode, setRedeemingCode] = useState(false);
+  const [reviewOpen, setReviewOpen] = useState(false);
 
   const [identity, setIdentity] = useState<IdentitySearchSection>(emptyIdentity);
   const [fitSignals, setFitSignals] = useState<FitSignalsSection>(emptyFitSignals);
@@ -802,6 +808,17 @@ export default function OnboardingClient({
     setOutreachRules(completeOutreachRulesSection(outreachRulesResponse.section));
     setLeadershipProfile(completeLeadershipProfileSection(leadershipProfileResponse.section));
     applyProfileQuality(identityResponse.profileQuality ?? bootstrap.profileQuality);
+
+    // Account identity for the account panel (email + plan chip). Never block the
+    // profile load on this — the panel degrades to email-only if it fails.
+    const account = await requestPublicProfileApi<{ email: string | null; planName: string | null }>(
+      "/api/account/plan",
+      { method: "GET", accessToken: token },
+    ).catch(() => null);
+    if (account) {
+      setAccountEmail(account.email ?? "");
+      setPlanName(account.planName);
+    }
     setMessage("Profile sections loaded.");
   }, [applyProfileQuality]);
 
@@ -865,6 +882,7 @@ export default function OnboardingClient({
         { method: "POST", accessToken, body: { code: inviteCode } },
       );
       setInviteCode("");
+      setPlanName(result.planName);
       setMessage(`Access code accepted: ${result.planName} plan is active.`);
     } catch (error) {
       const body = (error as { body?: { error?: string } }).body;
@@ -904,6 +922,9 @@ export default function OnboardingClient({
     setProfileStatus("incomplete");
     setProfileQuality(null);
     setIssues([]);
+    setAccountEmail("");
+    setPlanName(null);
+    setReviewOpen(false);
     setMessage("Signed out.");
   }
 
@@ -915,6 +936,9 @@ export default function OnboardingClient({
       const response = await requestPublicProfileApi<SectionResponse<T>>(path, { method: "PATCH", accessToken, body });
       onResult(response.section, response.profileQuality);
       applyProfileQuality(response.profileQuality);
+      // The review panel surfaces only when a save leaves the profile incomplete
+      // (design-pass note #8). A clean save clears it.
+      if (!isProfileEditor) setReviewOpen(response.profileQuality.status === "incomplete");
       setMessage(`${label} saved.`);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Save failed.");
@@ -958,6 +982,7 @@ export default function OnboardingClient({
       });
       setWritingSamples(writingResponse.section.writingSamples);
       applyProfileQuality(writingResponse.profileQuality);
+      if (!isProfileEditor) setReviewOpen(writingResponse.profileQuality.status === "incomplete");
       setMessage("Voice & Personality saved.");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Save failed.");
@@ -1047,59 +1072,219 @@ export default function OnboardingClient({
     );
   }
 
+  const signedIn = Boolean(accessToken);
+  const blockedSections = sections.filter(
+    (section) => section.required && readinessBySection.get(section.key)?.status === "incomplete",
+  );
+
+  // Account panel — sits on top in every signed-in state (onboarding-account-bar DS card).
+  const accountPanel = (
+    <section className={styles.accountPanel} aria-label="Account">
+      <div className={styles.accountHead}><span className={styles.accountTitle}>Account</span></div>
+      <div className={styles.accountBody}>
+        <div className={styles.accountWho}>
+          <span className={styles.accountCaption}>Signed in as</span>
+          <span className={styles.accountIdRow}>
+            <span className={styles.accountEmail}>{accountEmail || "Signed in"}</span>
+            {planName ? <span className={styles.planChip}>{planName}</span> : null}
+          </span>
+        </div>
+        <div className={styles.accountCode}>
+          <label className={styles.accountCodeLabel} htmlFor="account-access-code">Access code</label>
+          <div className={styles.codeRow}>
+            <input
+              id="account-access-code"
+              className={styles.codeInput}
+              value={inviteCode}
+              onChange={(event) => setInviteCode(event.target.value)}
+              placeholder="Enter code"
+              type="text"
+              aria-label="Access code"
+            />
+            <button
+              type="button"
+              className={styles.btnRedeem}
+              disabled={redeemingCode || !inviteCode.trim()}
+              onClick={redeemInviteCode}
+            >
+              Redeem
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+
+  // Save-blocked review panel — only when a save left required sections incomplete
+  // (onboarding-review-panel DS card + design-pass note #8).
+  const reviewPanel = reviewOpen && blockedSections.length > 0 ? (
+    <div className={styles.reviewPanel} role="status">
+      <div className={styles.reviewHead}>
+        <h3>{`${blockedSections.length} section${blockedSections.length === 1 ? "" : "s"} need${blockedSections.length === 1 ? "s" : ""} attention before your profile is complete`}</h3>
+        <button type="button" className={styles.reviewClose} aria-label="Dismiss review" onClick={() => setReviewOpen(false)}>✕</button>
+      </div>
+      <p>Fix these and save again. Everything else is already saved.</p>
+      <ul className={styles.reviewList}>
+        {blockedSections.map((section) => {
+          const firstBlocker = readinessBySection.get(section.key)?.blockers[0];
+          return (
+            <li key={section.key}>
+              <span className={styles.reviewDot} />
+              <a className={styles.reviewLink} href={`#career-profile-${section.key}`}>
+                {firstBlocker ? `${section.label} — ${firstBlocker}` : section.label}
+              </a>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  ) : null;
+
+  // Persistent right-column sections rail (onboarding-sections-rail DS card) — replaces
+  // the old "Current blockers" text and the full-width bottom section list.
+  const sectionsRail = (
+    <aside className={styles.rail} aria-label="Profile sections">
+      <div className={styles.railHead}>
+        <span className={styles.railTitle}>Sections</span>
+        <span className={styles.railCount}>
+          {profileQuality ? `${completeRequiredSections} of ${requiredSections.length} clear` : `${requiredSections.length} required`}
+        </span>
+      </div>
+      <ul className={styles.railList}>
+        {sections.map((section, index) => {
+          const readiness = readinessBySection.get(section.key);
+          const status = readiness?.status ?? "not_loaded";
+          const blockerCount = readiness?.blockers.length ?? 0;
+          return (
+            <li key={section.key}>
+              <a className={styles.railItem} href={`#career-profile-${section.key}`}>
+                <span className={styles.railNum}>{index + 1}</span>
+                <span className={styles.railText}>
+                  <span className={styles.railName}>{section.label}</span>
+                  {status === "incomplete" && blockerCount > 0 ? (
+                    <span className={styles.railNote}>{`${blockerCount} blocker${blockerCount === 1 ? "" : "s"}`}</span>
+                  ) : null}
+                </span>
+                <span className={`${styles.readinessBadge} ${styles.railBadge} ${styles[`readiness_${status}`]}`}>
+                  {readinessLabel(status)}
+                </span>
+              </a>
+            </li>
+          );
+        })}
+      </ul>
+    </aside>
+  );
+
+  // Signed-out login card — the only thing on the page when signed out
+  // (onboarding-signed-out DS card): no editable form, so no dead Save buttons.
+  const loginCard = (
+    <div className={styles.loginShell}>
+      <div className={styles.loginCard}>
+        <Image className={styles.loginMascot} src={mascotImg} alt="" sizes="112px" />
+        <h2 className={styles.loginTitle}>Sign in to build your profile</h2>
+        <p className={styles.loginSub}>Your profile is what makes the outreach sound like you.</p>
+        {isGoogleSignInEnabled() ? (
+          <div className={styles.authStack}>
+            <button type="button" className={styles.googleBtn} disabled={busy} onClick={signInGoogle}>
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path fill="#EA4335" d="M12 10.2v3.9h5.5c-.24 1.4-1 2.6-2.1 3.4l3.4 2.6c2-1.84 3.1-4.55 3.1-7.75 0-.74-.07-1.45-.2-2.15z" />
+                <path fill="#34A853" d="M6.6 14.3l-.77.6-2.7 2.1C4.8 20 8.1 22 12 22c2.7 0 5-.9 6.65-2.4l-3.4-2.6c-.9.6-2.05.96-3.25.96-2.5 0-4.6-1.7-5.36-3.96z" />
+                <path fill="#4285F4" d="M3.13 7c-.7 1.4-1.1 3-1.1 4.7s.4 3.3 1.1 4.7l3.47-2.7c-.2-.6-.32-1.3-.32-2s.12-1.4.32-2z" />
+                <path fill="#FBBC05" d="M12 6.04c1.47 0 2.78.5 3.82 1.5l2.85-2.85C16.96 3.06 14.7 2 12 2 8.1 2 4.8 4 3.13 7l3.47 2.7C7.4 7.74 9.5 6.04 12 6.04z" />
+              </svg>
+              Continue with Google
+            </button>
+          </div>
+        ) : null}
+        <div className={styles.authDivider}><span>or use email</span></div>
+        <div className={styles.loginField}>
+          <label htmlFor="login-email">Email</label>
+          <input id="login-email" type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@example.com" />
+        </div>
+        <div className={styles.loginField}>
+          <label htmlFor="login-pass">Password</label>
+          <input id="login-pass" type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Password" />
+        </div>
+        <div className={styles.loginActions}>
+          <button type="button" className={styles.loginPrimary} disabled={busy || !email || !password} onClick={signIn}>Sign in</button>
+        </div>
+        <p className={styles.loginMsg}>{message}</p>
+      </div>
+    </div>
+  );
+
   return (
     <div className={isProfileEditor ? styles.profileEditorMode : undefined}>
-      <section className={isProfileEditor ? styles.authPanelCompact : styles.authPanel} aria-label="Profile sign in">
-        <div>
-          <p className={styles.statusLabel}>Account</p>
-          <p className={styles.statusDetail}>{accessToken ? "Signed in." : "Sign in to continue."}</p>
-        </div>
-        {accessToken ? (
-          <div className={styles.authActions}>
-            <button className={styles.secondaryButton} disabled={busy} onClick={reloadProfile} type="button">Reload</button>
-            {!isProfileEditor && profileQuality?.status === "complete" ? (
-              <button className={styles.secondaryButton} disabled={busy} onClick={() => router.push("/dashboard")} type="button">Go to dashboard</button>
-            ) : null}
-            <button className={styles.secondaryButton} onClick={signOut} type="button">Sign out</button>
-            <input aria-label="Access code" onChange={(event) => setInviteCode(event.target.value)} placeholder="Access code" type="text" value={inviteCode} />
-            <button className={styles.secondaryButton} disabled={redeemingCode || !inviteCode.trim()} onClick={redeemInviteCode} type="button">Redeem</button>
-          </div>
-        ) : (
-          <div className={styles.authForm}>
-            <input aria-label="Email" autoComplete="email" onChange={(event) => setEmail(event.target.value)} placeholder="email@example.com" type="email" value={email} />
-            <input aria-label="Password" autoComplete="current-password" onChange={(event) => setPassword(event.target.value)} placeholder="Password" type="password" value={password} />
-            <button className={styles.primaryButton} disabled={busy || !email || !password} onClick={signIn} type="button">Sign in</button>
-            {isGoogleSignInEnabled() ? (
-              <button className={styles.secondaryButton} disabled={busy} onClick={signInGoogle} type="button">Continue with Google</button>
-            ) : null}
-          </div>
-        )}
-      </section>
+      {!isProfileEditor ? (
+        <SiteHeader
+          sectionHrefPrefix="/"
+          actions={signedIn ? (
+            <button type="button" className={styles.headerSignOut} onClick={signOut}>Sign out</button>
+          ) : undefined}
+        />
+      ) : null}
 
-      <section className={isProfileEditor ? styles.readinessPanelCompact : styles.readinessPanel} aria-label="Profile readiness summary">
-        <div>
-          <p className={styles.statusLabel}>Profile Readiness</p>
-          <p className={styles.statusValue}>{profileQuality ? (profileStatus === "complete" ? "Complete" : "Incomplete") : notLoadedReadinessLabel}</p>
-          <p className={styles.statusDetail}>
-            {profileQuality
-              ? `${completeRequiredSections} of ${requiredSections.length} required sections currently clear. ${issues.length} blocker${issues.length === 1 ? "" : "s"} remain.`
-              : "Sign in to load section readiness, blocker counts, and weak profile fields."}
-          </p>
-          {profileQuality?.status === "incomplete" ? (
-            <div className={styles.gateNotice} role="status">
-              <p>{incompleteProfileJustification}</p>
-              <p>{incompleteProfileLockout}</p>
-            </div>
-          ) : null}
-        </div>
-        <div className={styles.readinessStats}>
-          <span>{profileQuality?.weakResponseCount ?? 0} weak response{(profileQuality?.weakResponseCount ?? 0) === 1 ? "" : "s"}</span>
-          <span>{profileQuality?.lastCheckedAt ? `Checked ${new Date(profileQuality.lastCheckedAt).toLocaleString()}` : "Not checked yet"}</span>
-        </div>
-      </section>
+      <div className={isProfileEditor ? undefined : styles.shell}>
+        {!isProfileEditor && !signedIn ? loginCard : (
+          <>
+            {isProfileEditor ? (
+              <>
+                <section className={styles.authPanelCompact} aria-label="Profile sign in">
+                  <div>
+                    <p className={styles.statusLabel}>Account</p>
+                    <p className={styles.statusDetail}>{accessToken ? "Signed in." : "Sign in to continue."}</p>
+                  </div>
+                  {accessToken ? (
+                    <div className={styles.authActions}>
+                      <button className={styles.secondaryButton} disabled={busy} onClick={reloadProfile} type="button">Reload</button>
+                      <button className={styles.secondaryButton} onClick={signOut} type="button">Sign out</button>
+                      <input aria-label="Access code" onChange={(event) => setInviteCode(event.target.value)} placeholder="Access code" type="text" value={inviteCode} />
+                      <button className={styles.secondaryButton} disabled={redeemingCode || !inviteCode.trim()} onClick={redeemInviteCode} type="button">Redeem</button>
+                    </div>
+                  ) : (
+                    <div className={styles.authForm}>
+                      <input aria-label="Email" autoComplete="email" onChange={(event) => setEmail(event.target.value)} placeholder="email@example.com" type="email" value={email} />
+                      <input aria-label="Password" autoComplete="current-password" onChange={(event) => setPassword(event.target.value)} placeholder="Password" type="password" value={password} />
+                      <button className={styles.primaryButton} disabled={busy || !email || !password} onClick={signIn} type="button">Sign in</button>
+                      {isGoogleSignInEnabled() ? (
+                        <button className={styles.secondaryButton} disabled={busy} onClick={signInGoogle} type="button">Continue with Google</button>
+                      ) : null}
+                    </div>
+                  )}
+                </section>
 
-      <section className={`${styles.editorGrid} ${isProfileEditor ? styles.profileEditorGrid : ""}`} aria-label="Editable onboarding form">
-        <div className={styles.formStack}>
+                <section className={styles.readinessPanelCompact} aria-label="Profile readiness summary">
+                  <div>
+                    <p className={styles.statusLabel}>Profile Readiness</p>
+                    <p className={styles.statusValue}>{profileQuality ? (profileStatus === "complete" ? "Complete" : "Incomplete") : notLoadedReadinessLabel}</p>
+                    <p className={styles.statusDetail}>
+                      {profileQuality
+                        ? `${completeRequiredSections} of ${requiredSections.length} required sections currently clear. ${issues.length} blocker${issues.length === 1 ? "" : "s"} remain.`
+                        : "Sign in to load section readiness, blocker counts, and weak profile fields."}
+                    </p>
+                    {profileQuality?.status === "incomplete" ? (
+                      <div className={styles.gateNotice} role="status">
+                        <p>{incompleteProfileJustification}</p>
+                        <p>{incompleteProfileLockout}</p>
+                      </div>
+                    ) : null}
+                  </div>
+                  <div className={styles.readinessStats}>
+                    <span>{profileQuality?.weakResponseCount ?? 0} weak response{(profileQuality?.weakResponseCount ?? 0) === 1 ? "" : "s"}</span>
+                    <span>{profileQuality?.lastCheckedAt ? `Checked ${new Date(profileQuality.lastCheckedAt).toLocaleString()}` : "Not checked yet"}</span>
+                  </div>
+                </section>
+              </>
+            ) : (
+              <>
+                {accountPanel}
+                {reviewPanel}
+              </>
+            )}
+
+            <section className={`${styles.editorGrid} ${isProfileEditor ? styles.profileEditorGrid : ""}`} aria-label="Editable onboarding form">
+              <div className={styles.formStack}>
 
           {/* --- Identity & Search --- */}
           <article className={styles.formCard} id="career-profile-identitySearch">
@@ -1533,50 +1718,24 @@ export default function OnboardingClient({
           </article>
         </div>
 
-        <aside className={styles.issueCard}>
-          <p className={styles.statusLabel}>Current blockers</p>
-          {issues.length === 0 ? (
-            <p>{profileQuality?.status === "complete" ? "Profile complete. Scan and downstream workflow gates can open." : "No profile blockers loaded yet."}</p>
-          ) : (
-            <ul>
-              {issues.slice(0, 8).map((issue) => (<li key={issue}>{issue}</li>))}
-            </ul>
-          )}
-        </aside>
-      </section>
-
-      {!isProfileEditor ? (
-        <>
-          <section id="sections" className={styles.sectionList} aria-label="Onboarding sections">
-            {sections.map((section, index) => {
-              const readiness = readinessBySection.get(section.key);
-              const status = readiness?.status ?? "not_loaded";
-              const blockerCount = readiness?.blockers.length ?? 0;
-              const weakFieldCount = readiness?.weakFields.length ?? 0;
-              return (
-                <article className={styles.sectionCard} key={section.key}>
-                  <span className={styles.index}>{index + 1}</span>
-                  <div>
-                    <h2>{section.label}</h2>
-                    <p>{section.description}</p>
-                    <p className={styles.sectionIssueSummary}>
-                      {profileQuality
-                        ? section.required
-                          ? `${blockerCount} blocker${blockerCount === 1 ? "" : "s"}${weakFieldCount > 0 ? ` · ${weakFieldCount} weak field${weakFieldCount === 1 ? "" : "s"}` : ""}`
-                          : "Optional section, not required for completion"
-                        : "Sign in to load readiness"}
-                    </p>
-                  </div>
-                  <div className={styles.sectionMeta}>
-                    <span className={`${styles.readinessBadge} ${styles[`readiness_${status}`]}`}>{readinessLabel(status)}</span>
-                  </div>
-                </article>
-              );
-            })}
-          </section>
-          <p className={styles.requiredCount}>Required sections: {requiredSections.length}</p>
-        </>
-      ) : null}
+              {isProfileEditor ? (
+                <aside className={styles.issueCard}>
+                  <p className={styles.statusLabel}>Current blockers</p>
+                  {issues.length === 0 ? (
+                    <p>{profileQuality?.status === "complete" ? "Profile complete. Scan and downstream workflow gates can open." : "No profile blockers loaded yet."}</p>
+                  ) : (
+                    <ul>
+                      {issues.slice(0, 8).map((issue) => (<li key={issue}>{issue}</li>))}
+                    </ul>
+                  )}
+                </aside>
+              ) : (
+                sectionsRail
+              )}
+            </section>
+          </>
+        )}
+      </div>
     </div>
   );
 }

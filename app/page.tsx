@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import mascotImg from "./scans/dumpsterfireguy.png";
+import SiteHeader from "./components/SiteHeader";
 import styles from "./site.module.css";
 
 const operatingLoop = [
@@ -99,28 +100,7 @@ const subscriptionFeatures: { label: string; tiers: [TierCell, TierCell, TierCel
 export default function HomePage() {
   return (
     <main className={styles.publicLandingPage}>
-      <header className={styles.publicLandingNav} aria-label="Dumpster Fire navigation">
-        <div className={styles.publicLandingNavLeft}>
-          <Link className={styles.publicLandingNavBrand} href="/" aria-label="Dumpster Fire home">
-            <Image className={styles.publicLandingNavMark} src={mascotImg} alt="" sizes="40px" />
-            <span>Home</span>
-          </Link>
-          <nav className={styles.publicLandingNavLinks} aria-label="Page sections">
-            <a href="#features">Features</a>
-            <a href="#human-path">Human Path</a>
-            <a href="#subscription">Pricing</a>
-            <a href="mailto:fransencomesalive@gmail.com?subject=Dumpster%20Fire">Contact</a>
-          </nav>
-        </div>
-        <div className={styles.publicLandingNavActions}>
-          <Link className={styles.publicLandingNavSignIn} href="/onboarding">
-            Sign in
-          </Link>
-          <Link className={styles.publicLandingNavCta} href="/onboarding">
-            Create profile
-          </Link>
-        </div>
-      </header>
+      <SiteHeader />
 
       <section className={styles.publicLandingHeroSection} aria-labelledby="home-title">
         <div className={styles.publicLandingHeroInner}>

@@ -72,7 +72,7 @@
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  color: var(--landing-ink);
+  color: var(--landing-ink, var(--c-ink));
   font-weight: 900;
   font-size: 17px;
   line-height: 1;
@@ -97,7 +97,7 @@
 }
 
 .publicLandingNavLinks a {
-  color: var(--landing-copy);
+  color: var(--landing-copy, var(--c-ink-soft));
   font-size: 13px;
   font-weight: 800;
   line-height: 1;

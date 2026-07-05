@@ -133,3 +133,55 @@ export async function handleRedeemAccessCodeRequest(
     planName: plan.name,
   });
 }
+
+type UserSubscriptionRow = {
+  plan_id: string;
+  status: string;
+};
+
+export type GetAccountPlanHandlerOptions = {
+  env?: NodeJS.ProcessEnv;
+  getSession?: (request: Request) => Promise<PublicAuthSession>;
+  repositoryRequest?: PublicProfileRepositoryRequest;
+};
+
+// Returns the signed-in account's email and active plan name, for the account
+// panel's identity row + plan chip. planName is null when the user has no active
+// subscription yet (they have not redeemed a code).
+export async function handleGetAccountPlanRequest(
+  request: Request,
+  options: GetAccountPlanHandlerOptions = {},
+) {
+  const session = options.getSession
+    ? await options.getSession(request)
+    : await getPublicAuthSession(request, { env: options.env });
+  if (session.status === "config_error") {
+    return json({ error: "Public auth is not configured.", missing: session.missing }, { status: 503 });
+  }
+  if (session.status !== "authenticated") {
+    return json({ error: "Authentication required.", detail: session.reason }, { status: 401 });
+  }
+
+  let repositoryRequest = options.repositoryRequest;
+  if (!repositoryRequest) {
+    const config = getPublicProfileRepositoryConfig(options.env);
+    if (!config) {
+      return json({ error: "Account storage is not configured." }, { status: 503 });
+    }
+    repositoryRequest = createPublicProfileRepositoryRequest(config);
+  }
+
+  const subscriptions = await repositoryRequest<UserSubscriptionRow[]>("user_subscriptions", {
+    query: qs({ user_id: `eq.${session.userId}`, status: "eq.active", select: "plan_id,status", limit: "1" }),
+  });
+  const subscription = subscriptions[0];
+  let planName: string | null = null;
+  if (subscription) {
+    const plans = await repositoryRequest<PlanRow[]>("subscription_plans", {
+      query: qs({ id: `eq.${subscription.plan_id}`, select: "id,name", limit: "1" }),
+    });
+    planName = plans[0]?.name ?? null;
+  }
+
+  return json({ email: session.email ?? null, planName });
+}
