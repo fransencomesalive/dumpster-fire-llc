@@ -49,6 +49,8 @@ When more than one session is active at the same time, Codex must treat each ses
 Recommended reminder phrase at the start of any session:
 - `session check`
 
+This workflow should also be triggered by prompts that refer to branch work, session ownership, parallel work, parallel sessions, or simultaneous work.
+
 ### Review Presentation
 
 When asking Randall to review anything (Randall, 2026-07-02):

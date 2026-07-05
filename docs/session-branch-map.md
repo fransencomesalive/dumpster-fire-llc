@@ -14,4 +14,5 @@ Use this file to keep parallel sessions clearly separated and reviewable.
 - Do not merge one session into another without explicit review.
 - Before starting work, confirm the intended branch and workflow in this file.
 - Use the short reminder phrase `session check` whenever you need to confirm the active workflow and branch.
+- Treat prompts about branch work, session ownership, parallel work, parallel sessions, or simultaneous work as a cue to follow this workflow.
 - After each handoff or sync, update this file with the current branch ownership.
