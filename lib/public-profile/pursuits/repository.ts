@@ -370,6 +370,23 @@ export async function persistPursuitTransition(
   }
 }
 
+export async function recordProfileExportUsage(
+  request: PublicProfileRepositoryRequest,
+  input: { userId: string; createdAt: string; quantity?: number },
+) {
+  await request("usage_ledger", {
+    method: "POST",
+    body: {
+      user_id: input.userId,
+      usage_type: "profile_export",
+      quantity: input.quantity ?? 1,
+      related_job_id: null,
+      related_pursuit_id: null,
+      created_at: input.createdAt,
+    },
+  });
+}
+
 export async function persistContactSelection(
   request: PublicProfileRepositoryRequest,
   result: Extract<PursuitTransitionResult, { ok: true }>,

@@ -175,7 +175,19 @@ Everything here needs an approved design source first (AGENTS.md Design Authorit
    copy.
 2. [ ] Profile regeneration action wiring after structured edits.
 3. [ ] Outreach version pruning.
-4. [ ] Pursued Jobs Export backend.
+4. [x] **Pursued Jobs Export backend — DONE 2026-07-05.** `GET
+   /api/public-profile/pursuits/export` (route + `handlePublicProfilePursuedJobsExportRequest`
+   in `lib/public-profile/api.ts`). Pro/premium-gated via the existing
+   `enforceSubscriptionFeature(…, "pursued_jobs_export")`; returns the spec record per pursuit
+   (Applying-As Role Track + narrative, sent outreach message(s), recipient/contact, status,
+   timestamps) as JSON or `?format=csv`; records one `profile_export` `usage_ledger` row via
+   `recordProfileExportUsage`. Data API only — no UI, no "Export Locked" copy (the gate returns
+   a structured `locked` result for the still-design-gated upgrade UI, Phase 3 item 4). Tests:
+   `scripts/test-public-profile-export.{ts,mjs}` (`npm run test:public-export`). tsc/lint/build
+   green.
+   - **Follow-up flagged (not fixed, out of scope):** `lib/public-profile/subscription/rules.ts`
+     grants `pursuedJobsExport` to `tester` + `premium` but NOT `pro`, while
+     `docs/subscription-enforcement-matrix.md` says Pro = yes. Reconcile before billing wiring.
 
 ---
 

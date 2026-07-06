@@ -30,6 +30,7 @@ import {
   persistHumanPathGeneration,
   persistOutreachGeneration,
   persistPursuitTransition,
+  recordProfileExportUsage,
 } from "./pursuits/repository";
 import { openAIHumanPathProvider } from "./pursuits/contact-provider";
 import { completeReview, expireInactivePursuit, transitionPursuit } from "./pursuits/state-machine";
@@ -447,6 +448,10 @@ export type PublicProfilePursuitsHandlerOptions = PublicProfileMatchHandlerOptio
     request: PublicProfileRepositoryRequest,
     pursuitId: string,
   ) => Promise<HumanPathContactSuggestion[]>;
+  recordExportUsage?: (
+    request: PublicProfileRepositoryRequest,
+    input: { userId: string; createdAt: string; quantity?: number },
+  ) => Promise<void>;
   persistContactSelection?: (
     request: PublicProfileRepositoryRequest,
     result: Extract<PursuitTransitionResult, { ok: true }>,
@@ -659,7 +664,9 @@ function subscriptionBlockedResponse(result: Exclude<SubscriptionEnforcementResu
     ? "Human Path"
     : result.feature === "outreach_message"
       ? "Outreach"
-      : "Subscription feature";
+      : result.feature === "pursued_jobs_export"
+        ? "Pursued Jobs Export"
+        : "Subscription feature";
   return json({
     error: result.status === "limit_reached"
       ? `${featureName} limit reached.`
@@ -908,6 +915,218 @@ export async function handlePublicProfilePursuitsListRequest(
     total: pursuits.length,
     counts,
     pursuits: items,
+  });
+}
+
+type PursuedJobOutreachEntry = {
+  contactName: string | null;
+  contactTitle: string | null;
+  contactType: HumanPathContactSuggestion["contactType"] | null;
+  recipientType: OutreachMessageRecord["recipientType"];
+  channel: string;
+  status: OutreachMessageRecord["status"];
+  message: string;
+  sentAt: string;
+};
+
+type PursuedJobExportRow = {
+  pursuitId: string;
+  status: PursuitStatus;
+  job: {
+    id: string;
+    title: string;
+    companyName: string;
+    location: string | null;
+    sourceUrl: string | null;
+  } | null;
+  applyingAs: {
+    roleTrackId: string | null;
+    roleTrackName: string | null;
+    narrative: string | null;
+  };
+  outreach: PursuedJobOutreachEntry[];
+  createdAt: string;
+  lastActivityAt: string;
+};
+
+function csvCell(value: unknown): string {
+  const text = value === null || value === undefined ? "" : String(value);
+  return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+}
+
+function pursuedJobsCsv(rows: PursuedJobExportRow[]): string {
+  const headers = [
+    "pursuitId",
+    "status",
+    "jobTitle",
+    "companyName",
+    "jobUrl",
+    "applyingAsRoleTrack",
+    "applyingAsNarrative",
+    "contactName",
+    "contactTitle",
+    "contactType",
+    "recipientType",
+    "channel",
+    "messageStatus",
+    "message",
+    "messageSentAt",
+    "pursuitCreatedAt",
+    "lastActivityAt",
+  ];
+
+  const lines: string[][] = [];
+  for (const row of rows) {
+    const base = [
+      row.pursuitId,
+      row.status,
+      row.job?.title ?? "",
+      row.job?.companyName ?? "",
+      row.job?.sourceUrl ?? "",
+      row.applyingAs.roleTrackName ?? "",
+      row.applyingAs.narrative ?? "",
+    ];
+    if (row.outreach.length === 0) {
+      lines.push([...base, "", "", "", "", "", "", "", "", row.createdAt, row.lastActivityAt]);
+      continue;
+    }
+    for (const entry of row.outreach) {
+      lines.push([
+        ...base,
+        entry.contactName ?? "",
+        entry.contactTitle ?? "",
+        entry.contactType ?? "",
+        entry.recipientType,
+        entry.channel,
+        entry.status,
+        entry.message,
+        entry.sentAt,
+        row.createdAt,
+        row.lastActivityAt,
+      ]);
+    }
+  }
+
+  return [headers, ...lines].map((cells) => cells.map(csvCell).join(",")).join("\r\n");
+}
+
+export async function handlePublicProfilePursuedJobsExportRequest(
+  request: Request,
+  options: PublicProfilePursuitsHandlerOptions = {},
+) {
+  const session = await sessionForRequest(request, options);
+  if (session.status !== "authenticated") return authErrorResponse(session);
+
+  const repositoryRequest = repositoryRequestForOptions(options);
+  if (!repositoryRequest) return repositoryConfigErrorResponse();
+
+  const url = new URL(request.url);
+  const format = url.searchParams.get("format") === "csv" ? "csv" : "json";
+
+  const loadAggregate = options.loadAggregate ?? loadCandidateProfileAggregate;
+  const aggregate = await loadAggregate(repositoryRequest, session.userId);
+  if (!aggregate) {
+    return json({ error: "Candidate profile not found.", status: "not_found" }, { status: 404 });
+  }
+
+  const exportedAt = options.now?.() ?? new Date().toISOString();
+
+  const loadSubscriptionContext = options.loadSubscriptionContext ?? loadSubscriptionContextForUser;
+  const loadUsageEntries = options.loadUsageEntries ?? loadUsageLedgerForUser;
+  const subscriptionContext = await loadSubscriptionContext(repositoryRequest, session.userId);
+  const usageEntries = await loadUsageEntries(repositoryRequest, session.userId, {
+    at: exportedAt,
+    periodStart: subscriptionContext.currentPeriodStart,
+    periodEnd: subscriptionContext.currentPeriodEnd,
+  });
+  const enforceSubscription = options.enforceSubscription
+    ?? ((context, entries, at) => enforceSubscriptionFeature(context, entries, "pursued_jobs_export", { at }));
+  const enforcement = enforceSubscription(subscriptionContext, usageEntries, exportedAt);
+  if (enforcement.status !== "allowed") {
+    return subscriptionBlockedResponse(enforcement);
+  }
+
+  const loadPursuits = options.loadPursuits ?? loadPursuitsForUser;
+  const pursuits = await loadPursuits(repositoryRequest, session.userId, {});
+
+  const loadJobs = options.loadJobs ?? loadPublicJobsByIds;
+  const jobsById = await loadJobs(repositoryRequest, pursuits.map((pursuit) => pursuit.jobId));
+
+  const loadOutreachMessages = options.loadOutreachMessages ?? loadOutreachMessagesForPursuit;
+  const loadContactSuggestions = options.loadContactSuggestions ?? loadContactSuggestionsForPursuit;
+  const roleTracksById = new Map(aggregate.roleTracks.map((track) => [track.id, track]));
+
+  const rows: PursuedJobExportRow[] = await Promise.all(pursuits.map(async (pursuit) => {
+    const [messages, contacts] = await Promise.all([
+      loadOutreachMessages(repositoryRequest, pursuit.id),
+      loadContactSuggestions(repositoryRequest, pursuit.id),
+    ]);
+    const contactsById = new Map(contacts.map((contact) => [contact.id, contact]));
+    const roleTrack = pursuit.selectedRoleTrackId
+      ? roleTracksById.get(pursuit.selectedRoleTrackId)
+      : undefined;
+    const job = jobsById.get(pursuit.jobId);
+
+    const outreach: PursuedJobOutreachEntry[] = messages
+      .filter((message) => message.status === "sent")
+      .map((message) => {
+        const contact = message.contactSuggestionId
+          ? contactsById.get(message.contactSuggestionId)
+          : undefined;
+        return {
+          contactName: contact?.name ?? null,
+          contactTitle: contact?.title ?? null,
+          contactType: contact?.contactType ?? null,
+          recipientType: message.recipientType,
+          channel: message.channel,
+          status: message.status,
+          message: message.message,
+          sentAt: message.updatedAt,
+        };
+      });
+
+    return {
+      pursuitId: pursuit.id,
+      status: pursuit.status,
+      job: job
+        ? {
+            id: job.id,
+            title: job.title,
+            companyName: job.companyName,
+            location: job.location ?? null,
+            sourceUrl: job.sourceUrl ?? null,
+          }
+        : null,
+      applyingAs: {
+        roleTrackId: pursuit.selectedRoleTrackId ?? null,
+        roleTrackName: roleTrack?.name ?? null,
+        narrative: roleTrack?.corePositioning ?? pursuit.outreachAngle ?? null,
+      },
+      outreach,
+      createdAt: pursuit.createdAt,
+      lastActivityAt: pursuit.lastActivityAt,
+    };
+  }));
+
+  const recordExportUsage = options.recordExportUsage ?? recordProfileExportUsage;
+  await recordExportUsage(repositoryRequest, { userId: session.userId, createdAt: exportedAt });
+
+  if (format === "csv") {
+    return new Response(pursuedJobsCsv(rows), {
+      status: 200,
+      headers: {
+        "Content-Type": "text/csv; charset=utf-8",
+        "Content-Disposition": `attachment; filename="pursued-jobs-${exportedAt.slice(0, 10)}.csv"`,
+        "Cache-Control": "no-store",
+      },
+    });
+  }
+
+  return json({
+    status: "ok",
+    exportedAt,
+    total: rows.length,
+    pursuedJobs: rows,
   });
 }
 
