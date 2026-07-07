@@ -90,7 +90,6 @@ export type ResumeUploadSectionItem = {
   fileUrl: string;
   parsedText: string;
   associatedRoleTrackIds: string[];
-  highlights: string[];
   strengths: string[];
   gaps: string[];
   useWhen: string[];
@@ -656,7 +655,6 @@ export function resumeUploadsSection(aggregate: CandidateProfileAggregate): Resu
       fileUrl: resume.fileUrl,
       parsedText: resume.parsedText,
       associatedRoleTrackIds: resume.associatedRoleTrackIds,
-      highlights: resume.highlights,
       strengths: resume.strengths,
       gaps: resume.gaps,
       useWhen: resume.useWhen,
@@ -1077,8 +1075,9 @@ function parseResumeItem(input: unknown, index: number) {
     }
   }
 
-  // Optional: absent/malformed highlights default to [] so older payloads stay valid.
-  item.highlights = cleanStringList(source.highlights) ?? [];
+  // highlights are not part of the client round-trip — they are a system-derived
+  // cache (see resume-highlights.ts) written only during profile regeneration, so
+  // a section save must neither read nor clobber them.
 
   if (!parsingQualities.has(source.parsingQuality as ParsingQuality)) {
     issues.push({
@@ -2100,14 +2099,20 @@ export function applyResumeUploadsSectionPatch(
 ): ApplyResumeUploadsSectionResult {
   const ownedResumeIds = new Set(aggregate.resumes.map((existing) => existing.id));
   const ownedTrackIdsForResumes = new Set(aggregate.roleTracks.map((existing) => existing.id));
-  const nextResumes: Resume[] = patch.resumes.map((resume) => ({
-    ...resume,
-    id: resolveOwnedItemId(ownedResumeIds, resume.id),
-    associatedRoleTrackIds: resume.associatedRoleTrackIds.filter((trackId) => ownedTrackIdsForResumes.has(trackId)),
-    profileId: aggregate.profile.id,
-    createdAt: aggregate.resumes.find((existing) => existing.id === resume.id)?.createdAt ?? updatedAt,
-    updatedAt,
-  }));
+  const nextResumes: Resume[] = patch.resumes.map((resume) => {
+    const existing = aggregate.resumes.find((candidate) => candidate.id === resume.id);
+    return {
+      ...resume,
+      id: resolveOwnedItemId(ownedResumeIds, resume.id),
+      associatedRoleTrackIds: resume.associatedRoleTrackIds.filter((trackId) => ownedTrackIdsForResumes.has(trackId)),
+      profileId: aggregate.profile.id,
+      // Preserve the system-derived highlights cache across section saves — the
+      // client never sends it; only regeneration writes it.
+      highlights: existing?.highlights ?? [],
+      createdAt: existing?.createdAt ?? updatedAt,
+      updatedAt,
+    };
+  });
   const activeResumeIds = new Set(nextResumes.map((resume) => resume.id));
   const nextAggregate: CandidateProfileAggregate = {
     ...aggregate,

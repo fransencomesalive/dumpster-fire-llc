@@ -19,6 +19,7 @@ import {
   loadCandidateProfileAggregate,
   type PublicProfileRepositoryRequest,
 } from "./repository";
+import { generateResumeParse, type ResumeParseVerdict } from "./resume-parse";
 import {
   createPursuitForJob,
   loadContactSuggestionsForPursuit,
@@ -2074,6 +2075,66 @@ export async function handleResumeUploadsSectionGetRequest(
     profileStatus: result.profileQuality.status,
     section: result.section,
     profileQuality: profileQualitySummary(result.profileQuality),
+  });
+}
+
+export type PublicProfileResumeScanHandlerOptions = {
+  env?: NodeJS.ProcessEnv;
+  getSession?: (request: Request) => Promise<PublicAuthSession>;
+  parseResume?: (pdfBase64: string) => Promise<ResumeParseVerdict | undefined>;
+};
+
+const RESUME_SCAN_MAX_BYTES = 10 * 1024 * 1024; // 10 MB
+
+// Scan-and-discard: accept a single PDF, read it into text + a parse verdict via
+// Claude, return it, and never store the file. Auth-gated; degrades to the
+// paste-the-text fallback (status "model_unavailable") when no model is wired.
+export async function handleResumeScanRequest(
+  request: Request,
+  options: PublicProfileResumeScanHandlerOptions = {},
+) {
+  const session = await sessionForRequest(request, options);
+  if (session.status !== "authenticated") return authErrorResponse(session);
+
+  let form: FormData;
+  try {
+    form = await request.formData();
+  } catch {
+    return json({ error: "Expected a multipart form with a PDF file." }, { status: 400 });
+  }
+
+  const file = form.get("file");
+  if (!(file instanceof File)) {
+    return json({ error: "No résumé file provided." }, { status: 400 });
+  }
+  const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+  if (!isPdf) {
+    return json({
+      error: "unsupported_file_type",
+      detail: "We can only read PDF résumés. Export or “Save as” a PDF, or paste your résumé text instead.",
+    }, { status: 415 });
+  }
+  if (file.size > RESUME_SCAN_MAX_BYTES) {
+    return json({
+      error: "file_too_large",
+      detail: "That PDF is over 10 MB. Try a smaller export, or paste your résumé text instead.",
+    }, { status: 413 });
+  }
+
+  const pdfBase64 = Buffer.from(await file.arrayBuffer()).toString("base64");
+  const parseResume = options.parseResume ?? ((data: string) => generateResumeParse(data));
+  const verdict = await parseResume(pdfBase64);
+
+  if (!verdict) {
+    return json({ status: "model_unavailable" });
+  }
+
+  return json({
+    status: "scanned",
+    parsingQuality: verdict.parsingQuality,
+    extractedText: verdict.extractedText,
+    issue: verdict.issue,
+    suggestion: verdict.suggestion,
   });
 }
 

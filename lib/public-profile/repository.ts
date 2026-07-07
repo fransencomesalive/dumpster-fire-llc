@@ -939,6 +939,25 @@ export async function persistResumeUploadsSection(
   });
 }
 
+// Write the system-derived résumé highlights cache. Called from the regeneration
+// flow after the metered pre-pass; PATCH per résumé so we only ever touch the
+// highlights column of rows that already exist (never insert a partial row).
+export async function persistDerivedResumeHighlights(
+  request: PublicProfileRepositoryRequest,
+  entries: { id: string; highlights: string[]; updatedAt: string }[],
+) {
+  for (const entry of entries) {
+    await request("resumes", {
+      method: "PATCH",
+      query: qs({ id: `eq.${entry.id}` }),
+      body: {
+        highlights: entry.highlights,
+        updated_at: entry.updatedAt,
+      },
+    });
+  }
+}
+
 export async function persistFitSignalsSection(
   request: PublicProfileRepositoryRequest,
   result: ApplyFitSignalsSectionResult,

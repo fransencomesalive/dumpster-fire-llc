@@ -15,6 +15,10 @@ export type CandidateProfileGenerationOptions = {
   // Distilled voice fingerprint block (Phase C); rendered at the top of the
   // Voice Profile section of profile.md when present.
   voiceProfileBlock?: string;
+  // Résumé highlights derived by the metered pre-pass (see resume-highlights.ts),
+  // keyed by résumé id. Injected into the Résumés + Role Track sections of
+  // profile.md so outreach can quote résumé proof points routed to the right lane.
+  resumeHighlights?: Map<string, string[]>;
 };
 
 export type CandidateProfilePersistenceRows = {
@@ -72,8 +76,15 @@ export function regenerateCandidateProfileArtifacts(
     ...profileForEvaluation,
     status: profileQuality.status,
   };
+  const resumesForMarkdown = options.resumeHighlights
+    ? aggregate.resumes.map((resume) => {
+      const derived = options.resumeHighlights!.get(resume.id);
+      return derived ? { ...resume, highlights: derived } : resume;
+    })
+    : aggregate.resumes;
   const markdownAggregate: CandidateProfileAggregate = {
     ...evaluationAggregate,
+    resumes: resumesForMarkdown,
     profile: profileForMarkdown,
     profileQuality,
   };

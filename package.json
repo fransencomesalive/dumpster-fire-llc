@@ -9,7 +9,9 @@
     "lint": "eslint",
     "test:public-jobs": "node scripts/test-public-jobs-repository.mjs",
     "test:public-export": "node scripts/test-public-profile-export.mjs",
-    "test:public-regeneration": "node scripts/test-public-profile-regeneration.mjs"
+    "test:public-regeneration": "node scripts/test-public-profile-regeneration.mjs",
+    "test:resume-highlights": "node scripts/test-public-profile-resume-highlights.mjs",
+    "test:resume-parse": "node scripts/test-public-profile-resume-parse.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.106.0",

@@ -92,6 +92,10 @@
       "group": "Onboarding"
     },
     {
+      "path": "components/onboarding-resume-upload.html",
+      "group": "Onboarding"
+    },
+    {
       "group": "Components",
       "path": "components/compiler.html"
     },

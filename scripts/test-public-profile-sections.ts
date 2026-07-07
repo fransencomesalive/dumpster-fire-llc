@@ -20,6 +20,8 @@ import {
   parseVoicePersonalitySectionPatch,
   parseRoleTracksSectionPatch,
   parseResumeUploadsSectionPatch,
+  applyResumeUploadsSectionPatch,
+  resumeUploadsSection,
   parseWorkExamplesSectionPatch,
   parseSkillsInventorySectionPatch,
   parseWritingSamplesSectionPatch,
@@ -207,19 +209,16 @@ async function main() {
     assert.ok(invalidResumeAttachment.issues.some((issue) => issue.message.includes("Unknown Role Track id")));
   }
 
-  // Resume highlights parse: preserved when present, default [] when omitted (backward compat).
-  const resumeNoHighlights = { ...completeAggregate.resumes[0], id: "resume-2" };
-  delete (resumeNoHighlights as { highlights?: string[] }).highlights; // simulate an older payload
-  const resumeHighlightsParse = parseResumeUploadsSectionPatch({
-    resumes: [
-      { ...completeAggregate.resumes[0], highlights: ["Cut cost 30% at Beta Co"] },
-      resumeNoHighlights,
-    ],
-  });
-  assert.equal(resumeHighlightsParse.ok, true);
-  if (resumeHighlightsParse.ok) {
-    assert.deepEqual(resumeHighlightsParse.patch.resumes[0].highlights, ["Cut cost 30% at Beta Co"]);
-    assert.deepEqual(resumeHighlightsParse.patch.resumes[1].highlights, []);
+  // Resume highlights are a system-derived cache (see resume-highlights.ts), not
+  // part of the client round-trip: the section view omits them, and a section save
+  // preserves whatever highlights are already cached on the résumé.
+  const resumeSectionView = resumeUploadsSection(completeAggregate);
+  assert.ok(!("highlights" in resumeSectionView.resumes[0]));
+  const resumeSaveParse = parseResumeUploadsSectionPatch(resumeSectionView);
+  assert.equal(resumeSaveParse.ok, true);
+  if (resumeSaveParse.ok) {
+    const applied = applyResumeUploadsSectionPatch(completeAggregate, resumeSaveParse.patch, now);
+    assert.deepEqual(applied.aggregate.resumes[0].highlights, completeAggregate.resumes[0].highlights);
   }
 
   // Work Examples

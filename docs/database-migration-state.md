@@ -48,6 +48,14 @@ re-run a psql-applied migration through the CLI — A4 in particular is non-idem
   to `jobs` (posting parser). Applied via Management API + recorded; backfilled by re-running the
   source scan (2102 jobs).
 
+## Applied 2026-07-07 (confirmed + recorded in schema_migrations)
+
+- `20260706000100_resume_highlights.sql` — adds `highlights text[] not null default '{}'` to
+  `public.resumes` (curated stat/company bullets for outreach). Additive + idempotent
+  (`add column if not exists`). Applied via the Management API and recorded in
+  `schema_migrations` (`resume_highlights`). Column confirmed present (`data_type ARRAY`,
+  default `'{}'::text[]`, NOT NULL).
+
 As of 2026-06-30, **every migration in `supabase/migrations/` is applied and recorded** — prod
 schema matches the repo (reconciled by comparing files to `schema_migrations`).
 

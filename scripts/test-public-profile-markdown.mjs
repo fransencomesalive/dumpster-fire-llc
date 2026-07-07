@@ -23,6 +23,9 @@ assert.doesNotMatch(generated.markdown, /undefined|null|\[object Object\]/);
 // Resume highlights are rendered so the outreach generator can quote a stat/company.
 assert.match(generated.markdown, /Highlights \(stats \/ companies you can quote\):/);
 assert.match(generated.markdown, /Cut release cycle time 40% at Acme Robotics/);
+// ...and routed into the attached Role Track so outreach matched to a lane can quote
+// lane-relevant résumé proof (resume-1 is attached to the Program Director track).
+assert.match(generated.markdown, /Résumé highlights \(quotable proof from attached résumés\):/);
 // Internal QA metadata must NOT reach the compiled profile.md (outreach + matching read it).
 assert.doesNotMatch(generated.markdown, /## Profile Quality/);
 

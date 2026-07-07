@@ -3,6 +3,7 @@ import type {
   GeneratedMarkdown,
   QualityScoredTextField,
   QualitySection,
+  Resume,
   RoleTrack,
   WritingSample,
   WritingSampleBucket,
@@ -72,7 +73,14 @@ function renderQualitySection(section: QualitySection, fields: QualityScoredText
   return `## ${sectionLabels[section]}\n\n${body}`;
 }
 
-function renderRoleTrack(track: RoleTrack) {
+function renderRoleTrack(track: RoleTrack, resumes: Resume[]) {
+  // Route each attached résumé's quotable highlights into this lane so an outreach
+  // message matched to the Role Track can cite résumé proof relevant to it.
+  const trackHighlights = resumes
+    .filter((resume) => track.resumeIds.includes(resume.id))
+    .flatMap((resume) => resume.highlights)
+    .map(clean)
+    .filter(Boolean);
   return [
     `### ${track.name}`,
     "",
@@ -95,6 +103,9 @@ function renderRoleTrack(track: RoleTrack) {
     "",
     "Mismatch signals:",
     list(track.mismatchSignals),
+    ...(trackHighlights.length > 0
+      ? ["Résumé highlights (quotable proof from attached résumés):", list(trackHighlights)]
+      : []),
   ].filter(Boolean).join("\n");
 }
 
@@ -200,7 +211,7 @@ export function generateCandidateProfileMarkdown(
     "",
     "## Role Tracks",
     "",
-    aggregate.roleTracks.length === 0 ? "No Role Tracks captured." : aggregate.roleTracks.map(renderRoleTrack).join("\n\n"),
+    aggregate.roleTracks.length === 0 ? "No Role Tracks captured." : aggregate.roleTracks.map((track) => renderRoleTrack(track, aggregate.resumes)).join("\n\n"),
     "",
     "## Resumes",
     "",

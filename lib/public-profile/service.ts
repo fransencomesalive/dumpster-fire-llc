@@ -7,9 +7,11 @@ import { evaluateCandidateProfileQuality } from "./profile-quality";
 import {
   loadCandidateProfileAggregate,
   persistCandidateProfileGeneration,
+  persistDerivedResumeHighlights,
   type PublicProfileRepositoryRequest,
 } from "./repository";
 import { generateVoiceProfileBlock } from "./voice-fingerprint";
+import { deriveResumeHighlightsForAggregate } from "./resume-highlights";
 import { loadUsageLedgerForUser } from "./subscription/repository";
 import type { CandidateProfileAggregate, ProfileQuality } from "./types";
 
@@ -19,6 +21,9 @@ export type PublicProfileServiceDependencies = {
   // Optional voice-fingerprint pre-pass. Returns the distilled Voice Profile
   // block (or undefined to fall back to raw inputs / when no model is wired).
   generateVoiceProfileBlock?: (aggregate: CandidateProfileAggregate) => Promise<string | undefined>;
+  // Optional résumé-highlights pre-pass. Returns derived highlights keyed by
+  // résumé id (or undefined to reuse the cached highlights already on the résumés).
+  deriveResumeHighlights?: (aggregate: CandidateProfileAggregate) => Promise<Map<string, string[]> | undefined>;
 };
 
 export type PublicProfileRegenerationResult =
@@ -64,10 +69,13 @@ export async function regenerateLoadedPublicProfileForUser(
 
   const voiceProfileBlock = options.voiceProfileBlock
     ?? (dependencies.generateVoiceProfileBlock ? await dependencies.generateVoiceProfileBlock(aggregate) : undefined);
+  const resumeHighlights = options.resumeHighlights
+    ?? (dependencies.deriveResumeHighlights ? await dependencies.deriveResumeHighlights(aggregate) : undefined);
   const generation = regenerateCandidateProfileArtifacts(aggregate, {
     ...options,
     generatedAt,
     voiceProfileBlock,
+    resumeHighlights,
   });
   await dependencies.persistGeneration(generation);
 
@@ -124,6 +132,43 @@ async function generateCappedVoiceProfileBlock(
   return previousVoiceProfileBlock(aggregate.profile.generatedMarkdown);
 }
 
+// Résumé-highlights derivation is capped per month, same as the voice fingerprint.
+// At the cap, profile.md rebuilds and reuses the highlights already cached on each
+// résumé; the save is never blocked. Under the cap, the pass runs, records one
+// usage entry, and persists the fresh highlights back to the résumé cache.
+const RESUME_HIGHLIGHTS_MONTHLY_CAP = 3;
+
+async function generateCappedResumeHighlights(
+  request: PublicProfileRepositoryRequest,
+  userId: string,
+  aggregate: CandidateProfileAggregate,
+  generatedAt: string,
+): Promise<Map<string, string[]> | undefined> {
+  let used = 0;
+  try {
+    const entries = await loadUsageLedgerForUser(request, userId, { at: generatedAt });
+    used = entries
+      .filter((entry) => entry.usageType === "resume_highlights")
+      .reduce((sum, entry) => sum + entry.quantity, 0);
+  } catch {
+    used = 0;
+  }
+  if (used >= RESUME_HIGHLIGHTS_MONTHLY_CAP) return undefined;
+
+  const derived = await deriveResumeHighlightsForAggregate(aggregate);
+  if (!derived) return undefined;
+
+  await request("usage_ledger", {
+    method: "POST",
+    body: { user_id: userId, usage_type: "resume_highlights", quantity: 1 },
+  }).catch(() => undefined);
+  await persistDerivedResumeHighlights(
+    request,
+    Array.from(derived.entries()).map(([id, highlights]) => ({ id, highlights, updatedAt: generatedAt })),
+  ).catch(() => undefined);
+  return derived;
+}
+
 export async function regeneratePublicProfileForUser(
   request: PublicProfileRepositoryRequest,
   userId: string,
@@ -134,5 +179,7 @@ export async function regeneratePublicProfileForUser(
     persistGeneration: (generation) => persistCandidateProfileGeneration(request, generation),
     generateVoiceProfileBlock: (aggregate) =>
       generateCappedVoiceProfileBlock(request, userId, aggregate, options.generatedAt ?? new Date().toISOString()),
+    deriveResumeHighlights: (aggregate) =>
+      generateCappedResumeHighlights(request, userId, aggregate, options.generatedAt ?? new Date().toISOString()),
   }, userId, options);
 }

@@ -1,0 +1,214 @@
+<!-- @dsCard group="Onboarding" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Onboarding · Role Track + Résumé (Card 1)</title>
+<link rel="stylesheet" href="../tokens/tokens.css" />
+<link rel="stylesheet" href="../lib/base.css" />
+<style>
+  /* Plain paper — no halftone in new work (Randall, 2026-07-04). */
+  body { margin: 0; color: var(--c-ink); font-family: var(--font-body); background: var(--c-paper); }
+
+  .wrap { max-width: 1080px; margin: 0 auto; padding: var(--space-6) var(--space-5); display: grid; gap: var(--space-6); }
+  h1.page { font-family: var(--font-display); font-size: var(--type-h1); margin: 0 0 var(--space-2); }
+  .lede { color: var(--role-text-muted); max-width: 76ch; margin: 0; }
+  .lede b { color: var(--c-ink); font-weight: normal; }
+  .scroller { overflow-x: auto; }
+  .frame { width: 100%; min-width: 640px; display: grid; gap: var(--space-6); }
+
+  .state { display: grid; gap: var(--space-3); }
+  .stateCap { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: var(--tracking-subhead, 0.05em);
+    font-size: var(--type-caption); color: var(--role-text-faint); }
+  .stateCap b { color: var(--c-ink); }
+
+  /* Onboarding card shell (paper, ink border) — same primitive as every section card. */
+  .card { background-color: var(--c-paper); border: var(--line-reg) solid var(--c-ink);
+    border-radius: var(--radius-md); box-shadow: var(--shadow-card); padding: var(--space-4) var(--space-5);
+    display: grid; gap: var(--space-4); }
+  .cardHead { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); flex-wrap: wrap; }
+  .cardHead h3 { font-family: var(--font-display); font-size: 1.2rem; color: var(--c-ink); margin: 0; }
+  .step { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.06em;
+    font-size: 0.72rem; color: var(--role-text-faint); }
+
+  /* Active-track chip — teal = the lane you're populating. On Card 1 and echoed on every per-track card. */
+  .trackChip { flex: none; display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-subhead);
+    text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.74rem; line-height: 1; color: var(--c-paper);
+    background-color: var(--c-teal); border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-pill); padding: 5px 10px; }
+  .trackChip .dot { width: 6px; height: 6px; border-radius: 999px; background: var(--c-paper); }
+
+  .field { display: grid; gap: var(--space-2); }
+  .field > label { font-family: var(--font-display); font-size: 1.02rem; color: var(--c-ink); }
+  .subhint { font-size: 0.86rem; color: var(--role-text-faint); }
+
+  /* Role-track name input (first run) — becomes a dropdown once a track is saved. */
+  .trackInput { box-sizing: border-box; width: 100%; font-family: var(--font-body); font-size: 1.02rem; color: var(--c-ink);
+    background: var(--c-paper); border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-md);
+    padding: var(--space-3) var(--space-4); }
+  .trackInput.placeholder { font-style: italic; color: var(--role-text-faint); }
+  .trackInput:focus { outline: none; border-color: var(--c-teal); box-shadow: 0 0 0 3px color-mix(in srgb, var(--c-teal) 26%, transparent); }
+
+  /* Dropdown (saved-track) state */
+  .selectRow { position: relative; }
+  .selectFace { display: flex; align-items: center; justify-content: space-between; box-sizing: border-box; width: 100%;
+    font-family: var(--font-display); font-size: 1.02rem; color: var(--c-ink); background: var(--c-paper);
+    border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-md); padding: var(--space-3) var(--space-4); cursor: pointer; }
+  .selectFace .car { color: var(--role-text-faint); }
+  .menu { border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-md); background: var(--c-paper);
+    box-shadow: var(--shadow-card); overflow: hidden; }
+  .menu .opt { padding: var(--space-3) var(--space-4); font-family: var(--font-display); font-size: 1rem; color: var(--c-ink);
+    border-bottom: var(--line-hair) solid var(--c-ink); cursor: pointer; }
+  .menu .opt:last-child { border-bottom: 0; }
+  .menu .opt.sel { background-color: color-mix(in srgb, var(--c-teal) 14%, var(--c-paper)); }
+  .menu .opt.new { color: var(--c-teal); font-style: italic; display: flex; align-items: center; gap: var(--space-2);
+    background-color: color-mix(in srgb, var(--c-teal) 6%, var(--c-paper)); }
+
+  /* Résumé upload control (PDF only, scanned once, never stored). */
+  .drop { display: flex; align-items: center; gap: var(--space-4); flex-wrap: wrap;
+    border: var(--line-reg) dashed var(--c-ink); border-radius: var(--radius-md); background: var(--c-paper);
+    padding: var(--space-4) var(--space-5); }
+  .drop.err { border-style: solid; border-left: 6px solid var(--c-tomato); }
+  .pdfTag { flex: none; font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.06em;
+    font-size: 0.72rem; color: var(--c-paper); background: var(--c-ink); border-radius: var(--radius-sm); padding: 4px 8px; }
+  .dropMain { display: grid; gap: 2px; min-width: 0; }
+  .dropMain .title { font-family: var(--font-display); font-size: 1.02rem; color: var(--c-ink); }
+  .dropMain .hint { font-size: 0.86rem; color: var(--role-text-faint); }
+  .chooseBtn { margin-left: auto; flex: none; font-family: var(--font-display); font-size: 1rem; color: var(--c-paper);
+    background-color: var(--c-teal); border: var(--line-bold) solid var(--c-ink); border-radius: var(--radius-md);
+    box-shadow: var(--shadow-card); padding: var(--space-2) var(--space-5); cursor: pointer; }
+  .fileChip { display: inline-flex; align-items: center; gap: var(--space-3); font-family: var(--font-display); font-size: 0.98rem; color: var(--c-ink); }
+  .fileChip .meta { color: var(--role-text-faint); font-family: var(--font-body); font-size: 0.86rem; }
+
+  .okNote, .errNote { border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-md);
+    padding: var(--space-3) var(--space-4); font-size: 0.92rem; color: var(--role-text-muted); }
+  .okNote { background-color: color-mix(in srgb, var(--c-teal) 12%, var(--c-paper)); border-left: 6px solid var(--c-teal); }
+  .errNote { background-color: color-mix(in srgb, var(--c-tomato) 10%, var(--c-paper)); border-left: 6px solid var(--c-tomato); }
+  .okNote b, .errNote b { color: var(--c-ink); font-family: var(--font-display); font-weight: normal; }
+
+  .ta { box-sizing: border-box; width: 100%; min-height: 88px; resize: vertical; font-family: var(--font-body);
+    font-size: 0.98rem; color: var(--c-ink); background: var(--c-paper); border: var(--line-reg) solid var(--c-ink);
+    border-radius: var(--radius-md); padding: var(--space-3) var(--space-4); }
+  .ta.focus { outline: none; border-color: var(--c-teal); box-shadow: 0 0 0 3px color-mix(in srgb, var(--c-teal) 26%, transparent); }
+  .ta::placeholder { color: var(--role-text-faint); }
+  .helper { font-size: 0.88rem; color: var(--role-text-muted); }
+  .helper b { color: var(--c-ink); font-weight: normal; }
+
+  .primary { justify-self: start; font-family: var(--font-display); font-size: 1.02rem; color: var(--c-paper);
+    background-color: var(--c-teal); border: var(--line-bold) solid var(--c-ink); border-radius: var(--radius-md);
+    box-shadow: var(--shadow-card); padding: var(--space-3) var(--space-6); cursor: pointer; }
+
+  .lockNote { display: flex; align-items: center; gap: var(--space-3); color: var(--role-text-faint); font-size: 0.9rem; font-style: italic; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div>
+    <h1 class="page">Onboarding · Role Track + Résumé <span class="step">Card 1</span></h1>
+    <p class="lede">Onboarding now opens here. You <b>name (or pick) a Role Track</b> — the lane you're
+    pursuing — and add its résumé, right on this first card. Nothing else in onboarding unlocks until
+    this is saved. From then on, every per-track card (Work Examples, Skills, Fit Signals, Outreach)
+    carries a <b>chip</b> of the active track. Résumé is <b>PDF only</b>, read once to pull quotable
+    highlights, never stored — and the text box is always a fallback.</p>
+  </div>
+
+  <div class="scroller"><div class="frame">
+
+    <!-- STATE 1 — First run: no tracks yet. Name field is italic placeholder. -->
+    <div class="state">
+      <div class="stateCap"><b>1 · First run</b> — no Role Track yet. The name field is a text input.</div>
+      <div class="card">
+        <div class="cardHead"><h3>Start a Role Track</h3><span class="step">Step 1 of onboarding</span></div>
+        <div class="field">
+          <label>Role Track name</label>
+          <input class="trackInput placeholder" value="Create a new role track" />
+          <span class="subhint">Name the lane you're pursuing — e.g. Program Director, Producer. Want one résumé to cover everything? Make a general track.</span>
+        </div>
+        <div class="field">
+          <label>Résumé</label>
+          <div class="drop">
+            <span class="pdfTag">PDF</span>
+            <div class="dropMain">
+              <span class="title">Drop a PDF here, or choose a file</span>
+              <span class="hint">PDF only · read once to pull quotable highlights · not stored</span>
+            </div>
+            <button type="button" class="chooseBtn">Choose PDF</button>
+          </div>
+          <textarea class="ta" placeholder="Or paste your résumé text here…"></textarea>
+          <p class="helper">No file, or a résumé that won't upload? <b>Paste the text</b> — it feeds highlights exactly the same way.</p>
+        </div>
+        <button type="button" class="primary">Save Role Track &amp; Résumé</button>
+        <p class="lockNote">🔒 The rest of onboarding unlocks once this is saved.</p>
+      </div>
+    </div>
+
+    <!-- STATE 2 — Saved: chip appears, name field is now a dropdown, résumé parsed. -->
+    <div class="state">
+      <div class="stateCap"><b>2 · Saved</b> — track named + résumé read. Chip appears; the name field is now a dropdown.</div>
+      <div class="card">
+        <div class="cardHead"><h3>Role Track</h3><span class="trackChip"><span class="dot"></span>Program Director</span></div>
+        <div class="field">
+          <label>Role Track</label>
+          <div class="selectFace"><span>Program Director</span><span class="car">▾</span></div>
+        </div>
+        <div class="field">
+          <label>Résumé</label>
+          <div class="drop">
+            <span class="pdfTag">PDF</span>
+            <div class="fileChip"><span>program-director.pdf</span><span class="meta">0.9 MB</span></div>
+            <button type="button" class="chooseBtn">Replace</button>
+          </div>
+          <p class="okNote"><b>Read — pulled 5 highlights.</b> Titles, metrics, and companies routed to the Program Director lane.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- STATE 3 — Dropdown open: existing tracks + "Create a new role track". -->
+    <div class="state">
+      <div class="stateCap"><b>3 · Choosing a track</b> — dropdown lists saved tracks, with "Create a new role track" at the bottom.</div>
+      <div class="card">
+        <div class="cardHead"><h3>Role Track</h3><span class="trackChip"><span class="dot"></span>Producer</span></div>
+        <div class="field">
+          <label>Role Track</label>
+          <div class="selectRow">
+            <div class="selectFace"><span>Producer</span><span class="car">▴</span></div>
+            <div class="menu" style="margin-top: var(--space-2);">
+              <div class="opt">Program Director</div>
+              <div class="opt sel">Producer</div>
+              <div class="opt new">＋ Create a new role track</div>
+            </div>
+          </div>
+          <span class="subhint">A new track starts from the details of your current one — adjust what's different for this lane.</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- STATE 4 — Downstream per-track card shows the chip; plus a résumé error example. -->
+    <div class="state">
+      <div class="stateCap"><b>4 · Everywhere after</b> — each per-track card echoes the active-track chip. (Résumé error states shown below.)</div>
+      <div class="card">
+        <div class="cardHead"><h3>Work Examples</h3><span class="trackChip"><span class="dot"></span>Program Director</span></div>
+        <div class="field">
+          <label>One-hitter</label>
+          <textarea class="ta focus" placeholder="A single, quotable line…">Cut internal workflow turnaround 40% in two quarters.</textarea>
+          <p class="helper">You're populating <b>Program Director</b>. Switch lanes from Card 1's dropdown.</p>
+        </div>
+      </div>
+      <div class="card">
+        <div class="cardHead"><h3>Résumé — problem states</h3></div>
+        <div class="field">
+          <div class="drop err">
+            <span class="pdfTag">PDF</span>
+            <div class="dropMain"><span class="title">Drop a PDF here, or choose a file</span><span class="hint">PDF only</span></div>
+            <button type="button" class="chooseBtn">Choose PDF</button>
+          </div>
+          <p class="errNote"><b>That's a Word file (resume.docx).</b> We only read PDFs — export or "Save as" PDF, or paste your text.</p>
+          <p class="errNote"><b>We couldn't pull any text from this PDF.</b> Looks like scanned images. Paste your résumé text so nothing gets missed.</p>
+        </div>
+      </div>
+    </div>
+
+  </div></div>
+</div>
+</body>
+</html>
