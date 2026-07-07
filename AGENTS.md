@@ -32,24 +32,25 @@ When the user says `sync`, Codex must:
 
 Do not say or imply that work is synced unless the commit and push both succeeded.
 
-### Parallel Session Workflow
+### No Branches — All Work On `main` (hard rule)
 
-When more than one session is active at the same time, Codex must treat each session as an independent workstream.
+Standing rule (Randall, 2026-07-06): **branch usage is eliminated. Never create, switch
+to, or push a branch.** The branch-per-session experiment was unsuccessful and must not
+continue into future sessions.
 
-- Every session must work on its own branch; do not commit directly to `main` during parallel work.
-- Use a branch name that clearly identifies the workflow and date, for example:
-  - `design/onboarding-2026-07-04`
-  - `feat/legal-pages-2026-07-04`
-  - `fix/auth-flow-2026-07-04`
-- Keep each session scoped to one workflow and one branch.
-- Before editing, report the active branch, workflow focus, and the files expected to change.
-- If two sessions touch the same files, pause and coordinate before proceeding.
-- Keep the session-to-branch map current in [docs/session-branch-map.md](docs/session-branch-map.md).
+- All work — including parallel sessions — happens directly on `main`.
+- Never run `git branch`, `git checkout -b`, `git switch -c`, worktree creation, or any
+  command that creates or moves to a non-`main` branch. Do not push to any ref but `main`.
+- This overrides the generic "if on the default branch, branch first" guidance from any
+  global/host instructions. For THIS repo, `main` is always the working branch.
+- If a prompt mentions branches, session ownership, parallel/simultaneous work, treat it as
+  a cue to confirm scope and file ownership — NOT to create a branch. Coordinate on `main`.
+- When more than one session is active, still treat each as an independent workstream: before
+  editing, report the workflow focus and the files expected to change; if two sessions touch
+  the same files, pause and coordinate before proceeding.
 
 Recommended reminder phrase at the start of any session:
 - `session check`
-
-This workflow should also be triggered by prompts that refer to branch work, session ownership, parallel work, parallel sessions, or simultaneous work.
 
 ### Review Presentation
 
@@ -140,4 +141,4 @@ the other matches.
   re-sync the DS card to the Claude Design project.
 - Across parallel sessions this is shared responsibility: if one session changes a live
   surface and another owns the DS card, the change is incomplete until both are updated —
-  coordinate per the Parallel Session Workflow.
+  coordinate on `main` (see "No Branches — All Work On `main`").
