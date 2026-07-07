@@ -452,6 +452,11 @@ export type PublicProfilePursuitsHandlerOptions = PublicProfileMatchHandlerOptio
     request: PublicProfileRepositoryRequest,
     input: { userId: string; createdAt: string; quantity?: number },
   ) => Promise<void>;
+  regenerateProfile?: (
+    request: PublicProfileRepositoryRequest,
+    userId: string,
+    options: { generatedAt: string; changeSummary: string },
+  ) => Promise<PublicProfileRegenerationResult>;
   persistContactSelection?: (
     request: PublicProfileRepositoryRequest,
     result: Extract<PursuitTransitionResult, { ok: true }>,

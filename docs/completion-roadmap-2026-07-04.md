@@ -171,10 +171,36 @@ Everything here needs an approved design source first (AGENTS.md Design Authorit
 
 ## Phase 5 — Small unblocked backend (fill-in work)
 
-1. [ ] Phase 9 verify item: audit that no public surface leaks scaffold/agent/provider
-   copy.
-2. [ ] Profile regeneration action wiring after structured edits.
-3. [ ] Outreach version pruning.
+1. [~] Phase 9 verify item: audit that no public surface leaks scaffold/agent/provider
+   copy. **Reassigned 2026-07-05 (Randall) to the pre-launch Codex QA audit — tracked in
+   `docs/pre-launch-qa-audit.md` item 1. Do not run inline.**
+2. [~] **Profile regeneration — IN PROGRESS (design settled, lazy + invisible + migration-free).**
+   Approved approach (Randall 2026-07-05): mark profile stale on edit, regenerate lazily.
+   Key insight — NO migration/new column needed: staleness =
+   `profile.updatedAt > profile.markdownGeneratedAt`. Verified reliable because all 11
+   `persist*Section` fns bump `candidate_profiles.updated_at`, and regeneration sets both
+   `updated_at` and `markdown_generated_at` to the same `generatedAt`
+   (`lib/public-profile/profile-generation.ts:84-85,111-112`). Only outreach consumes the
+   compiled `profile.md` (matching uses structured data), so that's the one lazy-regen point.
+   **Done so far:** added optional `regenerateProfile` to `PublicProfilePursuitsHandlerOptions`
+   in `lib/public-profile/api.ts` (compiles; unused).
+   **RESUME HERE (3 edits in `lib/public-profile/api.ts` + 1 test):**
+   (a) add exported helper `isProfileStale(profile)` = `!markdownGeneratedAt ||
+   Date.parse(updatedAt) > Date.parse(markdownGeneratedAt)`;
+   (b) in `handlePublicProfilePursuitOutreachRequest`, right after the `!profileMarkdown`
+   guard (~line 1560): change `const profileMarkdown` → `let`, and if stale call
+   `options.regenerateProfile ?? regeneratePublicProfileForUser` (already imported line 75),
+   reassigning `profileMarkdown` from the regenerated aggregate on `status === "regenerated"`;
+   (c) new `scripts/test-public-profile-regeneration.{ts,mjs}` — unit-test `isProfileStale`
+   (fresh/stale/never-generated) + outreach-handler assertion that regen fires when stale and
+   is skipped when fresh. Then tsc/lint/build/test.
+3. [ ] Outreach version pruning / message reuse — **DECISION PENDING A TEST (Randall
+   2026-07-05).** Keep messages saved unless a reuse cache shows **significant** model-call
+   savings; near-duplicate reused content reads as a stale/poor backend the user is paying
+   for, so negligible savings ⇒ keep generating fresh. Next: build a fixture harness that
+   counts model calls with vs. without a deterministic reuse cache keyed on
+   `(profileVersion, roleTrackId, contactType, jobSignalBucket)` and quantifies the saving,
+   then decide. Queue AFTER item 2 (the cache keys on profileVersion, which item 2 governs).
 4. [x] **Pursued Jobs Export backend — DONE 2026-07-05.** `GET
    /api/public-profile/pursuits/export` (route + `handlePublicProfilePursuedJobsExportRequest`
    in `lib/public-profile/api.ts`). Pro/premium-gated via the existing
