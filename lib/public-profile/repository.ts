@@ -116,6 +116,7 @@ type ResumeRow = {
   name: string;
   file_url: string;
   parsed_text: string;
+  highlights: string[];
   strengths: string[];
   gaps: string[];
   use_when: string[];
@@ -408,6 +409,7 @@ export function mapPublicProfileRows(rows: {
       fileUrl: row.file_url,
       parsedText: row.parsed_text,
       associatedRoleTrackIds: roleTrackIdsByResume.get(row.id) ?? [],
+      highlights: row.highlights ?? [],
       strengths: row.strengths,
       gaps: row.gaps,
       useWhen: row.use_when,
@@ -888,6 +890,7 @@ export async function persistResumeUploadsSection(
         name: resume.name,
         file_url: resume.fileUrl,
         parsed_text: resume.parsedText,
+        highlights: resume.highlights,
         strengths: resume.strengths,
         gaps: resume.gaps,
         use_when: resume.useWhen,

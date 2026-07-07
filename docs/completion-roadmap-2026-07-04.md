@@ -174,33 +174,60 @@ Everything here needs an approved design source first (AGENTS.md Design Authorit
 1. [~] Phase 9 verify item: audit that no public surface leaks scaffold/agent/provider
    copy. **Reassigned 2026-07-05 (Randall) to the pre-launch Codex QA audit — tracked in
    `docs/pre-launch-qa-audit.md` item 1. Do not run inline.**
-2. [~] **Profile regeneration — IN PROGRESS (design settled, lazy + invisible + migration-free).**
-   Approved approach (Randall 2026-07-05): mark profile stale on edit, regenerate lazily.
-   Key insight — NO migration/new column needed: staleness =
-   `profile.updatedAt > profile.markdownGeneratedAt`. Verified reliable because all 11
-   `persist*Section` fns bump `candidate_profiles.updated_at`, and regeneration sets both
-   `updated_at` and `markdown_generated_at` to the same `generatedAt`
-   (`lib/public-profile/profile-generation.ts:84-85,111-112`). Only outreach consumes the
-   compiled `profile.md` (matching uses structured data), so that's the one lazy-regen point.
-   **Done so far:** added optional `regenerateProfile` to `PublicProfilePursuitsHandlerOptions`
-   in `lib/public-profile/api.ts` (compiles; unused).
-   **RESUME HERE (3 edits in `lib/public-profile/api.ts` + 1 test):**
-   (a) add exported helper `isProfileStale(profile)` = `!markdownGeneratedAt ||
-   Date.parse(updatedAt) > Date.parse(markdownGeneratedAt)`;
-   (b) in `handlePublicProfilePursuitOutreachRequest`, right after the `!profileMarkdown`
-   guard (~line 1560): change `const profileMarkdown` → `let`, and if stale call
-   `options.regenerateProfile ?? regeneratePublicProfileForUser` (already imported line 75),
-   reassigning `profileMarkdown` from the regenerated aggregate on `status === "regenerated"`;
-   (c) new `scripts/test-public-profile-regeneration.{ts,mjs}` — unit-test `isProfileStale`
-   (fresh/stale/never-generated) + outreach-handler assertion that regen fires when stale and
-   is skipped when fresh. Then tsc/lint/build/test.
-3. [ ] Outreach version pruning / message reuse — **DECISION PENDING A TEST (Randall
-   2026-07-05).** Keep messages saved unless a reuse cache shows **significant** model-call
-   savings; near-duplicate reused content reads as a stale/poor backend the user is paying
-   for, so negligible savings ⇒ keep generating fresh. Next: build a fixture harness that
-   counts model calls with vs. without a deterministic reuse cache keyed on
-   `(profileVersion, roleTrackId, contactType, jobSignalBucket)` and quantifies the saving,
-   then decide. Queue AFTER item 2 (the cache keys on profileVersion, which item 2 governs).
+2. [x] **Profile regeneration — DONE 2026-07-06 (lazy, invisible, migration-free).**
+   Staleness = `profile.updatedAt > profile.markdownGeneratedAt` (no migration/new column;
+   all 11 `persist*Section` fns bump `candidate_profiles.updated_at`, and regeneration sets
+   `updated_at` == `markdown_generated_at` == `generatedAt`). Only outreach consumes the
+   compiled `profile.md` (matching uses structured data), so the lazy-regen is at the one
+   consumer. Shipped in `lib/public-profile/api.ts`: exported `isProfileStale(profile)`;
+   `regenerateProfile` option on `PublicProfilePursuitsHandlerOptions`; and a guard in
+   `handlePublicProfilePursuitOutreachRequest` (after the `!profileMarkdown` guard) that
+   regenerates via `options.regenerateProfile ?? regeneratePublicProfileForUser` when stale
+   and feeds the fresh markdown into generation — invisible to the user, cost paid once only
+   when needed. Tests: `scripts/test-public-profile-regeneration.{ts,mjs}`
+   (`npm run test:public-regeneration`) — unit `isProfileStale` + outreach integration
+   (regen fires when stale, skipped when fresh). tsc/lint/build green; full api suite passes.
+3. [~] Outreach version pruning / message reuse — **TESTED 2026-07-06; DECISION PENDING
+   RANDALL.** Cost-model harness `scripts/analyze-outreach-reuse-savings.mjs` (real Opus 4.8
+   pricing: $5/1M in, $25/1M out). Findings: one outreach generation costs **~$0.03**
+   (small single call; input dominated by profile.md). Message reuse saves only
+   **~$0.05–$0.96 / user / month** even at 60 msgs/mo and a 60% hit rate — negligible, and it
+   ships near-duplicate content (fails the "significant savings" bar). **Recommendation:
+   do NOT build message reuse; keep generating fresh.** The real, safe lever is
+   **prompt-caching the profile.md prefix** (identical across all of a user's outreach; the
+   generator currently uses NO caching — `lib/public-profile/outreach-generator.ts:114`):
+   saves ~48–54% of input cost with every message still freshly generated, no stale content.
+   **DECIDED 2026-07-06 (Randall): drop reuse.** Reuse was never built (nothing to remove).
+   Implemented the paired lever — prompt-caching the profile.md prefix in
+   `lib/public-profile/outreach-generator.ts`: `buildOutreachPromptParts` splits the prompt
+   into the per-user-stable profile.md (sent as a `cache_control: ephemeral` block) and the
+   per-message job+contact tail; `OutreachModelCall` gained `cachePrefix`. Caveat noted in
+   code: Opus 4.8 only caches a >=4096-token prefix, so small profiles silently no-op
+   (harmless). Test: `scripts/test-public-profile-outreach.mjs` asserts profile.md lands in
+   the cached prefix and the tail carries job/contact. tsc/lint/build green; api suite passes.
+   Analysis harness kept at `scripts/analyze-outreach-reuse-savings.mjs`.
+3b. [~] **Outreach message quality — proof from all three sources (Randall 2026-07-06).**
+   Randall: a message to a hiring manager should be able to quote a Work Example, a Skill
+   (+ evidence), AND a résumé stat/company — all three are core material. Audit found the
+   system prompt only knew Work Examples, and profile.md's Résumés section carried curated
+   strengths but NOT the actual stats/companies. Fixes (backend, DONE + validated):
+   - New `Resume.highlights` (curated stat/company bullets) threaded through type →
+     `ResumeRow`/map/persist → section item + read + **optional** parse (absent → `[]`) →
+     rendered in profile.md Résumés as "Highlights (stats / companies you can quote)".
+     Migration `supabase/migrations/20260706000100_resume_highlights.sql` (additive column).
+   - Outreach system prompt rewritten: draw proof from any of Work Example / Skill+evidence /
+     Résumé highlight (was "select AT MOST ONE Work Example").
+   - Removed the internal **Profile Quality** section from profile.md (QA metadata should
+     not reach outreach/matching).
+   - Tests: markdown (highlights render + Profile Quality gone), sections (highlights
+     round-trip + default), outreach/repository/api regressions. tsc/lint/build green.
+   **GATED NEXT STEPS (start here next session):**
+   (a) **Apply the migration to prod** (Randall/prod-gated) — trivial additive column; local
+       throwaway-Postgres validation NOT yet run (offered). Record in `supabase_migrations`
+       after apply.
+   (b) **Onboarding capture UI for `highlights` is DESIGN-GATED** — the column can store +
+       the model can use highlights, but there's no onboarding field to ENTER them yet, so
+       the feature is dormant until a scoped design pass adds the input to the Résumés section.
 4. [x] **Pursued Jobs Export backend — DONE 2026-07-05.** `GET
    /api/public-profile/pursuits/export` (route + `handlePublicProfilePursuedJobsExportRequest`
    in `lib/public-profile/api.ts`). Pro/premium-gated via the existing

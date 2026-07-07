@@ -85,6 +85,7 @@ export function completeCandidateProfileAggregate(now = publicProfileFixtureNow)
       fileUrl: "https://files.example/resume.pdf",
       parsedText: "Program leadership and workflow systems.",
       associatedRoleTrackIds: ["track-1"],
+      highlights: ["Cut release cycle time 40% at Acme Robotics"],
       strengths: ["Program leadership"],
       gaps: ["No deep engineering management"],
       useWhen: ["Program-heavy roles"],

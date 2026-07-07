@@ -20,4 +20,10 @@ assert.match(generated.markdown, /Never sound like this/);
 assert.match(generated.markdown, /Excited to announce synergy\./);
 assert.doesNotMatch(generated.markdown, /undefined|null|\[object Object\]/);
 
+// Resume highlights are rendered so the outreach generator can quote a stat/company.
+assert.match(generated.markdown, /Highlights \(stats \/ companies you can quote\):/);
+assert.match(generated.markdown, /Cut release cycle time 40% at Acme Robotics/);
+// Internal QA metadata must NOT reach the compiled profile.md (outreach + matching read it).
+assert.doesNotMatch(generated.markdown, /## Profile Quality/);
+
 console.log("public profile markdown generation: all assertions passed");

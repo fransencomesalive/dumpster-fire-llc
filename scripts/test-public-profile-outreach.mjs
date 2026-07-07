@@ -35,6 +35,18 @@ assert.match(prompt, /Program Director/);
 assert.match(prompt, /Hiring Manager/);
 assert.match(prompt, /Dana/);
 
+// 2b. Prompt caching: profile.md is passed as the cacheable prefix; the per-message
+// job + contact are the uncached tail. (No message reuse — every message is fresh.)
+let capturedArgs;
+await generateOutreachMessage(
+  { profileMarkdown: "PROFILE_MD_XYZ", job, contact },
+  { callModel: async (args) => { capturedArgs = args; return modelJson; } },
+);
+assert.ok(capturedArgs.cachePrefix.includes("PROFILE_MD_XYZ"), "profile.md goes in the cached prefix");
+assert.ok(!capturedArgs.user.includes("PROFILE_MD_XYZ"), "tail must not repeat profile.md");
+assert.match(capturedArgs.user, /Program Director/);
+assert.match(capturedArgs.user, /Dana/);
+
 // 3. insertedExample: null is honored; fences are tolerated.
 const noExample = await generateOutreachMessage(
   { profileMarkdown: "x", job, contact },

@@ -19,6 +19,7 @@ import {
   parseIdentitySearchSectionPatch,
   parseVoicePersonalitySectionPatch,
   parseRoleTracksSectionPatch,
+  parseResumeUploadsSectionPatch,
   parseWorkExamplesSectionPatch,
   parseSkillsInventorySectionPatch,
   parseWritingSamplesSectionPatch,
@@ -204,6 +205,21 @@ async function main() {
   assert.equal(invalidResumeAttachment.status, "validation_error");
   if (invalidResumeAttachment.status === "validation_error") {
     assert.ok(invalidResumeAttachment.issues.some((issue) => issue.message.includes("Unknown Role Track id")));
+  }
+
+  // Resume highlights parse: preserved when present, default [] when omitted (backward compat).
+  const resumeNoHighlights = { ...completeAggregate.resumes[0], id: "resume-2" };
+  delete (resumeNoHighlights as { highlights?: string[] }).highlights; // simulate an older payload
+  const resumeHighlightsParse = parseResumeUploadsSectionPatch({
+    resumes: [
+      { ...completeAggregate.resumes[0], highlights: ["Cut cost 30% at Beta Co"] },
+      resumeNoHighlights,
+    ],
+  });
+  assert.equal(resumeHighlightsParse.ok, true);
+  if (resumeHighlightsParse.ok) {
+    assert.deepEqual(resumeHighlightsParse.patch.resumes[0].highlights, ["Cut cost 30% at Beta Co"]);
+    assert.deepEqual(resumeHighlightsParse.patch.resumes[1].highlights, []);
   }
 
   // Work Examples

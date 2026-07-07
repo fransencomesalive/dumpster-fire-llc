@@ -90,6 +90,7 @@ export type ResumeUploadSectionItem = {
   fileUrl: string;
   parsedText: string;
   associatedRoleTrackIds: string[];
+  highlights: string[];
   strengths: string[];
   gaps: string[];
   useWhen: string[];
@@ -655,6 +656,7 @@ export function resumeUploadsSection(aggregate: CandidateProfileAggregate): Resu
       fileUrl: resume.fileUrl,
       parsedText: resume.parsedText,
       associatedRoleTrackIds: resume.associatedRoleTrackIds,
+      highlights: resume.highlights,
       strengths: resume.strengths,
       gaps: resume.gaps,
       useWhen: resume.useWhen,
@@ -1074,6 +1076,9 @@ function parseResumeItem(input: unknown, index: number) {
       item[field] = values;
     }
   }
+
+  // Optional: absent/malformed highlights default to [] so older payloads stay valid.
+  item.highlights = cleanStringList(source.highlights) ?? [];
 
   if (!parsingQualities.has(source.parsingQuality as ParsingQuality)) {
     issues.push({

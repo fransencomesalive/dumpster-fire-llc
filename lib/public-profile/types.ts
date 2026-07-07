@@ -83,6 +83,9 @@ export type Resume = {
   fileUrl: string;
   parsedText: string;
   associatedRoleTrackIds: string[];
+  // Curated stat/company bullets the outreach generator may quote in a message
+  // (a resume-level proof point, alongside a Work Example and a Skill).
+  highlights: string[];
   strengths: string[];
   gaps: string[];
   useWhen: string[];

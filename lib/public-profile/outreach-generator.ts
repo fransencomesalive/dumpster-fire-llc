@@ -40,6 +40,9 @@ export type OutreachMessage = {
 export type OutreachModelCall = (args: {
   system: string;
   user: string;
+  // The per-user-stable profile.md prefix, kept separate so the model call can cache it.
+  // When present it is sent as a cached content block ahead of `user`.
+  cachePrefix?: string;
 }) => Promise<string | undefined>;
 
 export type OutreachGeneratorDependencies = {
@@ -54,25 +57,32 @@ const systemPrompt = [
   "do-not-overclaim line under Guardrails and per Role Track / per Skill.",
   "",
   "Write ONE short outreach message to the given contact about the given job.",
-  "Lead with the strongest matching substance. Select AT MOST ONE relevant",
-  "Work Example from the profile and weave its one-hitter (and its link, if",
-  "present) naturally into the message. Do not invent facts not in the profile.",
+  "Lead with the strongest matching substance. Draw concrete proof from the",
+  "profile — any of: a Work Example (weave in its one-hitter, and its link if",
+  "present), a Skill with its evidence, or a Resume highlight (a specific stat or",
+  "company). Use only genuinely relevant proof — one or two points is usually",
+  "plenty. Do not invent facts not in the profile.",
   "",
   "Output ONLY a JSON object, no prose, no markdown fences:",
   '{"message": string, "insertedExample": {"oneHitter": string, "link"?: string} | null}.',
   "insertedExample is the Work Example you used, or null if you used none.",
 ].join("\n");
 
-export function buildOutreachUserPrompt(input: OutreachGeneratorInput) {
+// Split the outreach prompt into the per-user-stable profile.md (cacheable across every
+// message the user generates) and the per-message job + contact tail. Keeping them apart
+// lets the model call cache the profile prefix so a burst of outreach pays cache-read
+// rates on it — no message reuse, every message still freshly generated.
+export function buildOutreachPromptParts(input: OutreachGeneratorInput) {
   const contactLine = [
     input.contact.name ? `Name: ${input.contact.name}` : undefined,
     `Role: ${input.contact.role}`,
     input.contact.seniority ? `Seniority: ${input.contact.seniority}` : undefined,
   ].filter(Boolean).join("\n");
-  return [
+  const cachePrefix = [
     "## Profile",
     input.profileMarkdown.trim(),
-    "",
+  ].join("\n");
+  const tail = [
     "## Job",
     `Title: ${input.job.title}`,
     `Company: ${input.job.company}`,
@@ -82,6 +92,12 @@ export function buildOutreachUserPrompt(input: OutreachGeneratorInput) {
     "## Contact",
     contactLine,
   ].join("\n");
+  return { cachePrefix, tail };
+}
+
+export function buildOutreachUserPrompt(input: OutreachGeneratorInput) {
+  const { cachePrefix, tail } = buildOutreachPromptParts(input);
+  return `${cachePrefix}\n\n${tail}`;
 }
 
 function extractJsonObject(raw: string): string | undefined {
@@ -102,7 +118,7 @@ function parseInsertedExample(value: unknown): OutreachInsertedExample | null {
   return link ? { oneHitter, link } : { oneHitter };
 }
 
-const defaultCallModel: OutreachModelCall = async ({ system, user }) => {
+const defaultCallModel: OutreachModelCall = async ({ system, user, cachePrefix }) => {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     console.info("[llm:outreach] skipped: no ANTHROPIC_API_KEY");
@@ -111,11 +127,20 @@ const defaultCallModel: OutreachModelCall = async ({ system, user }) => {
   try {
     const { default: Anthropic } = await import("@anthropic-ai/sdk");
     const client = new Anthropic({ apiKey, timeout: 30_000, maxRetries: 1 });
+    // Cache the profile.md prefix (system + profile are contiguous in the prompt prefix,
+    // so one breakpoint on the profile block caches both). Job/contact follow uncached.
+    // Note: Opus 4.8 only caches a >=4096-token prefix; smaller profiles silently no-op.
+    const content = cachePrefix
+      ? [
+          { type: "text" as const, text: cachePrefix, cache_control: { type: "ephemeral" as const } },
+          { type: "text" as const, text: user },
+        ]
+      : user;
     const response = await client.messages.create({
       model: "claude-opus-4-8",
       max_tokens: 1024,
       system,
-      messages: [{ role: "user", content: user }],
+      messages: [{ role: "user", content }],
     });
     const textBlock = response.content.find((block) => block.type === "text");
     return textBlock && "text" in textBlock ? textBlock.text : undefined;
@@ -131,7 +156,8 @@ export async function generateOutreachMessage(
   dependencies: OutreachGeneratorDependencies = {},
 ): Promise<OutreachMessage | undefined> {
   const callModel = dependencies.callModel ?? defaultCallModel;
-  const raw = await callModel({ system: systemPrompt, user: buildOutreachUserPrompt(input) });
+  const { cachePrefix, tail } = buildOutreachPromptParts(input);
+  const raw = await callModel({ system: systemPrompt, user: tail, cachePrefix });
   if (!raw) return undefined;
   const jsonText = extractJsonObject(raw);
   if (!jsonText) return undefined;

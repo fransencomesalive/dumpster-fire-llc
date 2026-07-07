@@ -210,6 +210,9 @@ export function generateCandidateProfileMarkdown(
         `### ${resume.name}`,
         "",
         line("Parsing quality", resume.parsingQuality),
+        "Highlights (stats / companies you can quote):",
+        list(resume.highlights),
+        "",
         "Strengths:",
         list(resume.strengths),
         "",
@@ -279,15 +282,10 @@ export function generateCandidateProfileMarkdown(
     skillOverclaim || "- None captured",
     "",
     neverSound || "Never sound like this:\n\nNo anti-pattern samples captured.",
-    "",
-    "## Profile Quality",
-    "",
-    line("Status", aggregate.profileQuality?.status ?? profile.status),
-    "Incomplete reasons:",
-    list(aggregate.profileQuality?.incompleteReasons),
-    "",
-    "Weak fields:",
-    list(aggregate.profileQuality?.weakFields),
+    // Profile Quality (weak fields / incomplete reasons) is internal QA metadata and is
+    // deliberately NOT rendered here — the compiled profile.md feeds outreach + matching,
+    // which should never see completion diagnostics. Quality lives in the profile_quality
+    // table, surfaced via profileQuality on the aggregate.
   ].filter((section) => section !== "").join("\n");
 
   return {

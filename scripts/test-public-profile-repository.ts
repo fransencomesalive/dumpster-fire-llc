@@ -120,6 +120,7 @@ function rows() {
       name: "Program Resume",
       file_url: "https://files.example/resume.pdf",
       parsed_text: "Program leadership.",
+      highlights: ["Cut release cycle time 40% at Acme Robotics"],
       strengths: ["Program leadership"],
       gaps: ["No deep engineering management"],
       use_when: ["Program roles"],
