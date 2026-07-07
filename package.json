@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "test:public-jobs": "node scripts/test-public-jobs-repository.mjs",
-    "test:public-export": "node scripts/test-public-profile-export.mjs"
+    "test:public-export": "node scripts/test-public-profile-export.mjs",
+    "test:public-regeneration": "node scripts/test-public-profile-regeneration.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.106.0",

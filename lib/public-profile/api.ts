@@ -705,6 +705,20 @@ function outreachJobFromPublicJob(job: PublicJobRecord): OutreachJob {
   };
 }
 
+// The compiled profile.md (outreach + voice) is regenerated on demand, not on every
+// section save. A profile is stale when its structured data was edited after the last
+// markdown generation. Every section persist bumps candidate_profiles.updated_at, and
+// regeneration sets updated_at and markdown_generated_at to the same instant, so a strict
+// `updatedAt > markdownGeneratedAt` is a reliable, migration-free staleness signal. A
+// profile that has never been generated is treated as stale.
+export function isProfileStale(profile: { updatedAt: string; markdownGeneratedAt?: string }): boolean {
+  if (!profile.markdownGeneratedAt) return true;
+  const updated = Date.parse(profile.updatedAt);
+  const generated = Date.parse(profile.markdownGeneratedAt);
+  if (!Number.isFinite(updated) || !Number.isFinite(generated)) return true;
+  return updated > generated;
+}
+
 function profileIncompleteResponse(aggregate: CandidateProfileAggregate, profileQuality: ReturnType<typeof evaluateCandidateProfileQuality>, action: string) {
   return json({
     error: `A complete profile is required before ${action}.`,
@@ -1556,12 +1570,27 @@ export async function handlePublicProfilePursuitOutreachRequest(
   if (profileQuality.status !== "complete") {
     return profileIncompleteResponse(aggregate, profileQuality, "generating outreach");
   }
-  const profileMarkdown = aggregate.profile.generatedMarkdown?.trim();
+  let profileMarkdown = aggregate.profile.generatedMarkdown?.trim();
   if (!profileMarkdown) {
     return json({
       error: "Complete and generate your profile before generating outreach.",
       status: "profile_incomplete",
     }, { status: 409 });
+  }
+
+  // Lazily refresh the compiled profile.md if the candidate edited their profile after the
+  // last generation, so outreach never runs against stale content. Invisible to the user;
+  // the regeneration cost is only paid here, once, when it is actually needed.
+  if (isProfileStale(aggregate.profile)) {
+    const regenerateProfile = options.regenerateProfile ?? regeneratePublicProfileForUser;
+    const regenerated = await regenerateProfile(repositoryRequest, session.userId, {
+      generatedAt,
+      changeSummary: "Refreshed before outreach after profile edits.",
+    });
+    if (regenerated.status === "regenerated") {
+      const refreshed = regenerated.generation.aggregate.profile.generatedMarkdown?.trim();
+      if (refreshed) profileMarkdown = refreshed;
+    }
   }
 
   const loadPursuit = options.loadPursuit ?? loadPursuitByIdForUser;
