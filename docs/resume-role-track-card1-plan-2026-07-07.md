@@ -60,10 +60,24 @@ Date: 2026-07-07 (Randall + Claude). Single source of truth for this workstream.
    `roleTrackId` to each (migration + types + repository + sections + UI + chips).
    Outreach already has per-track rules. Bigger; self-contained after Card 1.
 
-## Open sub-questions to confirm before/while building Card 1
+## RESOLVED (Randall, 2026-07-07 session 2) — do not re-open
 
-- `fileUrl` is currently required for résumé completion but there's no stored file in
-  scan-and-discard — recommend making it optional (a plain link), not required.
-- Where the Role Track's rich fields (positioning, signals, titles…) live in Card 1 —
-  the selector picks/creates the track; the rich editor for the active track sits on
-  Card 1. Confirm layout with Randall against the canvas card.
+These were settled last session and re-confirmed; recorded here so no future session
+re-asks them. **The approved Claude Design card + this doc are the source of truth — read
+them before touching the UI; do not re-litigate the below.**
+
+- **`fileUrl` is NOT a real requirement.** We do not store the PDF: scan → extract →
+  save to profile.md (structured for message outreach + job matching). Relax the
+  `fileUrl` requirement in `profile-quality.ts` so a scanned/pasted-only résumé can
+  complete. Verified in code: `handleResumeScanRequest` (`api.ts`) reads the PDF into an
+  in-memory buffer and returns only the extract — the file is never persisted.
+- **Card 1 = one card: Role Track selector + the active track's fields + its résumé.**
+  The user *creates or selects* a Role Track, then uploads the résumé for that track. The
+  résumé upload extracts everything needed for profile.md + matching + message generation
+  (highlights routed per lane via `renderRoleTrack` in `profile-markdown.ts`). The track's
+  rich fields are user-filled inputs that live on Card 1 below the selector; **creating a
+  new track pre-populates from the last saved track** (duplicate-and-edit) — the user then
+  adjusts what differs for the new lane.
+- **Chips:** once a Role Track is active, every per-track surface (Work Examples, Skills,
+  Fit Signals, Outreach — and any file/text input) shows the active-track chip so the user
+  knows which lane they're populating.

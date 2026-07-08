@@ -1443,3 +1443,352 @@
     position: static;
   }
 }
+
+/* ============================================================
+   Card 1 — Role Track + Résumé (2026-07-07). Ported from the
+   approved DS card onboarding-resume-upload.html. Global tokens
+   only; no halftone. Selector (name input ↔ dropdown), active-track
+   chip, PDF scan dropzone, ok/error notes.
+   ============================================================ */
+
+.formHeaderMeta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+/* Card 1 header — mirrors the DS card .cardHead: h3 title + step caption / chip. */
+.cardHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+
+.cardTitle {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  color: var(--c-ink);
+}
+
+.step {
+  font-family: var(--font-subhead);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 0.72rem;
+  color: var(--c-ink-faint);
+}
+
+.fileMeta {
+  color: var(--c-ink-faint);
+  font-family: var(--font-body);
+  font-size: 0.86rem;
+}
+
+/* Active-track chip — teal = the lane you're populating. */
+.trackChip {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-subhead);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 0.74rem;
+  line-height: 1;
+  color: var(--c-paper);
+  background-color: var(--c-teal);
+  border: var(--line-reg) solid var(--c-ink);
+  border-radius: var(--radius-pill);
+  padding: 6px 11px;
+}
+
+.trackChipDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--c-paper);
+}
+
+.field {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.fieldLabel {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 1.02rem;
+  color: var(--c-ink);
+}
+
+.subhint {
+  font-size: 0.86rem;
+  color: var(--c-ink-faint);
+}
+
+.linkButton {
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  color: var(--c-teal);
+  font-weight: 800;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+/* Role-track name input (first run / create). */
+.trackInput {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 48px;
+  font-family: var(--font-ui);
+  font-size: 1.02rem;
+  color: var(--c-ink);
+  background: var(--c-paper);
+  border: var(--line-reg) solid var(--c-ink);
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+  box-shadow: inset 1px 1px 0 rgba(36, 31, 26, 0.08);
+}
+
+.trackInput:focus {
+  outline: 3px solid color-mix(in srgb, var(--c-teal) 28%, transparent);
+  outline-offset: 1px;
+}
+
+.trackInputPlaceholder {
+  font-style: italic;
+  color: var(--c-ink-faint);
+}
+
+/* Dropdown (saved-track) state. */
+.selectRow {
+  display: grid;
+  gap: 10px;
+}
+
+.selectFace {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 48px;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1.02rem;
+  color: var(--c-ink);
+  background: var(--c-paper);
+  border: var(--line-reg) solid var(--c-ink);
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+  cursor: pointer;
+}
+
+.selectCaret {
+  color: var(--c-ink-faint);
+  font-size: 1.1rem;
+}
+
+.selectMenu {
+  border: var(--line-reg) solid var(--c-ink);
+  border-radius: var(--radius-md);
+  background: var(--c-paper);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+}
+
+.selectOpt {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 12px 14px;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1rem;
+  color: var(--c-ink);
+  background: var(--c-paper);
+  border: 0;
+  border-bottom: var(--line-hair) solid var(--c-ink);
+  cursor: pointer;
+}
+
+.selectOpt:last-child {
+  border-bottom: 0;
+}
+
+.selectOptSel {
+  background-color: color-mix(in srgb, var(--c-teal) 14%, var(--c-paper));
+}
+
+.selectOptNew {
+  color: var(--c-teal);
+  font-style: italic;
+  background-color: color-mix(in srgb, var(--c-teal) 6%, var(--c-paper));
+}
+
+/* Résumé PDF scan dropzone (PDF only, scanned once, never stored). */
+.hiddenFileInput {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
+
+.drop {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  border: var(--line-reg) dashed var(--c-ink);
+  border-radius: var(--radius-md);
+  background: var(--c-paper);
+  padding: 16px 18px;
+}
+
+.dropErr {
+  border-style: solid;
+  border-left: 6px solid var(--c-tomato);
+}
+
+.pdfTag {
+  flex: none;
+  font-family: var(--font-subhead);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 0.72rem;
+  color: var(--c-paper);
+  background: var(--c-ink);
+  border-radius: var(--radius-sm);
+  padding: 5px 9px;
+}
+
+.dropMain {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.dropTitle {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1.02rem;
+  color: var(--c-ink);
+}
+
+.dropHint {
+  font-size: 0.86rem;
+  color: var(--c-ink-faint);
+}
+
+.fileChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 0.98rem;
+  color: var(--c-ink);
+  min-width: 0;
+  word-break: break-word;
+}
+
+.chooseBtn {
+  margin-left: auto;
+  flex: none;
+  min-height: 44px;
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 1rem;
+  color: var(--c-paper);
+  background-color: var(--c-teal);
+  border: var(--line-bold) solid var(--c-ink);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
+  padding: 0 20px;
+  cursor: pointer;
+}
+
+.chooseBtn:disabled {
+  cursor: not-allowed;
+  filter: grayscale(0.3);
+  opacity: 0.55;
+}
+
+.okNote,
+.errNote {
+  border: var(--line-reg) solid var(--c-ink);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  font-size: 0.92rem;
+  color: var(--c-ink-soft);
+}
+
+.okNote {
+  background-color: color-mix(in srgb, var(--c-teal) 12%, var(--c-paper));
+  border-left: 6px solid var(--c-teal);
+}
+
+.errNote {
+  background-color: color-mix(in srgb, var(--c-tomato) 10%, var(--c-paper));
+  border-left: 6px solid var(--c-tomato);
+}
+
+.okNote b,
+.errNote b {
+  color: var(--c-ink);
+  font-family: var(--font-display);
+  font-weight: 900;
+}
+
+.resumeTextArea {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 96px;
+  resize: vertical;
+  font-family: var(--font-ui);
+  font-size: 0.98rem;
+  color: var(--c-ink);
+  background: var(--c-paper);
+  border: var(--line-reg) solid var(--c-ink);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  box-shadow: inset 1px 1px 0 rgba(36, 31, 26, 0.08);
+}
+
+.resumeTextArea:focus {
+  outline: 3px solid color-mix(in srgb, var(--c-teal) 28%, transparent);
+  outline-offset: 1px;
+}
+
+.resumeTextArea::placeholder {
+  color: var(--c-ink-faint);
+}
+
+.helper {
+  font-size: 0.88rem;
+  color: var(--c-ink-soft);
+}
+
+.helper b {
+  color: var(--c-ink);
+  font-weight: 800;
+}
+
+.lockNote {
+  color: var(--c-ink-faint);
+  font-size: 0.9rem;
+  font-style: italic;
+}

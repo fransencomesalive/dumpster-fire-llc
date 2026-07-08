@@ -18,6 +18,12 @@ export type PublicProfileOnboardingSection = {
 };
 
 export const publicProfileOnboardingSections: PublicProfileOnboardingSection[] = [{
+  key: "roleTracks",
+  label: "Role Track & Résumé",
+  description: "The lane you're pursuing and the résumé that backs it. Onboarding opens here.",
+  path: "/api/public-profile/role-tracks",
+  required: true,
+}, {
   key: "identitySearch",
   label: "Identity and Search Basics",
   description: "Name, location, compensation, and search preferences.",
@@ -29,18 +35,6 @@ export const publicProfileOnboardingSections: PublicProfileOnboardingSection[] =
   description: "What makes a role a strong fit and what makes it a weak one.",
   path: "/api/public-profile/fit-signals",
   required: false,
-}, {
-  key: "roleTracks",
-  label: "Role Tracks",
-  description: "The specific roles you can credibly pursue.",
-  path: "/api/public-profile/role-tracks",
-  required: true,
-}, {
-  key: "resumes",
-  label: "Resume Uploads",
-  description: "Parsed resumes and attachment to Role Tracks.",
-  path: "/api/public-profile/resumes",
-  required: true,
 }, {
   key: "workExamples",
   label: "Work Examples",
