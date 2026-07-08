@@ -119,25 +119,35 @@ export function evaluateCandidateProfileQuality(
     "At least one employment type is required.",
   );
 
-  // Card 1 (Role Track + Résumé) is pass/fail: the user names a lane and attaches a résumé
-  // whose text was scanned or pasted. The lane's matching/outreach substance (titles,
-  // positioning, signals, do-not-overclaim, résumé strengths/gaps) is DERIVED from the
-  // résumé extract for message generation + matching — it is not hand-entered on Card 1, so
-  // it does not gate completion.
   requireCondition(accumulator, "roleTracks", aggregate.roleTracks.length > 0, "At least one Role Track is required.");
   for (const track of aggregate.roleTracks) {
     const prefix = `roleTracks.${track.id}`;
     requireCondition(accumulator, `${prefix}.name`, hasText(track.name), `Role Track ${track.id} needs a name.`);
-    requireCondition(accumulator, `${prefix}.resumeIds`, track.resumeIds.some((resumeId) => resumeIds.has(resumeId)), `Role Track ${track.name || track.id} needs a résumé.`);
+    requireCondition(accumulator, `${prefix}.description`, hasText(track.description), `Role Track ${track.name || track.id} needs a description.`);
+    requireCondition(accumulator, `${prefix}.corePositioning`, hasText(track.corePositioning), `Role Track ${track.name || track.id} needs core positioning.`);
+    requireCondition(accumulator, `${prefix}.targetTitles`, hasItems(track.targetTitles), `Role Track ${track.name || track.id} needs target titles.`);
+    requireCondition(accumulator, `${prefix}.keyResponsibilities`, hasItems(track.keyResponsibilities), `Role Track ${track.name || track.id} needs key responsibilities.`);
+    requireCondition(accumulator, `${prefix}.requiredExperiencePatterns`, hasItems(track.requiredExperiencePatterns), `Role Track ${track.name || track.id} needs required experience patterns.`);
+    requireCondition(accumulator, `${prefix}.strongJobSignals`, hasItems(track.strongJobSignals), `Role Track ${track.name || track.id} needs strong job signals.`);
+    requireCondition(accumulator, `${prefix}.weakJobSignals`, hasItems(track.weakJobSignals), `Role Track ${track.name || track.id} needs weak job signals.`);
+    requireCondition(accumulator, `${prefix}.mismatchSignals`, hasItems(track.mismatchSignals), `Role Track ${track.name || track.id} needs mismatch signals.`);
+    requireCondition(accumulator, `${prefix}.resumeIds`, track.resumeIds.some((resumeId) => resumeIds.has(resumeId)), `Role Track ${track.name || track.id} must be attached to a resume.`);
+    requireCondition(accumulator, `${prefix}.outreachAngle`, hasText(track.outreachAngle), `Role Track ${track.name || track.id} needs an outreach angle.`);
+    requireCondition(accumulator, `${prefix}.doNotOverclaim`, hasItems(track.doNotOverclaim), `Role Track ${track.name || track.id} needs do-not-overclaim guidance.`);
   }
 
   requireCondition(accumulator, "resumes", aggregate.resumes.length > 0, "At least one resume is required.");
   for (const resume of aggregate.resumes) {
     const prefix = `resumes.${resume.id}`;
-    // Scan-and-discard: completion rests on the extracted/pasted text (no stored file), and
-    // the résumé being tied to a Role Track. Parsing quality is not a completion gate.
-    requireCondition(accumulator, `${prefix}.parsedText`, hasText(resume.parsedText), `Resume ${resume.name || resume.id} needs résumé text.`);
+    requireCondition(accumulator, `${prefix}.name`, hasText(resume.name), `Resume ${resume.id} needs a name.`);
+    requireCondition(accumulator, `${prefix}.fileUrl`, hasText(resume.fileUrl), `Resume ${resume.name || resume.id} needs a file URL.`);
+    requireCondition(accumulator, `${prefix}.parsedText`, hasText(resume.parsedText), `Resume ${resume.name || resume.id} needs parsed text.`);
     requireCondition(accumulator, `${prefix}.associatedRoleTrackIds`, resume.associatedRoleTrackIds.some((trackId) => roleTrackIds.has(trackId)), `Resume ${resume.name || resume.id} must be attached to a Role Track.`);
+    requireCondition(accumulator, `${prefix}.strengths`, hasItems(resume.strengths), `Resume ${resume.name || resume.id} needs strengths.`);
+    requireCondition(accumulator, `${prefix}.gaps`, hasItems(resume.gaps), `Resume ${resume.name || resume.id} needs gaps.`);
+    requireCondition(accumulator, `${prefix}.useWhen`, hasItems(resume.useWhen), `Resume ${resume.name || resume.id} needs use-when guidance.`);
+    requireCondition(accumulator, `${prefix}.avoidWhen`, hasItems(resume.avoidWhen), `Resume ${resume.name || resume.id} needs avoid-when guidance.`);
+    requireCondition(accumulator, `${prefix}.parsingQuality`, resume.parsingQuality === "complete", `Resume ${resume.name || resume.id} parsing quality must be complete.`);
   }
 
   requireCondition(accumulator, "workExamples", aggregate.workExamples.length > 0, "At least one Work Example is required.");
