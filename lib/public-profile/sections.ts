@@ -32,13 +32,12 @@ export type IdentitySearchSection = {
   fullName: string;
   preferredName?: string;
   location: string;
-  linkedInUrl?: string;
-  portfolioUrl?: string;
-  personalWebsiteUrl?: string;
   email?: string;
   remotePreference: RemotePreference;
   targetCompensationMin?: number;
   targetCompensationPreferred?: number;
+  targetCompensationHourlyMin?: number;
+  targetCompensationHourlyPreferred?: number;
   employmentTypes: EmploymentType[];
   targetIndustries: string[];
   avoidIndustries: string[];
@@ -402,9 +401,6 @@ const stringFields = [
   "fullName",
   "preferredName",
   "location",
-  "linkedInUrl",
-  "portfolioUrl",
-  "personalWebsiteUrl",
   "email",
 ] as const;
 
@@ -417,9 +413,6 @@ const stringListFields = [
 
 const optionalStringFields = new Set<keyof IdentitySearchSection>([
   "preferredName",
-  "linkedInUrl",
-  "portfolioUrl",
-  "personalWebsiteUrl",
   "email",
 ]);
 
@@ -579,11 +572,25 @@ function cleanStringList(value: unknown) {
   ));
 }
 
-function cleanOptionalNumber(value: unknown) {
+// Compensation inputs tolerate how people actually type money: "150,000",
+// "$150k", "72.50" all parse. Yearly rounds to whole dollars; hourly keeps cents.
+function cleanCompensationNumber(value: unknown, options: { decimals?: boolean } = {}) {
   if (value === null || value === undefined || value === "") return undefined;
-  const parsed = typeof value === "number" ? value : Number(value);
+  let parsed: number;
+  if (typeof value === "number") {
+    parsed = value;
+  } else if (typeof value === "string") {
+    const text = value.trim().toLowerCase().replace(/[$,\s]/g, "");
+    if (!text) return undefined;
+    const thousands = text.endsWith("k");
+    const numeric = Number(thousands ? text.slice(0, -1) : text);
+    if (!Number.isFinite(numeric)) return undefined;
+    parsed = thousands ? numeric * 1000 : numeric;
+  } else {
+    return undefined;
+  }
   if (!Number.isFinite(parsed) || parsed < 0) return undefined;
-  return Math.round(parsed);
+  return options.decimals ? Math.round(parsed * 100) / 100 : Math.round(parsed);
 }
 
 function optionalString(value: string | undefined) {
@@ -612,13 +619,12 @@ export function identitySearchSection(aggregate: CandidateProfileAggregate): Ide
     fullName: aggregate.profile.fullName,
     preferredName: aggregate.profile.preferredName,
     location: aggregate.profile.location,
-    linkedInUrl: aggregate.profile.linkedInUrl,
-    portfolioUrl: aggregate.profile.portfolioUrl,
-    personalWebsiteUrl: aggregate.profile.personalWebsiteUrl,
     email: aggregate.profile.email,
     remotePreference: aggregate.profile.remotePreference,
     targetCompensationMin: aggregate.profile.targetCompensationMin,
     targetCompensationPreferred: aggregate.profile.targetCompensationPreferred,
+    targetCompensationHourlyMin: aggregate.profile.targetCompensationHourlyMin,
+    targetCompensationHourlyPreferred: aggregate.profile.targetCompensationHourlyPreferred,
     employmentTypes: aggregate.preferences?.employmentTypes ?? [],
     targetIndustries: aggregate.preferences?.targetIndustries ?? [],
     avoidIndustries: aggregate.preferences?.avoidIndustries ?? [],
@@ -842,27 +848,31 @@ export function parseIdentitySearchSectionPatch(input: unknown): ParseIdentitySe
     }
   }
 
-  if ("targetCompensationMin" in source) {
-    const value = cleanOptionalNumber(source.targetCompensationMin);
-    if (source.targetCompensationMin !== null && source.targetCompensationMin !== undefined && source.targetCompensationMin !== "" && value === undefined) {
+  const yearlyCompensationFields = ["targetCompensationMin", "targetCompensationPreferred"] as const;
+  for (const field of yearlyCompensationFields) {
+    if (!(field in source)) continue;
+    const value = cleanCompensationNumber(source[field]);
+    if (source[field] !== null && source[field] !== undefined && source[field] !== "" && value === undefined) {
       issues.push({
-        field: "targetCompensationMin",
-        message: "targetCompensationMin must be a non-negative number.",
+        field,
+        message: `${field} must be a non-negative amount (e.g. 150000, "150,000", "$150k").`,
       });
     } else {
-      patch.targetCompensationMin = value;
+      patch[field] = value;
     }
   }
 
-  if ("targetCompensationPreferred" in source) {
-    const value = cleanOptionalNumber(source.targetCompensationPreferred);
-    if (source.targetCompensationPreferred !== null && source.targetCompensationPreferred !== undefined && source.targetCompensationPreferred !== "" && value === undefined) {
+  const hourlyCompensationFields = ["targetCompensationHourlyMin", "targetCompensationHourlyPreferred"] as const;
+  for (const field of hourlyCompensationFields) {
+    if (!(field in source)) continue;
+    const value = cleanCompensationNumber(source[field], { decimals: true });
+    if (source[field] !== null && source[field] !== undefined && source[field] !== "" && value === undefined) {
       issues.push({
-        field: "targetCompensationPreferred",
-        message: "targetCompensationPreferred must be a non-negative number.",
+        field,
+        message: `${field} must be a non-negative hourly amount (e.g. 72.50, "$85").`,
       });
     } else {
-      patch.targetCompensationPreferred = value;
+      patch[field] = value;
     }
   }
 
@@ -1998,13 +2008,12 @@ export function applyIdentitySearchSectionPatch(
       fullName: patch.fullName ?? aggregate.profile.fullName,
       preferredName: "preferredName" in patch ? patch.preferredName : aggregate.profile.preferredName,
       location: patch.location ?? aggregate.profile.location,
-      linkedInUrl: "linkedInUrl" in patch ? patch.linkedInUrl : aggregate.profile.linkedInUrl,
-      portfolioUrl: "portfolioUrl" in patch ? patch.portfolioUrl : aggregate.profile.portfolioUrl,
-      personalWebsiteUrl: "personalWebsiteUrl" in patch ? patch.personalWebsiteUrl : aggregate.profile.personalWebsiteUrl,
       email: "email" in patch ? patch.email : aggregate.profile.email,
       remotePreference: patch.remotePreference ?? aggregate.profile.remotePreference,
       targetCompensationMin: "targetCompensationMin" in patch ? patch.targetCompensationMin : aggregate.profile.targetCompensationMin,
       targetCompensationPreferred: "targetCompensationPreferred" in patch ? patch.targetCompensationPreferred : aggregate.profile.targetCompensationPreferred,
+      targetCompensationHourlyMin: "targetCompensationHourlyMin" in patch ? patch.targetCompensationHourlyMin : aggregate.profile.targetCompensationHourlyMin,
+      targetCompensationHourlyPreferred: "targetCompensationHourlyPreferred" in patch ? patch.targetCompensationHourlyPreferred : aggregate.profile.targetCompensationHourlyPreferred,
       updatedAt,
     },
     preferences: {

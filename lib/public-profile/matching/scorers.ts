@@ -53,6 +53,7 @@ export const CATEGORY_WEIGHTS: Record<MatchCategory, number> = {
   compensation: 10,
   location: 8,
   company: 5,
+  employment_type: 4,
   posting_freshness: 3,
   apply_method: 2,
 };
@@ -321,7 +322,29 @@ export function scoreIndustryFit(profile: CandidateProfileAggregate, job: MatchJ
   return categoryFit("industry", 0.5, [], ["Industry fit is unclear."]);
 }
 
-function parseSalaryAmounts(text: string) {
+// Hourly↔yearly normalization basis: 40h × 52wk.
+const HOURS_PER_YEAR = 2080;
+
+// Returns yearly-normalized amounts. Hourly postings ("$45/hr", "45 per hour",
+// "hourly") are detected and converted so comparisons always happen in yearly USD.
+export function parseSalaryAmounts(text: string) {
+  const hourlyContext = /(?:\/\s*(?:hr|hour)\b|\bper\s+hour\b|\bhourly\b)/i.test(text);
+  if (hourlyContext) {
+    const candidates = Array.from(text.matchAll(/(\$)?\s*(\d{1,3}(?:\.\d{1,2})?)\b/g))
+      .map((match) => ({ dollar: Boolean(match[1]), value: Number(match[2]) }))
+      .filter((entry) => Number.isFinite(entry.value) && entry.value >= 5 && entry.value <= 500);
+    // Prefer $-prefixed figures so "40 hours … $45/hr" reads the rate, not the hours.
+    const rates = (candidates.some((entry) => entry.dollar)
+      ? candidates.filter((entry) => entry.dollar)
+      : candidates
+    ).map((entry) => entry.value);
+    if (rates.length > 0) {
+      return {
+        min: Math.round(Math.min(...rates) * HOURS_PER_YEAR),
+        max: Math.round(Math.max(...rates) * HOURS_PER_YEAR),
+      };
+    }
+  }
   const amounts = Array.from(text.matchAll(/\$?\s*(\d{2,3}(?:,\d{3})?|\d{2,3})\s*(k)?/gi))
     .map((match) => {
       const raw = Number(match[1].replace(/,/g, ""));
@@ -337,8 +360,15 @@ function parseSalaryAmounts(text: string) {
 }
 
 export function scoreCompensationFit(profile: CandidateProfileAggregate, job: MatchJob): CategoryFit {
-  const targetMin = profile.profile.targetCompensationMin;
-  const targetPreferred = profile.profile.targetCompensationPreferred;
+  // Profile targets normalize to yearly: yearly wins when both forms are set,
+  // hourly × 2080 fills in when only hourly is set. Job amounts are already
+  // yearly-normalized by parseSalaryAmounts.
+  const hourlyMin = profile.profile.targetCompensationHourlyMin;
+  const hourlyPreferred = profile.profile.targetCompensationHourlyPreferred;
+  const targetMin = profile.profile.targetCompensationMin
+    ?? (hourlyMin ? Math.round(hourlyMin * HOURS_PER_YEAR) : undefined);
+  const targetPreferred = profile.profile.targetCompensationPreferred
+    ?? (hourlyPreferred ? Math.round(hourlyPreferred * HOURS_PER_YEAR) : undefined);
   const parsed = parseSalaryAmounts(job.compensationText ?? "");
   const jobMin = job.compensationMin ?? parsed.min;
   const jobMax = job.compensationMax ?? parsed.max;
@@ -362,6 +392,36 @@ export function scoreCompensationFit(profile: CandidateProfileAggregate, job: Ma
   }
 
   return categoryFit("compensation", 0.78, ["Posted compensation appears workable."]);
+}
+
+// Soft signal only — employment type nudges the score, never hard-filters
+// (matching stays a spectrum; poor-fit jobs still surface with context).
+export function scoreEmploymentTypeFit(profile: CandidateProfileAggregate, job: MatchJob): CategoryFit {
+  const selected = profile.preferences?.employmentTypes ?? [];
+  if (selected.length === 0) {
+    return categoryFit("employment_type", 0.65, ["No employment-type preference is set."]);
+  }
+  const jobType = normalize(job.employmentType ?? "");
+  if (!jobType) {
+    return categoryFit("employment_type", 0.55, [], ["Employment type is not posted."]);
+  }
+  const jobCondensed = jobType.replace(/ /g, "");
+  const matched = selected.some((type) => {
+    const label = normalize(type);
+    if (jobType.includes(label) || jobCondensed.includes(label.replace(/ /g, ""))) return true;
+    if (label === "contract" && jobCondensed.includes("contractor")) return true;
+    if (label === "freelance" && (jobCondensed.includes("contract") || jobCondensed.includes("freelanc"))) return true;
+    return false;
+  });
+  if (matched) {
+    return categoryFit("employment_type", 0.9, [`Employment type (${job.employmentType}) matches your preference.`]);
+  }
+  return categoryFit(
+    "employment_type",
+    0.35,
+    [],
+    [`Employment type (${job.employmentType}) differs from your selected types.`],
+  );
 }
 
 function remoteExceptionFor(job: MatchJob, exceptions: CompanyRemoteException[]) {
@@ -468,6 +528,7 @@ export function scoreAllCategories(input: {
     scoreResumeFit(input.profile, input.job),
     scoreIndustryFit(input.profile, input.job),
     scoreCompensationFit(input.profile, input.job),
+    scoreEmploymentTypeFit(input.profile, input.job),
     scoreLocationFit(input.profile, input.job, input.remoteExceptions),
     scoreCompanyFit(input.profile, input.job),
     scorePostingFreshness(input.job, input.evaluatedAt),

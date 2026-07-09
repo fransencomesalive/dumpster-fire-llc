@@ -31,13 +31,12 @@ type IdentitySearchSection = {
   fullName: string;
   preferredName?: string;
   location: string;
-  linkedInUrl?: string;
-  portfolioUrl?: string;
-  personalWebsiteUrl?: string;
   email?: string;
   remotePreference: RemotePreference;
   targetCompensationMin?: number;
   targetCompensationPreferred?: number;
+  targetCompensationHourlyMin?: number;
+  targetCompensationHourlyPreferred?: number;
   employmentTypes: string[];
   targetIndustries: string[];
   avoidIndustries: string[];
@@ -314,12 +313,25 @@ function textToList(value: string) {
   return value.split(",").map((entry) => entry.trim()).filter(Boolean);
 }
 
-function optionalNumber(value: string) {
-  const trimmed = value.trim();
-  if (!trimmed) return undefined;
-  const parsed = Number(trimmed);
-  return Number.isFinite(parsed) ? parsed : undefined;
+// Mirrors the server's tolerant compensation parsing: "150,000", "$150k",
+// "72.50" all read correctly. Yearly rounds to dollars; hourly keeps cents.
+function compensationNumber(value: string, options: { decimals?: boolean } = {}) {
+  const text = value.trim().toLowerCase().replace(/[$,\s]/g, "");
+  if (!text) return undefined;
+  const thousands = text.endsWith("k");
+  const numeric = Number(thousands ? text.slice(0, -1) : text);
+  if (!Number.isFinite(numeric) || numeric < 0) return undefined;
+  const parsed = thousands ? numeric * 1000 : numeric;
+  return options.decimals ? Math.round(parsed * 100) / 100 : Math.round(parsed);
 }
+
+// Employment-type chips (approved Identity & Search card): tap to toggle.
+// "Contract / freelance" is one chip covering both backend values.
+const employmentTypeChips: Array<{ label: string; values: string[] }> = [
+  { label: "Part-time", values: ["part_time"] },
+  { label: "Full-time", values: ["full_time"] },
+  { label: "Contract / freelance", values: ["contract", "freelance"] },
+];
 
 function countWords(value: string) {
   const trimmed = value.trim();
@@ -573,6 +585,8 @@ type CataloguePickerProps = {
   accessToken: string;
   label: string;
   placeholder: string;
+  // Italic pre-loaded placeholder — same treatment as Card 1's track-name field.
+  italicPlaceholder?: boolean;
   disabled?: boolean;
 } & (
   | { mode: "single"; value: string; onSelect: (label: string) => void }
@@ -580,7 +594,7 @@ type CataloguePickerProps = {
 );
 
 function CataloguePicker(props: CataloguePickerProps) {
-  const { kind, accessToken, label, placeholder, disabled } = props;
+  const { kind, accessToken, label, placeholder, italicPlaceholder, disabled } = props;
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<CatalogueResult[]>([]);
   const [open, setOpen] = useState(false);
@@ -695,7 +709,7 @@ function CataloguePicker(props: CataloguePickerProps) {
       ) : null}
       <div className={styles.pickerInputWrap}>
         <input
-          className={styles.pickerInput}
+          className={`${styles.pickerInput} ${italicPlaceholder ? styles.pickerInputItalic : ""}`}
           value={query}
           placeholder={placeholder}
           disabled={disabled}
@@ -1365,6 +1379,33 @@ export default function OnboardingClient({
     };
   }
 
+  // value/onChange pair for a compensation input: raw text shows while typing
+  // ("$150k", "150,000", "72.50"), the tolerantly-parsed number feeds section state.
+  function moneyField(
+    key: string,
+    current: number | undefined,
+    onValue: (value: number | undefined) => void,
+    options: { decimals?: boolean } = {},
+  ) {
+    return {
+      value: listFieldDrafts[key] ?? (current === undefined || current === null ? "" : String(current)),
+      onChange: (event: React.ChangeEvent<HTMLInputElement>) => {
+        const raw = event.target.value;
+        setListFieldDrafts((drafts) => ({ ...drafts, [key]: raw }));
+        onValue(compensationNumber(raw, options));
+      },
+    };
+  }
+
+  // One chip can cover multiple backend values (Contract / freelance).
+  function toggleEmploymentType(values: string[]) {
+    setIdentity((current) => {
+      const on = values.some((value) => current.employmentTypes.includes(value));
+      const without = current.employmentTypes.filter((value) => !values.includes(value));
+      return { ...current, employmentTypes: on ? without : [...without, ...values] };
+    });
+  }
+
   const updateWorkExample = (id: string, patch: Partial<WorkExampleSectionItem>) =>
     setWorkExamples((items) => items.map((example) => (example.id === id ? { ...example, ...patch } : example)));
   const updateSkill = (id: string, patch: Partial<SkillsInventorySectionItem>) =>
@@ -1418,13 +1459,21 @@ export default function OnboardingClient({
 
   /* --- shared section header --- */
 
-  function sectionHeader(sectionKey: PublicProfileOnboardingSectionKey, title: string, optional = false, action?: React.ReactNode) {
+  function sectionHeader(
+    sectionKey: PublicProfileOnboardingSectionKey,
+    title: string,
+    optional = false,
+    action?: React.ReactNode,
+    // Approved Identity & Search card (2026-07-09) drops the kicker label —
+    // standing no-eyebrow rule; other sections keep theirs until redesigned.
+    eyebrow = true,
+  ) {
     const readiness = readinessBySection.get(sectionKey);
     const status = readiness?.status ?? "not_loaded";
     return (
       <div className={styles.formHeader}>
         <div>
-          <p className={styles.statusLabel}>{optional ? "Optional Section" : "Editable Section"}</p>
+          {eyebrow ? <p className={styles.statusLabel}>{optional ? "Optional Section" : "Editable Section"}</p> : null}
           <h2>{title}</h2>
         </div>
         {action ?? (
@@ -1928,7 +1977,7 @@ export default function OnboardingClient({
 
           {/* --- Identity & Search --- */}
           <article className={styles.formCard} id="career-profile-identitySearch">
-            {sectionHeader("identitySearch", "Identity & Search")}
+            {sectionHeader("identitySearch", "Identity & Search", false, undefined, false)}
             <div className={styles.formGrid}>
               <label>Full name<input value={identity.fullName} onChange={(event) => setIdentity({ ...identity, fullName: event.target.value })} /></label>
               <label>Preferred name<input value={identity.preferredName ?? ""} onChange={(event) => setIdentity({ ...identity, preferredName: event.target.value })} /></label>
@@ -1951,19 +2000,53 @@ export default function OnboardingClient({
                 <option value="hybrid_ok">Hybrid OK</option>
                 <option value="onsite_ok">Onsite OK</option>
               </select></label>
-              <label>Target compensation minimum<input inputMode="numeric" value={identity.targetCompensationMin ?? ""} onChange={(event) => setIdentity({ ...identity, targetCompensationMin: optionalNumber(event.target.value) })} /></label>
-              <label>Target compensation preferred<input inputMode="numeric" value={identity.targetCompensationPreferred ?? ""} onChange={(event) => setIdentity({ ...identity, targetCompensationPreferred: optionalNumber(event.target.value) })} /></label>
-              <label>LinkedIn URL<input value={identity.linkedInUrl ?? ""} onChange={(event) => setIdentity({ ...identity, linkedInUrl: event.target.value })} /></label>
-              <label>Portfolio URL<input value={identity.portfolioUrl ?? ""} onChange={(event) => setIdentity({ ...identity, portfolioUrl: event.target.value })} /></label>
-              <label>Personal site URL<input value={identity.personalWebsiteUrl ?? ""} onChange={(event) => setIdentity({ ...identity, personalWebsiteUrl: event.target.value })} /></label>
-              <label>Employment types<input {...listField("identity.employmentTypes", identity.employmentTypes, (values) => setIdentity({ ...identity, employmentTypes: values }))} /></label>
+              {/* Target compensation — USD; yearly AND hourly, min + preferred each,
+                  no toggle (approved Identity & Search card, decisions #3). */}
+              <div className={`${styles.fullWidth} ${styles.compGroup}`}>
+                <span className={styles.pickerLabel}>Target compensation <span className={styles.compCurrency}>USD</span></span>
+                <div className={styles.compRow}>
+                  <label><span className={styles.compCap}>Yearly · minimum</span>
+                    <input inputMode="decimal" {...moneyField("identity.compYearlyMin", identity.targetCompensationMin, (value) => setIdentity((current) => ({ ...current, targetCompensationMin: value })))} /></label>
+                  <label><span className={styles.compCap}>Yearly · preferred</span>
+                    <input inputMode="decimal" {...moneyField("identity.compYearlyPreferred", identity.targetCompensationPreferred, (value) => setIdentity((current) => ({ ...current, targetCompensationPreferred: value })))} /></label>
+                </div>
+                <div className={styles.compRow}>
+                  <label><span className={styles.compCap}>Hourly · minimum</span>
+                    <input inputMode="decimal" {...moneyField("identity.compHourlyMin", identity.targetCompensationHourlyMin, (value) => setIdentity((current) => ({ ...current, targetCompensationHourlyMin: value })), { decimals: true })} /></label>
+                  <label><span className={styles.compCap}>Hourly · preferred</span>
+                    <input inputMode="decimal" {...moneyField("identity.compHourlyPreferred", identity.targetCompensationHourlyPreferred, (value) => setIdentity((current) => ({ ...current, targetCompensationHourlyPreferred: value })), { decimals: true })} /></label>
+                </div>
+                <p className={styles.card1Helper}>Type it how you&apos;d say it — <b>&quot;150,000&quot;</b>, <b>&quot;$150k&quot;</b>, and <b>&quot;72.50&quot;</b> all read correctly. Jobs that post either form get matched against both.</p>
+              </div>
+              {/* Employment types — tap chips (approved card, decision #4). */}
+              <div className={`${styles.fullWidth} ${styles.compGroup}`}>
+                <span className={styles.pickerLabel}>Employment types</span>
+                <div className={styles.chipRow}>
+                  {employmentTypeChips.map((chip) => {
+                    const on = chip.values.some((value) => identity.employmentTypes.includes(value));
+                    return (
+                      <button
+                        key={chip.label}
+                        type="button"
+                        className={`${styles.chip} ${on ? styles.chipOn : ""}`}
+                        aria-pressed={on}
+                        disabled={!accessToken || busy}
+                        onClick={() => toggleEmploymentType(chip.values)}
+                      >
+                        {chip.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
               <div className={styles.fullWidth}>
                 <CataloguePicker
                   kind="industries"
                   mode="multi"
                   accessToken={accessToken}
                   label="Target industries"
-                  placeholder="Search industries…"
+                  placeholder="add your own, it'll match"
+                  italicPlaceholder
                   disabled={!accessToken || busy}
                   values={identity.targetIndustries}
                   onAdd={(value) => setIdentity((current) => ({ ...current, targetIndustries: [...current.targetIndustries, value] }))}

@@ -35,5 +35,12 @@ assert.doesNotMatch(generated.markdown, /Target industries:/);
 assert.doesNotMatch(generated.markdown, /Avoid industries:/);
 assert.doesNotMatch(generated.markdown, /Target company types:/);
 assert.doesNotMatch(generated.markdown, /Avoid companies:/);
+// Identity URL fields removed end-to-end (2026-07-09 remediation).
+assert.doesNotMatch(generated.markdown, /LinkedIn:|Portfolio:|Website:/);
+// Compensation renders in both forms, USD stated (locked decision #3).
+assert.match(generated.markdown, /Compensation floor \(yearly, USD\):/);
+assert.match(generated.markdown, /Preferred compensation \(yearly, USD\):/);
+assert.match(generated.markdown, /Compensation floor \(hourly, USD\):/);
+assert.match(generated.markdown, /Preferred compensation \(hourly, USD\):/);
 
 console.log("public profile markdown generation: all assertions passed");

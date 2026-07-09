@@ -55,13 +55,12 @@ type CandidateProfileRow = {
   full_name: string;
   preferred_name: string | null;
   location: string;
-  linkedin_url: string | null;
-  portfolio_url: string | null;
-  personal_website_url: string | null;
   email: string | null;
   remote_preference: CandidateProfileRecord["remotePreference"];
   target_compensation_min: number | null;
   target_compensation_preferred: number | null;
+  target_compensation_hourly_min: number | string | null;
+  target_compensation_hourly_preferred: number | string | null;
   generated_markdown: string;
   markdown_generated_at: string | null;
   created_at: string;
@@ -255,6 +254,13 @@ function defined<T>(value: T | null | undefined) {
   return value === null || value === undefined ? undefined : value;
 }
 
+// Postgres numeric columns can serialize as strings through PostgREST.
+function definedNumber(value: number | string | null | undefined) {
+  if (value === null || value === undefined) return undefined;
+  const parsed = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
 function idsByLeft(rows: Array<Record<string, string>>, leftKey: string, rightKey: string) {
   return rows.reduce((map, row) => {
     const left = row[leftKey];
@@ -350,13 +356,12 @@ export function mapPublicProfileRows(rows: {
       fullName: rows.profile.full_name,
       preferredName: defined(rows.profile.preferred_name),
       location: rows.profile.location,
-      linkedInUrl: defined(rows.profile.linkedin_url),
-      portfolioUrl: defined(rows.profile.portfolio_url),
-      personalWebsiteUrl: defined(rows.profile.personal_website_url),
       email: defined(rows.profile.email),
       remotePreference: rows.profile.remote_preference,
       targetCompensationMin: defined(rows.profile.target_compensation_min),
       targetCompensationPreferred: defined(rows.profile.target_compensation_preferred),
+      targetCompensationHourlyMin: definedNumber(rows.profile.target_compensation_hourly_min),
+      targetCompensationHourlyPreferred: definedNumber(rows.profile.target_compensation_hourly_preferred),
       generatedMarkdown: rows.profile.generated_markdown,
       markdownGeneratedAt: defined(rows.profile.markdown_generated_at),
       createdAt: rows.profile.created_at,
@@ -705,13 +710,12 @@ export async function persistIdentitySearchSection(
       full_name: profile.fullName,
       preferred_name: profile.preferredName ?? null,
       location: profile.location,
-      linkedin_url: profile.linkedInUrl ?? null,
-      portfolio_url: profile.portfolioUrl ?? null,
-      personal_website_url: profile.personalWebsiteUrl ?? null,
       email: profile.email ?? null,
       remote_preference: profile.remotePreference,
       target_compensation_min: profile.targetCompensationMin ?? null,
       target_compensation_preferred: profile.targetCompensationPreferred ?? null,
+      target_compensation_hourly_min: profile.targetCompensationHourlyMin ?? null,
+      target_compensation_hourly_preferred: profile.targetCompensationHourlyPreferred ?? null,
       updated_at: profile.updatedAt,
     },
   });

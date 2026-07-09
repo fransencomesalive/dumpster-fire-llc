@@ -41,13 +41,13 @@ const profileRow = {
   full_name: "Avery Candidate",
   preferred_name: "Avery",
   location: "Denver, CO",
-  linkedin_url: "https://linkedin.example/avery",
-  portfolio_url: "https://portfolio.example",
-  personal_website_url: null,
   email: "avery@example.com",
   remote_preference: "remote_preferred",
   target_compensation_min: 140000,
   target_compensation_preferred: 175000,
+  // PostgREST can serialize numeric columns as strings — the mapper must coerce.
+  target_compensation_hourly_min: "72.50",
+  target_compensation_hourly_preferred: 85,
   generated_markdown: "",
   markdown_generated_at: null,
   created_at: now,
@@ -225,7 +225,8 @@ async function main() {
   const mapped = mapPublicProfileRows(rows() as Parameters<typeof mapPublicProfileRows>[0]);
   assert.equal(mapped.profile.id, "profile-1");
   assert.equal(mapped.profile.preferredName, "Avery");
-  assert.equal(mapped.profile.personalWebsiteUrl, undefined);
+  assert.equal(mapped.profile.targetCompensationHourlyMin, 72.5);
+  assert.equal(mapped.profile.targetCompensationHourlyPreferred, 85);
   assert.equal(mapped.preferences?.employmentTypes[0], "full_time");
   assert.equal(mapped.roleTracks[0].resumeIds[0], "resume-1");
   assert.equal(mapped.resumes[0].associatedRoleTrackIds[0], "track-1");

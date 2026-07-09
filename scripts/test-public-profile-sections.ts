@@ -99,6 +99,32 @@ async function main() {
     });
   }
 
+  // Tolerant compensation parsing: commas, $, k-suffix, and hourly decimals all read.
+  const tolerantComp = parseIdentitySearchSectionPatch({
+    targetCompensationMin: "150,000",
+    targetCompensationPreferred: "$165k",
+    targetCompensationHourlyMin: "72.50",
+    targetCompensationHourlyPreferred: "$85",
+  });
+  assert.equal(tolerantComp.ok, true);
+  if (tolerantComp.ok) {
+    assert.deepEqual(tolerantComp.patch, {
+      targetCompensationMin: 150000,
+      targetCompensationPreferred: 165000,
+      targetCompensationHourlyMin: 72.5,
+      targetCompensationHourlyPreferred: 85,
+    });
+  }
+
+  const badComp = parseIdentitySearchSectionPatch({ targetCompensationHourlyMin: "a lot" });
+  assert.equal(badComp.ok, false);
+  if (!badComp.ok) assert.equal(badComp.issues[0].field, "targetCompensationHourlyMin");
+
+  // URL fields are gone: unknown keys are ignored, not parsed.
+  const urlFieldsIgnored = parseIdentitySearchSectionPatch({ linkedInUrl: "https://x", fullName: "Avery" });
+  assert.equal(urlFieldsIgnored.ok, true);
+  if (urlFieldsIgnored.ok) assert.deepEqual(urlFieldsIgnored.patch, { fullName: "Avery" });
+
   const identityPersisted: unknown[] = [];
   const identityUpdate = await updateLoadedIdentitySearchSectionForUser({
     loadAggregate: async () => aggregate(),

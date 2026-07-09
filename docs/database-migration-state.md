@@ -76,9 +76,21 @@ statements)` via the same API so `supabase db push` stays in sync. `SUPABASE_ACC
 `.env.local` only (gitignored); it is not committed and not synced across machines — regenerate at
 https://supabase.com/dashboard/account/tokens if missing.
 
+## Applied 2026-07-09 (confirmed + recorded in schema_migrations)
+
+- `20260709000100_comp_hourly_fields.sql` — adds `target_compensation_hourly_min` /
+  `target_compensation_hourly_preferred numeric(8,2)` to `candidate_profiles`
+  (Identity & Search remediation C2). Additive + idempotent. Applied via the
+  Management API BEFORE the code deploy (new code writes these columns); columns
+  confirmed present; recorded as `comp_hourly_fields`.
+
 ## NOT yet applied to production
 
-- None outstanding.
+- `20260709000200_drop_identity_url_fields.sql` — drops `linkedin_url` /
+  `portfolio_url` / `personal_website_url` from `candidate_profiles` (remediation C1).
+  Idempotent. **Apply only AFTER the 2026-07-09 code deploy is verified live** (old
+  serverless instances still write these columns); record as
+  `drop_identity_url_fields` immediately after applying.
 
 ## How the app connects (context)
 

@@ -20,13 +20,12 @@ export type CandidateProfileRecord = {
   fullName: string;
   preferredName?: string;
   location: string;
-  linkedInUrl?: string;
-  portfolioUrl?: string;
-  personalWebsiteUrl?: string;
   email?: string;
   remotePreference: RemotePreference;
   targetCompensationMin?: number;
   targetCompensationPreferred?: number;
+  targetCompensationHourlyMin?: number;
+  targetCompensationHourlyPreferred?: number;
   generatedMarkdown: string;
   markdownGeneratedAt?: string;
   createdAt: string;

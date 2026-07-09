@@ -20,6 +20,7 @@ export type MatchCategory =
   | "resume"
   | "industry"
   | "compensation"
+  | "employment_type"
   | "location"
   | "company"
   | "posting_freshness"
