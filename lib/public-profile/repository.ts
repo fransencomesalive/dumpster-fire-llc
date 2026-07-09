@@ -1486,3 +1486,74 @@ export async function persistLeadershipProfileSection(
     },
   });
 }
+
+// Dev/test factory reset: wipe every piece of profile data for a user — section
+// rows, join rows, pursuits (+ events, contacts, outreach messages), compiled
+// markdown/versions/quality, metered usage — and finally the candidate_profiles
+// row itself, so the next bootstrap recreates a first-run profile. Access-code /
+// plan state is account data, not profile data, and is left untouched.
+export async function resetCandidateProfileDataForUser(
+  request: PublicProfileRepositoryRequest,
+  userId: string,
+): Promise<{ status: "reset" } | { status: "not_found" }> {
+  const profiles = await request<{ id: string }[]>("candidate_profiles", {
+    query: qs({ user_id: `eq.${userId}`, select: "id", limit: "1" }),
+  });
+  const profile = profiles[0];
+  if (!profile) return { status: "not_found" };
+  const profileQuery = qs({ profile_id: `eq.${profile.id}` });
+
+  const [trackRows, resumeRows, skillRows, pursuitRows] = await Promise.all([
+    request<{ id: string }[]>("role_tracks", { query: `${profileQuery}&select=id` }),
+    request<{ id: string }[]>("resumes", { query: `${profileQuery}&select=id` }),
+    request<{ id: string }[]>("skill_profiles", { query: `${profileQuery}&select=id` }),
+    request<{ id: string }[]>("pursuits", { query: qs({ user_id: `eq.${userId}`, select: "id" }) }),
+  ]);
+  const trackIds = trackRows.map((row) => row.id);
+  const resumeIds = resumeRows.map((row) => row.id);
+  const skillIds = skillRows.map((row) => row.id);
+  const pursuitIds = pursuitRows.map((row) => row.id);
+
+  // Children and join rows first so nothing dangles mid-delete.
+  if (trackIds.length > 0) {
+    await request("resume_role_tracks", { method: "DELETE", query: qs({ role_track_id: `in.(${trackIds.join(",")})` }) });
+    await request("role_track_outreach_rules", { method: "DELETE", query: qs({ role_track_id: `in.(${trackIds.join(",")})` }) });
+  }
+  if (resumeIds.length > 0) {
+    await request("resume_role_tracks", { method: "DELETE", query: qs({ resume_id: `in.(${resumeIds.join(",")})` }) });
+  }
+  if (skillIds.length > 0) {
+    await request("skill_work_examples", { method: "DELETE", query: qs({ skill_id: `in.(${skillIds.join(",")})` }) });
+  }
+  if (pursuitIds.length > 0) {
+    const pursuitQuery = qs({ pursuit_id: `in.(${pursuitIds.join(",")})` });
+    await request("pursuit_events", { method: "DELETE", query: pursuitQuery });
+    await request("outreach_messages", { method: "DELETE", query: pursuitQuery });
+    await request("contact_suggestions", { method: "DELETE", query: pursuitQuery });
+  }
+  await request("pursuits", { method: "DELETE", query: qs({ user_id: `eq.${userId}` }) });
+
+  const profileTables = [
+    "quality_scored_text_fields",
+    "writing_samples",
+    "voice_personality",
+    "fit_signals",
+    "leadership_profiles",
+    "outreach_rule_sets",
+    "work_examples",
+    "skill_profiles",
+    "resumes",
+    "role_tracks",
+    "candidate_profile_preferences",
+    "profile_versions",
+    "profile_quality",
+  ];
+  for (const table of profileTables) {
+    await request(table, { method: "DELETE", query: profileQuery });
+  }
+
+  await request("usage_ledger", { method: "DELETE", query: qs({ user_id: `eq.${userId}` }) });
+  await request("candidate_profiles", { method: "DELETE", query: qs({ id: `eq.${profile.id}` }) });
+
+  return { status: "reset" };
+}

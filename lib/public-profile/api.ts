@@ -17,6 +17,7 @@ import {
   ensureCandidateProfileAggregate,
   getPublicProfileRepositoryConfig,
   loadCandidateProfileAggregate,
+  resetCandidateProfileDataForUser,
   type PublicProfileRepositoryRequest,
 } from "./repository";
 import { generateResumeParse, type ResumeParseVerdict } from "./resume-parse";
@@ -1914,6 +1915,40 @@ export async function handlePublicProfileBootstrapRequest(
     profileStatus: profileQuality.status,
     profileQuality: profileQualitySummary(profileQuality),
   });
+}
+
+// Testing control (Randall, 2026-07-08): full profile factory reset so onboarding →
+// ingest → outreach can be exercised repeatedly on a real account. Allowed for the
+// listed accounts ONLY — everyone else gets a 403 regardless of auth state.
+const PROFILE_RESET_ALLOWED_EMAILS = new Set(["fransencomesalive@gmail.com"]);
+
+export type PublicProfileResetHandlerOptions = {
+  env?: NodeJS.ProcessEnv;
+  getSession?: (request: Request) => Promise<PublicAuthSession>;
+  repositoryRequest?: PublicProfileRepositoryRequest;
+  resetProfile?: (
+    request: PublicProfileRepositoryRequest,
+    userId: string,
+  ) => Promise<{ status: "reset" } | { status: "not_found" }>;
+};
+
+export async function handleProfileResetRequest(
+  request: Request,
+  options: PublicProfileResetHandlerOptions = {},
+) {
+  const session = await sessionForRequest(request, options);
+  if (session.status !== "authenticated") return authErrorResponse(session);
+
+  if (!session.email || !PROFILE_RESET_ALLOWED_EMAILS.has(session.email.toLowerCase())) {
+    return json({ error: "Profile reset is not available for this account.", status: "forbidden" }, { status: 403 });
+  }
+
+  const repositoryRequest = repositoryRequestForOptions(options);
+  if (!repositoryRequest) return repositoryConfigErrorResponse();
+
+  const resetProfile = options.resetProfile ?? resetCandidateProfileDataForUser;
+  const result = await resetProfile(repositoryRequest, session.userId);
+  return json({ status: result.status });
 }
 
 export async function handleIdentitySearchSectionGetRequest(

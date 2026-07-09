@@ -1807,3 +1807,45 @@
 .gateFieldset:disabled .formCard {
   opacity: 0.55;
 }
+
+.errNote a {
+  color: var(--c-ink);
+  text-decoration: underline;
+}
+
+/* Small in-dropzone upload/read bar — the scan-progress bar primitive
+   (scanProgressTrack/Fill) scaled down to sit inside Card 1's upload area. */
+.uploadTrack {
+  position: relative;
+  height: 10px;
+  margin-top: 4px;
+  overflow: hidden;
+  background-color: var(--c-paper);
+  border: var(--line-reg) solid var(--c-ink);
+  border-radius: var(--radius-pill);
+  box-shadow: inset 2px 2px 0 rgba(36, 31, 26, 0.12);
+}
+
+.uploadFill {
+  height: 100%;
+  box-sizing: border-box;
+  background-color: var(--c-teal);
+  background-image: var(--fiber-img), var(--grain-img);
+  background-blend-mode: normal, soft-light;
+  background-size: 170px 170px, 46px 46px;
+  border-right: var(--line-reg) solid var(--c-ink);
+  border-radius: var(--radius-pill);
+  animation: uploadCreep 8s ease-out forwards;
+}
+
+@keyframes uploadCreep {
+  from { width: 5%; }
+  to { width: 90%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .uploadFill {
+    animation: none;
+    width: 60%;
+  }
+}

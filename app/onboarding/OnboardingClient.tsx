@@ -192,12 +192,13 @@ type SectionResponse<T> = {
 };
 
 // Card 1 résumé intake: scan-and-discard. The PDF is read once via the scan
-// endpoint; only the extracted text survives. Notes render as <b>lead</b> tail.
+// endpoint; only the extracted text survives. Notes render as <b>lead</b> tail;
+// modelDown marks an Anthropic-side failure, which renders the status-page link.
 type ResumeScanState =
   | { status: "idle" }
   | { status: "reading"; fileName: string; fileSize: number }
   | { status: "read"; fileName: string; fileSize: number; text: string; quality: ParsingQuality }
-  | { status: "error"; lead: string; tail: string };
+  | { status: "error"; lead: string; tail: string; modelDown?: boolean };
 
 /* ============================================================
    Constants
@@ -211,6 +212,10 @@ const incompleteProfileLockout = "Scanning is locked until the profile is comple
 // (design-system/components/scan-progress.html, live in DashboardClient):
 // save the track, read the résumé + pull highlights, route them to the lane.
 const CARD1_SAVE_PHASES = ["Saving", "Reading", "Routing"] as const;
+
+// Testing control (Randall, 2026-07-08): the profile factory-reset button renders
+// for these accounts only. The server enforces the same list — this just hides it.
+const PROFILE_RESET_ALLOWED_EMAILS = new Set(["fransencomesalive@gmail.com"]);
 
 const voiceAnswerWordCap = 120;
 const avoidNoteWordCap = 25;
@@ -780,6 +785,19 @@ export default function OnboardingClient({
   const resumeFileInputRef = useRef<HTMLInputElement>(null);
   const trackSelectRef = useRef<HTMLDivElement>(null);
 
+  // Comma-list inputs keep the user's raw text while typing. Parsing trims each
+  // entry, and round-tripping the trimmed value back into the input used to eat
+  // the space after every word (Randall, 2026-07-08 — "freelancefulltime").
+  const [listFieldDrafts, setListFieldDrafts] = useState<Record<string, string>>({});
+
+  // Unsaved edits persist in localStorage (per profile) so leaving the tab/page
+  // never silently discards typed input, and reloads never ghost-replace what the
+  // user typed with server values (Randall, 2026-07-08). Drafts hydrate after the
+  // server load, win until saved, and clear on reset/sign-out. Known trade-off:
+  // a stale local draft can shadow newer edits made on another device until saved.
+  const draftsHydratedRef = useRef(false);
+  const draftStorageKeyRef = useRef("");
+
   const [profileStatus, setProfileStatus] = useState<"incomplete" | "complete">("incomplete");
   const [profileQuality, setProfileQuality] = useState<ProfileQualitySummary | null>(null);
   const [issues, setIssues] = useState<string[]>([]);
@@ -858,6 +876,32 @@ export default function OnboardingClient({
     setLeadershipProfile(completeLeadershipProfileSection(leadershipProfileResponse.section));
     applyProfileQuality(identityResponse.profileQuality ?? bootstrap.profileQuality);
 
+    // Local drafts hydrate OVER the server values — typed-but-unsaved input outranks
+    // whatever the server (or a seed) holds until the user saves or resets.
+    draftStorageKeyRef.current = `df-onboarding-drafts:${identityResponse.profileId}`;
+    try {
+      const raw = window.localStorage.getItem(draftStorageKeyRef.current);
+      if (raw) {
+        const draft = JSON.parse(raw) as Record<string, unknown>;
+        if (draft?.v === 1) {
+          if (draft.identity) setIdentity(draft.identity as IdentitySearchSection);
+          if (draft.fitSignals) setFitSignals(draft.fitSignals as FitSignalsSection);
+          if (draft.workExamples) setWorkExamples(draft.workExamples as WorkExampleSectionItem[]);
+          if (draft.skills) setSkills(draft.skills as SkillsInventorySectionItem[]);
+          if (draft.voice) setVoice(draft.voice as VoicePersonalitySection);
+          if (draft.writingSamples) setWritingSamples(draft.writingSamples as WritingSamplesSectionItem[]);
+          if (draft.outreachRules) setOutreachRules(completeOutreachRulesSection(draft.outreachRules as OutreachRulesSection));
+          if (draft.leadershipProfile) setLeadershipProfile(completeLeadershipProfileSection(draft.leadershipProfile as LeadershipProfileSection));
+          if (typeof draft.newTrackName === "string") setNewTrackName(draft.newTrackName);
+          if (typeof draft.pastedResumeText === "string") setPastedResumeText(draft.pastedResumeText);
+          if (draft.listFieldDrafts) setListFieldDrafts(draft.listFieldDrafts as Record<string, string>);
+        }
+      }
+    } catch {
+      // Unreadable draft — server values stand.
+    }
+    draftsHydratedRef.current = true;
+
     // Account identity for the account panel (email + plan chip). Never block the
     // profile load on this — the panel degrades to email-only if it fails.
     const account = await requestPublicProfileApi<{ email: string | null; planName: string | null }>(
@@ -920,6 +964,32 @@ export default function OnboardingClient({
     return () => document.removeEventListener("mousedown", onClickAway);
   }, [trackMenuOpen]);
 
+  // Persist edits to the local draft store (debounced) once drafts have hydrated.
+  useEffect(() => {
+    if (!draftsHydratedRef.current || !draftStorageKeyRef.current) return;
+    const timer = window.setTimeout(() => {
+      try {
+        window.localStorage.setItem(draftStorageKeyRef.current, JSON.stringify({
+          v: 1,
+          identity,
+          fitSignals,
+          workExamples,
+          skills,
+          voice,
+          writingSamples,
+          outreachRules,
+          leadershipProfile,
+          newTrackName,
+          pastedResumeText,
+          listFieldDrafts,
+        }));
+      } catch {
+        // Storage unavailable/full — edits simply don't persist across reloads.
+      }
+    }, 400);
+    return () => window.clearTimeout(timer);
+  }, [identity, fitSignals, workExamples, skills, voice, writingSamples, outreachRules, leadershipProfile, newTrackName, pastedResumeText, listFieldDrafts]);
+
   async function signIn() {
     setBusy(true);
     setMessage("Signing in…");
@@ -977,7 +1047,20 @@ export default function OnboardingClient({
     }
   }
 
+  function clearLocalDrafts() {
+    if (draftStorageKeyRef.current) {
+      try {
+        window.localStorage.removeItem(draftStorageKeyRef.current);
+      } catch {
+        // noop — worst case a stale draft lingers for this profile id
+      }
+    }
+    setListFieldDrafts({});
+    draftsHydratedRef.current = false;
+  }
+
   function signOut() {
+    clearLocalDrafts();
     void signOutSupabaseSession();
     clearPublicProfileAccessToken();
     setAccessToken("");
@@ -1075,8 +1158,9 @@ export default function OnboardingClient({
       if (data?.status === "model_unavailable") {
         setResumeScan({
           status: "error",
-          lead: "We couldn't read this PDF right now.",
-          tail: "Paste the text — it feeds highlights exactly the same way.",
+          modelDown: true,
+          lead: "Anthropic — the AI that reads your PDF — is having trouble right now.",
+          tail: "",
         });
         setMessage("Résumé scan unavailable.");
         return;
@@ -1204,6 +1288,32 @@ export default function OnboardingClient({
       setBusy(false);
     }
   }
+
+  // Testing control: factory-reset this account's profile (server re-checks the
+  // allowlist), then bootstrap + reload so the page returns to first run.
+  async function resetProfileData() {
+    if (!accessToken) return;
+    if (!window.confirm("Reset ALL profile data for this account? Every section, pursuit, and the compiled profile will be wiped.")) return;
+    setBusy(true);
+    setMessage("Resetting profile…");
+    try {
+      await requestPublicProfileApi<{ status: string }>("/api/public-profile/reset", { method: "POST", accessToken });
+      clearLocalDrafts();
+      setActiveTrackId("");
+      setCreatingTrack(false);
+      setNewTrackName("");
+      setTrackMenuOpen(false);
+      setResumeScan({ status: "idle" });
+      setPastedResumeText("");
+      setCard1Note(null);
+      await loadProfile(accessToken);
+      setMessage("Profile reset.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Reset failed.");
+    } finally {
+      setBusy(false);
+    }
+  }
   const saveWorkExamples = () =>
     saveSection<WorkExamplesSection>("Work Examples", "/api/public-profile/work-examples", { workExamples }, (section) => setWorkExamples(section.workExamples));
   const saveSkills = () =>
@@ -1241,6 +1351,19 @@ export default function OnboardingClient({
   }
 
   /* --- per-item state updates --- */
+
+  // value/onChange pair for a comma-separated list input: shows the raw draft text
+  // (so spaces survive typing) while feeding the parsed array to section state.
+  function listField(key: string, values: string[] | undefined, onValues: (values: string[]) => void) {
+    return {
+      value: listFieldDrafts[key] ?? listToText(values),
+      onChange: (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+        const raw = event.target.value;
+        setListFieldDrafts((drafts) => ({ ...drafts, [key]: raw }));
+        onValues(textToList(raw));
+      },
+    };
+  }
 
   const updateWorkExample = (id: string, patch: Partial<WorkExampleSectionItem>) =>
     setWorkExamples((items) => items.map((example) => (example.id === id ? { ...example, ...patch } : example)));
@@ -1666,14 +1789,23 @@ export default function OnboardingClient({
                 <>
                   <div className={styles.drop}>
                     <span className={styles.pdfTag}>PDF</span>
-                    <div className={styles.fileChip}>
-                      <span>{resumeScan.status === "read" || resumeScan.status === "reading" ? resumeScan.fileName : attachedResume.name}</span>
-                      {resumeScan.status === "read" || resumeScan.status === "reading"
-                        ? <span className={styles.fileMeta}>{formatFileSize(resumeScan.fileSize)}</span>
-                        : card1Note?.fileSize
-                          ? <span className={styles.fileMeta}>{formatFileSize(card1Note.fileSize)}</span>
-                          : null}
-                    </div>
+                    {resumeScan.status === "reading" ? (
+                      <div className={styles.dropMain}>
+                        <span className={styles.dropTitle}>{resumeScan.fileName}</span>
+                        <div className={styles.uploadTrack} role="progressbar" aria-label="Reading résumé">
+                          <div className={styles.uploadFill} />
+                        </div>
+                      </div>
+                    ) : (
+                      <div className={styles.fileChip}>
+                        <span>{resumeScan.status === "read" ? resumeScan.fileName : attachedResume.name}</span>
+                        {resumeScan.status === "read"
+                          ? <span className={styles.fileMeta}>{formatFileSize(resumeScan.fileSize)}</span>
+                          : card1Note?.fileSize
+                            ? <span className={styles.fileMeta}>{formatFileSize(card1Note.fileSize)}</span>
+                            : null}
+                      </div>
+                    )}
                     <button
                       type="button"
                       className={styles.chooseBtn}
@@ -1709,6 +1841,15 @@ export default function OnboardingClient({
                         <span>{resumeScan.fileName}</span>
                         <span className={styles.fileMeta}>{formatFileSize(resumeScan.fileSize)}</span>
                       </div>
+                    ) : resumeScan.status === "reading" ? (
+                      // Upload/read in progress — the scan-progress bar primitive, small,
+                      // inside the upload area (Randall, 2026-07-08).
+                      <div className={styles.dropMain}>
+                        <span className={styles.dropTitle}>{resumeScan.fileName}</span>
+                        <div className={styles.uploadTrack} role="progressbar" aria-label="Reading résumé">
+                          <div className={styles.uploadFill} />
+                        </div>
+                      </div>
                     ) : (
                       <div className={styles.dropMain}>
                         <span className={styles.dropTitle}>Drop a PDF here, or choose a file</span>
@@ -1725,7 +1866,12 @@ export default function OnboardingClient({
                     </button>
                   </div>
                   {resumeScan.status === "error" ? (
-                    <p className={styles.errNote}><b>{resumeScan.lead}</b>{resumeScan.tail ? ` ${resumeScan.tail}` : ""}</p>
+                    <p className={styles.errNote}>
+                      <b>{resumeScan.lead}</b>
+                      {resumeScan.modelDown ? (
+                        <> It&apos;s on their end, not yours — check <a href="https://status.claude.com" target="_blank" rel="noreferrer">Anthropic&apos;s status page</a>, try again in a minute, or paste your text below.</>
+                      ) : resumeScan.tail ? ` ${resumeScan.tail}` : null}
+                    </p>
                   ) : null}
                   {resumeScan.status !== "read" ? (
                     <>
@@ -1759,6 +1905,21 @@ export default function OnboardingClient({
             ) : null}
             {firstRun ? (
               <p className={styles.lockNote}>🔒 The rest of onboarding unlocks once this is saved.</p>
+            ) : null}
+
+            {/* Testing control — renders only for allowlisted accounts; server enforces too. */}
+            {accountEmail && PROFILE_RESET_ALLOWED_EMAILS.has(accountEmail.toLowerCase()) ? (
+              <div className={styles.card1Field}>
+                <button
+                  type="button"
+                  className={styles.primaryButton}
+                  disabled={!accessToken || busy}
+                  onClick={() => void resetProfileData()}
+                >
+                  Reset profile
+                </button>
+                <p className={styles.card1Helper}>Wipes every section, pursuit, and the compiled profile for this account so onboarding runs from first run again. Only this account sees this.</p>
+              </div>
             ) : null}
           </article>
 
@@ -1795,7 +1956,7 @@ export default function OnboardingClient({
               <label>LinkedIn URL<input value={identity.linkedInUrl ?? ""} onChange={(event) => setIdentity({ ...identity, linkedInUrl: event.target.value })} /></label>
               <label>Portfolio URL<input value={identity.portfolioUrl ?? ""} onChange={(event) => setIdentity({ ...identity, portfolioUrl: event.target.value })} /></label>
               <label>Personal site URL<input value={identity.personalWebsiteUrl ?? ""} onChange={(event) => setIdentity({ ...identity, personalWebsiteUrl: event.target.value })} /></label>
-              <label>Employment types<input value={listToText(identity.employmentTypes)} onChange={(event) => setIdentity({ ...identity, employmentTypes: textToList(event.target.value) })} /></label>
+              <label>Employment types<input {...listField("identity.employmentTypes", identity.employmentTypes, (values) => setIdentity({ ...identity, employmentTypes: values }))} /></label>
               <div className={styles.fullWidth}>
                 <CataloguePicker
                   kind="industries"
@@ -1809,9 +1970,9 @@ export default function OnboardingClient({
                   onRemove={(value) => setIdentity((current) => ({ ...current, targetIndustries: current.targetIndustries.filter((entry) => entry !== value) }))}
                 />
               </div>
-              <label>Avoid industries<input value={listToText(identity.avoidIndustries)} onChange={(event) => setIdentity({ ...identity, avoidIndustries: textToList(event.target.value) })} /></label>
-              <label>Target company types<input value={listToText(identity.targetCompanyTypes)} onChange={(event) => setIdentity({ ...identity, targetCompanyTypes: textToList(event.target.value) })} /></label>
-              <label>Avoid companies<input value={listToText(identity.avoidCompanies)} onChange={(event) => setIdentity({ ...identity, avoidCompanies: textToList(event.target.value) })} /></label>
+              <label>Avoid industries<input {...listField("identity.avoidIndustries", identity.avoidIndustries, (values) => setIdentity({ ...identity, avoidIndustries: values }))} /></label>
+              <label>Target company types<input {...listField("identity.targetCompanyTypes", identity.targetCompanyTypes, (values) => setIdentity({ ...identity, targetCompanyTypes: values }))} /></label>
+              <label>Avoid companies<input {...listField("identity.avoidCompanies", identity.avoidCompanies, (values) => setIdentity({ ...identity, avoidCompanies: values }))} /></label>
             </div>
             <div className={styles.formActions}>
               <button className={styles.primaryButton} disabled={!accessToken || busy} onClick={saveIdentity} type="button">Save Identity & Search</button>
@@ -1825,8 +1986,8 @@ export default function OnboardingClient({
             {populatingHelper}
             <p className={styles.cardLede}>Soft signals that nudge job ratings up or down. Poor-fit jobs still surface, rated lower, with the reason shown.</p>
             <div className={styles.formGrid}>
-              <label className={styles.fullWidth}>What makes a role a strong fit<textarea value={listToText(fitSignals.goodSignals)} onChange={(event) => setFitSignals({ ...fitSignals, goodSignals: textToList(event.target.value) })} /></label>
-              <label className={styles.fullWidth}>What makes a role a poor fit<textarea value={listToText(fitSignals.poorFitSignals)} onChange={(event) => setFitSignals({ ...fitSignals, poorFitSignals: textToList(event.target.value) })} /></label>
+              <label className={styles.fullWidth}>What makes a role a strong fit<textarea {...listField("fitSignals.goodSignals", fitSignals.goodSignals, (values) => setFitSignals({ ...fitSignals, goodSignals: values }))} /></label>
+              <label className={styles.fullWidth}>What makes a role a poor fit<textarea {...listField("fitSignals.poorFitSignals", fitSignals.poorFitSignals, (values) => setFitSignals({ ...fitSignals, poorFitSignals: values }))} /></label>
             </div>
             <div className={styles.formActions}>
               <button className={styles.primaryButton} disabled={!accessToken || busy} onClick={saveFitSignals} type="button">Save Fit Signals</button>
@@ -1901,9 +2062,9 @@ export default function OnboardingClient({
                         <option value="strong">Strong</option>
                         <option value="expert">Expert</option>
                       </select></label>
-                      <label>Evidence<textarea value={listToText(skill.evidence)} onChange={(event) => updateSkill(skill.id, { evidence: textToList(event.target.value) })} /></label>
-                      <label>Best role fit<textarea value={listToText(skill.bestRoleFit)} onChange={(event) => updateSkill(skill.id, { bestRoleFit: textToList(event.target.value) })} /></label>
-                      <label>Do not overclaim<textarea value={listToText(skill.doNotOverclaim)} onChange={(event) => updateSkill(skill.id, { doNotOverclaim: textToList(event.target.value) })} /></label>
+                      <label>Evidence<textarea {...listField(`skills.${skill.id}.evidence`, skill.evidence, (values) => updateSkill(skill.id, { evidence: values }))} /></label>
+                      <label>Best role fit<textarea {...listField(`skills.${skill.id}.bestRoleFit`, skill.bestRoleFit, (values) => updateSkill(skill.id, { bestRoleFit: values }))} /></label>
+                      <label>Do not overclaim<textarea {...listField(`skills.${skill.id}.doNotOverclaim`, skill.doNotOverclaim, (values) => updateSkill(skill.id, { doNotOverclaim: values }))} /></label>
                     </div>
                     <div className={styles.attachmentBlock}>
                       <p className={styles.statusLabel}>Related Work Examples</p>
@@ -2030,9 +2191,9 @@ export default function OnboardingClient({
             ))}
             {populatingHelper}
             <div className={styles.formGrid}>
-              <label>Global rules<textarea value={listToText(outreachRules.settings?.globalRules)} onChange={(event) => setOutreachRules((section) => ({ ...section, settings: { ...(section.settings ?? emptyOutreachSettings()), globalRules: textToList(event.target.value) } }))} /></label>
-              <label>Follow-up rules<textarea value={listToText(outreachRules.settings?.followUpRules)} onChange={(event) => setOutreachRules((section) => ({ ...section, settings: { ...(section.settings ?? emptyOutreachSettings()), followUpRules: textToList(event.target.value) } }))} /></label>
-              <label>Link selection rules<textarea value={listToText(outreachRules.settings?.linkSelectionRules)} onChange={(event) => setOutreachRules((section) => ({ ...section, settings: { ...(section.settings ?? emptyOutreachSettings()), linkSelectionRules: textToList(event.target.value) } }))} /></label>
+              <label>Global rules<textarea {...listField("outreach.globalRules", outreachRules.settings?.globalRules, (values) => setOutreachRules((section) => ({ ...section, settings: { ...(section.settings ?? emptyOutreachSettings()), globalRules: values } })))} /></label>
+              <label>Follow-up rules<textarea {...listField("outreach.followUpRules", outreachRules.settings?.followUpRules, (values) => setOutreachRules((section) => ({ ...section, settings: { ...(section.settings ?? emptyOutreachSettings()), followUpRules: values } })))} /></label>
+              <label>Link selection rules<textarea {...listField("outreach.linkSelectionRules", outreachRules.settings?.linkSelectionRules, (values) => setOutreachRules((section) => ({ ...section, settings: { ...(section.settings ?? emptyOutreachSettings()), linkSelectionRules: values } })))} /></label>
             </div>
             {outreachRules.fields.length > 0 ? (
               <div className={styles.roleTrackList}>
@@ -2063,9 +2224,9 @@ export default function OnboardingClient({
                         <option value="">Choose a Role Track</option>
                         {roleTracks.map((track) => (<option key={track.id} value={track.id}>{track.name || track.id}</option>))}
                       </select></label>
-                      <label>Rules<textarea value={listToText(rule.rules)} onChange={(event) => setOutreachRules((section) => ({ ...section, roleTrackSpecificRules: section.roleTrackSpecificRules.map((item) => item.id === rule.id ? { ...item, rules: textToList(event.target.value) } : item) }))} /></label>
-                      <label>Preferred work example types<textarea value={listToText(rule.preferredProofTypes)} onChange={(event) => setOutreachRules((section) => ({ ...section, roleTrackSpecificRules: section.roleTrackSpecificRules.map((item) => item.id === rule.id ? { ...item, preferredProofTypes: textToList(event.target.value) } : item) }))} /></label>
-                      <label>Avoid work example types<textarea value={listToText(rule.avoidProofTypes)} onChange={(event) => setOutreachRules((section) => ({ ...section, roleTrackSpecificRules: section.roleTrackSpecificRules.map((item) => item.id === rule.id ? { ...item, avoidProofTypes: textToList(event.target.value) } : item) }))} /></label>
+                      <label>Rules<textarea {...listField(`outreach.${rule.id}.rules`, rule.rules, (values) => setOutreachRules((section) => ({ ...section, roleTrackSpecificRules: section.roleTrackSpecificRules.map((item) => item.id === rule.id ? { ...item, rules: values } : item) })))} /></label>
+                      <label>Preferred work example types<textarea {...listField(`outreach.${rule.id}.preferredProofTypes`, rule.preferredProofTypes, (values) => setOutreachRules((section) => ({ ...section, roleTrackSpecificRules: section.roleTrackSpecificRules.map((item) => item.id === rule.id ? { ...item, preferredProofTypes: values } : item) })))} /></label>
+                      <label>Avoid work example types<textarea {...listField(`outreach.${rule.id}.avoidProofTypes`, rule.avoidProofTypes, (values) => setOutreachRules((section) => ({ ...section, roleTrackSpecificRules: section.roleTrackSpecificRules.map((item) => item.id === rule.id ? { ...item, avoidProofTypes: values } : item) })))} /></label>
                     </div>
                   </div>
                 ))}

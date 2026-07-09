@@ -21,6 +21,7 @@ import {
   handlePublicProfilePursuitStatusRequest,
   handlePublicProfileBootstrapRequest,
   handlePublicProfileRegenerationRequest,
+  handleProfileResetRequest,
   handleResumeUploadsSectionGetRequest,
   handleResumeUploadsSectionPatchRequest,
   handleRoleTracksSectionGetRequest,
@@ -340,6 +341,39 @@ async function main() {
   });
   assert.equal(bootstrap.status, 200);
   assert.equal((await body(bootstrap)).status, "ready");
+
+  // ---- Profile reset (testing control: allowlisted email only) ----
+  const resetForbidden = await handleProfileResetRequest(postRequest("reset", {}), {
+    getSession: async () => ({ status: "authenticated", userId: "user-1", email: "avery@example.com" }),
+    repositoryRequest,
+    resetProfile: async () => {
+      throw new Error("reset must not run for non-allowlisted accounts");
+    },
+  });
+  assert.equal(resetForbidden.status, 403);
+  assert.equal((await body(resetForbidden)).status, "forbidden");
+
+  const resetNoEmail = await handleProfileResetRequest(postRequest("reset", {}), {
+    getSession: async () => authed(),
+    repositoryRequest,
+    resetProfile: async () => {
+      throw new Error("reset must not run without a session email");
+    },
+  });
+  assert.equal(resetNoEmail.status, 403);
+
+  let resetRanFor: string | undefined;
+  const resetAllowed = await handleProfileResetRequest(postRequest("reset", {}), {
+    getSession: async () => ({ status: "authenticated", userId: "user-1", email: "FransenComesAlive@gmail.com" }),
+    repositoryRequest,
+    resetProfile: async (_repo, userId) => {
+      resetRanFor = userId;
+      return { status: "reset" as const };
+    },
+  });
+  assert.equal(resetAllowed.status, 200);
+  assert.equal((await body(resetAllowed)).status, "reset");
+  assert.equal(resetRanFor, "user-1");
 
   const agg = completeCandidateProfileAggregate(now);
 
