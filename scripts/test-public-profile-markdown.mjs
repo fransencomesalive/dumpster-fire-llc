@@ -28,5 +28,12 @@ assert.match(generated.markdown, /Cut release cycle time 40% at Acme Robotics/);
 assert.match(generated.markdown, /Résumé highlights \(quotable proof from attached résumés\):/);
 // Internal QA metadata must NOT reach the compiled profile.md (outreach + matching read it).
 assert.doesNotMatch(generated.markdown, /## Profile Quality/);
+// Search-preference lists are scan/match inputs read from the structured aggregate;
+// they are deliberately absent from profile.md (outreach-generation context only).
+assert.doesNotMatch(generated.markdown, /Employment types:/);
+assert.doesNotMatch(generated.markdown, /Target industries:/);
+assert.doesNotMatch(generated.markdown, /Avoid industries:/);
+assert.doesNotMatch(generated.markdown, /Target company types:/);
+assert.doesNotMatch(generated.markdown, /Avoid companies:/);
 
 console.log("public profile markdown generation: all assertions passed");

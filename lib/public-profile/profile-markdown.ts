@@ -179,21 +179,10 @@ export function generateCandidateProfileMarkdown(
     line("Compensation floor", profile.targetCompensationMin),
     line("Preferred compensation", profile.targetCompensationPreferred),
     "",
-    "Employment types:",
-    list(aggregate.preferences?.employmentTypes),
-    "",
-    "Target industries:",
-    list(aggregate.preferences?.targetIndustries),
-    "",
-    "Avoid industries:",
-    list(aggregate.preferences?.avoidIndustries),
-    "",
-    "Target company types:",
-    list(aggregate.preferences?.targetCompanyTypes),
-    "",
-    "Avoid companies:",
-    list(aggregate.preferences?.avoidCompanies),
-    "",
+    // Search-preference lists (employment types, target/avoid industries,
+    // target company types, avoid companies) are deliberately NOT rendered:
+    // profile.md is outreach-generation context, and those lists are scan/match
+    // inputs read from the structured aggregate, never from this document.
     aggregate.companyWatchlist.length === 0 ? "" : [
       "Company watchlist:",
       aggregate.companyWatchlist

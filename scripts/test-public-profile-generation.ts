@@ -18,7 +18,10 @@ assert.equal(complete.aggregate.profile.markdownGeneratedAt, now);
 assert.equal(complete.generatedMarkdown.profileVersion, nextVersion);
 assert.equal(complete.profileVersion.version, nextVersion);
 assert.equal(complete.profileVersion.changeSummary, "Fixture regeneration.");
-assert.match(complete.profileVersion.generatedMarkdown, /Status: complete/);
+// Profile status lives in structured rows only; the compiled markdown deliberately
+// carries no quality/status block (it is outreach-generation context).
+assert.doesNotMatch(complete.profileVersion.generatedMarkdown, /## Profile Quality/);
+assert.doesNotMatch(complete.profileVersion.generatedMarkdown, /Status: complete/);
 assert.equal(complete.persistenceRows.candidateProfile.status, "complete");
 assert.equal(complete.persistenceRows.candidateProfile.version, nextVersion);
 assert.equal(complete.persistenceRows.profileQuality.weak_response_count, 0);
@@ -41,6 +44,6 @@ assert.equal(incomplete.aggregate.profile.version, 12);
 assert.equal(incomplete.persistenceRows.candidateProfile.status, "incomplete");
 assert.equal(incomplete.persistenceRows.profileQuality.weak_response_count, 1);
 assert.deepEqual(incomplete.persistenceRows.profileQuality.weak_fields, ["outreach_rules.hiringManagerApproach"]);
-assert.match(incomplete.profileVersion.generatedMarkdown, /Status: incomplete/);
+assert.doesNotMatch(incomplete.profileVersion.generatedMarkdown, /Status: incomplete/);
 
 console.log("public profile generation: all assertions passed");
