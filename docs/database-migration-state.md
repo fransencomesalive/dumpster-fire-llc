@@ -84,13 +84,15 @@ https://supabase.com/dashboard/account/tokens if missing.
   Management API BEFORE the code deploy (new code writes these columns); columns
   confirmed present; recorded as `comp_hourly_fields`.
 
-## NOT yet applied to production
-
 - `20260709000200_drop_identity_url_fields.sql` — drops `linkedin_url` /
   `portfolio_url` / `personal_website_url` from `candidate_profiles` (remediation C1).
-  Idempotent. **Apply only AFTER the 2026-07-09 code deploy is verified live** (old
-  serverless instances still write these columns); record as
-  `drop_identity_url_fields` immediately after applying.
+  Applied via the Management API AFTER deploy `eeddc12` was verified live on the
+  production aliases (2026-07-09); columns confirmed gone; recorded as
+  `drop_identity_url_fields`.
+
+## NOT yet applied to production
+
+- None outstanding.
 
 ## How the app connects (context)
 
