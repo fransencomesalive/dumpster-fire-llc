@@ -16,6 +16,9 @@ import { requestPublicProfileApi } from "@/lib/public-profile/client";
 import type { PublicProfileOnboardingSection, PublicProfileOnboardingSectionKey } from "@/lib/public-profile/onboarding";
 import SiteHeader from "../components/SiteHeader";
 import styles from "./onboarding.module.css";
+// Loader modal styles — the scan-progress component lives in the dashboard
+// module; Card 1's save reuses it 1:1 rather than duplicating the CSS.
+import loaderStyles from "../dashboard/dashboard.module.css";
 
 /* ============================================================
    Section view models — mirror lib/public-profile/sections.ts
@@ -183,7 +186,18 @@ type SectionResponse<T> = {
   profileStatus: "incomplete" | "complete";
   section: T;
   profileQuality: ProfileQualitySummary;
+  // Returned by the resumes PATCH: highlight count per résumé id, for Card 1's
+  // "Read — pulled N highlights" note.
+  resumeHighlightCounts?: Record<string, number>;
 };
+
+// Card 1 résumé intake: scan-and-discard. The PDF is read once via the scan
+// endpoint; only the extracted text survives. Notes render as <b>lead</b> tail.
+type ResumeScanState =
+  | { status: "idle" }
+  | { status: "reading"; fileName: string; fileSize: number }
+  | { status: "read"; fileName: string; fileSize: number; text: string; quality: ParsingQuality }
+  | { status: "error"; lead: string; tail: string };
 
 /* ============================================================
    Constants
@@ -192,6 +206,11 @@ type SectionResponse<T> = {
 const notLoadedReadinessLabel = "Not loaded";
 const incompleteProfileJustification = "Without the full picture, outreach won't be good. And if outreach isn't good, your chances drop. Finish your profile.";
 const incompleteProfileLockout = "Scanning is locked until the profile is complete. Matching, Saved Jobs, Pursuits, and Human Path stay locked with it.";
+
+// Card 1 save pipeline phases, shown in the scan-progress loader modal
+// (design-system/components/scan-progress.html, live in DashboardClient):
+// save the track, read the résumé + pull highlights, route them to the lane.
+const CARD1_SAVE_PHASES = ["Saving", "Reading", "Routing"] as const;
 
 const voiceAnswerWordCap = 120;
 const avoidNoteWordCap = 25;
@@ -303,6 +322,21 @@ function countWords(value: string) {
   return trimmed.split(/\s+/).length;
 }
 
+// "That's a Word file (resume.docx)." — name the format the way a person would.
+function fileKindLabel(fileName: string) {
+  const ext = fileName.toLowerCase().split(".").pop() ?? "";
+  if (ext === "doc" || ext === "docx") return "Word";
+  if (ext === "pages") return "Pages";
+  if (ext === "txt") return "text";
+  return ext ? `.${ext}` : "non-PDF";
+}
+
+function formatFileSize(bytes: number) {
+  const mb = bytes / (1024 * 1024);
+  if (mb >= 0.1) return `${mb.toFixed(1)} MB`;
+  return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+}
+
 function emptyRoleTrack(): RoleTrackSectionItem {
   return {
     id: createClientId(),
@@ -401,7 +435,8 @@ function reasonBelongsToSection(sectionKey: PublicProfileOnboardingSectionKey, r
     case "fitSignals":
       return value.includes("fit signal");
     case "roleTracks":
-      return value.includes("role track");
+      // Card 1 owns both the Role Track and its résumé, so résumé blockers roll up here.
+      return value.includes("role track") || value.startsWith("resume ") || value.includes("at least one resume");
     case "resumes":
       return value.startsWith("resume ") || value.includes("at least one resume");
     case "workExamples":
@@ -731,6 +766,20 @@ export default function OnboardingClient({
   const [outreachRules, setOutreachRules] = useState<OutreachRulesSection>(() => completeOutreachRulesSection());
   const [leadershipProfile, setLeadershipProfile] = useState<LeadershipProfileSection>(() => completeLeadershipProfileSection());
 
+  // Card 1 (Role Track + Résumé) — onboarding-resume-upload DS card.
+  const [activeTrackId, setActiveTrackId] = useState("");
+  const [creatingTrack, setCreatingTrack] = useState(false);
+  const [newTrackName, setNewTrackName] = useState("");
+  const [trackMenuOpen, setTrackMenuOpen] = useState(false);
+  const [resumeScan, setResumeScan] = useState<ResumeScanState>({ status: "idle" });
+  const [pastedResumeText, setPastedResumeText] = useState("");
+  const [card1Note, setCard1Note] = useState<{ count?: number; trackName: string; fileSize?: number } | null>(null);
+  // Loader modal for the Card 1 save (scan-progress component). Closes on both
+  // success (card flips to its saved state) and failure (message reports it).
+  const [saveProgress, setSaveProgress] = useState<{ status: "idle" } | { status: "running"; phase: number }>({ status: "idle" });
+  const resumeFileInputRef = useRef<HTMLInputElement>(null);
+  const trackSelectRef = useRef<HTMLDivElement>(null);
+
   const [profileStatus, setProfileStatus] = useState<"incomplete" | "complete">("incomplete");
   const [profileQuality, setProfileQuality] = useState<ProfileQualitySummary | null>(null);
   const [issues, setIssues] = useState<string[]>([]);
@@ -848,6 +897,29 @@ export default function OnboardingClient({
     }
   }, [isProfileEditor, profileQuality?.status, router]);
 
+  // Card 1: default the active Role Track to the first saved one.
+  useEffect(() => {
+    if (roleTracks.length === 0) {
+      setActiveTrackId("");
+      return;
+    }
+    if (!roleTracks.some((track) => track.id === activeTrackId)) {
+      setActiveTrackId(roleTracks[0].id);
+    }
+  }, [roleTracks, activeTrackId]);
+
+  // Card 1: close the Role Track dropdown on click-away (same pattern as CataloguePicker).
+  useEffect(() => {
+    if (!trackMenuOpen) return;
+    function onClickAway(event: MouseEvent) {
+      if (trackSelectRef.current && !trackSelectRef.current.contains(event.target as Node)) {
+        setTrackMenuOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", onClickAway);
+    return () => document.removeEventListener("mousedown", onClickAway);
+  }, [trackMenuOpen]);
+
   async function signIn() {
     setBusy(true);
     setMessage("Signing in…");
@@ -951,10 +1023,187 @@ export default function OnboardingClient({
     saveSection<IdentitySearchSection>("Identity & Search", "/api/public-profile/identity-search", identity, (section) => setIdentity(section));
   const saveFitSignals = () =>
     saveSection<FitSignalsSection>("Fit Signals", "/api/public-profile/fit-signals", fitSignals, (section) => setFitSignals(section));
-  const saveRoleTracks = () =>
-    saveSection<RoleTracksSection>("Role Tracks", "/api/public-profile/role-tracks", { roleTracks }, (section) => setRoleTracks(section.roleTracks));
-  const saveResumes = () =>
-    saveSection<ResumeUploadsSection>("Resumes", "/api/public-profile/resumes", { resumes }, (section) => setResumes(section.resumes));
+  // --- Card 1: Role Track + Résumé (onboarding-resume-upload DS card) ---
+
+  const firstRun = roleTracks.length === 0;
+  const activeTrack = roleTracks.find((track) => track.id === activeTrackId);
+  const attachedResume = activeTrack
+    ? resumes.find((resume) => resume.associatedRoleTrackIds.includes(activeTrack.id))
+    : undefined;
+  // The rest of onboarding unlocks once one Role Track is saved with a résumé
+  // that has text (scanned or pasted).
+  const card1Complete = roleTracks.some((track) =>
+    track.name.trim().length > 0 &&
+    track.resumeIds.some((resumeId) => resumes.some((resume) => resume.id === resumeId && resume.parsedText.trim().length > 0)));
+
+  // Scan the dropped/chosen PDF into text. The file itself is never stored.
+  async function scanResumePdf(file: File) {
+    if (!accessToken) return;
+    const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+    if (!isPdf) {
+      setResumeScan({
+        status: "error",
+        lead: `That's a ${fileKindLabel(file.name)} file (${file.name}).`,
+        tail: "We only read PDFs — export or “Save as” PDF, or paste your text.",
+      });
+      return;
+    }
+    setResumeScan({ status: "reading", fileName: file.name, fileSize: file.size });
+    setMessage("Reading your PDF…");
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      const response = await fetch("/api/public-profile/resumes/scan", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${accessToken}` },
+        body: form,
+      });
+      const data = await response.json().catch(() => null) as
+        | { status?: string; parsingQuality?: ParsingQuality; extractedText?: string; error?: string; detail?: string }
+        | null;
+      if (!response.ok) {
+        const detail = data?.detail ?? "We couldn't read that PDF.";
+        const stop = detail.indexOf(". ");
+        setResumeScan({
+          status: "error",
+          lead: stop === -1 ? detail : detail.slice(0, stop + 1),
+          tail: stop === -1 ? "" : detail.slice(stop + 2),
+        });
+        setMessage("Résumé scan failed.");
+        return;
+      }
+      if (data?.status === "model_unavailable") {
+        setResumeScan({
+          status: "error",
+          lead: "We couldn't read this PDF right now.",
+          tail: "Paste the text — it feeds highlights exactly the same way.",
+        });
+        setMessage("Résumé scan unavailable.");
+        return;
+      }
+      if (data?.status !== "scanned" || !data.extractedText?.trim() || data.parsingQuality === "failed") {
+        setResumeScan({
+          status: "error",
+          lead: "We couldn't pull any text from this PDF.",
+          tail: "Looks like scanned images. Paste your résumé text so nothing gets missed.",
+        });
+        setMessage("Résumé scan failed.");
+        return;
+      }
+      const read: ResumeScanState = {
+        status: "read",
+        fileName: file.name,
+        fileSize: file.size,
+        text: data.extractedText,
+        quality: data.parsingQuality ?? "complete",
+      };
+      setResumeScan(read);
+      setMessage("Résumé read.");
+      // Replacing the résumé on an already-saved track persists straight away —
+      // the saved card has no separate Save button (DS card state 2).
+      if (!firstRun && !creatingTrack && attachedResume) {
+        await saveCard1(read);
+      }
+    } catch {
+      setResumeScan({
+        status: "error",
+        lead: "We couldn't read this PDF right now.",
+        tail: "Paste the text — it feeds highlights exactly the same way.",
+      });
+      setMessage("Résumé scan failed.");
+    }
+  }
+
+  // Persist Card 1: the Role Track, its résumé (exactly one per track), and the
+  // track→résumé link the completion check requires. Three sequential PATCHes
+  // because new items get server ids and attachments only validate against saved rows.
+  async function saveCard1(scanOverride?: ResumeScanState) {
+    if (!accessToken) return;
+    const scan = scanOverride ?? resumeScan;
+    const isNewTrack = firstRun || creatingTrack;
+    const trackName = isNewTrack ? newTrackName.trim() : (activeTrack?.name.trim() ?? "");
+    const resumeText = scan.status === "read" ? scan.text : pastedResumeText.trim();
+    if (!trackName || !resumeText) return;
+    setBusy(true);
+    setMessage("Saving Role Track & Résumé…");
+    setSaveProgress({ status: "running", phase: 0 });
+    try {
+      // 1. Save the track. A new track duplicates the active track's details —
+      // duplicate-and-edit — so only what differs for this lane needs adjusting.
+      let tracksBody = roleTracks;
+      let trackIndex = roleTracks.findIndex((track) => track.id === activeTrackId);
+      if (isNewTrack) {
+        const source = creatingTrack && activeTrack ? activeTrack : undefined;
+        const newTrack: RoleTrackSectionItem = source
+          ? { ...source, id: createClientId(), name: trackName, resumeIds: [] }
+          : { ...emptyRoleTrack(), name: trackName };
+        tracksBody = [...roleTracks, newTrack];
+        trackIndex = tracksBody.length - 1;
+      }
+      const trackResponse = await requestPublicProfileApi<SectionResponse<RoleTracksSection>>(
+        "/api/public-profile/role-tracks",
+        { method: "PATCH", accessToken, body: { roleTracks: tracksBody } },
+      );
+      const savedTracks = trackResponse.section.roleTracks;
+      const savedTrack = savedTracks[trackIndex];
+      if (!savedTrack) throw new Error("Role Track save came back empty.");
+      setSaveProgress({ status: "running", phase: 1 });
+
+      // 2. Save the résumé attached to exactly this track.
+      const existingResume = resumes.find((resume) => resume.associatedRoleTrackIds.includes(savedTrack.id));
+      const resumeItem: ResumeUploadSectionItem = {
+        ...(existingResume ?? emptyResume()),
+        name: scan.status === "read" ? scan.fileName : (existingResume?.name || `${savedTrack.name} résumé`),
+        parsedText: resumeText,
+        parsingQuality: scan.status === "read" ? scan.quality : "complete",
+        associatedRoleTrackIds: [savedTrack.id],
+      };
+      const resumesBody = existingResume
+        ? resumes.map((resume) => (resume.id === existingResume.id ? resumeItem : resume))
+        : [...resumes, resumeItem];
+      const resumeIndex = existingResume
+        ? resumes.findIndex((resume) => resume.id === existingResume.id)
+        : resumesBody.length - 1;
+      const resumeResponse = await requestPublicProfileApi<SectionResponse<ResumeUploadsSection>>(
+        "/api/public-profile/resumes",
+        { method: "PATCH", accessToken, body: { resumes: resumesBody } },
+      );
+      const savedResumes = resumeResponse.section.resumes;
+      const savedResume = savedResumes[resumeIndex];
+      if (!savedResume) throw new Error("Résumé save came back empty.");
+      setSaveProgress({ status: "running", phase: 2 });
+
+      // 3. Point the track at its résumé.
+      const linkedTracks = savedTracks.map((track) =>
+        track.id === savedTrack.id ? { ...track, resumeIds: [savedResume.id] } : track);
+      const linkResponse = await requestPublicProfileApi<SectionResponse<RoleTracksSection>>(
+        "/api/public-profile/role-tracks",
+        { method: "PATCH", accessToken, body: { roleTracks: linkedTracks } },
+      );
+
+      setRoleTracks(linkResponse.section.roleTracks);
+      setResumes(savedResumes);
+      setActiveTrackId(linkResponse.section.roleTracks[trackIndex]?.id ?? savedTrack.id);
+      setCard1Note({
+        count: resumeResponse.resumeHighlightCounts?.[savedResume.id],
+        trackName: savedTrack.name,
+        fileSize: scan.status === "read" ? scan.fileSize : undefined,
+      });
+      applyProfileQuality(linkResponse.profileQuality);
+      if (!isProfileEditor) setReviewOpen(linkResponse.profileQuality.status === "incomplete");
+      setCreatingTrack(false);
+      setNewTrackName("");
+      setTrackMenuOpen(false);
+      setResumeScan({ status: "idle" });
+      setPastedResumeText("");
+      setMessage("Role Track & Résumé saved.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Save failed.");
+    } finally {
+      setSaveProgress({ status: "idle" });
+      setBusy(false);
+    }
+  }
   const saveWorkExamples = () =>
     saveSection<WorkExamplesSection>("Work Examples", "/api/public-profile/work-examples", { workExamples }, (section) => setWorkExamples(section.workExamples));
   const saveSkills = () =>
@@ -993,22 +1242,12 @@ export default function OnboardingClient({
 
   /* --- per-item state updates --- */
 
-  const updateRoleTrack = (id: string, patch: Partial<RoleTrackSectionItem>) =>
-    setRoleTracks((tracks) => tracks.map((track) => (track.id === id ? { ...track, ...patch } : track)));
-  const updateResume = (id: string, patch: Partial<ResumeUploadSectionItem>) =>
-    setResumes((items) => items.map((resume) => (resume.id === id ? { ...resume, ...patch } : resume)));
   const updateWorkExample = (id: string, patch: Partial<WorkExampleSectionItem>) =>
     setWorkExamples((items) => items.map((example) => (example.id === id ? { ...example, ...patch } : example)));
   const updateSkill = (id: string, patch: Partial<SkillsInventorySectionItem>) =>
     setSkills((items) => items.map((skill) => (skill.id === id ? { ...skill, ...patch } : skill)));
   const updateWritingSample = (id: string, patch: Partial<WritingSamplesSectionItem>) =>
     setWritingSamples((samples) => samples.map((sample) => (sample.id === id ? { ...sample, ...patch } : sample)));
-
-  function toggleResumeRoleTrack(resume: ResumeUploadSectionItem, roleTrackId: string) {
-    const ids = new Set(resume.associatedRoleTrackIds);
-    if (ids.has(roleTrackId)) ids.delete(roleTrackId); else ids.add(roleTrackId);
-    updateResume(resume.id, { associatedRoleTrackIds: Array.from(ids) });
-  }
 
   function toggleSkillWorkExample(skill: SkillsInventorySectionItem, workExampleId: string) {
     const ids = new Set(skill.relatedWorkExampleIds);
@@ -1071,6 +1310,31 @@ export default function OnboardingClient({
       </div>
     );
   }
+
+  // Active-track chip — teal = the lane you're populating. On Card 1 and echoed
+  // on every per-track card (onboarding-resume-upload DS card, state 4).
+  const trackChip = activeTrack ? (
+    <span className={styles.trackChip}><span className={styles.trackChipDot} />{activeTrack.name}</span>
+  ) : null;
+
+  // Per-track card header (DS card state 4): h3 title + active-track chip.
+  function perTrackHeader(title: string, action?: React.ReactNode) {
+    return (
+      <div className={styles.cardHead}>
+        <h3 className={styles.cardTitle}>{title}</h3>
+        <span className={styles.cardHeadSide}>
+          {action}
+          {trackChip}
+        </span>
+      </div>
+    );
+  }
+
+  // "You're populating {track}. Switch lanes from Card 1's dropdown." — the
+  // orientation helper each per-track card carries (DS card state 4).
+  const populatingHelper = activeTrack ? (
+    <p className={styles.card1Helper}>You&apos;re populating <b>{activeTrack.name}</b>. Switch lanes from Card 1&apos;s dropdown.</p>
+  ) : null;
 
   const signedIn = Boolean(accessToken);
   const blockedSections = sections.filter(
@@ -1214,8 +1478,39 @@ export default function OnboardingClient({
     </div>
   );
 
+  // Card 1 save loader — the scan-progress modal (running state only; it closes
+  // itself when the save resolves either way).
+  const saveLoader = saveProgress.status === "running" ? (
+    <div className={loaderStyles.scanOverlay} role="dialog" aria-modal="true" aria-label="Save progress">
+      <div className={loaderStyles.scanBox}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img className={loaderStyles.scanLoadingGif} src="/DF-small.gif" alt="" aria-hidden="true" />
+        <div className={loaderStyles.scanModalHead}>
+          <h3 className={loaderStyles.scanModalTitle}>Saving</h3>
+        </div>
+        <div className={loaderStyles.scanProgressTrack} aria-hidden="true">
+          <div
+            className={loaderStyles.scanProgressFill}
+            style={{ width: saveProgress.phase === 0 ? "30%" : saveProgress.phase === 1 ? "62%" : "88%" }}
+          />
+        </div>
+        <div className={loaderStyles.scanPhases} aria-hidden="true">
+          {CARD1_SAVE_PHASES.map((label, index) => {
+            const phaseClass = index < saveProgress.phase
+              ? loaderStyles.scanPhaseDone
+              : index === saveProgress.phase
+                ? loaderStyles.scanPhaseActive
+                : "";
+            return <span key={label} className={`${loaderStyles.scanPhase} ${phaseClass}`}>{label}</span>;
+          })}
+        </div>
+      </div>
+    </div>
+  ) : null;
+
   return (
     <div className={isProfileEditor ? styles.profileEditorMode : undefined}>
+      {saveLoader}
       {!isProfileEditor ? (
         <SiteHeader
           sectionHrefPrefix="/"
@@ -1286,6 +1581,190 @@ export default function OnboardingClient({
             <section className={`${styles.editorGrid} ${isProfileEditor ? styles.profileEditorGrid : ""}`} aria-label="Editable onboarding form">
               <div className={styles.formStack}>
 
+          {/* --- Card 1: Role Track + Résumé (onboarding-resume-upload DS card) --- */}
+          <article className={`${styles.formCard} ${styles.card1}`} id="career-profile-roleTracks">
+            <div className={styles.cardHead}>
+              <h3 className={styles.cardTitle}>{firstRun ? "Start a Role Track" : "Role Track"}</h3>
+              {firstRun ? <span className={styles.step}>Step 1 of onboarding</span> : trackChip}
+            </div>
+
+            <div className={styles.card1Field}>
+              <label className={styles.card1Label} htmlFor="card1-track-name">{firstRun || creatingTrack ? "Role Track name" : "Role Track"}</label>
+              {firstRun || creatingTrack ? (
+                <>
+                  <input
+                    id="card1-track-name"
+                    className={styles.trackInput}
+                    value={newTrackName}
+                    placeholder="Create a new role track"
+                    disabled={!accessToken || busy}
+                    onChange={(event) => setNewTrackName(event.target.value)}
+                  />
+                  {firstRun ? (
+                    <span className={styles.subhint}>Name the lane you&apos;re pursuing — e.g. Program Director, Producer. Want one résumé to cover everything? Make a general track.</span>
+                  ) : (
+                    <span className={styles.subhint}>A new track starts from the details of your current one — adjust what&apos;s different for this lane.</span>
+                  )}
+                </>
+              ) : (
+                <div className={styles.selectRow} ref={trackSelectRef}>
+                  <button
+                    type="button"
+                    className={styles.selectFace}
+                    aria-haspopup="listbox"
+                    aria-expanded={trackMenuOpen}
+                    disabled={!accessToken || busy}
+                    onClick={() => setTrackMenuOpen((open) => !open)}
+                  >
+                    <span>{activeTrack?.name}</span>
+                    <span className={styles.selectCar} aria-hidden="true">{trackMenuOpen ? "▴" : "▾"}</span>
+                  </button>
+                  {trackMenuOpen ? (
+                    <>
+                      <div className={styles.selectMenu} role="listbox">
+                        {roleTracks.map((track) => (
+                          <button
+                            key={track.id}
+                            type="button"
+                            role="option"
+                            aria-selected={track.id === activeTrackId}
+                            className={`${styles.selectOpt} ${track.id === activeTrackId ? styles.selectOptSel : ""}`}
+                            onClick={() => { setActiveTrackId(track.id); setTrackMenuOpen(false); setCard1Note(null); setResumeScan({ status: "idle" }); }}
+                          >
+                            {track.name || track.id}
+                          </button>
+                        ))}
+                        <button
+                          type="button"
+                          className={`${styles.selectOpt} ${styles.selectOptNew}`}
+                          onClick={() => { setCreatingTrack(true); setNewTrackName(""); setTrackMenuOpen(false); setCard1Note(null); setResumeScan({ status: "idle" }); }}
+                        >
+                          ＋ Create a new role track
+                        </button>
+                      </div>
+                      <span className={styles.subhint}>A new track starts from the details of your current one — adjust what&apos;s different for this lane.</span>
+                    </>
+                  ) : null}
+                </div>
+              )}
+            </div>
+
+            <div className={styles.card1Field}>
+              <label className={styles.card1Label}>Résumé</label>
+              <input
+                ref={resumeFileInputRef}
+                type="file"
+                accept="application/pdf,.pdf"
+                hidden
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  event.target.value = "";
+                  if (file) void scanResumePdf(file);
+                }}
+              />
+              {!firstRun && !creatingTrack && attachedResume && resumeScan.status !== "error" ? (
+                <>
+                  <div className={styles.drop}>
+                    <span className={styles.pdfTag}>PDF</span>
+                    <div className={styles.fileChip}>
+                      <span>{resumeScan.status === "read" || resumeScan.status === "reading" ? resumeScan.fileName : attachedResume.name}</span>
+                      {resumeScan.status === "read" || resumeScan.status === "reading"
+                        ? <span className={styles.fileMeta}>{formatFileSize(resumeScan.fileSize)}</span>
+                        : card1Note?.fileSize
+                          ? <span className={styles.fileMeta}>{formatFileSize(card1Note.fileSize)}</span>
+                          : null}
+                    </div>
+                    <button
+                      type="button"
+                      className={styles.chooseBtn}
+                      disabled={!accessToken || busy || resumeScan.status === "reading"}
+                      onClick={() => resumeFileInputRef.current?.click()}
+                    >
+                      Replace
+                    </button>
+                  </div>
+                  {card1Note ? (
+                    <p className={styles.okNote}>
+                      <b>{typeof card1Note.count === "number" && card1Note.count > 0
+                        ? `Read — pulled ${card1Note.count} highlight${card1Note.count === 1 ? "" : "s"}.`
+                        : "Read."}</b>
+                      {` Titles, metrics, and companies routed to the ${card1Note.trackName} lane.`}
+                    </p>
+                  ) : null}
+                </>
+              ) : (
+                <>
+                  <div
+                    className={`${styles.drop} ${resumeScan.status === "error" ? styles.dropErr : ""}`}
+                    onDragOver={(event) => event.preventDefault()}
+                    onDrop={(event) => {
+                      event.preventDefault();
+                      const file = event.dataTransfer.files?.[0];
+                      if (file) void scanResumePdf(file);
+                    }}
+                  >
+                    <span className={styles.pdfTag}>PDF</span>
+                    {resumeScan.status === "read" ? (
+                      <div className={styles.fileChip}>
+                        <span>{resumeScan.fileName}</span>
+                        <span className={styles.fileMeta}>{formatFileSize(resumeScan.fileSize)}</span>
+                      </div>
+                    ) : (
+                      <div className={styles.dropMain}>
+                        <span className={styles.dropTitle}>Drop a PDF here, or choose a file</span>
+                        <span className={styles.dropHint}>PDF only · read once to pull quotable highlights · not stored</span>
+                      </div>
+                    )}
+                    <button
+                      type="button"
+                      className={styles.chooseBtn}
+                      disabled={!accessToken || busy || resumeScan.status === "reading"}
+                      onClick={() => resumeFileInputRef.current?.click()}
+                    >
+                      {resumeScan.status === "read" ? "Replace" : "Choose PDF"}
+                    </button>
+                  </div>
+                  {resumeScan.status === "error" ? (
+                    <p className={styles.errNote}><b>{resumeScan.lead}</b>{resumeScan.tail ? ` ${resumeScan.tail}` : ""}</p>
+                  ) : null}
+                  {resumeScan.status !== "read" ? (
+                    <>
+                      <textarea
+                        className={styles.resumeTa}
+                        placeholder="Or paste your résumé text here…"
+                        value={pastedResumeText}
+                        disabled={!accessToken || busy || resumeScan.status === "reading"}
+                        onChange={(event) => setPastedResumeText(event.target.value)}
+                      />
+                      <p className={styles.card1Helper}>No file, or a résumé that won&apos;t upload? <b>Paste the text</b> — it feeds highlights exactly the same way.</p>
+                    </>
+                  ) : null}
+                </>
+              )}
+            </div>
+
+            {firstRun || creatingTrack || !attachedResume || resumeScan.status === "read" || resumeScan.status === "error" ? (
+              <button
+                type="button"
+                className={styles.card1Primary}
+                disabled={
+                  !accessToken || busy || resumeScan.status === "reading"
+                  || !(firstRun || creatingTrack ? newTrackName.trim() : activeTrack?.name.trim())
+                  || !(resumeScan.status === "read" || pastedResumeText.trim())
+                }
+                onClick={() => void saveCard1()}
+              >
+                Save Role Track &amp; Résumé
+              </button>
+            ) : null}
+            {firstRun ? (
+              <p className={styles.lockNote}>🔒 The rest of onboarding unlocks once this is saved.</p>
+            ) : null}
+          </article>
+
+          {/* Everything below Card 1 stays locked until a Role Track + résumé is saved. */}
+          <fieldset className={styles.gateFieldset} disabled={!card1Complete}>
+
           {/* --- Identity & Search --- */}
           <article className={styles.formCard} id="career-profile-identitySearch">
             {sectionHeader("identitySearch", "Identity & Search")}
@@ -1342,7 +1821,8 @@ export default function OnboardingClient({
 
           {/* --- Fit Signals --- */}
           <article className={styles.formCard} id="career-profile-fitSignals">
-            {sectionHeader("fitSignals", "Fit Signals", true)}
+            {perTrackHeader("Fit Signals")}
+            {populatingHelper}
             <p className={styles.cardLede}>Soft signals that nudge job ratings up or down. Poor-fit jobs still surface, rated lower, with the reason shown.</p>
             <div className={styles.formGrid}>
               <label className={styles.fullWidth}>What makes a role a strong fit<textarea value={listToText(fitSignals.goodSignals)} onChange={(event) => setFitSignals({ ...fitSignals, goodSignals: textToList(event.target.value) })} /></label>
@@ -1354,104 +1834,12 @@ export default function OnboardingClient({
             </div>
           </article>
 
-          {/* --- Role Tracks --- */}
-          <article className={styles.formCard} id="career-profile-roleTracks">
-            {sectionHeader("roleTracks", "Role Tracks", false, (
-              <button className={styles.secondaryButton} disabled={!accessToken || busy} onClick={() => setRoleTracks((tracks) => [...tracks, emptyRoleTrack()])} type="button">Add Role Track</button>
-            ))}
-            {roleTracks.length === 0 ? (
-              <p className={styles.emptyState}>No Role Tracks yet. A Role Track is one credible lane you pursue, connecting the resumes, work examples, and outreach rules that fit it. For example, apply as a Project Manager in one Role Track and as a Producer in another.</p>
-            ) : (
-              <div className={styles.roleTrackList}>
-                {roleTracks.map((track, index) => (
-                  <div className={styles.roleTrackEditor} key={track.id}>
-                    <div className={styles.roleTrackHeader}>
-                      <h3>Track {index + 1}</h3>
-                      <button className={styles.secondaryButton} disabled={busy} onClick={() => setRoleTracks((tracks) => tracks.filter((item) => item.id !== track.id))} type="button">Remove</button>
-                    </div>
-                    <div className={styles.formGrid}>
-                      <label>Name<input value={track.name} onChange={(event) => updateRoleTrack(track.id, { name: event.target.value })} /></label>
-                      <label>Target titles<input value={listToText(track.targetTitles)} onChange={(event) => updateRoleTrack(track.id, { targetTitles: textToList(event.target.value) })} /></label>
-                      <label className={styles.fullWidth}>Description<textarea value={track.description} onChange={(event) => updateRoleTrack(track.id, { description: event.target.value })} /></label>
-                      <label className={styles.fullWidth}>Core positioning<textarea value={track.corePositioning} onChange={(event) => updateRoleTrack(track.id, { corePositioning: event.target.value })} /></label>
-                      <label className={styles.fullWidth}>Outreach angle<textarea value={track.outreachAngle} onChange={(event) => updateRoleTrack(track.id, { outreachAngle: event.target.value })} /></label>
-                      <label>Key responsibilities<textarea value={listToText(track.keyResponsibilities)} onChange={(event) => updateRoleTrack(track.id, { keyResponsibilities: textToList(event.target.value) })} /></label>
-                      <label>Required experience patterns<textarea value={listToText(track.requiredExperiencePatterns)} onChange={(event) => updateRoleTrack(track.id, { requiredExperiencePatterns: textToList(event.target.value) })} /></label>
-                      <label>Strong job signals<textarea value={listToText(track.strongJobSignals)} onChange={(event) => updateRoleTrack(track.id, { strongJobSignals: textToList(event.target.value) })} /></label>
-                      <label>Weak job signals<textarea value={listToText(track.weakJobSignals)} onChange={(event) => updateRoleTrack(track.id, { weakJobSignals: textToList(event.target.value) })} /></label>
-                      <label>Mismatch signals<textarea value={listToText(track.mismatchSignals)} onChange={(event) => updateRoleTrack(track.id, { mismatchSignals: textToList(event.target.value) })} /></label>
-                      <label>Do not overclaim<textarea value={listToText(track.doNotOverclaim)} onChange={(event) => updateRoleTrack(track.id, { doNotOverclaim: textToList(event.target.value) })} /></label>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-            <div className={styles.formActions}>
-              <button className={styles.primaryButton} disabled={!accessToken || busy} onClick={saveRoleTracks} type="button">Save Role Tracks</button>
-              <p>Comma-separate list fields. Resume connections stay linked to the selected Role Tracks.</p>
-            </div>
-          </article>
-
-          {/* --- Resumes --- */}
-          <article className={styles.formCard} id="career-profile-resumes">
-            {sectionHeader("resumes", "Resumes", false, (
-              <button className={styles.secondaryButton} disabled={!accessToken || busy} onClick={() => setResumes((items) => [...items, emptyResume()])} type="button">Add Resume</button>
-            ))}
-            {resumes.length === 0 ? (
-              <p className={styles.emptyState}>No resumes yet. Add a resume record and attach it to at least one Role Track.</p>
-            ) : (
-              <div className={styles.roleTrackList}>
-                {resumes.map((resume, index) => (
-                  <div className={styles.roleTrackEditor} key={resume.id}>
-                    <div className={styles.roleTrackHeader}>
-                      <h3>Resume {index + 1}</h3>
-                      <button className={styles.secondaryButton} disabled={busy} onClick={() => setResumes((items) => items.filter((item) => item.id !== resume.id))} type="button">Remove</button>
-                    </div>
-                    <div className={styles.formGrid}>
-                      <label>Name<input value={resume.name} onChange={(event) => updateResume(resume.id, { name: event.target.value })} /></label>
-                      <label>Resume link<input value={resume.fileUrl} onChange={(event) => updateResume(resume.id, { fileUrl: event.target.value })} /></label>
-                      <label>Resume readiness<select value={resume.parsingQuality} onChange={(event) => updateResume(resume.id, { parsingQuality: event.target.value as ParsingQuality })}>
-                        <option value="failed">Needs rebuild</option>
-                        <option value="weak">Needs cleanup</option>
-                        <option value="complete">Ready</option>
-                      </select></label>
-                      <label>Strengths<textarea value={listToText(resume.strengths)} onChange={(event) => updateResume(resume.id, { strengths: textToList(event.target.value) })} /></label>
-                      <label>Gaps<textarea value={listToText(resume.gaps)} onChange={(event) => updateResume(resume.id, { gaps: textToList(event.target.value) })} /></label>
-                      <label>Use when<textarea value={listToText(resume.useWhen)} onChange={(event) => updateResume(resume.id, { useWhen: textToList(event.target.value) })} /></label>
-                      <label>Avoid when<textarea value={listToText(resume.avoidWhen)} onChange={(event) => updateResume(resume.id, { avoidWhen: textToList(event.target.value) })} /></label>
-                      <label>Cleanup notes<textarea value={listToText(resume.parsingIssues)} onChange={(event) => updateResume(resume.id, { parsingIssues: textToList(event.target.value) })} /></label>
-                      <label className={styles.fullWidth}>Resume text<textarea value={resume.parsedText} onChange={(event) => updateResume(resume.id, { parsedText: event.target.value })} /></label>
-                    </div>
-                    <div className={styles.attachmentBlock}>
-                      <p className={styles.statusLabel}>Attach to Role Tracks</p>
-                      {roleTracks.length === 0 ? (
-                        <p className={styles.emptyState}>Add and save at least one Role Track before saving resume attachments.</p>
-                      ) : (
-                        <div className={styles.checkboxGrid}>
-                          {roleTracks.map((track) => (
-                            <label key={track.id}>
-                              <input checked={resume.associatedRoleTrackIds.includes(track.id)} onChange={() => toggleResumeRoleTrack(resume, track.id)} type="checkbox" />
-                              {track.name || track.id}
-                            </label>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-            <div className={styles.formActions}>
-              <button className={styles.primaryButton} disabled={!accessToken || busy} onClick={saveResumes} type="button">Save Resumes</button>
-              <p>Add resume text or a link here, then connect the resume to the Role Tracks it supports.</p>
-            </div>
-          </article>
-
           {/* --- Work Examples --- */}
           <article className={styles.formCard} id="career-profile-workExamples">
-            {sectionHeader("workExamples", "Work Examples", false, (
+            {perTrackHeader("Work Examples", (
               <button className={styles.secondaryButton} disabled={!accessToken || busy} onClick={() => setWorkExamples((items) => [...items, emptyWorkExample()])} type="button">Add Work Example</button>
             ))}
+            {populatingHelper}
             <p className={styles.cardLede}>Text-only examples the outreach generator can reach for. The one-hitter is the punchy line that can drop straight into a message.</p>
             {workExamples.length === 0 ? (
               <p className={styles.emptyState}>No work examples yet. Add a few with a punchy one-hitter and the context behind it.</p>
@@ -1481,9 +1869,10 @@ export default function OnboardingClient({
 
           {/* --- Skills --- */}
           <article className={styles.formCard} id="career-profile-skills">
-            {sectionHeader("skills", "Skills", false, (
+            {perTrackHeader("Skills", (
               <button className={styles.secondaryButton} disabled={!accessToken || busy} onClick={() => setSkills((items) => [...items, emptySkill()])} type="button">Add Skill</button>
             ))}
+            {populatingHelper}
             {skills.length === 0 ? (
               <p className={styles.emptyState}>No skills yet. Search the catalogue or add your own, then back each one with evidence and guardrails.</p>
             ) : (
@@ -1636,9 +2025,10 @@ export default function OnboardingClient({
 
           {/* --- Outreach Rules --- */}
           <article className={styles.formCard} id="career-profile-outreachRules">
-            {sectionHeader("outreachRules", "Outreach Rules", false, (
-              <button className={styles.secondaryButton} disabled={!accessToken || busy} onClick={() => setOutreachRules((section) => ({ ...section, roleTrackSpecificRules: [...section.roleTrackSpecificRules, emptyRoleTrackOutreachRule(roleTracks[0]?.id)] }))} type="button">Add Role Rule</button>
+            {perTrackHeader("Outreach Rules", (
+              <button className={styles.secondaryButton} disabled={!accessToken || busy} onClick={() => setOutreachRules((section) => ({ ...section, roleTrackSpecificRules: [...section.roleTrackSpecificRules, emptyRoleTrackOutreachRule(activeTrackId || roleTracks[0]?.id)] }))} type="button">Add Role Rule</button>
             ))}
+            {populatingHelper}
             <div className={styles.formGrid}>
               <label>Global rules<textarea value={listToText(outreachRules.settings?.globalRules)} onChange={(event) => setOutreachRules((section) => ({ ...section, settings: { ...(section.settings ?? emptyOutreachSettings()), globalRules: textToList(event.target.value) } }))} /></label>
               <label>Follow-up rules<textarea value={listToText(outreachRules.settings?.followUpRules)} onChange={(event) => setOutreachRules((section) => ({ ...section, settings: { ...(section.settings ?? emptyOutreachSettings()), followUpRules: textToList(event.target.value) } }))} /></label>
@@ -1716,6 +2106,7 @@ export default function OnboardingClient({
               <p>Keep hidden unless leadership or executive positioning should appear in generated outputs.</p>
             </div>
           </article>
+          </fieldset>
         </div>
 
               {isProfileEditor ? (

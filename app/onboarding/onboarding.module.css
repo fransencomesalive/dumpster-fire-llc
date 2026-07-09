@@ -569,6 +569,8 @@
   border: 0;
   margin: 0 0 18px;
   padding: 0;
+  /* fieldsets default to min-inline-size: min-content, which blocks shrinking at 320px */
+  min-width: 0;
 }
 
 .chipLegend {
@@ -641,6 +643,8 @@
 
 .chipInput {
   flex: 1;
+  /* let the input shrink at narrow widths instead of pushing the button out */
+  min-width: 0;
   min-height: 38px;
   border: var(--line-reg) solid var(--c-ink);
   border-radius: var(--radius-md);
@@ -1437,9 +1441,369 @@
   .accountCode {
     margin-left: 0;
     min-width: 0;
+    width: 100%;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .rail {
     position: static;
   }
+}
+
+/* ============================================================
+   Card 1 · Role Track + Résumé
+   Source DS card: components/onboarding-resume-upload.html —
+   classes ported 1:1 onto the global tokens.
+   ============================================================ */
+
+/* Card 1's blocks stack with the DS card's gap (its .card is a grid, gap space-4). */
+.card1 {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.cardHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.cardTitle {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  color: var(--c-ink);
+}
+
+.cardHeadSide {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.step {
+  font-family: var(--font-subhead);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 0.72rem;
+  color: var(--role-text-faint);
+}
+
+/* Active-track chip — teal = the lane you're populating. */
+.trackChip {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-subhead);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 0.74rem;
+  line-height: 1;
+  color: var(--c-paper);
+  background-color: var(--c-teal);
+  border: var(--line-reg) solid var(--c-ink);
+  border-radius: var(--radius-pill);
+  padding: 5px 10px;
+}
+
+.trackChipDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--c-paper);
+}
+
+.card1Field {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.card1Label {
+  font-family: var(--font-display);
+  font-size: 1.02rem;
+  color: var(--c-ink);
+}
+
+.subhint {
+  font-size: 0.86rem;
+  color: var(--role-text-faint);
+}
+
+/* Role-track name input (first run) — becomes a dropdown once a track is saved. */
+.trackInput {
+  box-sizing: border-box;
+  width: 100%;
+  font-family: var(--font-body);
+  font-size: 1.02rem;
+  color: var(--c-ink);
+  background: var(--c-paper);
+  border: var(--line-reg) solid var(--c-ink);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+}
+
+.trackInput::placeholder {
+  font-style: italic;
+  color: var(--role-text-faint);
+}
+
+.trackInput:focus {
+  outline: none;
+  border-color: var(--c-teal);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--c-teal) 26%, transparent);
+}
+
+/* Dropdown (saved-track) state */
+.selectRow {
+  position: relative;
+  display: grid;
+  gap: var(--space-2);
+}
+
+.selectFace {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-sizing: border-box;
+  width: 100%;
+  font-family: var(--font-display);
+  font-size: 1.02rem;
+  color: var(--c-ink);
+  background: var(--c-paper);
+  border: var(--line-reg) solid var(--c-ink);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+  cursor: pointer;
+}
+
+.selectCar {
+  color: var(--role-text-faint);
+}
+
+.selectMenu {
+  border: var(--line-reg) solid var(--c-ink);
+  border-radius: var(--radius-md);
+  background: var(--c-paper);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+  display: grid;
+}
+
+.selectOpt {
+  text-align: left;
+  padding: var(--space-3) var(--space-4);
+  font-family: var(--font-display);
+  font-size: 1rem;
+  color: var(--c-ink);
+  background: transparent;
+  border: 0;
+  border-bottom: var(--line-hair) solid var(--c-ink);
+  cursor: pointer;
+}
+
+.selectOpt:last-child {
+  border-bottom: 0;
+}
+
+.selectOptSel {
+  background-color: color-mix(in srgb, var(--c-teal) 14%, var(--c-paper));
+}
+
+.selectOptNew {
+  color: var(--c-teal);
+  font-style: italic;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  background-color: color-mix(in srgb, var(--c-teal) 6%, var(--c-paper));
+}
+
+/* Résumé upload control (PDF only, scanned once, never stored). */
+.drop {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  border: var(--line-reg) dashed var(--c-ink);
+  border-radius: var(--radius-md);
+  background: var(--c-paper);
+  padding: var(--space-4) var(--space-5);
+}
+
+.dropErr {
+  border-style: solid;
+  border-left: 6px solid var(--c-tomato);
+}
+
+.pdfTag {
+  flex: none;
+  font-family: var(--font-subhead);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 0.72rem;
+  color: var(--c-paper);
+  background: var(--c-ink);
+  border-radius: var(--radius-sm);
+  padding: 4px 8px;
+}
+
+.dropMain {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.dropTitle {
+  font-family: var(--font-display);
+  font-size: 1.02rem;
+  color: var(--c-ink);
+}
+
+.dropHint {
+  font-size: 0.86rem;
+  color: var(--role-text-faint);
+}
+
+/* Teal actions per the DS card (teal = positive; --role-action tomato is not for Card 1). */
+.chooseBtn {
+  margin-left: auto;
+  flex: none;
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 1rem;
+  color: var(--c-paper);
+  background-color: var(--c-teal);
+  border: var(--line-bold) solid var(--c-ink);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
+  padding: var(--space-2) var(--space-5);
+  cursor: pointer;
+}
+
+.card1Primary {
+  justify-self: start;
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 1.02rem;
+  color: var(--c-paper);
+  background-color: var(--c-teal);
+  border: var(--line-bold) solid var(--c-ink);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
+  padding: var(--space-3) var(--space-6);
+  cursor: pointer;
+}
+
+.chooseBtn:disabled,
+.card1Primary:disabled {
+  cursor: not-allowed;
+  filter: grayscale(0.3);
+  opacity: 0.55;
+}
+
+.fileChip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-family: var(--font-display);
+  font-size: 0.98rem;
+  color: var(--c-ink);
+}
+
+.fileMeta {
+  color: var(--role-text-faint);
+  font-family: var(--font-body);
+  font-size: 0.86rem;
+  white-space: nowrap;
+}
+
+.okNote,
+.errNote {
+  margin: 0;
+  border: var(--line-reg) solid var(--c-ink);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+  font-size: 0.92rem;
+  color: var(--role-text-muted);
+}
+
+.okNote {
+  background-color: color-mix(in srgb, var(--c-teal) 12%, var(--c-paper));
+  border-left: 6px solid var(--c-teal);
+}
+
+.errNote {
+  background-color: color-mix(in srgb, var(--c-tomato) 10%, var(--c-paper));
+  border-left: 6px solid var(--c-tomato);
+}
+
+.okNote b,
+.errNote b,
+.card1Helper b {
+  color: var(--c-ink);
+  font-family: var(--font-display);
+  font-weight: normal;
+}
+
+.resumeTa {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 88px;
+  resize: vertical;
+  font-family: var(--font-body);
+  font-size: 0.98rem;
+  color: var(--c-ink);
+  background: var(--c-paper);
+  border: var(--line-reg) solid var(--c-ink);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+}
+
+.resumeTa::placeholder {
+  color: var(--role-text-faint);
+}
+
+.resumeTa:focus {
+  outline: none;
+  border-color: var(--c-teal);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--c-teal) 26%, transparent);
+}
+
+.card1Helper {
+  margin: 0;
+  font-size: 0.88rem;
+  color: var(--role-text-muted);
+}
+
+.lockNote {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  color: var(--role-text-faint);
+  font-size: 0.9rem;
+  font-style: italic;
+}
+
+/* Sections below Card 1 lock until a Role Track + résumé is saved. */
+.gateFieldset {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 18px;
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+
+.gateFieldset > .formCard {
+  min-width: 0;
+}
+
+.gateFieldset:disabled .formCard {
+  opacity: 0.55;
 }

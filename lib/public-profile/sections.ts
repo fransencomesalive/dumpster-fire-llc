@@ -426,6 +426,11 @@ const optionalStringFields = new Set<keyof IdentitySearchSection>([
 const roleTrackStringFields = [
   "id",
   "name",
+] as const;
+
+// Derived from the résumé extract for matching + message generation — Card 1
+// doesn't collect these, so an empty value is valid.
+const roleTrackEmptyOkStringFields = [
   "description",
   "corePositioning",
   "outreachAngle",
@@ -449,8 +454,12 @@ const roleTrackListFields = [
 const resumeStringFields = [
   "id",
   "name",
-  "fileUrl",
   "parsedText",
+] as const;
+
+// Scan-and-discard keeps no stored file — fileUrl is a plain optional link.
+const resumeEmptyOkStringFields = [
+  "fileUrl",
 ] as const;
 
 const resumeListFields = [
@@ -959,6 +968,10 @@ function parseRoleTrackItem(input: unknown, index: number) {
     }
   }
 
+  for (const field of roleTrackEmptyOkStringFields) {
+    item[field] = cleanString(source[field]) ?? "";
+  }
+
   for (const field of roleTrackOptionalStringFields) {
     if (!(field in source)) continue;
     item[field] = optionalString(cleanString(source[field]));
@@ -1061,6 +1074,10 @@ function parseResumeItem(input: unknown, index: number) {
     } else {
       item[field] = value;
     }
+  }
+
+  for (const field of resumeEmptyOkStringFields) {
+    item[field] = cleanString(source[field]) ?? "";
   }
 
   for (const field of resumeListFields) {

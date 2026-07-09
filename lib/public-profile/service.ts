@@ -169,6 +169,26 @@ async function generateCappedResumeHighlights(
   return derived;
 }
 
+// Card 1's saved-state note reports how many highlights the résumé read pulled
+// ("Read — pulled 5 highlights"). Runs the same capped pass profile.md uses (one
+// usage entry, fresh highlights persisted to the résumé cache); at the cap or with
+// no model wired it falls back to each résumé's cached highlights, so the count is
+// real or absent — never invented.
+export async function deriveResumeHighlightCountsForUser(
+  request: PublicProfileRepositoryRequest,
+  userId: string,
+  at = new Date().toISOString(),
+): Promise<Record<string, number> | undefined> {
+  const aggregate = await loadCandidateProfileAggregate(request, userId);
+  if (!aggregate) return undefined;
+  const derived = await generateCappedResumeHighlights(request, userId, aggregate, at);
+  const counts: Record<string, number> = {};
+  for (const resume of aggregate.resumes) {
+    counts[resume.id] = derived?.get(resume.id)?.length ?? resume.highlights.length;
+  }
+  return counts;
+}
+
 export async function regeneratePublicProfileForUser(
   request: PublicProfileRepositoryRequest,
   userId: string,

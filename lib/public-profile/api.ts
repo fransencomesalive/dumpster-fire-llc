@@ -73,6 +73,7 @@ import { evaluateMatch } from "./matching/engine";
 import type { MatchJob, MatchResult } from "./matching/types";
 import { evaluateCandidateProfileQuality } from "./profile-quality";
 import {
+  deriveResumeHighlightCountsForUser,
   regeneratePublicProfileForUser,
   type PublicProfileRegenerationResult,
 } from "./service";
@@ -213,6 +214,11 @@ export type PublicProfileResumeUploadsHandlerOptions = {
       updatedAt: string;
     },
   ) => Promise<PublicProfileResumeUploadsUpdateResult>;
+  deriveResumeHighlightCounts?: (
+    request: PublicProfileRepositoryRequest,
+    userId: string,
+    at: string,
+  ) => Promise<Record<string, number> | undefined>;
 };
 
 export type PublicProfileFitSignalsHandlerOptions = {
@@ -2168,12 +2174,19 @@ export async function handleResumeUploadsSectionPatchRequest(
     }, { status: 404 });
   }
 
+  // Saving a résumé runs the metered highlights pass so Card 1's saved-state note
+  // can report the real count. Failure never blocks the save response.
+  const deriveHighlightCounts = options.deriveResumeHighlightCounts ?? deriveResumeHighlightCountsForUser;
+  const resumeHighlightCounts = await deriveHighlightCounts(repositoryRequest, session.userId, updatedAt)
+    .catch(() => undefined);
+
   return json({
     status: result.status,
     profileId: result.aggregate.profile.id,
     profileStatus: result.profileQuality.status,
     section: result.section,
     profileQuality: profileQualitySummary(result.profileQuality),
+    resumeHighlightCounts,
   });
 }
 
