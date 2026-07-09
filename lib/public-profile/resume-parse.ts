@@ -25,16 +25,33 @@ export type ResumeParseDependencies = {
 
 const parsingQualities = new Set<ParsingQuality>(["failed", "weak", "complete"]);
 
+// Verdict semantics (Randall, 2026-07-09): judge the OUTCOME — the text being
+// returned — never the extraction difficulty. A scrambled text stream that the
+// model fully reconstructs is a "complete" parse; "weak" is reserved for text
+// that is actually missing content or garbled AS RETURNED.
 const systemPrompt = [
   "You read a candidate's résumé from a PDF and return two things: the résumé's",
-  "plain text, and an honest verdict on how cleanly it read. Output ONLY a JSON",
-  "object with keys:",
-  '"parsingQuality" — one of "complete" (clean selectable text, fully extracted),',
-  '"weak" (text came through but messy or partial — heavy tables/columns/graphics),',
-  'or "failed" (no usable text — scanned images, encrypted, or empty);',
+  "plain text in correct reading order, and an honest verdict on the quality of",
+  "the text you are returning. Reconstruct the natural reading order from the",
+  "rendered layout even when the PDF's internal text stream is scrambled or",
+  "multi-column — fixing the order yourself is expected and does not lower the",
+  "verdict. Judge only the text you return (the outcome), not how hard the file",
+  "was to read. Output ONLY a JSON object with keys:",
+  '"parsingQuality" — one of "complete" (the returned text captures everything',
+  "visible in the rendered document, in sensible reading order — a messy source",
+  "you fully reconstructed still counts, minor cosmetic imperfections do NOT",
+  "demote, and content the document itself simply does not contain, like an",
+  'empty section, is NOT a parse defect), "weak" (an extraction defect: content',
+  "visible in the rendered document is missing or garbled in your returned text,",
+  'or you could not confidently reconstruct the order), or "failed" (no usable',
+  "text — scanned images, encrypted, or empty). When unsure between complete and",
+  "weak, choose complete unless you can name specific visible content that your",
+  "returned text failed to capture;",
   '"extractedText" — the résumé text as plain text (empty string when failed);',
-  '"issue" — one short human sentence on what went wrong (omit or empty when complete);',
-  '"suggestion" — one short human sentence on how to fix it (omit or empty when complete).',
+  '"issue" — only when weak/failed: one short human sentence on what is wrong with',
+  "the returned text, phrased for the candidate (never internal PDF mechanics);",
+  '"suggestion" — only when weak/failed: one short human sentence on what they can',
+  "do (re-export the PDF with selectable text, or paste the text instead).",
   "Never invent content that is not in the PDF. No prose or markdown outside the JSON.",
 ].join(" ");
 
@@ -68,6 +85,8 @@ const defaultCallModel: ResumeParseModelCall = async ({ system, instruction: use
     const response = await client.messages.create({
       model: "claude-opus-4-8",
       max_tokens: 8192,
+      // No sampling params on this model (temperature is rejected with a 400).
+      // Verdict consistency comes from the concrete grade boundaries in the prompt.
       system,
       messages: [
         {
