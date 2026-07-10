@@ -142,3 +142,18 @@ the other matches.
 - Across parallel sessions this is shared responsibility: if one session changes a live
   surface and another owns the DS card, the change is incomplete until both are updated —
   coordinate on `main` (see "No Branches — All Work On `main`").
+
+### Full Design-Sync Checklist (hard rule, Randall 2026-07-09)
+
+Pushing a card file alone is NOT a design sync. EVERY design change — including parity
+edits to existing cards — must run ALL of these steps before it can be called synced:
+
+1. Update the card HTML; the first line keeps its `<!-- @dsCard group="…" -->` marker.
+2. Ensure the card has an entry in `_ds_manifest.json`'s cards array; push the manifest
+   together with the card.
+3. `register_assets` for every touched card (name + subtitle noting what changed +
+   viewport) so the Design System pane actually refreshes and the update shows up.
+4. Mirror the same files into the repo's `design-system/` and commit, so repo ↔ Claude
+   Design project stay in parity (remote-only cards are how stale drift happens).
+5. When a product change ships (fields removed, copy changed, limits changed), sweep ALL
+   cards that show the affected surface — not just the card that prompted the change.

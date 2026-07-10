@@ -1,0 +1,106 @@
+<!-- @dsCard group="Onboarding" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Onboarding · Voice & Personality — Tone chips</title>
+<link rel="stylesheet" href="../tokens/tokens.css" />
+<link rel="stylesheet" href="../lib/base.css" />
+<style>
+  :root { --font-gotham: "Inter", "Helvetica Neue", Arial; } /* preview stand-in for the app's Gotham (next/font) */
+  /* Plain paper — halftone ground removed 2026-07-09 (pattern rejected, Randall 2026-07-04). */
+  body { margin: 0; background: var(--c-paper); font-family: var(--font-ui), Inter, system-ui, sans-serif;
+    padding: var(--space-6) var(--space-5); }
+  .wrap { max-width: 660px; margin: 0 auto; }
+
+  /* Section card — maps to onboarding formCard / DS panel */
+  .section { background-color: var(--c-paper-deep); border: var(--line-bold) solid var(--c-ink);
+    border-radius: var(--radius-lg); box-shadow: var(--shadow-card); padding: var(--space-5); }
+  .sectionTitle { font-family: var(--font-display); font-size: var(--type-h2); color: var(--c-ink);
+    margin: 0 0 var(--space-1); }
+  .sectionLede { font-family: var(--font-ui), Inter, system-ui, sans-serif; font-size: var(--type-small);
+    color: var(--role-text-muted); margin: 0 0 var(--space-5); line-height: 1.45; }
+
+  /* one control block */
+  .field { margin-bottom: var(--space-5); }
+  .fieldHead { display: flex; align-items: baseline; gap: var(--space-3);
+    margin-bottom: var(--space-3); }
+  .fieldLabel { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: var(--tracking-subhead);
+    font-size: var(--type-subhead); color: var(--c-ink); }
+  .req { font-family: var(--font-ui), Inter, system-ui, sans-serif; font-size: var(--type-caption);
+    color: var(--c-teal); text-transform: none; letter-spacing: 0; }
+  .opt { font-family: var(--font-ui), Inter, system-ui, sans-serif; font-size: var(--type-caption);
+    color: var(--role-text-faint); text-transform: none; letter-spacing: 0; }
+
+  .chips { display: flex; flex-wrap: wrap; gap: var(--space-3) var(--space-3); align-items: center; }
+
+  /* base selectable chip — unselected: outline pill */
+  .chip { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.04em;
+    font-size: 0.84rem; line-height: 1; cursor: pointer; user-select: none;
+    border-radius: var(--radius-pill); padding: 7px 14px;
+    border: var(--line-reg) solid var(--c-ink); background: var(--c-paper); color: var(--c-ink); }
+
+  /* selected · LEAN INTO → solid teal (positive) */
+  .chip.on-pos { background: var(--c-teal); color: var(--c-paper); }
+  /* selected · STEER CLEAR → dashed tomato (avoid/warning) */
+  .chip.on-neg { border-style: dashed; border-color: var(--c-tomato); color: var(--c-tomato); background: var(--c-paper); }
+
+  /* add-your-own ghost chip */
+  .chip.add { border-style: dashed; border-color: var(--role-text-faint); color: var(--role-text-muted);
+    background: transparent; }
+
+  textarea { width: 100%; resize: vertical; min-height: 56px; box-sizing: border-box;
+    font-family: var(--font-ui), Inter, system-ui, sans-serif; font-size: var(--type-body); color: var(--c-ink);
+    background: var(--c-paper); border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-md);
+    padding: var(--space-3); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="section">
+    <h2 class="sectionTitle">How should you sound?</h2>
+    <p class="sectionLede">Tap the ones that fit. This is the personality we bring to your outreach, so it sounds like you and not a press release.</p>
+
+    <div class="field">
+      <div class="fieldHead">
+        <span class="fieldLabel">Lean into</span>
+        <span class="req">pick at least one</span>
+      </div>
+      <div class="chips">
+        <span class="chip on-pos">Punchy</span>
+        <span class="chip">Warm</span>
+        <span class="chip on-pos">No-fluff</span>
+        <span class="chip">Blunt</span>
+        <span class="chip">Funny</span>
+        <span class="chip on-pos">Specific</span>
+        <span class="chip">Casual</span>
+        <span class="chip">Brief</span>
+        <span class="chip add">+ your own</span>
+      </div>
+    </div>
+
+    <div class="field">
+      <div class="fieldHead">
+        <span class="fieldLabel">Steer clear</span>
+        <span class="opt">optional</span>
+      </div>
+      <div class="chips">
+        <span class="chip on-neg">Corporate jargon</span>
+        <span class="chip on-neg">Biz-formal</span>
+        <span class="chip">LinkedIn malarky</span>
+        <span class="chip add">+ your own</span>
+      </div>
+    </div>
+
+    <div class="field" style="margin-bottom:0;">
+      <div class="fieldHead">
+        <span class="fieldLabel">Anything else to avoid?</span>
+        <span class="opt">optional &middot; 25 words</span>
+      </div>
+      <textarea placeholder="e.g. never open with &ldquo;I hope this email finds you well&rdquo;"></textarea>
+    </div>
+  </div>
+</div>
+</body>
+</html>

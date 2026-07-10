@@ -1367,7 +1367,9 @@
 /* --- Persistent sections rail (right column) --- */
 .rail {
   position: sticky;
-  top: 18px;
+  /* Clears the sticky SiteHeader (top 12px + ~63px one-row header + gap) so the
+     rail stops under it instead of sliding beneath (Randall, 2026-07-09). */
+  top: 90px;
   align-self: start;
   border: var(--line-reg) solid var(--c-ink);
   border-radius: var(--radius-lg);
@@ -1476,6 +1478,14 @@
   min-width: 0;
   padding: 3px 8px;
   font-size: 0.66rem;
+}
+
+/* 841-900px: the SiteHeader's link row wraps onto its own line (site.module.css
+   900px breakpoint), so the sticky header is taller — push the rail further down. */
+@media (max-width: 900px) {
+  .rail {
+    top: 132px;
+  }
 }
 
 @media (max-width: 840px) {

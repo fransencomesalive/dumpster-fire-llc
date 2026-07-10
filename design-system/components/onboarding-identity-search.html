@@ -1,0 +1,214 @@
+<!-- @dsCard group="Onboarding" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Onboarding · Identity &amp; Search</title>
+<link rel="stylesheet" href="../tokens/tokens.css" />
+<link rel="stylesheet" href="../lib/base.css" />
+<style>
+  /* Plain paper — no halftone in new work (Randall, 2026-07-04). */
+  body { margin: 0; color: var(--c-ink); font-family: var(--font-body); background: var(--c-paper); }
+
+  .wrap { max-width: 1080px; margin: 0 auto; padding: var(--space-6) var(--space-5); display: grid; gap: var(--space-6); }
+  h1.page { font-family: var(--font-display); font-size: var(--type-h1); margin: 0 0 var(--space-2); }
+  .lede { color: var(--role-text-muted); max-width: 76ch; margin: 0; }
+  .lede b { color: var(--c-ink); font-weight: normal; }
+  .scroller { overflow-x: auto; }
+  .frame { width: 100%; min-width: 640px; display: grid; gap: var(--space-6); }
+
+  .state { display: grid; gap: var(--space-3); }
+  .stateCap { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: var(--tracking-subhead, 0.05em);
+    font-size: var(--type-caption); color: var(--role-text-faint); }
+  .stateCap b { color: var(--c-ink); }
+
+  /* Section card shell — the live formCard surface (paper-deep + fiber/grain, ink border). */
+  .section { max-width: 720px; background-color: var(--c-paper-deep); background-image: var(--fiber-img), var(--grain-img);
+    background-blend-mode: normal, soft-light; background-size: 170px 170px, 46px 46px;
+    border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-lg); box-shadow: var(--shadow-card);
+    padding: var(--space-5); display: grid; gap: var(--space-5); }
+
+  /* Card head — title + readiness badge. No eyebrow kicker (design rule). */
+  .cardHead { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); flex-wrap: wrap; }
+  .cardHead h2 { font-family: var(--font-display); font-size: var(--type-h2); color: var(--c-ink); margin: 0; }
+  .readinessBadge { flex: none; display: inline-flex; justify-content: center; align-items: center;
+    border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-pill); padding: 4px 10px;
+    font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: var(--tracking-subhead);
+    font-size: 0.7rem; font-weight: 900; white-space: nowrap; }
+  .badgeWork { background-color: var(--c-tomato); color: var(--c-paper); }
+  .badgeDone { background-color: var(--c-teal); color: var(--c-paper); }
+
+  /* Field block — subhead label + caption help (same as pickers/tone-chips cards + live formGrid). */
+  .field { display: grid; gap: var(--space-2); }
+  .fieldHead { display: flex; align-items: baseline; gap: var(--space-3); }
+  .fieldLabel { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: var(--tracking-subhead);
+    font-size: var(--type-subhead); color: var(--c-ink); }
+  .help { font-size: var(--type-caption); color: var(--role-text-faint); }
+  .subhint { font-size: 0.86rem; color: var(--role-text-faint); }
+  .subhint b { color: var(--c-ink); font-weight: normal; }
+
+  .grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-4); }
+
+  .input { box-sizing: border-box; width: 100%; min-height: 44px; font-family: var(--font-body);
+    font-size: var(--type-body); color: var(--c-ink); background: var(--c-paper);
+    border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-md); padding: 10px var(--space-3); }
+  /* Italic placeholder — same treatment as Card 1's track-name placeholder. */
+  .input.placeholder { font-style: italic; color: var(--role-text-faint); }
+  .input:focus { outline: none; border-color: var(--c-teal); box-shadow: 0 0 0 3px color-mix(in srgb, var(--c-teal) 26%, transparent); }
+
+  /* Select face (remote preference) — same primitive as Card 1's saved-track dropdown. */
+  .selectFace { display: flex; align-items: center; justify-content: space-between; box-sizing: border-box; width: 100%;
+    min-height: 44px; font-family: var(--font-body); font-size: var(--type-body); color: var(--c-ink);
+    background: var(--c-paper); border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-md);
+    padding: 10px var(--space-3); cursor: pointer; }
+  .selectFace .car { color: var(--role-text-faint); }
+
+  /* Compensation group — USD stated; yearly AND hourly, both min + preferred, no toggle. */
+  .compGroup { display: grid; gap: var(--space-3); }
+  .compRow { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-4); }
+  .compCell { display: grid; gap: 6px; }
+  .compCap { font-size: var(--type-caption); color: var(--role-text-muted); }
+
+  /* Tap chips — tone-chips primitive; selected = solid teal (positive). */
+  .chips { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: center; }
+  .chip { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.04em;
+    font-size: 0.84rem; line-height: 1; cursor: pointer; user-select: none;
+    border-radius: var(--radius-pill); padding: 7px 14px;
+    border: var(--line-reg) solid var(--c-ink); background: var(--c-paper); color: var(--c-ink); }
+  .chip.on-pos { background: var(--c-teal); color: var(--c-paper); }
+
+  /* Type-ahead picker + selected tokens — onboarding-pickers primitive. */
+  .picker { position: relative; }
+  .pickerInput { box-sizing: border-box; width: 100%; min-height: 44px; font-family: var(--font-body);
+    font-size: var(--type-body); color: var(--c-ink); background: var(--c-paper);
+    border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-md); padding: 10px var(--space-3); }
+  .pickerInput.placeholder { font-style: italic; color: var(--role-text-faint); }
+  .menu { margin-top: var(--space-2); background: var(--c-paper); border: var(--line-reg) solid var(--c-ink);
+    border-radius: var(--radius-md); box-shadow: var(--shadow-card); overflow: hidden; }
+  .menuAdd { font-size: var(--type-small); color: var(--role-text-muted); padding: 9px var(--space-3);
+    cursor: pointer; }
+  .menuAdd b { color: var(--c-ink); }
+  .tokens { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-3); }
+  .token { display: inline-flex; align-items: center; gap: 8px; font-size: var(--type-small); color: var(--c-paper);
+    background: var(--c-teal); border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-pill);
+    padding: 5px 6px 5px 12px; }
+  .token .x { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px;
+    border-radius: 50%; background: rgba(36,31,26,0.22); color: var(--c-paper); font-size: 12px; cursor: pointer; }
+
+  .primary { justify-self: start; font-family: var(--font-display); font-size: 1.02rem; color: var(--c-paper);
+    background-color: var(--c-teal); border: var(--line-bold) solid var(--c-ink); border-radius: var(--radius-md);
+    box-shadow: var(--shadow-card); padding: var(--space-3) var(--space-6); cursor: pointer; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div>
+    <h1 class="page">Onboarding · Identity &amp; Search</h1>
+    <p class="lede">The Identity &amp; Search section, rebuilt to the locked 2026-07-08 decisions:
+    <b>LinkedIn, Portfolio, and Personal-site URL fields are gone</b> (they earned nothing — Work
+    Examples carry their own links). Compensation is <b>USD, stated, with yearly AND hourly inputs</b>
+    (minimum + preferred each, no toggle) that tolerate commas and $. Employment types become
+    <b>tap chips</b>. Updated to the 2026-07-09 findings decisions: <b>Target company types is
+    retired</b> (company-board targeting moves to the scan) and <b>Avoid industries uses the same
+    type-ahead picker</b> as Target industries — one catalogue, one interaction.</p>
+  </div>
+
+  <div class="scroller"><div class="frame">
+
+    <!-- STATE 1 — the full section -->
+    <div class="state">
+      <div class="stateCap"><b>1 · The section</b> — every field that remains, in order. No URL fields, no company types.</div>
+      <div class="section">
+        <div class="cardHead"><h2>Identity &amp; Search</h2><span class="readinessBadge badgeDone">Complete</span></div>
+
+        <div class="grid2">
+          <div class="field">
+            <div class="fieldHead"><span class="fieldLabel">Full name</span></div>
+            <input class="input" value="Randall Fransen" />
+          </div>
+          <div class="field">
+            <div class="fieldHead"><span class="fieldLabel">Preferred name</span><span class="help">optional</span></div>
+            <input class="input" value="Randall" />
+          </div>
+        </div>
+
+        <div class="grid2">
+          <div class="field">
+            <div class="fieldHead"><span class="fieldLabel">Email</span></div>
+            <input class="input" value="fransencomesalive@gmail.com" />
+          </div>
+          <div class="field">
+            <div class="fieldHead"><span class="fieldLabel">Remote preference</span></div>
+            <div class="selectFace"><span>Remote preferred</span><span class="car">▾</span></div>
+          </div>
+        </div>
+
+        <div class="field">
+          <div class="fieldHead"><span class="fieldLabel">Location</span><span class="help">where you're based</span></div>
+          <div class="picker"><div class="pickerInput placeholder">Search a city…</div></div>
+          <div class="tokens" style="margin-top: var(--space-2);"><span class="token">Denver, CO, US<span class="x">&times;</span></span></div>
+        </div>
+
+        <div class="field compGroup">
+          <div class="fieldHead"><span class="fieldLabel">Target compensation</span><span class="help">USD</span></div>
+          <div class="compRow">
+            <div class="compCell"><span class="compCap">Yearly · minimum</span><input class="input" value="$150,000" /></div>
+            <div class="compCell"><span class="compCap">Yearly · preferred</span><input class="input" value="165k" /></div>
+          </div>
+          <div class="compRow">
+            <div class="compCell"><span class="compCap">Hourly · minimum</span><input class="input" value="72.50" /></div>
+            <div class="compCell"><span class="compCap">Hourly · preferred</span><input class="input" value="$85" /></div>
+          </div>
+          <p class="subhint">Type it how you'd say it — <b>"150,000"</b>, <b>"$150k"</b>, and <b>"72.50"</b> all read correctly. Jobs that post either form get matched against both.</p>
+        </div>
+
+        <div class="field">
+          <div class="fieldHead"><span class="fieldLabel">Employment types</span><span class="help">tap all that fit</span></div>
+          <div class="chips">
+            <span class="chip">Part-time</span>
+            <span class="chip on-pos">Full-time</span>
+            <span class="chip on-pos">Contract / freelance</span>
+          </div>
+        </div>
+
+        <div class="field">
+          <div class="fieldHead"><span class="fieldLabel">Target industries</span><span class="help">optional</span></div>
+          <div class="picker"><div class="pickerInput placeholder">add your own, it'll match</div></div>
+          <div class="tokens"><span class="token">Developer Tools<span class="x">&times;</span></span><span class="token">Healthtech<span class="x">&times;</span></span></div>
+        </div>
+
+        <div class="field">
+          <div class="fieldHead"><span class="fieldLabel">Avoid industries</span><span class="help">optional — same picker</span></div>
+          <div class="picker"><div class="pickerInput placeholder">add your own, it'll match</div></div>
+          <div class="tokens"><span class="token">Gambling<span class="x">&times;</span></span></div>
+        </div>
+
+        <div class="field">
+          <div class="fieldHead"><span class="fieldLabel">Avoid companies</span><span class="help">comma-separated</span></div>
+          <input class="input" value="Acme Corp" />
+        </div>
+
+        <button type="button" class="primary">Save Identity &amp; Search</button>
+      </div>
+    </div>
+
+    <!-- STATE 2 — industries custom-add, up close -->
+    <div class="state">
+      <div class="stateCap"><b>2 · Industries, custom-add</b> — free text matches job text; the list is a head start, not a fence. Custom add sits at the TOP of the menu (2026-07-09 #1).</div>
+      <div class="section" style="max-width: 520px;">
+        <div class="field">
+          <div class="fieldHead"><span class="fieldLabel">Target industries</span><span class="help">optional</span></div>
+          <div class="picker">
+            <div class="pickerInput">zine publishing</div>
+            <div class="menu"><div class="menuAdd">+ Add &ldquo;<b>zine publishing</b>&rdquo;</div></div>
+          </div>
+          <div class="tokens"><span class="token">Developer Tools<span class="x">&times;</span></span></div>
+        </div>
+      </div>
+    </div>
+
+  </div></div>
+</div>
+</body>
+</html>

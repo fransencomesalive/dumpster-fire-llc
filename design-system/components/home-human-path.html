@@ -1,0 +1,279 @@
+<!-- @dsCard group="Patterns" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Home · Human Path carousel</title>
+<link rel="stylesheet" href="../tokens/tokens.css" />
+<link rel="stylesheet" href="../lib/base.css" />
+<style>
+  /* Plain paper — no halftone in new work (Randall, 2026-07-04). */
+  body { margin: 0; background: var(--c-paper); color: var(--c-ink); font-family: var(--font-body); }
+
+  /* Homepage Human Path section redesigned for PARITY with the shipped wizard
+     (components/apply-wizard.html). Every slide below is one wizard step, verbatim
+     phrasing and primitives — the marketing preview IS the product screen, minus
+     interactivity. In production this renders as ONE framed panel; the arrows and
+     stepper tabs swap which step shows (CSS radio slideshow, ported classes). */
+  .wrap { max-width: 900px; margin: 0 auto; padding: var(--space-6) var(--space-5); display: grid; gap: var(--space-6); }
+
+  .sectionIntro h2 { font-family: var(--font-display); font-size: var(--type-h1); margin: 0 0 var(--space-2); }
+  .sectionIntro p { color: var(--role-text-muted); max-width: 68ch; margin: 0; }
+
+  .dsStateLabel { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.05em;
+    font-size: 0.82rem; color: var(--role-text-faint); margin: 0 0 var(--space-2); }
+
+  /* --- Slide frame = the wizard's modalBox, sitting on the page (no overlay) --- */
+  .pathPanel { width: 100%; box-sizing: border-box;
+    background-color: var(--c-paper-deep); background-image: var(--fiber-img), var(--grain-img);
+    background-blend-mode: normal, soft-light; background-size: 170px 170px, 46px 46px;
+    border: var(--line-bold) solid var(--c-ink); border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-card); padding: var(--space-6); }
+  .panelHeader { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-4);
+    margin-bottom: var(--space-5); padding-bottom: var(--space-3); border-bottom: var(--line-hair) solid var(--c-paper-edge); }
+  .panelTitle { font-family: var(--font-display); font-size: 1.45rem; line-height: 1.05; color: var(--c-ink); margin: 0; }
+
+  /* --- Stepper · identical to apply-wizard; doubles as the slide indicator --- */
+  .wizardSteps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-2);
+    margin-bottom: var(--space-5); }
+  .wizardStep { display: flex; align-items: center; gap: var(--space-2); min-width: 0;
+    font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.04em; font-size: 0.92rem;
+    color: var(--role-text-muted); background-color: var(--c-paper); border: var(--line-reg) solid var(--c-ink);
+    border-radius: var(--radius-md); padding: var(--space-2) var(--space-3); cursor: pointer; }
+  .wizardStep b { display: inline-grid; place-items: center; flex: none; width: 24px; height: 24px;
+    font-family: var(--font-subhead); font-weight: 400; font-size: 0.92rem; color: var(--c-ink);
+    background-color: var(--c-paper-deep); border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-pill); }
+  .wizardStepActive { color: var(--c-paper); background-color: var(--c-teal);
+    background-image: var(--fiber-img), var(--grain-img); background-blend-mode: normal, soft-light;
+    background-size: 170px 170px, 46px 46px; box-shadow: var(--shadow-card); }
+  .wizardStepActive b { color: var(--c-ink); background-color: var(--c-paper); }
+
+  .panelStack { display: grid; gap: var(--space-4); }
+  .panelStack section > strong { display: block; font-family: var(--font-display); font-size: 1.1rem;
+    color: var(--c-ink); margin-bottom: var(--space-1); }
+  .panelStack section > p { font-family: var(--font-body); color: var(--role-text-muted); margin: 0 0 var(--space-1); }
+
+  /* Step 1 · role-track selector + review (apply-wizard modeSection) */
+  .modeSection { background-color: var(--c-paper); border: var(--line-reg) solid var(--c-ink);
+    border-radius: var(--radius-md); padding: var(--space-4); }
+  .modeSelector { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); }
+  .modeSelector > span { font-family: var(--font-display); font-size: 1rem; color: var(--c-ink); }
+  .modeSelector label { display: inline-flex; align-items: center; gap: var(--space-2);
+    font-family: var(--font-body); color: var(--role-text-muted); }
+  input[type="checkbox"] { accent-color: var(--c-teal); width: 18px; height: 18px; flex: none; }
+
+  /* Step 2 · contact suggestion cards (apply-wizard contactSuggestion) */
+  .formSuccess { font-family: var(--font-body); font-size: 0.9rem; color: var(--c-ink); background: var(--c-paper);
+    border: var(--line-hair) solid var(--c-paper-edge); border-left: var(--line-bold) solid var(--c-teal);
+    border-radius: var(--radius-sm); padding: var(--space-2) var(--space-3); margin: var(--space-1) 0 0; }
+  .contactSuggestion { display: flex; align-items: flex-start; gap: var(--space-3);
+    background-color: var(--c-paper); border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-md);
+    padding: var(--space-4); }
+  .contactSuggestion > span { display: grid; gap: 3px; }
+  .contactSuggestion strong { font-family: var(--font-display); font-size: 1.1rem; color: var(--c-ink); }
+  .contactSuggestion em { font-family: var(--font-body); font-style: italic; color: var(--role-text-muted); }
+  .contactSuggestion b { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.04em;
+    font-size: 0.9rem; color: var(--c-teal); font-weight: 400; }
+  .contactSuggestion small { font-family: var(--font-body); font-size: var(--type-small); color: var(--role-text-faint); }
+
+  /* Step 3 · outreach draft (apply-wizard messageTextarea + feedback) */
+  .copyHeader { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3);
+    margin-bottom: var(--space-2); }
+  .copyHeader strong { font-family: var(--font-display); font-size: 1.1rem; color: var(--c-ink); }
+  .messageBlock { font-family: var(--font-body); font-size: 1rem; color: var(--c-ink);
+    background-color: var(--c-paper); border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-md);
+    padding: var(--space-3) var(--space-4); margin: 0; }
+  .feedbackRow { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); margin-top: var(--space-3); }
+  .feedbackPrompt { font-family: var(--font-display); font-size: 1rem; color: var(--c-ink); }
+  .feedbackBtn { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.04em; font-size: 0.85rem;
+    border-radius: var(--radius-md); border: var(--line-reg) solid var(--c-ink); box-shadow: 2px 2px 0 var(--c-ink);
+    padding: var(--space-2) var(--space-4); cursor: pointer; }
+  .feedbackBtnApprove { color: var(--c-paper); background-color: var(--c-teal); }
+  .feedbackBtnReject { color: var(--c-ink); background-color: var(--c-paper); }
+  .feedbackNote { font-family: var(--font-body); font-size: var(--type-small); color: var(--role-text-faint);
+    margin: var(--space-2) 0 0; }
+
+  /* Step 4 · tracking checklist (apply-wizard checklistGrid) */
+  .checklistGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); }
+  .checklistGrid label { display: flex; align-items: center; gap: var(--space-2); font-family: var(--font-body);
+    color: var(--role-text); background-color: var(--c-paper); border: var(--line-reg) solid var(--c-ink);
+    border-radius: var(--radius-md); padding: var(--space-2) var(--space-3); }
+
+  /* Footer mirrors the wizard footer so the preview reads as the real flow */
+  .panelFooter { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--space-3);
+    margin-top: var(--space-6); padding-top: var(--space-4); border-top: var(--line-hair) solid var(--c-paper-edge); }
+  .footerLink { margin-right: auto; font-family: var(--font-display); font-size: 1rem; color: var(--c-ink);
+    background-color: var(--c-paper); border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-md);
+    box-shadow: var(--shadow-card); padding: var(--space-3) var(--space-5); text-decoration: none; }
+  .footerNext { font-family: var(--font-display); font-size: 1rem; color: var(--role-action-text, var(--c-paper));
+    background-color: var(--role-action, var(--c-tomato)); border: var(--line-bold) solid var(--c-ink);
+    border-radius: var(--radius-md); box-shadow: var(--shadow-card); padding: var(--space-3) var(--space-5); cursor: pointer; }
+
+  /* --- Carousel arrows · square ink-bordered controls under the panel --- */
+  .arrows { display: flex; align-items: center; justify-content: center; gap: var(--space-4);
+    margin-top: var(--space-4); font-family: var(--font-subhead); text-transform: uppercase;
+    letter-spacing: 0.05em; font-size: 0.85rem; color: var(--role-text-muted); }
+  .arrowBtn { display: inline-grid; place-items: center; width: 38px; height: 38px; font-size: 1.05rem;
+    color: var(--c-ink); background-color: var(--c-paper); border: var(--line-reg) solid var(--c-ink);
+    border-radius: var(--radius-md); box-shadow: 2px 2px 0 var(--c-ink); cursor: pointer; user-select: none; }
+  .arrowBtn:hover { background-color: color-mix(in srgb, var(--c-teal) 14%, var(--c-paper)); }
+
+  @media (max-width: 560px) {
+    .wizardSteps { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .checklistGrid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="sectionIntro">
+    <h2>Human Path</h2>
+    <p>You can do this on your own. Dumpster Fire packages the steps so you are not rebuilding the same path every morning.</p>
+  </div>
+
+  <!-- ============ SLIDE 1 · REVIEW (wizard step 1, verbatim) ============ -->
+  <div>
+    <p class="dsStateLabel">Slide 1 of 4 · Review — in production, one panel; arrows/tabs swap slides</p>
+    <div class="pathPanel">
+      <div class="panelHeader"><h3 class="panelTitle">Human Path: Senior Producer</h3></div>
+      <div class="wizardSteps" aria-label="Human Path steps">
+        <span class="wizardStep wizardStepActive"><b>1</b>Review</span>
+        <span class="wizardStep"><b>2</b>Contacts</span>
+        <span class="wizardStep"><b>3</b>Outreach</span>
+        <span class="wizardStep"><b>4</b>Track</span>
+      </div>
+      <div class="panelStack">
+        <section class="modeSection">
+          <div class="modeSelector">
+            <span>Applying as:</span>
+            <label><input type="checkbox" checked /><span>Executive Producer recommended</span></label>
+            <label><input type="checkbox" /><span>Program Director</span></label>
+          </div>
+        </section>
+        <section>
+          <strong>Job review</strong>
+          <p>Liquid Death · $150k&ndash;$185k · Remote (US)</p>
+          <p>Fit: Good / 88. Strong overlap on creative production and launch delivery.</p>
+        </section>
+        <section>
+          <strong>Recommended strategy</strong>
+          <p>Lead with the launch you shipped end to end; name the metric. Keep it to four sentences.</p>
+        </section>
+      </div>
+      <div class="panelFooter">
+        <a href="#" class="footerLink">Open job posting</a>
+        <button type="button" class="footerNext">Continue</button>
+      </div>
+      <div class="arrows"><span class="arrowBtn">&larr;</span><span>Slide 1 of 4</span><span class="arrowBtn">&rarr;</span></div>
+    </div>
+  </div>
+
+  <!-- ============ SLIDE 2 · CONTACTS (wizard step 2, verbatim) ============ -->
+  <div>
+    <p class="dsStateLabel">Slide 2 of 4 · Contacts</p>
+    <div class="pathPanel">
+      <div class="panelHeader"><h3 class="panelTitle">Human Path: Senior Producer</h3></div>
+      <div class="wizardSteps" aria-label="Human Path steps">
+        <span class="wizardStep"><b>1</b>Review</span>
+        <span class="wizardStep wizardStepActive"><b>2</b>Contacts</span>
+        <span class="wizardStep"><b>3</b>Outreach</span>
+        <span class="wizardStep"><b>4</b>Track</span>
+      </div>
+      <div class="panelStack">
+        <section>
+          <strong>Human Path</strong>
+          <p>The reporting chain is built automatically when you pursue this role: owning function, manager, functional leader, then recruiter.</p>
+          <p class="formSuccess">Found 2 reporting-chain contacts.</p>
+        </section>
+        <div class="contactSuggestion">
+          <input type="checkbox" checked />
+          <span>
+            <strong>Sam Lewis</strong>
+            <em>VP, Brand &amp; Creative · Hiring Manager</em>
+            <b>&#9733;&#9733;&#9733;&#9733;&#9734; · 82% confidence · Verified</b>
+            <small>Owns the function this role reports into; confirmed current at Liquid Death.</small>
+          </span>
+        </div>
+        <div class="contactSuggestion">
+          <input type="checkbox" />
+          <span>
+            <strong>Willem Blom</strong>
+            <em>Senior Recruiter · Recruiter</em>
+            <b>&#9733;&#9733;&#9733;&#9734;&#9734; · 64% confidence · Unverified lead</b>
+            <small>Confirm this person before reaching out.</small>
+          </span>
+        </div>
+      </div>
+      <div class="panelFooter">
+        <a href="#" class="footerLink">Open job posting</a>
+        <button type="button" class="footerNext">Continue</button>
+      </div>
+      <div class="arrows"><span class="arrowBtn">&larr;</span><span>Slide 2 of 4</span><span class="arrowBtn">&rarr;</span></div>
+    </div>
+  </div>
+
+  <!-- ============ SLIDE 3 · OUTREACH (wizard step 3, verbatim) ============ -->
+  <div>
+    <p class="dsStateLabel">Slide 3 of 4 · Outreach</p>
+    <div class="pathPanel">
+      <div class="panelHeader"><h3 class="panelTitle">Human Path: Senior Producer</h3></div>
+      <div class="wizardSteps" aria-label="Human Path steps">
+        <span class="wizardStep"><b>1</b>Review</span>
+        <span class="wizardStep"><b>2</b>Contacts</span>
+        <span class="wizardStep wizardStepActive"><b>3</b>Outreach</span>
+        <span class="wizardStep"><b>4</b>Track</span>
+      </div>
+      <div class="panelStack">
+        <section>
+          <div class="copyHeader"><strong>Sam Lewis</strong></div>
+          <p class="messageBlock">Hi Sam — I produced Topo Chico's launch end to end and shipped it across 40+ SKUs in a quarter. Liquid Death's Senior Producer role looks like the same problem at a louder volume. Worth a short conversation?</p>
+          <div class="feedbackRow">
+            <span class="feedbackPrompt">How&apos;s this draft?</span>
+            <span class="feedbackBtn feedbackBtnApprove">Approve</span>
+            <span class="feedbackBtn feedbackBtnReject">Reject</span>
+          </div>
+          <p class="feedbackNote">Editable draft in your voice — never auto-sent.</p>
+        </section>
+      </div>
+      <div class="panelFooter">
+        <a href="#" class="footerLink">Open job posting</a>
+        <button type="button" class="footerNext">Continue</button>
+      </div>
+      <div class="arrows"><span class="arrowBtn">&larr;</span><span>Slide 3 of 4</span><span class="arrowBtn">&rarr;</span></div>
+    </div>
+  </div>
+
+  <!-- ============ SLIDE 4 · TRACK (wizard step 4, verbatim) ============ -->
+  <div>
+    <p class="dsStateLabel">Slide 4 of 4 · Track</p>
+    <div class="pathPanel">
+      <div class="panelHeader"><h3 class="panelTitle">Human Path: Senior Producer</h3></div>
+      <div class="wizardSteps" aria-label="Human Path steps">
+        <span class="wizardStep"><b>1</b>Review</span>
+        <span class="wizardStep"><b>2</b>Contacts</span>
+        <span class="wizardStep"><b>3</b>Outreach</span>
+        <span class="wizardStep wizardStepActive"><b>4</b>Track</span>
+      </div>
+      <div class="panelStack">
+        <section>
+          <strong>Pursuit tracking</strong>
+          <p>Check what happened. Saving moves the role into the right pipeline state.</p>
+        </section>
+        <div class="checklistGrid">
+          <label><input type="checkbox" checked /><span>Applied online</span></label>
+          <label><input type="checkbox" /><span>Applied via LinkedIn</span></label>
+          <label><input type="checkbox" checked /><span>Messaged Sam Lewis</span></label>
+          <label><input type="checkbox" /><span>Saved for follow-up</span></label>
+        </div>
+      </div>
+      <div class="panelFooter">
+        <a href="#" class="footerLink">Open job posting</a>
+        <button type="button" class="footerNext">Save pursuit</button>
+      </div>
+      <div class="arrows"><span class="arrowBtn">&larr;</span><span>Slide 4 of 4</span><span class="arrowBtn">&rarr;</span></div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

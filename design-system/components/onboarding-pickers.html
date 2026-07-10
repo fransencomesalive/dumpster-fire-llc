@@ -1,0 +1,129 @@
+<!-- @dsCard group="Onboarding" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Onboarding · Identity & Search — Type-ahead pickers</title>
+<link rel="stylesheet" href="../tokens/tokens.css" />
+<link rel="stylesheet" href="../lib/base.css" />
+<style>
+  :root { --font-gotham: "Inter", "Helvetica Neue", Arial; } /* preview stand-in for the app's Gotham (next/font) */
+  /* Plain paper — halftone ground removed 2026-07-09 (pattern rejected, Randall 2026-07-04). */
+  body { margin: 0; background: var(--c-paper); font-family: var(--font-ui), Inter, system-ui, sans-serif;
+    padding: var(--space-6) var(--space-5); }
+  .wrap { max-width: 660px; margin: 0 auto; }
+
+  .section { background-color: var(--c-paper-deep); border: var(--line-bold) solid var(--c-ink);
+    border-radius: var(--radius-lg); box-shadow: var(--shadow-card); padding: var(--space-5); }
+  .sectionTitle { font-family: var(--font-display); font-size: var(--type-h2); color: var(--c-ink);
+    margin: 0 0 var(--space-1); }
+  .sectionLede { font-family: var(--font-ui), Inter, system-ui, sans-serif; font-size: var(--type-small);
+    color: var(--role-text-muted); margin: 0 0 var(--space-5); line-height: 1.45; }
+
+  .field { margin-bottom: var(--space-5); }
+  .field:last-child { margin-bottom: 0; }
+  .fieldHead { display: flex; align-items: baseline; gap: var(--space-3); margin-bottom: var(--space-2); }
+  .fieldLabel { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: var(--tracking-subhead);
+    font-size: var(--type-subhead); color: var(--c-ink); }
+  .help { font-family: var(--font-ui), Inter, system-ui, sans-serif; font-size: var(--type-caption);
+    color: var(--role-text-faint); }
+
+  .picker { position: relative; }
+  .pickerInput { width: 100%; box-sizing: border-box; font-family: var(--font-ui), Inter, system-ui, sans-serif;
+    font-size: var(--type-body); color: var(--c-ink); background: var(--c-paper);
+    border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-md); padding: 10px var(--space-3); }
+  .pickerInput .caret { color: var(--c-ink); border-left: 1.5px solid var(--c-ink); margin-left: 1px;
+    animation: none; }
+  .typed { color: var(--c-ink); }
+
+  /* dropdown menu (shown open for review; floats in the live app) */
+  .menu { margin-top: var(--space-2); background: var(--c-paper); border: var(--line-reg) solid var(--c-ink);
+    border-radius: var(--radius-md); box-shadow: var(--shadow-card); overflow: hidden; }
+  .menuItem { font-family: var(--font-ui), Inter, system-ui, sans-serif; font-size: var(--type-body);
+    color: var(--c-ink); padding: 9px var(--space-3); cursor: pointer; }
+  .menuItem.active { background: color-mix(in srgb, var(--c-teal) 16%, var(--c-paper)); }
+  /* Custom-add lives at the TOP of the menu in its own section (Randall, findings
+     2026-07-09 #1): users must see that adding is possible without scrolling.
+     Divider sits BELOW it, separating it from the suggested matches. */
+  .menuAdd { font-family: var(--font-ui), Inter, system-ui, sans-serif; font-size: var(--type-small);
+    color: var(--role-text-muted); padding: 9px var(--space-3); cursor: pointer;
+    border-bottom: var(--line-reg) dashed var(--role-line-soft); }
+  .menuAdd b { color: var(--c-ink); }
+
+  /* selected tokens — teal = saved/on (DS stSaved); case-preserving for real names */
+  .tokens { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-3); }
+  .token { display: inline-flex; align-items: center; gap: 8px; font-family: var(--font-ui), Inter, system-ui, sans-serif;
+    font-size: var(--type-small); color: var(--c-paper); background: var(--c-teal);
+    border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-pill); padding: 5px 6px 5px 12px; }
+  .token .x { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px;
+    border-radius: 50%; background: rgba(36,31,26,0.22); color: var(--c-paper); font-size: 12px; cursor: pointer; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="section">
+    <h2 class="sectionTitle">Where you fit</h2>
+    <p class="sectionLede">Start typing and pick from the list. Not finding yours? Add it. The list is a head start, not a fence.</p>
+
+    <div class="field">
+      <div class="fieldHead">
+        <span class="fieldLabel">Skills</span>
+        <span class="help">add as many as fit</span>
+      </div>
+      <div class="picker">
+        <div class="pickerInput"><span class="typed">react</span><span class="caret">&nbsp;</span></div>
+        <div class="menu">
+          <div class="menuAdd">+ Add &ldquo;<b>react hooks</b>&rdquo;</div>
+          <div class="menuItem active">React</div>
+          <div class="menuItem">React Native</div>
+          <div class="menuItem">React Router</div>
+        </div>
+      </div>
+      <div class="tokens">
+        <span class="token">TypeScript<span class="x">&times;</span></span>
+        <span class="token">Node.js<span class="x">&times;</span></span>
+        <span class="token">Figma<span class="x">&times;</span></span>
+      </div>
+    </div>
+
+    <div class="field">
+      <div class="fieldHead">
+        <span class="fieldLabel">Target industries</span>
+        <span class="help">optional</span>
+      </div>
+      <div class="picker">
+        <div class="pickerInput" style="color:var(--role-text-faint); font-style: italic;">add your own, it'll match</div>
+      </div>
+      <div class="tokens">
+        <span class="token">Developer Tools<span class="x">&times;</span></span>
+        <span class="token">Healthtech<span class="x">&times;</span></span>
+      </div>
+    </div>
+
+    <div class="field">
+      <div class="fieldHead">
+        <span class="fieldLabel">Avoid industries</span>
+        <span class="help">optional — same picker, same catalogue</span>
+      </div>
+      <div class="picker">
+        <div class="pickerInput" style="color:var(--role-text-faint); font-style: italic;">add your own, it'll match</div>
+      </div>
+      <div class="tokens">
+        <span class="token">Gambling<span class="x">&times;</span></span>
+      </div>
+    </div>
+
+    <div class="field">
+      <div class="fieldHead">
+        <span class="fieldLabel">Location</span>
+        <span class="help">where you're based</span>
+      </div>
+      <div class="tokens" style="margin-top:0;">
+        <span class="token">Denver, CO, US<span class="x">&times;</span></span>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

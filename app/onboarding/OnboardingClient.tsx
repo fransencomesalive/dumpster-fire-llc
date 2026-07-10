@@ -188,15 +188,20 @@ type WritingBucketConfig = {
   bucket: WritingSampleBucket;
   label: string;
   helper: string;
+  placeholder: string;
   required: boolean;
   max: number;
 };
 
+// Example text carried over from the approved DS writing-samples card (Randall,
+// 2026-07-09: "the example text in each of these is good and i want to keep them
+// for production").
 const writingBucketConfigs: WritingBucketConfig[] = [
   {
     bucket: "sounds_like_me",
     label: "Sounds like me",
     helper: "Paste something you actually wrote. One is enough; add a second only if it shows a different side of your voice.",
+    placeholder: "Hey, quick one. Deploy's green, smoke tests pass, I'm shipping it. If anything looks weird in prod ping me and I'll roll it back, no drama.",
     required: true,
     max: 2,
   },
@@ -204,6 +209,7 @@ const writingBucketConfigs: WritingBucketConfig[] = [
     bucket: "want_to_sound",
     label: "Want to sound like",
     helper: "Optional. Something in someone else's voice you wish yours read like.",
+    placeholder: "Paste a snippet whose voice you'd love yours to read like.",
     required: false,
     max: 1,
   },
@@ -211,6 +217,7 @@ const writingBucketConfigs: WritingBucketConfig[] = [
     bucket: "never_sound",
     label: "Never sound like",
     helper: "One example of writing you never want to be mistaken for.",
+    placeholder: "We are thrilled to leverage our cross-functional synergies to drive holistic, best-in-class outcomes that move the needle…",
     required: true,
     max: 1,
   },
@@ -1901,15 +1908,15 @@ export default function OnboardingClient({
                 <span className={styles.pickerLabel}>Target compensation <span className={styles.compCurrency}>USD</span></span>
                 <div className={styles.compRow}>
                   <label><span className={styles.compCap}>Yearly · minimum</span>
-                    <input inputMode="decimal" {...moneyField("identity.compYearlyMin", identity.targetCompensationMin, (value) => setIdentity((current) => ({ ...current, targetCompensationMin: value })))} /></label>
+                    <input inputMode="decimal" placeholder="$150,000" {...moneyField("identity.compYearlyMin", identity.targetCompensationMin, (value) => setIdentity((current) => ({ ...current, targetCompensationMin: value })))} /></label>
                   <label><span className={styles.compCap}>Yearly · preferred</span>
-                    <input inputMode="decimal" {...moneyField("identity.compYearlyPreferred", identity.targetCompensationPreferred, (value) => setIdentity((current) => ({ ...current, targetCompensationPreferred: value })))} /></label>
+                    <input inputMode="decimal" placeholder="165k" {...moneyField("identity.compYearlyPreferred", identity.targetCompensationPreferred, (value) => setIdentity((current) => ({ ...current, targetCompensationPreferred: value })))} /></label>
                 </div>
                 <div className={styles.compRow}>
                   <label><span className={styles.compCap}>Hourly · minimum</span>
-                    <input inputMode="decimal" {...moneyField("identity.compHourlyMin", identity.targetCompensationHourlyMin, (value) => setIdentity((current) => ({ ...current, targetCompensationHourlyMin: value })), { decimals: true })} /></label>
+                    <input inputMode="decimal" placeholder="72.50" {...moneyField("identity.compHourlyMin", identity.targetCompensationHourlyMin, (value) => setIdentity((current) => ({ ...current, targetCompensationHourlyMin: value })), { decimals: true })} /></label>
                   <label><span className={styles.compCap}>Hourly · preferred</span>
-                    <input inputMode="decimal" {...moneyField("identity.compHourlyPreferred", identity.targetCompensationHourlyPreferred, (value) => setIdentity((current) => ({ ...current, targetCompensationHourlyPreferred: value })), { decimals: true })} /></label>
+                    <input inputMode="decimal" placeholder="$85" {...moneyField("identity.compHourlyPreferred", identity.targetCompensationHourlyPreferred, (value) => setIdentity((current) => ({ ...current, targetCompensationHourlyPreferred: value })), { decimals: true })} /></label>
                 </div>
                 <p className={styles.card1Helper}>Type it how you&apos;d say it — <b>&quot;150,000&quot;</b>, <b>&quot;$150k&quot;</b>, and <b>&quot;72.50&quot;</b> all read correctly. Jobs that post either form get matched against both.</p>
               </div>
@@ -2106,7 +2113,7 @@ export default function OnboardingClient({
             />
             <label className={styles.voiceField}>
               <span className={styles.subFieldLabel}>Anything else to avoid?</span>
-              <textarea value={voice.avoidNote} onChange={(event) => setVoice({ ...voice, avoidNote: event.target.value })} />
+              <textarea value={voice.avoidNote} placeholder='e.g. never open with "I hope this email finds you well"' onChange={(event) => setVoice({ ...voice, avoidNote: event.target.value })} />
               <span className={`${styles.wordNote} ${avoidNoteWords > avoidNoteWordCap ? styles.wordNoteOver : ""}`}>
                 {avoidNoteWords > avoidNoteWordCap ? `${avoidNoteWords}/${avoidNoteWordCap} words, trim it down` : `${avoidNoteWordCap}-word limit`}
               </span>
@@ -2135,7 +2142,7 @@ export default function OnboardingClient({
                         const over = words > writingSampleWordCap;
                         return (
                           <div className={styles.snippet} key={sample.id}>
-                            <textarea value={sample.text} onChange={(event) => updateWritingSample(sample.id, { text: event.target.value })} />
+                            <textarea value={sample.text} placeholder={config.placeholder} onChange={(event) => updateWritingSample(sample.id, { text: event.target.value })} />
                             <div className={styles.snippetFoot}>
                               <span className={`${styles.wordNote} ${over ? styles.wordNoteOver : ""}`}>
                                 {over ? `${words}/${writingSampleWordCap} words, trim it down` : `${writingSampleWordCap}-word limit`}
@@ -2153,14 +2160,14 @@ export default function OnboardingClient({
 
             <label className={styles.voiceField}>
               <span className={styles.subFieldLabel}>What are you the person for?<span className={styles.requiredMark}> *</span></span>
-              <textarea value={voice.q1Value} placeholder="What do people come to you for?" onChange={(event) => setVoice({ ...voice, q1Value: event.target.value })} />
+              <textarea value={voice.q1Value} placeholder="When something specific goes sideways, what makes people come to you?" onChange={(event) => setVoice({ ...voice, q1Value: event.target.value })} />
               <span className={`${styles.wordNote} ${q1Words > voiceAnswerWordCap ? styles.wordNoteOver : ""}`}>
                 {q1Words > voiceAnswerWordCap ? `${q1Words}/${voiceAnswerWordCap} words, trim it down` : `${voiceAnswerWordCap}-word limit`}
               </span>
             </label>
             <label className={styles.voiceField}>
               <span className={styles.subFieldLabel}>A take you&apos;ll defend?<span className={styles.requiredMark}> *</span></span>
-              <textarea value={voice.q4Opinion} placeholder="An opinion about your field you'll stand behind" onChange={(event) => setVoice({ ...voice, q4Opinion: event.target.value })} />
+              <textarea value={voice.q4Opinion} placeholder="An opinion about your field you'll stand behind, even if it's not the popular one." onChange={(event) => setVoice({ ...voice, q4Opinion: event.target.value })} />
               <span className={`${styles.wordNote} ${q4Words > voiceAnswerWordCap ? styles.wordNoteOver : ""}`}>
                 {q4Words > voiceAnswerWordCap ? `${q4Words}/${voiceAnswerWordCap} words, trim it down` : `${voiceAnswerWordCap}-word limit`}
               </span>

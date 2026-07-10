@@ -68,6 +68,10 @@
       "path": "patterns/scan-page.html"
     },
     {
+      "path": "components/home-human-path.html",
+      "group": "Patterns"
+    },
+    {
       "group": "Components",
       "path": "components/feedback.html"
     },
@@ -93,6 +97,26 @@
     },
     {
       "path": "components/onboarding-resume-upload.html",
+      "group": "Onboarding"
+    },
+    {
+      "path": "components/onboarding-identity-search.html",
+      "group": "Onboarding"
+    },
+    {
+      "path": "components/onboarding-pickers.html",
+      "group": "Onboarding"
+    },
+    {
+      "path": "components/onboarding-tone-chips.html",
+      "group": "Onboarding"
+    },
+    {
+      "path": "components/onboarding-q1-q4.html",
+      "group": "Onboarding"
+    },
+    {
+      "path": "components/onboarding-writing-samples.html",
       "group": "Onboarding"
     },
     {
