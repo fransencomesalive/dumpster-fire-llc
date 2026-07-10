@@ -6,6 +6,12 @@ import type {
 } from "./types";
 
 export const requiredProfileQualityFields: Record<QualitySection, string[]> = {
+  outreach_rules: [],
+  leadership_profile: [],
+};
+
+export const allowedProfileQualityFields: Record<QualitySection, string[]> = {
+  ...requiredProfileQualityFields,
   outreach_rules: [
     "hiringManagerApproach",
     "recruiterApproach",
@@ -13,11 +19,6 @@ export const requiredProfileQualityFields: Record<QualitySection, string[]> = {
     "executiveSponsorApproach",
     "noContactRoutingApproach",
   ],
-  leadership_profile: [],
-};
-
-export const allowedProfileQualityFields: Record<QualitySection, string[]> = {
-  ...requiredProfileQualityFields,
   leadership_profile: [
     "leadershipStyle",
     "teamManagementStyle",
@@ -154,8 +155,6 @@ export function evaluateCandidateProfileQuality(
     requireCondition(accumulator, `${prefix}.skillName`, hasText(skill.skillName), `Skill ${skill.id} needs a name.`);
     requireCondition(accumulator, `${prefix}.proficiency`, hasText(skill.proficiency), `Skill ${skill.skillName || skill.id} needs proficiency.`);
     requireCondition(accumulator, `${prefix}.evidence`, hasItems(skill.evidence), `Skill ${skill.skillName || skill.id} needs evidence.`);
-    requireCondition(accumulator, `${prefix}.bestRoleFit`, hasItems(skill.bestRoleFit), `Skill ${skill.skillName || skill.id} needs best role fit.`);
-    requireCondition(accumulator, `${prefix}.doNotOverclaim`, hasItems(skill.doNotOverclaim), `Skill ${skill.skillName || skill.id} needs do-not-overclaim guidance.`);
   }
 
   requireCondition(accumulator, "voicePersonality", Boolean(aggregate.voicePersonality), "Voice & Personality answers are required.");
@@ -167,13 +166,6 @@ export function evaluateCandidateProfileQuality(
 
   requireCondition(accumulator, "writingSamples.soundsLikeMe", aggregate.writingSamples.some((sample) => sample.bucket === "sounds_like_me" && hasText(sample.text)), "At least one \"sounds like me\" writing sample is required.");
   requireCondition(accumulator, "writingSamples.neverSound", aggregate.writingSamples.some((sample) => sample.bucket === "never_sound" && hasText(sample.text)), "At least one \"never sound like this\" writing sample is required.");
-
-  requireCondition(accumulator, "outreachRules", Boolean(aggregate.outreachRules), "Outreach rule settings are required.");
-  if (aggregate.outreachRules) {
-    requireCondition(accumulator, "outreachRules.globalRules", hasItems(aggregate.outreachRules.globalRules), "Global outreach rules are required.");
-    requireCondition(accumulator, "outreachRules.followUpRules", hasItems(aggregate.outreachRules.followUpRules), "Follow-up rules are required.");
-    requireCondition(accumulator, "outreachRules.linkSelectionRules", hasItems(aggregate.outreachRules.linkSelectionRules), "Link selection rules are required.");
-  }
 
   evaluateRequiredQualityFields(aggregate, accumulator);
 

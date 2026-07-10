@@ -9,19 +9,21 @@ assert.equal(complete.status, "complete");
 assert.equal(complete.weakResponseCount, 0);
 assert.deepEqual(complete.incompleteReasons, []);
 assert.ok(complete.completeFields.includes("roleTracks.track-1.resumeIds"));
-assert.ok(complete.completeFields.includes("outreach_rules.noContactRoutingApproach"));
 
-const weak = completeCandidateProfileAggregate(now);
-weak.qualityFields = weak.qualityFields.map((field) =>
-  field.section === "outreach_rules" && field.fieldKey === "hiringManagerApproach"
-    ? { ...field, quality: "weak" }
-    : field,
-);
-const weakResult = evaluateCandidateProfileQuality(weak, now);
-assert.equal(weakResult.status, "incomplete");
-assert.equal(weakResult.weakResponseCount, 1);
-assert.ok(weakResult.weakFields.includes("outreach_rules.hiringManagerApproach"));
-assert.ok(weakResult.incompleteReasons.includes("Weak required profile answer: outreach_rules.hiringManagerApproach"));
+// Outreach Rules no longer gate completion (section retired from onboarding;
+// the outreach generator carries default house rules instead).
+const noOutreachRules = completeCandidateProfileAggregate(now);
+noOutreachRules.outreachRules = undefined;
+noOutreachRules.qualityFields = [];
+const noOutreachRulesResult = evaluateCandidateProfileQuality(noOutreachRules, now);
+assert.equal(noOutreachRulesResult.status, "complete");
+
+// Skills gate on name + proficiency + evidence only.
+const missingEvidence = completeCandidateProfileAggregate(now);
+missingEvidence.skills[0].evidence = [];
+const missingEvidenceResult = evaluateCandidateProfileQuality(missingEvidence, now);
+assert.equal(missingEvidenceResult.status, "incomplete");
+assert.ok(missingEvidenceResult.incompleteReasons.some((reason) => reason.includes("needs evidence")));
 
 const missingRelationship = completeCandidateProfileAggregate(now);
 missingRelationship.resumes[0].associatedRoleTrackIds = [];
@@ -50,7 +52,6 @@ derivedFieldsBlank.roleTracks[0].strongJobSignals = [];
 derivedFieldsBlank.roleTracks[0].weakJobSignals = [];
 derivedFieldsBlank.roleTracks[0].mismatchSignals = [];
 derivedFieldsBlank.roleTracks[0].outreachAngle = "";
-derivedFieldsBlank.roleTracks[0].doNotOverclaim = [];
 const derivedFieldsBlankResult = evaluateCandidateProfileQuality(derivedFieldsBlank, now);
 assert.equal(derivedFieldsBlankResult.status, "complete");
 

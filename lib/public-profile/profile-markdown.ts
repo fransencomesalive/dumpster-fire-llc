@@ -1,18 +1,11 @@
 import type {
   CandidateProfileAggregate,
   GeneratedMarkdown,
-  QualityScoredTextField,
-  QualitySection,
   Resume,
   RoleTrack,
   WritingSample,
   WritingSampleBucket,
 } from "./types";
-
-const sectionLabels: Record<QualitySection, string> = {
-  outreach_rules: "Outreach Rules",
-  leadership_profile: "Leadership Profile",
-};
 
 const writingBucketLabels: Record<WritingSampleBucket, string> = {
   sounds_like_me: "Sounds like me",
@@ -24,17 +17,6 @@ function clean(value: string | undefined) {
   return value?.trim() || "";
 }
 
-function labelFromKey(key: string) {
-  return key
-    .replace(/\bAI\b/g, "Ai")
-    .replace(/([a-z])([A-Z])/g, "$1 $2")
-    .replace(/\bI([A-Z])/g, "I $1")
-    .replace(/[_-]+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim()
-    .replace(/\b\w/g, (letter) => letter.toUpperCase());
-}
-
 function list(values: string[] | undefined) {
   const cleaned = (values ?? []).map(clean).filter(Boolean);
   if (cleaned.length === 0) return "- None captured";
@@ -44,33 +26,6 @@ function list(values: string[] | undefined) {
 function line(label: string, value: string | number | undefined) {
   const cleaned = typeof value === "number" ? String(value) : clean(value);
   return `- ${label}: ${cleaned || "Not captured"}`;
-}
-
-function qualityFieldsBySection(fields: QualityScoredTextField[]) {
-  return fields.reduce((groups, field) => {
-    const group = groups.get(field.section) ?? [];
-    group.push(field);
-    groups.set(field.section, group);
-    return groups;
-  }, new Map<QualitySection, QualityScoredTextField[]>());
-}
-
-function renderQualitySection(section: QualitySection, fields: QualityScoredTextField[]) {
-  if (fields.length === 0) return `## ${sectionLabels[section]}\n\nNo answers captured.`;
-
-  const body = fields
-    .sort((left, right) => left.fieldKey.localeCompare(right.fieldKey))
-    .map((field) => [
-      `### ${labelFromKey(field.fieldKey)}`,
-      "",
-      clean(field.value) || "Not captured",
-      "",
-      `Quality: ${field.quality}`,
-      field.feedback ? `Feedback: ${field.feedback}` : "",
-    ].filter(Boolean).join("\n"))
-    .join("\n\n");
-
-  return `## ${sectionLabels[section]}\n\n${body}`;
 }
 
 function renderRoleTrack(track: RoleTrack, resumes: Resume[]) {
@@ -128,19 +83,9 @@ export function generateCandidateProfileMarkdown(
   voiceProfileBlock?: string,
 ): GeneratedMarkdown {
   const { profile, voicePersonality, fitSignals } = aggregate;
-  const qualityGroups = qualityFieldsBySection(aggregate.qualityFields);
   const preferredName = clean(profile.preferredName);
 
-  // Per-Role-Track and per-Skill do-not-overclaim, plus never-sound samples,
-  // are collected into the Guardrails block at the bottom.
-  const trackOverclaim = aggregate.roleTracks
-    .filter((track) => track.doNotOverclaim.length > 0)
-    .map((track) => `- ${track.name}:\n${track.doNotOverclaim.map((rule) => `  - ${clean(rule)}`).join("\n")}`)
-    .join("\n");
-  const skillOverclaim = aggregate.skills
-    .filter((skill) => skill.doNotOverclaim.length > 0)
-    .map((skill) => `- ${skill.skillName}:\n${skill.doNotOverclaim.map((rule) => `  - ${clean(rule)}`).join("\n")}`)
-    .join("\n");
+  // Never-sound samples are collected into the Guardrails block at the bottom.
   const neverSound = renderWritingSamplesByBucket(aggregate.writingSamples, "never_sound");
 
   const sections = [
@@ -235,9 +180,6 @@ export function generateCandidateProfileMarkdown(
         line("Proficiency", skill.proficiency),
         "Evidence:",
         list(skill.evidence),
-        "",
-        "Best role fit:",
-        list(skill.bestRoleFit),
       ].join("\n")).join("\n\n"),
     "",
     "## Work Examples",
@@ -253,32 +195,7 @@ export function generateCandidateProfileMarkdown(
         clean(example.context) || "No context captured.",
       ].filter(Boolean).join("\n")).join("\n\n"),
     "",
-    renderQualitySection("outreach_rules", qualityGroups.get("outreach_rules") ?? []),
-    "",
-    "## Outreach Rule Settings",
-    "",
-    aggregate.outreachRules ? [
-      "Global rules:",
-      list(aggregate.outreachRules.globalRules),
-      "",
-      "Follow-up rules:",
-      list(aggregate.outreachRules.followUpRules),
-      "",
-      "Link selection rules:",
-      list(aggregate.outreachRules.linkSelectionRules),
-    ].join("\n") : "No outreach rule settings captured.",
-    "",
-    aggregate.leadershipProfile?.visible
-      ? renderQualitySection("leadership_profile", qualityGroups.get("leadership_profile") ?? [])
-      : "",
-    "",
     "## Guardrails",
-    "",
-    "Do not overclaim (by Role Track):",
-    trackOverclaim || "- None captured",
-    "",
-    "Do not overclaim (by Skill):",
-    skillOverclaim || "- None captured",
     "",
     neverSound || "Never sound like this:\n\nNo anti-pattern samples captured.",
     // Profile Quality (weak fields / incomplete reasons) is internal QA metadata and is

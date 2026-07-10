@@ -40,7 +40,6 @@ type IdentitySearchSection = {
   employmentTypes: string[];
   targetIndustries: string[];
   avoidIndustries: string[];
-  targetCompanyTypes: string[];
   avoidCompanies: string[];
 };
 
@@ -63,7 +62,6 @@ type RoleTrackSectionItem = {
   strongJobSignals: string[];
   weakJobSignals: string[];
   mismatchSignals: string[];
-  doNotOverclaim: string[];
   resumeIds: string[];
 };
 
@@ -105,8 +103,6 @@ type SkillsInventorySectionItem = {
   proficiency: SkillProficiency;
   evidence: string[];
   relatedWorkExampleIds: string[];
-  bestRoleFit: string[];
-  doNotOverclaim: string[];
 };
 
 type SkillsInventorySection = { skills: SkillsInventorySectionItem[] };
@@ -132,42 +128,6 @@ type WritingSamplesSectionItem = {
 };
 
 type WritingSamplesSection = { writingSamples: WritingSamplesSectionItem[] };
-
-type Quality = "weak" | "complete";
-
-type QualityNarrativeSectionField = {
-  id: string;
-  fieldKey: string;
-  value: string;
-  quality: Quality;
-  feedback?: string;
-};
-
-type OutreachRuleSettingsSection = {
-  id?: string;
-  globalRules: string[];
-  followUpRules: string[];
-  linkSelectionRules: string[];
-};
-
-type RoleTrackOutreachRuleSectionItem = {
-  id: string;
-  roleTrackId: string;
-  rules: string[];
-  preferredProofTypes: string[];
-  avoidProofTypes: string[];
-};
-
-type OutreachRulesSection = {
-  settings?: OutreachRuleSettingsSection;
-  fields: QualityNarrativeSectionField[];
-  roleTrackSpecificRules: RoleTrackOutreachRuleSectionItem[];
-};
-
-type LeadershipProfileSection = {
-  visible: boolean;
-  fields: QualityNarrativeSectionField[];
-};
 
 type ProfileQualitySummary = {
   status: "incomplete" | "complete";
@@ -218,7 +178,7 @@ const PROFILE_RESET_ALLOWED_EMAILS = new Set(["fransencomesalive@gmail.com"]);
 
 const voiceAnswerWordCap = 120;
 const avoidNoteWordCap = 25;
-const writingSampleWordCap = 120;
+const writingSampleWordCap = 200;
 
 // Tone-tag presets (Phase D / D0 control decisions).
 const leanIntoPresets = ["punchy", "warm", "no-fluff", "blunt", "funny", "specific", "casual", "brief"];
@@ -256,22 +216,6 @@ const writingBucketConfigs: WritingBucketConfig[] = [
   },
 ];
 
-const outreachFieldLabels: Record<string, string> = {
-  hiringManagerApproach: "Hiring manager approach",
-  recruiterApproach: "Recruiter approach",
-  functionalLeaderApproach: "Functional leader approach",
-  executiveSponsorApproach: "Executive sponsor approach",
-  noContactRoutingApproach: "No-contact routing approach",
-};
-
-const leadershipFieldLabels: Record<string, string> = {
-  leadershipStyle: "Leadership style",
-  teamManagementStyle: "Team management style",
-  stakeholderManagementStyle: "Stakeholder management style",
-  conflictStyle: "Conflict style",
-  executiveCommunicationStyle: "Executive communication style",
-};
-
 const emptyIdentity: IdentitySearchSection = {
   fullName: "",
   location: "",
@@ -279,7 +223,6 @@ const emptyIdentity: IdentitySearchSection = {
   employmentTypes: [],
   targetIndustries: [],
   avoidIndustries: [],
-  targetCompanyTypes: [],
   avoidCompanies: [],
 };
 
@@ -368,7 +311,6 @@ function emptyRoleTrack(): RoleTrackSectionItem {
     strongJobSignals: [],
     weakJobSignals: [],
     mismatchSignals: [],
-    doNotOverclaim: [],
     resumeIds: [],
   };
 }
@@ -406,8 +348,6 @@ function emptySkill(name = ""): SkillsInventorySectionItem {
     proficiency: "working",
     evidence: [],
     relatedWorkExampleIds: [],
-    bestRoleFit: [],
-    doNotOverclaim: [],
   };
 }
 
@@ -418,29 +358,6 @@ function emptyWritingSample(bucket: WritingSampleBucket): WritingSamplesSectionI
     channel: "other",
     text: "",
     tags: [],
-  };
-}
-
-function emptyOutreachSettings(): OutreachRuleSettingsSection {
-  return { globalRules: [], followUpRules: [], linkSelectionRules: [] };
-}
-
-function emptyRoleTrackOutreachRule(roleTrackId = ""): RoleTrackOutreachRuleSectionItem {
-  return { id: createClientId(), roleTrackId, rules: [], preferredProofTypes: [], avoidProofTypes: [] };
-}
-
-function completeOutreachRulesSection(section?: OutreachRulesSection): OutreachRulesSection {
-  return {
-    settings: section?.settings ?? emptyOutreachSettings(),
-    fields: section?.fields ?? [],
-    roleTrackSpecificRules: section?.roleTrackSpecificRules ?? [],
-  };
-}
-
-function completeLeadershipProfileSection(section?: LeadershipProfileSection): LeadershipProfileSection {
-  return {
-    visible: section?.visible ?? false,
-    fields: section?.fields ?? [],
   };
 }
 
@@ -462,10 +379,6 @@ function reasonBelongsToSection(sectionKey: PublicProfileOnboardingSectionKey, r
       return value.startsWith("skill ") || value.includes("at least one skill");
     case "voicePersonality":
       return value.includes("voice") || value.includes("q1") || value.includes("q4") || value.includes("tone tag") || value.includes("writing sample");
-    case "outreachRules":
-      return value.includes("outreach") || value.includes("follow-up") || value.includes("link selection");
-    case "leadershipProfile":
-      return value.includes("leadership");
     default:
       return false;
   }
@@ -782,8 +695,6 @@ export default function OnboardingClient({
   const [skills, setSkills] = useState<SkillsInventorySectionItem[]>([]);
   const [voice, setVoice] = useState<VoicePersonalitySection>(emptyVoice);
   const [writingSamples, setWritingSamples] = useState<WritingSamplesSectionItem[]>([]);
-  const [outreachRules, setOutreachRules] = useState<OutreachRulesSection>(() => completeOutreachRulesSection());
-  const [leadershipProfile, setLeadershipProfile] = useState<LeadershipProfileSection>(() => completeLeadershipProfileSection());
 
   // Card 1 (Role Track + Résumé) — onboarding-resume-upload DS card.
   const [activeTrackId, setActiveTrackId] = useState("");
@@ -863,8 +774,6 @@ export default function OnboardingClient({
       skillsResponse,
       voiceResponse,
       writingSamplesResponse,
-      outreachRulesResponse,
-      leadershipProfileResponse,
     ] = await Promise.all([
       get<IdentitySearchSection>("/api/public-profile/identity-search"),
       get<FitSignalsSection>("/api/public-profile/fit-signals"),
@@ -874,8 +783,6 @@ export default function OnboardingClient({
       get<SkillsInventorySection>("/api/public-profile/skills"),
       get<VoicePersonalitySection>("/api/public-profile/voice-personality"),
       get<WritingSamplesSection>("/api/public-profile/writing-samples"),
-      get<OutreachRulesSection>("/api/public-profile/outreach-rules"),
-      get<LeadershipProfileSection>("/api/public-profile/leadership-profile"),
     ]);
 
     setIdentity(identityResponse.section);
@@ -886,8 +793,6 @@ export default function OnboardingClient({
     setSkills(skillsResponse.section.skills);
     setVoice(voiceResponse.section);
     setWritingSamples(writingSamplesResponse.section.writingSamples);
-    setOutreachRules(completeOutreachRulesSection(outreachRulesResponse.section));
-    setLeadershipProfile(completeLeadershipProfileSection(leadershipProfileResponse.section));
     applyProfileQuality(identityResponse.profileQuality ?? bootstrap.profileQuality);
 
     // Local drafts hydrate OVER the server values — typed-but-unsaved input outranks
@@ -904,8 +809,6 @@ export default function OnboardingClient({
           if (draft.skills) setSkills(draft.skills as SkillsInventorySectionItem[]);
           if (draft.voice) setVoice(draft.voice as VoicePersonalitySection);
           if (draft.writingSamples) setWritingSamples(draft.writingSamples as WritingSamplesSectionItem[]);
-          if (draft.outreachRules) setOutreachRules(completeOutreachRulesSection(draft.outreachRules as OutreachRulesSection));
-          if (draft.leadershipProfile) setLeadershipProfile(completeLeadershipProfileSection(draft.leadershipProfile as LeadershipProfileSection));
           if (typeof draft.newTrackName === "string") setNewTrackName(draft.newTrackName);
           if (typeof draft.pastedResumeText === "string") setPastedResumeText(draft.pastedResumeText);
           if (draft.listFieldDrafts) setListFieldDrafts(draft.listFieldDrafts as Record<string, string>);
@@ -991,8 +894,6 @@ export default function OnboardingClient({
           skills,
           voice,
           writingSamples,
-          outreachRules,
-          leadershipProfile,
           newTrackName,
           pastedResumeText,
           listFieldDrafts,
@@ -1002,7 +903,7 @@ export default function OnboardingClient({
       }
     }, 400);
     return () => window.clearTimeout(timer);
-  }, [identity, fitSignals, workExamples, skills, voice, writingSamples, outreachRules, leadershipProfile, newTrackName, pastedResumeText, listFieldDrafts]);
+  }, [identity, fitSignals, workExamples, skills, voice, writingSamples, newTrackName, pastedResumeText, listFieldDrafts]);
 
   async function signIn() {
     setBusy(true);
@@ -1086,8 +987,6 @@ export default function OnboardingClient({
     setSkills([]);
     setVoice(emptyVoice);
     setWritingSamples([]);
-    setOutreachRules(completeOutreachRulesSection());
-    setLeadershipProfile(completeLeadershipProfileSection());
     setProfileStatus("incomplete");
     setProfileQuality(null);
     setIssues([]);
@@ -1332,10 +1231,6 @@ export default function OnboardingClient({
     saveSection<WorkExamplesSection>("Work Examples", "/api/public-profile/work-examples", { workExamples }, (section) => setWorkExamples(section.workExamples));
   const saveSkills = () =>
     saveSection<SkillsInventorySection>("Skills", "/api/public-profile/skills", { skills }, (section) => setSkills(section.skills));
-  const saveOutreachRules = () =>
-    saveSection<OutreachRulesSection>("Outreach Rules", "/api/public-profile/outreach-rules", outreachRules, (section) => setOutreachRules(completeOutreachRulesSection(section)));
-  const saveLeadership = () =>
-    saveSection<LeadershipProfileSection>("Leadership Profile", "/api/public-profile/leadership-profile", leadershipProfile, (section) => setLeadershipProfile(completeLeadershipProfileSection(section)));
 
   // Voice & Personality persists to two endpoints: voice-personality + writing-samples.
   async function saveVoiceAndPersonality() {
@@ -2053,8 +1948,20 @@ export default function OnboardingClient({
                   onRemove={(value) => setIdentity((current) => ({ ...current, targetIndustries: current.targetIndustries.filter((entry) => entry !== value) }))}
                 />
               </div>
-              <label>Avoid industries<input {...listField("identity.avoidIndustries", identity.avoidIndustries, (values) => setIdentity({ ...identity, avoidIndustries: values }))} /></label>
-              <label>Target company types<input {...listField("identity.targetCompanyTypes", identity.targetCompanyTypes, (values) => setIdentity({ ...identity, targetCompanyTypes: values }))} /></label>
+              <div className={styles.fullWidth}>
+                <CataloguePicker
+                  kind="industries"
+                  mode="multi"
+                  accessToken={accessToken}
+                  label="Avoid industries"
+                  placeholder="add your own, it'll match"
+                  italicPlaceholder
+                  disabled={!accessToken || busy}
+                  values={identity.avoidIndustries}
+                  onAdd={(value) => setIdentity((current) => ({ ...current, avoidIndustries: [...current.avoidIndustries, value] }))}
+                  onRemove={(value) => setIdentity((current) => ({ ...current, avoidIndustries: current.avoidIndustries.filter((entry) => entry !== value) }))}
+                />
+              </div>
               <label>Avoid companies<input {...listField("identity.avoidCompanies", identity.avoidCompanies, (values) => setIdentity({ ...identity, avoidCompanies: values }))} /></label>
             </div>
             <div className={styles.formActions}>
@@ -2146,8 +2053,6 @@ export default function OnboardingClient({
                         <option value="expert">Expert</option>
                       </select></label>
                       <label>Evidence<textarea {...listField(`skills.${skill.id}.evidence`, skill.evidence, (values) => updateSkill(skill.id, { evidence: values }))} /></label>
-                      <label>Best role fit<textarea {...listField(`skills.${skill.id}.bestRoleFit`, skill.bestRoleFit, (values) => updateSkill(skill.id, { bestRoleFit: values }))} /></label>
-                      <label>Do not overclaim<textarea {...listField(`skills.${skill.id}.doNotOverclaim`, skill.doNotOverclaim, (values) => updateSkill(skill.id, { doNotOverclaim: values }))} /></label>
                     </div>
                     <div className={styles.attachmentBlock}>
                       <p className={styles.statusLabel}>Related Work Examples</p>
@@ -2170,7 +2075,7 @@ export default function OnboardingClient({
             )}
             <div className={styles.formActions}>
               <button className={styles.primaryButton} disabled={!accessToken || busy} onClick={saveSkills} type="button">Save Skills</button>
-              <p>Comma-separate evidence, fit, and overclaim guardrails. Save related Work Examples first.</p>
+              <p>Comma-separate evidence. Save related Work Examples first.</p>
             </div>
           </article>
 
@@ -2267,89 +2172,6 @@ export default function OnboardingClient({
             </div>
           </article>
 
-          {/* --- Outreach Rules --- */}
-          <article className={styles.formCard} id="career-profile-outreachRules">
-            {perTrackHeader("Outreach Rules", (
-              <button className={styles.secondaryButton} disabled={!accessToken || busy} onClick={() => setOutreachRules((section) => ({ ...section, roleTrackSpecificRules: [...section.roleTrackSpecificRules, emptyRoleTrackOutreachRule(activeTrackId || roleTracks[0]?.id)] }))} type="button">Add Role Rule</button>
-            ))}
-            {populatingHelper}
-            <div className={styles.formGrid}>
-              <label>Global rules<textarea {...listField("outreach.globalRules", outreachRules.settings?.globalRules, (values) => setOutreachRules((section) => ({ ...section, settings: { ...(section.settings ?? emptyOutreachSettings()), globalRules: values } })))} /></label>
-              <label>Follow-up rules<textarea {...listField("outreach.followUpRules", outreachRules.settings?.followUpRules, (values) => setOutreachRules((section) => ({ ...section, settings: { ...(section.settings ?? emptyOutreachSettings()), followUpRules: values } })))} /></label>
-              <label>Link selection rules<textarea {...listField("outreach.linkSelectionRules", outreachRules.settings?.linkSelectionRules, (values) => setOutreachRules((section) => ({ ...section, settings: { ...(section.settings ?? emptyOutreachSettings()), linkSelectionRules: values } })))} /></label>
-            </div>
-            {outreachRules.fields.length > 0 ? (
-              <div className={styles.roleTrackList}>
-                {outreachRules.fields.map((field) => (
-                  <div className={styles.roleTrackEditor} key={field.id}>
-                    <div className={styles.roleTrackHeader}>
-                      <h3>{outreachFieldLabels[field.fieldKey] ?? field.fieldKey}</h3>
-                    </div>
-                    <div className={styles.formGrid}>
-                      <label className={styles.fullWidth}>Response<textarea value={field.value} onChange={(event) => setOutreachRules((section) => ({ ...section, fields: section.fields.map((item) => item.id === field.id ? { ...item, value: event.target.value } : item) }))} /></label>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : null}
-            {outreachRules.roleTrackSpecificRules.length === 0 ? (
-              <p className={styles.emptyState}>No Role Track-specific outreach rules yet. Add Role Tracks first if outreach varies by lane.</p>
-            ) : (
-              <div className={styles.roleTrackList}>
-                {outreachRules.roleTrackSpecificRules.map((rule, index) => (
-                  <div className={styles.roleTrackEditor} key={rule.id}>
-                    <div className={styles.roleTrackHeader}>
-                      <h3>Role Rule {index + 1}</h3>
-                      <button className={styles.secondaryButton} disabled={busy} onClick={() => setOutreachRules((section) => ({ ...section, roleTrackSpecificRules: section.roleTrackSpecificRules.filter((item) => item.id !== rule.id) }))} type="button">Remove</button>
-                    </div>
-                    <div className={styles.formGrid}>
-                      <label>Role Track<select value={rule.roleTrackId} onChange={(event) => setOutreachRules((section) => ({ ...section, roleTrackSpecificRules: section.roleTrackSpecificRules.map((item) => item.id === rule.id ? { ...item, roleTrackId: event.target.value } : item) }))}>
-                        <option value="">Choose a Role Track</option>
-                        {roleTracks.map((track) => (<option key={track.id} value={track.id}>{track.name || track.id}</option>))}
-                      </select></label>
-                      <label>Rules<textarea {...listField(`outreach.${rule.id}.rules`, rule.rules, (values) => setOutreachRules((section) => ({ ...section, roleTrackSpecificRules: section.roleTrackSpecificRules.map((item) => item.id === rule.id ? { ...item, rules: values } : item) })))} /></label>
-                      <label>Preferred work example types<textarea {...listField(`outreach.${rule.id}.preferredProofTypes`, rule.preferredProofTypes, (values) => setOutreachRules((section) => ({ ...section, roleTrackSpecificRules: section.roleTrackSpecificRules.map((item) => item.id === rule.id ? { ...item, preferredProofTypes: values } : item) })))} /></label>
-                      <label>Avoid work example types<textarea {...listField(`outreach.${rule.id}.avoidProofTypes`, rule.avoidProofTypes, (values) => setOutreachRules((section) => ({ ...section, roleTrackSpecificRules: section.roleTrackSpecificRules.map((item) => item.id === rule.id ? { ...item, avoidProofTypes: values } : item) })))} /></label>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-            <div className={styles.formActions}>
-              <button className={styles.primaryButton} disabled={!accessToken || busy} onClick={saveOutreachRules} type="button">Save Outreach Rules</button>
-              <p>Save Role Tracks before saving role-specific outreach rules so relationship IDs validate.</p>
-            </div>
-          </article>
-
-          {/* --- Leadership Profile --- */}
-          <article className={styles.formCard} id="career-profile-leadershipProfile">
-            {sectionHeader("leadershipProfile", "Leadership Profile", true, (
-              <label className={styles.checkboxLabel}>
-                <input checked={leadershipProfile.visible} onChange={(event) => setLeadershipProfile((section) => ({ ...section, visible: event.target.checked }))} type="checkbox" />
-                Visible
-              </label>
-            ))}
-            {leadershipProfile.fields.length === 0 ? (
-              <p className={styles.emptyState}>Optional. Turn on visibility to include leadership positioning in generated outputs.</p>
-            ) : (
-              <div className={styles.roleTrackList}>
-                {leadershipProfile.fields.map((field) => (
-                  <div className={styles.roleTrackEditor} key={field.id}>
-                    <div className={styles.roleTrackHeader}>
-                      <h3>{leadershipFieldLabels[field.fieldKey] ?? field.fieldKey}</h3>
-                    </div>
-                    <div className={styles.formGrid}>
-                      <label className={styles.fullWidth}>Response<textarea value={field.value} onChange={(event) => setLeadershipProfile((section) => ({ ...section, fields: section.fields.map((item) => item.id === field.id ? { ...item, value: event.target.value } : item) }))} /></label>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-            <div className={styles.formActions}>
-              <button className={styles.primaryButton} disabled={!accessToken || busy} onClick={saveLeadership} type="button">Save Leadership Profile</button>
-              <p>Keep hidden unless leadership or executive positioning should appear in generated outputs.</p>
-            </div>
-          </article>
           </fieldset>
         </div>
 

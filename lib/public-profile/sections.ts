@@ -1,7 +1,6 @@
 import {
   allowedProfileQualityFields,
   evaluateCandidateProfileQuality,
-  requiredProfileQualityFields,
 } from "./profile-quality";
 import type {
   CandidateProfileAggregate,
@@ -41,7 +40,6 @@ export type IdentitySearchSection = {
   employmentTypes: EmploymentType[];
   targetIndustries: string[];
   avoidIndustries: string[];
-  targetCompanyTypes: string[];
   avoidCompanies: string[];
 };
 
@@ -73,7 +71,6 @@ export type RoleTrackSectionItem = {
   strongJobSignals: string[];
   weakJobSignals: string[];
   mismatchSignals: string[];
-  doNotOverclaim: string[];
   resumeIds: string[];
 };
 
@@ -123,8 +120,6 @@ export type SkillsInventorySectionItem = {
   proficiency: SkillProficiency;
   evidence: string[];
   relatedWorkExampleIds: string[];
-  bestRoleFit: string[];
-  doNotOverclaim: string[];
 };
 
 export type SkillsInventorySection = {
@@ -407,7 +402,6 @@ const stringFields = [
 const stringListFields = [
   "targetIndustries",
   "avoidIndustries",
-  "targetCompanyTypes",
   "avoidCompanies",
 ] as const;
 
@@ -440,7 +434,6 @@ const roleTrackListFields = [
   "strongJobSignals",
   "weakJobSignals",
   "mismatchSignals",
-  "doNotOverclaim",
   "resumeIds",
 ] as const;
 
@@ -494,8 +487,6 @@ const skillStringFields = [
 const skillListFields = [
   "evidence",
   "relatedWorkExampleIds",
-  "bestRoleFit",
-  "doNotOverclaim",
 ] as const;
 
 const skillProficiencies = new Set<SkillProficiency>([
@@ -558,7 +549,7 @@ function countWords(value: string) {
   return trimmed.split(/\s+/).length;
 }
 
-const writingSampleWordCap = 120;
+const writingSampleWordCap = 200;
 const avoidNoteWordCap = 25;
 const voiceAnswerWordCap = 120;
 
@@ -607,7 +598,6 @@ function preferencesForPatch(
     employmentTypes: [],
     targetIndustries: [],
     avoidIndustries: [],
-    targetCompanyTypes: [],
     avoidCompanies: [],
     createdAt: updatedAt,
     updatedAt,
@@ -628,7 +618,6 @@ export function identitySearchSection(aggregate: CandidateProfileAggregate): Ide
     employmentTypes: aggregate.preferences?.employmentTypes ?? [],
     targetIndustries: aggregate.preferences?.targetIndustries ?? [],
     avoidIndustries: aggregate.preferences?.avoidIndustries ?? [],
-    targetCompanyTypes: aggregate.preferences?.targetCompanyTypes ?? [],
     avoidCompanies: aggregate.preferences?.avoidCompanies ?? [],
   };
 }
@@ -656,7 +645,6 @@ export function roleTracksSection(aggregate: CandidateProfileAggregate): RoleTra
       strongJobSignals: track.strongJobSignals,
       weakJobSignals: track.weakJobSignals,
       mismatchSignals: track.mismatchSignals,
-      doNotOverclaim: track.doNotOverclaim,
       resumeIds: track.resumeIds,
     })),
   };
@@ -700,8 +688,6 @@ export function skillsInventorySection(aggregate: CandidateProfileAggregate): Sk
       proficiency: skill.proficiency,
       evidence: skill.evidence,
       relatedWorkExampleIds: skill.relatedWorkExampleIds,
-      bestRoleFit: skill.bestRoleFit,
-      doNotOverclaim: skill.doNotOverclaim,
     })),
   };
 }
@@ -710,7 +696,7 @@ export function qualityNarrativeSection(
   aggregate: CandidateProfileAggregate,
   section: QualitySection,
 ): QualityNarrativeSection {
-  const order = requiredProfileQualityFields[section] ?? [];
+  const order = allowedProfileQualityFields[section] ?? [];
   const indexedOrder = new Map(order.map((fieldKey, index) => [fieldKey, index]));
   const fields = [...aggregate.qualityFields]
     .filter((field) => field.section === section)
@@ -2021,7 +2007,6 @@ export function applyIdentitySearchSectionPatch(
       employmentTypes: patch.employmentTypes ?? preferences.employmentTypes,
       targetIndustries: patch.targetIndustries ?? preferences.targetIndustries,
       avoidIndustries: patch.avoidIndustries ?? preferences.avoidIndustries,
-      targetCompanyTypes: patch.targetCompanyTypes ?? preferences.targetCompanyTypes,
       avoidCompanies: patch.avoidCompanies ?? preferences.avoidCompanies,
       updatedAt,
     },

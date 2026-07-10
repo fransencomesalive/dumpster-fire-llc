@@ -59,6 +59,9 @@ type SearchableRecord<T> = {
   record: T;
   label: string;
   terms: string[];
+  // Category/sector/hierarchy terms: a hit here surfaces the record but ranks
+  // below any direct label/name hit.
+  contextTerms?: string[];
   population?: number;
 };
 
@@ -76,6 +79,12 @@ function normalize(value: string) {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, " ")
     .trim();
+}
+
+// Space-collapsed variant so one-word queries match multi-word labels and vice
+// versa ("healthcare" \u2194 "Health Care", "fin tech" \u2194 "FinTech").
+function compact(value: string) {
+  return value.replace(/ /g, "");
 }
 
 function compactLimit(limit?: number) {
@@ -102,11 +111,19 @@ function search<T>(
 ) {
   const normalizedQuery = normalize(query);
   if (!normalizedQuery) return [];
+  const compactQuery = compact(normalizedQuery);
 
   return records
     .map((item) => ({
       ...item,
-      score: scoreTerms(item.terms, normalizedQuery),
+      score: Math.max(
+        scoreTerms(item.terms, normalizedQuery),
+        scoreTerms(item.terms.map(compact), compactQuery),
+        Math.min(30, Math.max(
+          scoreTerms(item.contextTerms ?? [], normalizedQuery),
+          scoreTerms((item.contextTerms ?? []).map(compact), compactQuery),
+        )),
+      ),
     }))
     .filter((item) => item.score > 0)
     .sort((a, b) => {
@@ -125,6 +142,8 @@ const searchableSkills: SearchableRecord<SkillCatalogueRecord>[] = skills.map((r
   label: record.name,
   terms: [
     normalize(record.name),
+  ],
+  contextTerms: [
     normalize(record.category),
     normalize(record.subcategory),
   ],
@@ -135,6 +154,8 @@ const searchableIndustries: SearchableRecord<IndustryCatalogueRecord>[] = indust
   label: record.label,
   terms: [
     normalize(record.label),
+  ],
+  contextTerms: [
     normalize(record.sector),
     normalize(record.hierarchy.join(" ")),
   ],

@@ -122,7 +122,6 @@ const request: PublicProfileRepositoryRequest = async <T>(
       employment_types: ["full_time"],
       target_industries: ["AI"],
       avoid_industries: [],
-      target_company_types: ["Product-led"],
       avoid_companies: ["Wrong Lane LLC"],
       created_at: now,
       updated_at: now,
@@ -144,7 +143,6 @@ const request: PublicProfileRepositoryRequest = async <T>(
       strong_job_signals: ["AI workflow"],
       weak_job_signals: [],
       mismatch_signals: ["Legal counsel"],
-      do_not_overclaim: [],
       created_at: now,
       updated_at: now,
     }] as T;

@@ -53,7 +53,6 @@ function aggregate(): CandidateProfileAggregate {
       employmentTypes: ["full_time"],
       targetIndustries: ["AI"],
       avoidIndustries: [],
-      targetCompanyTypes: ["Product-led"],
       avoidCompanies: [],
       createdAt: now,
       updatedAt: now,
@@ -181,7 +180,6 @@ async function main() {
       strongJobSignals: ["Ambiguous systems"],
       weakJobSignals: ["Pure ceremonies"],
       mismatchSignals: ["Staffing only"],
-      doNotOverclaim: ["Platform engineering"],
       resumeIds: ["resume-1"],
     }],
   });
@@ -284,8 +282,6 @@ async function main() {
       proficiency: "wizard",
       evidence: ["Led launch operations"],
       relatedWorkExampleIds: ["example-1"],
-      bestRoleFit: ["Program Director"],
-      doNotOverclaim: ["Deep platform engineering"],
     }],
   });
   assert.equal(skillsValidation.ok, false);
@@ -356,7 +352,7 @@ async function main() {
       id: "sample-1",
       bucket: "sounds_like_me",
       channel: "email",
-      text: Array.from({ length: 130 }, (_, index) => `word${index}`).join(" "),
+      text: Array.from({ length: 210 }, (_, index) => `word${index}`).join(" "),
       tags: [],
     }],
   });

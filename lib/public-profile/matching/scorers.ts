@@ -196,7 +196,7 @@ export function scoreResponsibilityFit(profile: CandidateProfileAggregate, job: 
     ...track.keyResponsibilities,
     ...track.requiredExperiencePatterns,
     ...track.strongJobSignals,
-    ...profile.skills.flatMap((skill) => [skill.skillName, ...skill.bestRoleFit]),
+    ...profile.skills.map((skill) => skill.skillName),
     ...(profile.fitSignals?.goodSignals ?? []),
   ];
   const mismatchSignals = [
@@ -224,7 +224,7 @@ function workExampleSignals(example: WorkExample, skills: SkillProfile[]) {
     example.title,
     example.oneHitter,
     example.context,
-    ...relatedSkills.flatMap((skill) => [skill.skillName, ...skill.evidence, ...skill.bestRoleFit]),
+    ...relatedSkills.flatMap((skill) => [skill.skillName, ...skill.evidence]),
   ];
 }
 

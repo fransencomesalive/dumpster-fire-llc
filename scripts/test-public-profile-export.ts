@@ -57,7 +57,6 @@ function roleTrack(overrides: Partial<RoleTrack> = {}): RoleTrack {
     strongJobSignals: [],
     weakJobSignals: [],
     mismatchSignals: [],
-    doNotOverclaim: [],
     resumeIds: [],
     createdAt: now,
     updatedAt: now,

@@ -38,7 +38,6 @@ export type CandidateProfilePreferences = {
   employmentTypes: EmploymentType[];
   targetIndustries: string[];
   avoidIndustries: string[];
-  targetCompanyTypes: string[];
   avoidCompanies: string[];
   createdAt: string;
   updatedAt: string;
@@ -69,7 +68,6 @@ export type RoleTrack = {
   strongJobSignals: string[];
   weakJobSignals: string[];
   mismatchSignals: string[];
-  doNotOverclaim: string[];
   resumeIds: string[];
   createdAt: string;
   updatedAt: string;
@@ -116,8 +114,6 @@ export type SkillProfile = {
   proficiency: SkillProficiency;
   evidence: string[];
   relatedWorkExampleIds: string[];
-  bestRoleFit: string[];
-  doNotOverclaim: string[];
   createdAt: string;
   updatedAt: string;
 };
@@ -170,7 +166,7 @@ export type WritingSample = {
   profileId: string;
   bucket: WritingSampleBucket;
   channel: WritingChannel;
-  // <=120 words, enforced in validation.
+  // <=200 words, enforced in validation.
   text: string;
   tags: string[];
   createdAt: string;

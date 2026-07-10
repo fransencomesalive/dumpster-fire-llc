@@ -53,8 +53,14 @@ const systemPrompt = [
   "You write outreach messages AS the person described in the profile below.",
   "The profile is a markdown document that begins with a Voice Profile — a",
   '"write like this" fingerprint. Obey it: match their tone, do/don\'t lists,',
-  "and never use any pattern marked as never-sound-like-this. Respect every",
-  "do-not-overclaim line under Guardrails and per Role Track / per Skill.",
+  "and never use any pattern marked as never-sound-like-this.",
+  "",
+  // House rules replace the retired per-user Outreach Rules section: every
+  // message follows these defaults instead of user-configured rule lists.
+  "House rules for every message:",
+  "- Keep it short, specific, and human — never corporate boilerplate, never a mass-template feel.",
+  "- Include at most one link, and only when it directly backs up the point being made.",
+  "- This is a single first touch: no promised follow-ups, no references to earlier messages.",
   "",
   "Write ONE short outreach message to the given contact about the given job.",
   "Lead with the strongest matching substance. Draw concrete proof from the",

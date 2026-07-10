@@ -82,7 +82,6 @@ function scanParametersForAggregate(aggregate: CandidateProfileAggregate) {
   return unique([
     ...aggregate.roleTracks.flatMap((track) => [track.name, ...track.targetTitles]),
     ...(aggregate.preferences?.targetIndustries ?? []),
-    ...(aggregate.preferences?.targetCompanyTypes ?? []),
   ]).slice(0, 30);
 }
 

@@ -102,7 +102,7 @@ export function recommendWorkExamples(
   const scored = profile.workExamples
     .map((workExample) => {
       const relatedSkills = profile.skills.filter((skill) => skill.relatedWorkExampleIds.includes(workExample.id));
-      const skillSignals = relatedSkills.flatMap((skill) => [skill.skillName, ...skill.evidence, ...skill.bestRoleFit]);
+      const skillSignals = relatedSkills.flatMap((skill) => [skill.skillName, ...skill.evidence]);
       const textScore = scoreSignalsAgainstText([...workExampleSignals(workExample), ...skillSignals], jobText);
       return {
         workExample,

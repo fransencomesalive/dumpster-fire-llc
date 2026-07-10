@@ -73,7 +73,6 @@ type PreferencesRow = {
   employment_types: CandidateProfilePreferences["employmentTypes"];
   target_industries: string[];
   avoid_industries: string[];
-  target_company_types: string[];
   avoid_companies: string[];
   created_at: string;
   updated_at: string;
@@ -104,7 +103,6 @@ type RoleTrackRow = {
   strong_job_signals: string[];
   weak_job_signals: string[];
   mismatch_signals: string[];
-  do_not_overclaim: string[];
   created_at: string;
   updated_at: string;
 };
@@ -157,8 +155,6 @@ type SkillRow = {
   skill_name: string;
   proficiency: SkillProfile["proficiency"];
   evidence: string[];
-  best_role_fit: string[];
-  do_not_overclaim: string[];
   created_at: string;
   updated_at: string;
 };
@@ -373,7 +369,6 @@ export function mapPublicProfileRows(rows: {
       employmentTypes: rows.preferences.employment_types,
       targetIndustries: rows.preferences.target_industries,
       avoidIndustries: rows.preferences.avoid_industries,
-      targetCompanyTypes: rows.preferences.target_company_types,
       avoidCompanies: rows.preferences.avoid_companies,
       createdAt: rows.preferences.created_at,
       updatedAt: rows.preferences.updated_at,
@@ -402,7 +397,6 @@ export function mapPublicProfileRows(rows: {
       strongJobSignals: row.strong_job_signals,
       weakJobSignals: row.weak_job_signals,
       mismatchSignals: row.mismatch_signals,
-      doNotOverclaim: row.do_not_overclaim,
       resumeIds: resumeIdsByRoleTrack.get(row.id) ?? [],
       createdAt: row.created_at,
       updatedAt: row.updated_at,
@@ -449,8 +443,6 @@ export function mapPublicProfileRows(rows: {
       proficiency: row.proficiency,
       evidence: row.evidence,
       relatedWorkExampleIds: workExampleIdsBySkill.get(row.id) ?? [],
-      bestRoleFit: row.best_role_fit,
-      doNotOverclaim: row.do_not_overclaim,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     })),
@@ -630,7 +622,6 @@ export async function ensureCandidateProfileAggregate(
       employment_types: [],
       target_industries: [],
       avoid_industries: [],
-      target_company_types: [],
       avoid_companies: [],
     },
   });
@@ -730,7 +721,6 @@ export async function persistIdentitySearchSection(
         employment_types: preferences.employmentTypes,
         target_industries: preferences.targetIndustries,
         avoid_industries: preferences.avoidIndustries,
-        target_company_types: preferences.targetCompanyTypes,
         avoid_companies: preferences.avoidCompanies,
         updated_at: preferences.updatedAt,
       },
@@ -806,7 +796,6 @@ export async function persistRoleTracksSection(
         strong_job_signals: track.strongJobSignals,
         weak_job_signals: track.weakJobSignals,
         mismatch_signals: track.mismatchSignals,
-        do_not_overclaim: track.doNotOverclaim,
         archived_at: null,
         created_at: track.createdAt,
         updated_at: track.updatedAt,
@@ -1107,8 +1096,6 @@ export async function persistSkillsInventorySection(
         skill_name: skill.skillName,
         proficiency: skill.proficiency,
         evidence: skill.evidence,
-        best_role_fit: skill.bestRoleFit,
-        do_not_overclaim: skill.doNotOverclaim,
         created_at: skill.createdAt,
         updated_at: skill.updatedAt,
       })),

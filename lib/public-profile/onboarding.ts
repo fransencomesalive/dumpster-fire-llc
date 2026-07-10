@@ -5,9 +5,7 @@ export type PublicProfileOnboardingSectionKey =
   | "resumes"
   | "workExamples"
   | "skills"
-  | "voicePersonality"
-  | "outreachRules"
-  | "leadershipProfile";
+  | "voicePersonality";
 
 export type PublicProfileOnboardingSection = {
   key: PublicProfileOnboardingSectionKey;
@@ -53,18 +51,6 @@ export const publicProfileOnboardingSections: PublicProfileOnboardingSection[] =
   description: "What you are the person for, an opinion you will defend, writing samples, and tone tags.",
   path: "/api/public-profile/voice-personality",
   required: true,
-}, {
-  key: "outreachRules",
-  label: "Outreach Rules",
-  description: "Contact approach, follow-up rules, and Role Track-specific rules.",
-  path: "/api/public-profile/outreach-rules",
-  required: true,
-}, {
-  key: "leadershipProfile",
-  label: "Leadership Profile",
-  description: "Optional leadership positioning hidden behind a toggle.",
-  path: "/api/public-profile/leadership-profile",
-  required: false,
 }];
 
 export function publicProfileOnboardingSectionPath(key: PublicProfileOnboardingSectionKey) {
