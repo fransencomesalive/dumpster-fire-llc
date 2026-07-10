@@ -46,6 +46,22 @@ Also shipped in this batch:
 - DS parity: onboarding-sections-rail.html updated (Outreach Rules + Leadership
   rows removed, both copies) and re-synced to the Claude Design project.
 
+### Late-session additions (same day, all SHIPPED — prod HEAD `3196a08`, measured live)
+- Randall approved all cards in Claude Design; implemented 1:1: homepage Human Path
+  carousel (`components/home-human-path.html`, Patterns group — each slide = the
+  Apply Wizard step verbatim), picker custom-add at TOP of the dropdown, DS card
+  example text wired as production placeholders (Q1/Q4, writing-sample buckets,
+  avoid-note, compensation), sections rail sticks under the sticky header.
+- Carousel sizing fix (Randall's 4 findings, verified with headless-Chrome
+  measurements at 1440/1280/390/320): uniform slide heights (532px desktop, footer
+  pinned), hidden slide radios are position:fixed 1px so tab/arrow clicks never
+  scroll the page, arrows exactly 20px below the carousel, section fits one
+  viewport (800px @ 1440x900 / 796px @ 1280x800 via scoped 48px section
+  padding-top). DS card mirrored + re-synced/registered.
+- AGENTS.md gained the "Full Design-Sync Checklist" hard rule (card + manifest +
+  register_assets + local design-system/ mirror + sweep all cards showing a
+  changed surface).
+
 ### Design-batch queue (Claude Design pipeline; nothing built yet)
 - #1 industries picker custom-add at TOP of dropdown (own section + divider).
 - #5 avoid-companies chip/token feedback + visible saved list.
