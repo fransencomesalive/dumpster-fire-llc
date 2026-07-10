@@ -19,14 +19,15 @@
 
   /* Rating-filter tabs · paper chips, teal stars; active = teal fill */
   .ratingFilterGrid { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:var(--space-2); margin-bottom:var(--space-4); }
-  .ratingFilterBtn { display:flex; flex-direction:column; align-items:center; gap:5px; min-width:0;
-    padding:var(--space-3) var(--space-2); font:inherit; cursor:pointer;
+  /* Condensed 2026-07-10 (Randall review #3): −20% height, "roles" +10% */
+  .ratingFilterBtn { display:flex; flex-direction:column; align-items:center; gap:3px; min-width:0;
+    padding:6px var(--space-2); font:inherit; cursor:pointer;
     background-color:var(--c-paper); border:var(--line-reg) solid var(--c-ink); border-radius:var(--radius-md); box-shadow:var(--shadow-card); }
   .ratingStars { font-size:0.92rem; letter-spacing:1px; line-height:1; white-space:nowrap; }
   .ratingStars .on { color:var(--c-teal); }
   .ratingStars .off { color:var(--c-paper-edge); }
   .ratingFilterBtn strong { font-family:var(--font-display); font-size:1.2rem; line-height:1; color:var(--c-ink); }
-  .ratingCount { font-family:var(--font-subhead); text-transform:uppercase; letter-spacing:0.04em; font-size:0.74rem; color:var(--role-text-faint); }
+  .ratingCount { font-family:var(--font-subhead); text-transform:uppercase; letter-spacing:0.04em; font-size:0.82rem; line-height:1.1; color:var(--role-text-faint); }
   .ratingFilterBtnActive { background-color:var(--c-teal); border-color:var(--c-ink); box-shadow:var(--reg-box); }
   .ratingFilterBtnActive .on { color:var(--c-paper); }
   .ratingFilterBtnActive .off { color:rgba(243,232,210,0.45); }
@@ -109,6 +110,8 @@
     border:var(--line-bold) solid var(--c-ink); box-shadow:var(--shadow-card); margin-left:auto; }
   .btnSave { color:var(--c-ink); background:var(--c-paper); border:var(--line-reg) solid var(--c-ink); }
   .btnSkip { color:var(--role-text-muted); background:transparent; border:var(--line-reg) solid transparent; }
+  /* Skip = "not interested" — removes the posting from results */
+  .skipNote { flex:1 1 0; min-width:110px; font-family:var(--font-body); font-size:0.8rem; font-style:italic; color:var(--role-text-faint); }
   .btnSource { position:relative; color:var(--c-ink); background:transparent; padding-bottom:3px; }
 
   /* Sidebar */
@@ -136,6 +139,43 @@
   .configStat { display:flex; flex-direction:column; gap:2px; min-width:0; }
   .metaLabel { font-family:var(--font-subhead); text-transform:uppercase; letter-spacing:0.04em; font-size:0.78rem; color:var(--c-teal); }
   .metaValue { font-family:var(--font-display); font-size:1.05rem; color:var(--c-ink); }
+
+  /* Job-title chips — onboarding-pickers .token primitive, read-only here (no ×) */
+  .titleChips { display:flex; flex-wrap:wrap; gap:var(--space-2); }
+  .titleChip { display:inline-flex; align-items:center; font-family:var(--font-ui), Inter, system-ui, sans-serif;
+    font-size:var(--type-small); color:var(--c-paper); background:var(--c-teal);
+    border:var(--line-reg) solid var(--c-ink); border-radius:var(--radius-pill); padding:5px 12px; }
+  .chipNote { font-family:var(--font-body); font-size:0.86rem; color:var(--role-text-muted);
+    margin:var(--space-3) 0 0; line-height:1.45; }
+
+  /* Company boards — URL input + add, then saved boards as removable rows */
+  .boardHint { font-family:var(--font-body); font-size:0.9rem; color:var(--role-text-muted); margin:0 0 var(--space-3); line-height:1.45; }
+  .boardInputRow { display:flex; gap:var(--space-2); margin-bottom:var(--space-3); }
+  .boardInput { flex:1 1 auto; min-width:0; box-sizing:border-box; font-family:var(--font-ui), Inter, system-ui, sans-serif;
+    font-size:var(--type-small); color:var(--c-ink); background:var(--c-paper);
+    border:var(--line-reg) solid var(--c-ink); border-radius:var(--radius-md); padding:9px var(--space-3); }
+  .boardInput::placeholder { color:var(--role-text-faint); }
+  .boardAddBtn { flex:none; font-family:var(--font-display); font-size:0.95rem; color:var(--role-action-text);
+    background-color:var(--role-action); background-image:var(--fiber-img), var(--grain-img);
+    background-blend-mode:normal, soft-light; background-size:170px 170px, 46px 46px;
+    border:var(--line-bold) solid var(--c-ink); border-radius:var(--radius-md); box-shadow:var(--shadow-card);
+    padding:var(--space-2) var(--space-3); cursor:pointer; }
+  .boardList { display:flex; flex-direction:column; gap:var(--space-2); }
+  .boardRow { display:flex; align-items:center; gap:var(--space-3); background:var(--c-paper);
+    border:var(--line-hair) solid var(--c-paper-edge); border-radius:var(--radius-sm); padding:var(--space-2) var(--space-3); }
+  .boardMain { min-width:0; display:grid; gap:1px; }
+  .boardName { font-family:var(--font-display); font-size:0.95rem; color:var(--c-ink); }
+  .boardDomain { font-family:var(--font-ui), Inter, system-ui, sans-serif; font-size:0.78rem; color:var(--role-text-faint);
+    overflow-wrap:anywhere; }
+  .boardRemove { margin-left:auto; flex:none; display:inline-flex; align-items:center; justify-content:center;
+    width:22px; height:22px; border-radius:50%; color:var(--c-ink); background:transparent;
+    border:var(--line-hair) solid var(--c-ink); cursor:pointer; font-size:13px; line-height:1; }
+  .boardRemove:hover { color:var(--c-paper); background:var(--c-tomato); border-color:var(--c-ink); }
+  /* resolving / can't-read states */
+  .boardErr { font-family:var(--font-body); font-size:0.86rem; color:var(--c-ink); background:color-mix(in srgb, var(--c-tomato) 10%, var(--c-paper));
+    border:var(--line-reg) solid var(--c-ink); border-left:6px solid var(--c-tomato); border-radius:var(--radius-md);
+    padding:var(--space-2) var(--space-3); margin-top:var(--space-3); line-height:1.45; }
+  .boardErr b { font-family:var(--font-display); font-weight:normal; }
 
   @media (max-width:900px){
     .dashboardGrid { grid-template-columns:minmax(0,1fr); }

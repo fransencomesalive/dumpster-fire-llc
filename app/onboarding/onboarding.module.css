@@ -1626,6 +1626,43 @@
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--c-teal) 26%, transparent);
 }
 
+/* Job-title chips (Randall, 2026-07-10) — multiple titles per track; type in the field,
+   the chip lands ABOVE it. Reuses the onboarding-pickers token primitive (teal = saved/on).
+   These titles are what the scan searches; they surface read-only on the scan page. */
+.titleTokens {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.titleToken {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-ui), Inter, system-ui, sans-serif;
+  font-size: var(--type-small);
+  color: var(--c-paper);
+  background: var(--c-teal);
+  border: var(--line-reg) solid var(--c-ink);
+  border-radius: var(--radius-pill);
+  padding: 5px 6px 5px 12px;
+}
+
+.titleToken .x {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgba(36, 31, 26, 0.22);
+  color: var(--c-paper);
+  font-size: 12px;
+  cursor: pointer;
+  border: 0;
+  padding: 0;
+}
+
 /* Dropdown (saved-track) state */
 .selectRow {
   position: relative;

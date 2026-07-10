@@ -38,6 +38,9 @@ export type PublicJobsSummary = {
   savedJobs: number;
   lastScanAt?: string;
   scanParameters: string[];
+  // The job-title subset of scanParameters (track names + target titles, no industries) —
+  // shown read-only on the dashboard's "Job titles in this scan" card.
+  titleParameters: string[];
 };
 
 export type PublicJobSearchSettings = {
@@ -59,5 +62,20 @@ export type PublicJobsScanResponse = PublicJobsResponse & {
     matchedJobs: number;
     mergedResults: number;
     providerMode: "normalized_public_jobs";
+    // Private company boards fetched live during this scan (absent when the user has none).
+    userBoards?: { scanned: number; errors: number };
   };
+};
+
+// A user's private company job board (a job_sources row they own), as listed on the
+// dashboard's "Company job boards" card.
+export type PublicJobBoardRecord = {
+  id: string;
+  companyName: string;
+  careersUrl: string;
+  provider: string;
+};
+
+export type PublicJobBoardsResponse = {
+  boards: PublicJobBoardRecord[];
 };

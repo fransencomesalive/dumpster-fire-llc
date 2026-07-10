@@ -79,6 +79,73 @@ function ingestableJobs(jobs: NormalizedConnectorJob[], limit: number): Normaliz
   return output;
 }
 
+// The `jobs` row shape returned when an ingest asks for its upserted rows back.
+export type IngestedJobRow = {
+  id: string;
+  source: string;
+  source_url: string;
+  company_name: string;
+  title: string;
+  location: string | null;
+  remote_type: string | null;
+  employment_type: string | null;
+  compensation_text: string | null;
+  description: string;
+  posted_at: string | null;
+  scraped_at: string;
+  created_at: string;
+  updated_at: string;
+  responsibilities: string[] | null;
+  required_experience: string[] | null;
+};
+
+const INGESTED_ROW_SELECT = "id,source,source_url,company_name,title,location,remote_type,employment_type,compensation_text,description,posted_at,scraped_at,created_at,updated_at,responsibilities,required_experience";
+
+// Upsert normalized postings into the shared `jobs` pool. Rows whose heuristic produced
+// sections carry them; rows with empty sections OMIT those columns so an ingest never
+// clobbers an LLM gap-fill (on conflict, omitted columns are preserved). See
+// lib/scan/refine-postings.ts. With `returnRows`, the upserted rows (ids included) come
+// back so a per-user scan can put them straight into its candidate set.
+export async function ingestNormalizedJobs(
+  request: PublicProfileRepositoryRequest,
+  jobs: NormalizedConnectorJob[],
+  scrapedAt: string,
+  options: { limit?: number; returnRows?: boolean } = {},
+): Promise<{ upserted: number; rows: IngestedJobRow[] }> {
+  const upsertable = ingestableJobs(jobs, options.limit ?? DEFAULT_MAX_JOBS_PER_SOURCE);
+  if (upsertable.length === 0) return { upserted: 0, rows: [] };
+
+  const rows = upsertable.map((job) => jobRowBody(job, scrapedAt));
+  const withSections = rows.filter((row) => row.responsibilities.length > 0 || row.required_experience.length > 0);
+  const withoutSections = rows
+    .filter((row) => row.responsibilities.length === 0 && row.required_experience.length === 0)
+    .map((row) => {
+      const copy = { ...row } as Record<string, unknown>;
+      delete copy.responsibilities;
+      delete copy.required_experience;
+      return copy;
+    });
+
+  const query = options.returnRows
+    ? `?on_conflict=source,source_url&select=${INGESTED_ROW_SELECT}`
+    : "?on_conflict=source,source_url";
+  const headers = options.returnRows
+    ? { Prefer: "resolution=merge-duplicates,return=representation" }
+    : { Prefer: "resolution=merge-duplicates" };
+
+  const returned: IngestedJobRow[] = [];
+  if (withSections.length > 0) {
+    const result = await request<IngestedJobRow[] | undefined>("jobs", { method: "POST", query, headers, body: withSections });
+    if (options.returnRows && Array.isArray(result)) returned.push(...result);
+  }
+  if (withoutSections.length > 0) {
+    const result = await request<IngestedJobRow[] | undefined>("jobs", { method: "POST", query, headers, body: withoutSections });
+    if (options.returnRows && Array.isArray(result)) returned.push(...result);
+  }
+
+  return { upserted: upsertable.length, rows: returned };
+}
+
 // Fetch from each active scan source and upsert normalized postings into the public `jobs` table.
 // Per-source failures are isolated and recorded; an empty/paused source list is a safe no-op. This
 // is the system-wide source scan; per-user scans match against the populated table.
@@ -100,51 +167,18 @@ export async function runSourceScan(
   for (const source of sources) {
     try {
       const jobs = await fetchSource(source, { workdayVariants: source.workdayVariants, env: options.env });
-      const upsertable = ingestableJobs(jobs, limit);
-
-      if (upsertable.length > 0) {
-        const rows = upsertable.map((job) => jobRowBody(job, now));
-        // Rows whose heuristic produced sections carry them; rows with empty sections OMIT those
-        // columns so the daily scan never clobbers an LLM gap-fill (on conflict, omitted columns
-        // are preserved). See lib/scan/refine-postings.ts.
-        const withSections = rows.filter((row) => row.responsibilities.length > 0 || row.required_experience.length > 0);
-        const withoutSections = rows
-          .filter((row) => row.responsibilities.length === 0 && row.required_experience.length === 0)
-          .map((row) => {
-            const copy = { ...row } as Record<string, unknown>;
-            delete copy.responsibilities;
-            delete copy.required_experience;
-            return copy;
-          });
-
-        if (withSections.length > 0) {
-          await request("jobs", {
-            method: "POST",
-            query: "?on_conflict=source,source_url",
-            headers: { Prefer: "resolution=merge-duplicates" },
-            body: withSections,
-          });
-        }
-        if (withoutSections.length > 0) {
-          await request("jobs", {
-            method: "POST",
-            query: "?on_conflict=source,source_url",
-            headers: { Prefer: "resolution=merge-duplicates" },
-            body: withoutSections,
-          });
-        }
-      }
+      const { upserted } = await ingestNormalizedJobs(request, jobs, now, { limit });
 
       await markScanned(request, source.id, { at: now });
       totalFetched += jobs.length;
-      totalUpserted += upsertable.length;
+      totalUpserted += upserted;
       results.push({
         sourceId: source.id,
         companyName: source.companyName,
         provider: source.atsProvider,
         status: "scanned",
         fetched: jobs.length,
-        upserted: upsertable.length,
+        upserted,
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unable to scan source.";

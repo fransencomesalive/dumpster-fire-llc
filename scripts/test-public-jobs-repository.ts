@@ -1,10 +1,14 @@
 import assert from "node:assert/strict";
 import {
+  addPublicJobBoardForUser,
   readPublicJobsForUser,
+  removePublicJobBoardForUser,
   runPublicJobsScanForUser,
+  setPublicJobDismissedForUser,
   setPublicJobSavedForUser,
 } from "../lib/public-jobs/repository";
 import type { PublicProfileRepositoryRequest } from "../lib/public-profile/repository";
+import type { NormalizedConnectorJob } from "../lib/scan/sources/types";
 
 const now = "2026-06-26T18:00:00.000Z";
 const userId = "user-1";
@@ -31,10 +35,26 @@ type ScanResultRow = {
   user_id: string;
   profile_id: string;
   job_id: string;
-  status: "active" | "actioned" | "expired";
+  status: "active" | "actioned" | "expired" | "dismissed";
   scan_context: Record<string, unknown>;
   first_seen_at: string;
   last_seen_at: string;
+  created_at: string;
+  updated_at: string;
+};
+
+type JobSourceRow = {
+  id: string;
+  company_name: string;
+  website_url: string | null;
+  careers_url: string | null;
+  ats_provider: string;
+  ats_board_token: string | null;
+  status: string;
+  workday_variants: string[];
+  owner_user_id: string | null;
+  last_scanned_at: string | null;
+  last_error: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -84,6 +104,7 @@ const jobs: JobRow[] = [
 
 const scanResults: ScanResultRow[] = [];
 const savedJobs: SavedJobRow[] = [];
+const jobSources: JobSourceRow[] = [];
 
 const request: PublicProfileRepositoryRequest = async <T>(
   table: string,
@@ -182,11 +203,101 @@ const request: PublicProfileRepositoryRequest = async <T>(
   }
 
   if (table === "jobs") {
+    if (options.method === "POST") {
+      // Upsert on (source, source_url); honor return=representation like PostgREST.
+      const rows = Array.isArray(options.body) ? options.body : [options.body];
+      const returned: JobRow[] = [];
+      for (const row of rows as Array<Record<string, unknown>>) {
+        const source = row.source as string;
+        const sourceUrl = row.source_url as string;
+        let existing = jobs.find((job) => job.source === source && job.source_url === sourceUrl);
+        if (existing) {
+          existing.title = (row.title as string) ?? existing.title;
+          existing.description = (row.description as string) ?? existing.description;
+          existing.updated_at = (row.updated_at as string) ?? existing.updated_at;
+          existing.scraped_at = (row.scraped_at as string) ?? existing.scraped_at;
+        } else {
+          existing = {
+            id: `job-${jobs.length + 1}`,
+            source,
+            source_url: sourceUrl,
+            company_name: (row.company_name as string) ?? "",
+            title: (row.title as string) ?? "",
+            location: (row.location as string | null) ?? null,
+            remote_type: (row.remote_type as string | null) ?? null,
+            employment_type: (row.employment_type as string | null) ?? null,
+            compensation_text: (row.compensation_text as string | null) ?? null,
+            description: (row.description as string) ?? "",
+            posted_at: (row.posted_at as string | null) ?? null,
+            scraped_at: (row.scraped_at as string) ?? now,
+            created_at: now,
+            updated_at: (row.updated_at as string) ?? now,
+          };
+          jobs.push(existing);
+        }
+        returned.push(existing);
+      }
+      const prefer = (options.headers as Record<string, string> | undefined)?.Prefer ?? "";
+      return (prefer.includes("return=representation") ? returned : {}) as T;
+    }
     if (query.includes("id=in.")) {
       const ids = query.match(/id=in\.\(([^)]+)\)/)?.[1].split(",") ?? [];
       return jobs.filter((job) => ids.includes(job.id)) as T;
     }
     return jobs as T;
+  }
+
+  if (table === "job_sources") {
+    if (options.method === "POST") {
+      const row = options.body as Record<string, unknown>;
+      const inserted: JobSourceRow = {
+        id: `source-${jobSources.length + 1}`,
+        company_name: (row.company_name as string) ?? "",
+        website_url: (row.website_url as string | null) ?? null,
+        careers_url: (row.careers_url as string | null) ?? null,
+        ats_provider: (row.ats_provider as string) ?? "html",
+        ats_board_token: (row.ats_board_token as string | null) ?? null,
+        status: (row.status as string) ?? "active",
+        workday_variants: [],
+        owner_user_id: (row.owner_user_id as string | null) ?? null,
+        last_scanned_at: null,
+        last_error: null,
+        created_at: now,
+        updated_at: (row.updated_at as string) ?? now,
+      };
+      jobSources.push(inserted);
+      return [inserted] as T;
+    }
+    if (options.method === "PATCH") {
+      const id = query.match(/(?:^|[?&])id=eq\.([^&]+)/)?.[1];
+      const body = options.body as Partial<JobSourceRow>;
+      for (const row of jobSources) {
+        if (row.id !== id) continue;
+        if (body.last_scanned_at !== undefined) row.last_scanned_at = body.last_scanned_at;
+        if (body.last_error !== undefined) row.last_error = body.last_error;
+        if (body.updated_at !== undefined) row.updated_at = body.updated_at;
+      }
+      return {} as T;
+    }
+    if (options.method === "DELETE") {
+      const id = query.match(/(?:^|[?&])id=eq\.([^&]+)/)?.[1];
+      const owner = query.match(/owner_user_id=eq\.([^&]+)/)?.[1];
+      const index = jobSources.findIndex((row) => row.id === id && row.owner_user_id === owner);
+      if (index >= 0) jobSources.splice(index, 1);
+      return {} as T;
+    }
+    let rows = jobSources;
+    const owner = query.match(/owner_user_id=eq\.([^&]+)/)?.[1];
+    if (owner) rows = rows.filter((row) => row.owner_user_id === owner);
+    const status = query.match(/status=eq\.([^&]+)/)?.[1];
+    if (status) rows = rows.filter((row) => row.status === status);
+    const provider = query.match(/ats_provider=eq\.([^&]+)/)?.[1];
+    if (provider) rows = rows.filter((row) => row.ats_provider === provider);
+    const token = query.match(/ats_board_token=eq\.([^&]+)/)?.[1];
+    if (token) rows = rows.filter((row) => row.ats_board_token === token);
+    const careersUrl = query.match(/careers_url=eq\.([^&]+)/)?.[1];
+    if (careersUrl) rows = rows.filter((row) => row.careers_url === careersUrl);
+    return rows as T;
   }
 
   if (table === "job_scan_results") {
@@ -217,7 +328,21 @@ const request: PublicProfileRepositoryRequest = async <T>(
       return {} as T;
     }
 
-    let rows = scanResults.filter((result) => result.user_id === userId && result.status === "active");
+    if (options.method === "PATCH") {
+      const jobId = query.match(/job_id=eq\.([^&]+)/)?.[1];
+      const body = options.body as Partial<ScanResultRow>;
+      for (const row of scanResults) {
+        if (row.user_id !== userId) continue;
+        if (jobId && row.job_id !== jobId) continue;
+        if (body.status) row.status = body.status;
+        if (body.updated_at) row.updated_at = body.updated_at;
+      }
+      return {} as T;
+    }
+
+    let rows = scanResults.filter((result) => result.user_id === userId);
+    const statusFilter = query.match(/status=eq\.([^&]+)/)?.[1];
+    if (statusFilter) rows = rows.filter((result) => result.status === statusFilter);
     const jobId = query.match(/job_id=eq\.([^&]+)/)?.[1];
     if (jobId) rows = rows.filter((result) => result.job_id === jobId);
     return rows as T;
@@ -286,6 +411,96 @@ async function main() {
 
   const missing = await setPublicJobSavedForUser(request, userId, "job-missing", true, now);
   assert.deepEqual(missing, { status: "not_in_results" });
+
+  // titleParameters = track names + target titles (deduped — the track name matches its
+  // single target title here), no industries.
+  assert.deepEqual(scan.summary.titleParameters, ["Program Director"]);
+  assert.deepEqual(scan.scan.userBoards, { scanned: 0, errors: 0 });
+
+  // Skip: the job drops out of results…
+  const skipped = await setPublicJobDismissedForUser(request, userId, "job-1", now);
+  assert.equal("status" in skipped, false);
+  if ("status" in skipped) throw new Error("Expected skip response");
+  assert.equal(skipped.jobs.length, 0);
+
+  // …and a re-scan must NOT resurrect it (the results upsert would flip status back to
+  // active if dismissed ids weren't excluded from the candidate set).
+  const rescan = await runPublicJobsScanForUser(request, userId, now);
+  assert.equal("status" in rescan, false);
+  if ("status" in rescan) throw new Error("Expected rescan response");
+  assert.equal(rescan.jobs.some((job) => job.id === "job-1"), false);
+  assert.equal(scanResults.find((row) => row.job_id === "job-1")?.status, "dismissed");
+
+  const missingSkip = await setPublicJobDismissedForUser(request, userId, "job-missing", now);
+  assert.deepEqual(missingSkip, { status: "not_in_results" });
+
+  // Company boards: add resolves the URL, verifies the board live, and ingests postings.
+  const boardPosting: NormalizedConnectorJob = {
+    companyId: "watched-co",
+    externalJobId: "wc-1",
+    sourceProvider: "ashby",
+    sourceUrl: "https://jobs.ashbyhq.com/watched-co/wc-1",
+    applyUrl: "https://jobs.ashbyhq.com/watched-co/wc-1/apply",
+    title: "Senior Program Director",
+    companyName: "Watched Co",
+    location: "Remote",
+    remoteType: "remote",
+    employmentType: "full-time",
+    department: "Programs",
+    salaryText: "",
+    descriptionText: "Run cross-functional programs with stakeholder alignment.",
+    rawPayload: {},
+  };
+  const fetchBoard = async () => [boardPosting];
+
+  const added = await addPublicJobBoardForUser(request, userId, "https://jobs.ashbyhq.com/watched-co", now, { fetchSource: fetchBoard });
+  assert.equal("status" in added, false);
+  if ("status" in added) throw new Error("Expected boards response");
+  assert.equal(added.boards.length, 1);
+  assert.equal(added.boards[0].companyName, "Watched Co");
+  assert.equal(added.boards[0].provider, "ashby");
+  assert.ok(jobSources[0].last_scanned_at);
+
+  // Duplicate add is idempotent (no second row, no 409).
+  const duplicate = await addPublicJobBoardForUser(request, userId, "https://jobs.ashbyhq.com/watched-co", now, { fetchSource: fetchBoard });
+  assert.equal("status" in duplicate, false);
+  if ("status" in duplicate) throw new Error("Expected boards response");
+  assert.equal(duplicate.boards.length, 1);
+  assert.equal(jobSources.length, 1);
+
+  // A URL that isn't a supported board is rejected before any insert.
+  const unrecognized = await addPublicJobBoardForUser(request, userId, "https://example.com/blog", now, { fetchSource: fetchBoard });
+  assert.deepEqual(unrecognized, { status: "unrecognized_board" });
+
+  // A board that resolves but can't be fetched is rejected without inserting.
+  const unfetchable = await addPublicJobBoardForUser(request, userId, "https://jobs.lever.co/ghost-co", now, {
+    fetchSource: async () => { throw new Error("404 from board"); },
+  });
+  assert.equal("status" in unfetchable && unfetchable.status === "board_fetch_failed", true);
+  assert.equal(jobSources.length, 1);
+
+  // Scan fetches the user's board live; its matching posting lands in results.
+  const boardScan = await runPublicJobsScanForUser(request, userId, now, { fetchSource: fetchBoard });
+  assert.equal("status" in boardScan, false);
+  if ("status" in boardScan) throw new Error("Expected board scan response");
+  assert.deepEqual(boardScan.scan.userBoards, { scanned: 1, errors: 0 });
+  assert.equal(boardScan.jobs.some((job) => job.companyName === "Watched Co"), true);
+  assert.equal(boardScan.jobs.some((job) => job.id === "job-1"), false);
+
+  // A failing board fetch is isolated: the scan still succeeds and the error is recorded.
+  const failingScan = await runPublicJobsScanForUser(request, userId, now, {
+    fetchSource: async () => { throw new Error("board down"); },
+  });
+  assert.equal("status" in failingScan, false);
+  if ("status" in failingScan) throw new Error("Expected failing-board scan response");
+  assert.deepEqual(failingScan.scan.userBoards, { scanned: 0, errors: 1 });
+  assert.equal(jobSources[0].last_error, "board down");
+  assert.equal(failingScan.jobs.some((job) => job.companyName === "Watched Co"), true);
+
+  // Remove the board; the shared jobs pool keeps its postings.
+  const removed = await removePublicJobBoardForUser(request, userId, jobSources[0].id);
+  assert.equal(removed.boards.length, 0);
+  assert.equal(jobSources.length, 0);
 
   console.log("public jobs repository: all assertions passed");
 }

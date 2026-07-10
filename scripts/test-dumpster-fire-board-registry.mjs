@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
-import { resolveBoardFromUrl } from "../app/scans/board-registry.ts";
+// URL→board resolution now lives in lib/scan/sources (production add-a-board path);
+// the legacy app/scans copy remains for the legacy dashboard only.
+import { resolveBoardFromUrl } from "../lib/scan/sources/board-registry.ts";
 import { normalizeAdzunaPayload, parseRssJobs, parseRipplingJobs } from "../app/scans/connectors.ts";
 
 // Posting URLs resolve to per-company boards.

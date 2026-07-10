@@ -717,6 +717,10 @@ export default function OnboardingClient({
   const [trackMenuOpen, setTrackMenuOpen] = useState(false);
   const [resumeScan, setResumeScan] = useState<ResumeScanState>({ status: "idle" });
   const [pastedResumeText, setPastedResumeText] = useState("");
+  // Job-title chips (Randall, 2026-07-10). Saved tracks persist edits straight away;
+  // a not-yet-saved track (first run / creating) collects titles in a local draft list.
+  const [draftTitles, setDraftTitles] = useState<string[]>([]);
+  const [titleDraft, setTitleDraft] = useState("");
   const [card1Note, setCard1Note] = useState<{ count?: number; trackName: string; fileSize?: number } | null>(null);
   // Loader modal for the Card 1 save (scan-progress component). Closes on both
   // success (card flips to its saved state) and failure (message reports it).
@@ -1146,8 +1150,8 @@ export default function OnboardingClient({
       if (isNewTrack) {
         const source = creatingTrack && activeTrack ? activeTrack : undefined;
         const newTrack: RoleTrackSectionItem = source
-          ? { ...source, id: createClientId(), name: trackName, resumeIds: [] }
-          : { ...emptyRoleTrack(), name: trackName };
+          ? { ...source, id: createClientId(), name: trackName, resumeIds: [], targetTitles: draftTitles }
+          : { ...emptyRoleTrack(), name: trackName, targetTitles: draftTitles };
         tracksBody = [...roleTracks, newTrack];
         trackIndex = tracksBody.length - 1;
       }
@@ -1207,12 +1211,67 @@ export default function OnboardingClient({
       setTrackMenuOpen(false);
       setResumeScan({ status: "idle" });
       setPastedResumeText("");
+      setDraftTitles([]);
+      setTitleDraft("");
       setMessage("Role Track & Résumé saved.");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Save failed.");
     } finally {
       setSaveProgress({ status: "idle" });
       setBusy(false);
+    }
+  }
+
+  // --- Card 1 job-title chips: type a title, Enter (or blur) lands it as a chip. ---
+
+  const titleChips = firstRun || creatingTrack ? draftTitles : (activeTrack?.targetTitles ?? []);
+
+  // Persist a saved track's titles straight away — like the résumé replace, the
+  // saved card has no separate Save button.
+  async function saveTrackTitles(next: string[]) {
+    if (!accessToken || !activeTrack) return;
+    const previous = roleTracks;
+    setRoleTracks(roleTracks.map((track) =>
+      track.id === activeTrack.id ? { ...track, targetTitles: next } : track));
+    try {
+      const response = await requestPublicProfileApi<SectionResponse<RoleTracksSection>>(
+        "/api/public-profile/role-tracks",
+        {
+          method: "PATCH",
+          accessToken,
+          body: { roleTracks: previous.map((track) =>
+            track.id === activeTrack.id ? { ...track, targetTitles: next } : track) },
+        },
+      );
+      setRoleTracks(response.section.roleTracks);
+      applyProfileQuality(response.profileQuality);
+    } catch (error) {
+      setRoleTracks(previous);
+      setMessage(error instanceof Error ? error.message : "Job title save failed.");
+    }
+  }
+
+  function commitTitle() {
+    const value = titleDraft.trim();
+    if (!value) return;
+    if (titleChips.some((title) => title.toLowerCase() === value.toLowerCase())) {
+      setTitleDraft("");
+      return;
+    }
+    setTitleDraft("");
+    if (firstRun || creatingTrack) {
+      setDraftTitles([...draftTitles, value]);
+    } else {
+      void saveTrackTitles([...titleChips, value]);
+    }
+  }
+
+  function removeTitle(value: string) {
+    const next = titleChips.filter((title) => title !== value);
+    if (firstRun || creatingTrack) {
+      setDraftTitles(next);
+    } else {
+      void saveTrackTitles(next);
     }
   }
 
@@ -1710,7 +1769,7 @@ export default function OnboardingClient({
                             role="option"
                             aria-selected={track.id === activeTrackId}
                             className={`${styles.selectOpt} ${track.id === activeTrackId ? styles.selectOptSel : ""}`}
-                            onClick={() => { setActiveTrackId(track.id); setTrackMenuOpen(false); setCard1Note(null); setResumeScan({ status: "idle" }); }}
+                            onClick={() => { setActiveTrackId(track.id); setTrackMenuOpen(false); setCard1Note(null); setResumeScan({ status: "idle" }); setTitleDraft(""); }}
                           >
                             {track.name || track.id}
                           </button>
@@ -1718,7 +1777,7 @@ export default function OnboardingClient({
                         <button
                           type="button"
                           className={`${styles.selectOpt} ${styles.selectOptNew}`}
-                          onClick={() => { setCreatingTrack(true); setNewTrackName(""); setTrackMenuOpen(false); setCard1Note(null); setResumeScan({ status: "idle" }); }}
+                          onClick={() => { setCreatingTrack(true); setNewTrackName(""); setTrackMenuOpen(false); setCard1Note(null); setResumeScan({ status: "idle" }); setDraftTitles(activeTrack?.targetTitles ?? []); setTitleDraft(""); }}
                         >
                           ＋ Create a new role track
                         </button>
@@ -1728,6 +1787,48 @@ export default function OnboardingClient({
                   ) : null}
                 </div>
               )}
+            </div>
+
+            <div className={styles.card1Field}>
+              <label className={styles.card1Label} htmlFor="card1-title-input">Job titles</label>
+              {titleChips.length > 0 ? (
+                <div className={styles.titleTokens}>
+                  {titleChips.map((title) => (
+                    <span key={title} className={styles.titleToken}>
+                      {title}
+                      <button
+                        type="button"
+                        className={styles.x}
+                        aria-label={`Remove ${title}`}
+                        disabled={!accessToken || busy}
+                        onClick={() => removeTitle(title)}
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              ) : null}
+              <input
+                id="card1-title-input"
+                className={styles.trackInput}
+                value={titleDraft}
+                placeholder="Type a title, press Enter"
+                disabled={!accessToken || busy}
+                onChange={(event) => setTitleDraft(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    commitTitle();
+                  }
+                }}
+                onBlur={commitTitle}
+              />
+              <span className={styles.subhint}>
+                {firstRun || creatingTrack
+                  ? "Add every title this track should scan for — each one becomes a search the scan runs."
+                  : "The scan searches each of these titles for this track."}
+              </span>
             </div>
 
             <div className={styles.card1Field}>

@@ -5,12 +5,12 @@ import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { clearPublicProfileAccessToken, readPublicProfileAccessToken } from "@/lib/public-profile/browser-session";
 import { syncPublicProfileSession } from "@/lib/public-auth/supabase-browser";
-import { requestPublicProfileApi } from "@/lib/public-profile/client";
+import { PublicProfileApiError, requestPublicProfileApi } from "@/lib/public-profile/client";
 import { publicProfileOnboardingSections } from "@/lib/public-profile/onboarding";
 import OnboardingClient from "../onboarding/OnboardingClient";
 import styles from "../site.module.css";
 import jobsStyles from "./dashboard.module.css";
-import type { PublicJobRecord, PublicJobsResponse, PublicJobsScanResponse } from "@/lib/public-jobs/types";
+import type { PublicJobBoardRecord, PublicJobBoardsResponse, PublicJobRecord, PublicJobsResponse, PublicJobsScanResponse } from "@/lib/public-jobs/types";
 
 type BootstrapResponse = {
   profileStatus: "incomplete" | "complete";
@@ -61,6 +61,14 @@ function formatRemotePreference(value: string) {
 function truncateText(value: string, max = 220) {
   const clean = value.replace(/\s+/g, " ").trim();
   return clean.length > max ? `${clean.slice(0, max).trimEnd()}…` : clean;
+}
+
+function boardDomain(careersUrl: string) {
+  try {
+    return new URL(careersUrl).hostname;
+  } catch {
+    return careersUrl;
+  }
 }
 
 const STAR_POINTS = "12 2 15 9 22 9.3 16.5 14 18.5 21 12 17 5.5 21 7.5 14 2 9.3 9 9";
@@ -135,6 +143,11 @@ export default function DashboardClient() {
   const [fitFilter, setFitFilter] = useState<number | null>(null);
   const [savedOnly, setSavedOnly] = useState(false);
   const [scanProgress, setScanProgress] = useState<ScanProgress>({ status: "idle" });
+  // Company job boards card — the user's private job_sources rows.
+  const [boards, setBoards] = useState<PublicJobBoardRecord[]>([]);
+  const [boardUrlDraft, setBoardUrlDraft] = useState("");
+  const [boardBusy, setBoardBusy] = useState(false);
+  const [boardError, setBoardError] = useState<"unreadable" | { message: string } | null>(null);
 
   async function loadJobs(accessToken: string, message?: string) {
     setJobsState((state) => state.status === "ready" ? { ...state, message } : { status: "loading" });
@@ -168,6 +181,10 @@ export default function DashboardClient() {
           blockerCount: response.profileQuality.incompleteReasons.length,
           weakResponseCount: response.profileQuality.weakResponseCount,
         });
+        // Boards load independently — a failure never blocks the dashboard.
+        requestPublicProfileApi<PublicJobBoardsResponse>("/api/jobs/boards", { method: "GET", accessToken })
+          .then((boardsResponse) => setBoards(boardsResponse.boards))
+          .catch(() => {});
         return loadJobs(accessToken).catch((error) => {
           setJobsState({
             status: "error",
@@ -241,6 +258,88 @@ export default function DashboardClient() {
       });
     } finally {
       setJobsBusy(false);
+    }
+  }
+
+  // Skip = "not interested" — dismisses the posting from this user's results for good.
+  async function skipJob(job: PublicJobRecord) {
+    const accessToken = readPublicProfileAccessToken();
+    if (!accessToken) {
+      router.replace("/onboarding");
+      return;
+    }
+
+    setJobsBusy(true);
+    try {
+      const response = await requestPublicProfileApi<PublicJobsResponse>("/api/jobs/skip", {
+        method: "POST",
+        accessToken,
+        body: { jobId: job.id },
+      });
+      setJobsState({
+        status: "ready",
+        response,
+        message: `Removed ${job.title} from results.`,
+      });
+    } catch (error) {
+      setJobsState({
+        status: "error",
+        message: error instanceof Error ? error.message : "Skip failed.",
+      });
+    } finally {
+      setJobsBusy(false);
+    }
+  }
+
+  async function addBoard() {
+    const accessToken = readPublicProfileAccessToken();
+    if (!accessToken) {
+      router.replace("/onboarding");
+      return;
+    }
+    const url = boardUrlDraft.trim();
+    if (!url) return;
+
+    setBoardBusy(true);
+    setBoardError(null);
+    try {
+      const response = await requestPublicProfileApi<PublicJobBoardsResponse>("/api/jobs/boards", {
+        method: "POST",
+        accessToken,
+        body: { url },
+      });
+      setBoards(response.boards);
+      setBoardUrlDraft("");
+    } catch (error) {
+      const body = error instanceof PublicProfileApiError ? error.body as { error?: string; code?: string } | null : null;
+      if (body?.code === "unrecognized_board" || body?.code === "board_fetch_failed") {
+        setBoardError("unreadable");
+      } else {
+        setBoardError({ message: body?.error ?? (error instanceof Error ? error.message : "Board could not be added.") });
+      }
+    } finally {
+      setBoardBusy(false);
+    }
+  }
+
+  async function removeBoard(board: PublicJobBoardRecord) {
+    const accessToken = readPublicProfileAccessToken();
+    if (!accessToken) {
+      router.replace("/onboarding");
+      return;
+    }
+
+    setBoardBusy(true);
+    try {
+      const response = await requestPublicProfileApi<PublicJobBoardsResponse>(`/api/jobs/boards?id=${encodeURIComponent(board.id)}`, {
+        method: "DELETE",
+        accessToken,
+      });
+      setBoards(response.boards);
+    } catch (error) {
+      setBoardError({ message: error instanceof Error ? error.message : "Board could not be removed." });
+    } finally {
+      setBoardBusy(false);
     }
   }
 
@@ -411,6 +510,8 @@ export default function DashboardClient() {
                           <button className={jobsStyles.btnSave} disabled={jobsBusy} onClick={() => setJobSaved(job, !job.saved)} type="button">
                             {job.saved ? "Saved" : "Save"}
                           </button>
+                          <button className={jobsStyles.btnSkip} disabled={jobsBusy} onClick={() => skipJob(job)} type="button">Skip</button>
+                          <span className={jobsStyles.skipNote}>This job will be removed from results.</span>
                           <a className={jobsStyles.btnSource} href={job.sourceUrl} rel="noreferrer" target="_blank">Open posting ↗</a>
                           <button className={jobsStyles.btnApply} disabled={jobsBusy} onClick={() => startPursuit(job)} type="button">Pursue</button>
                         </div>
@@ -442,6 +543,20 @@ export default function DashboardClient() {
                 </button>
               </div>
 
+              {jobsResponse && jobsResponse.summary.titleParameters.length > 0 ? (
+                <div className={jobsStyles.card}>
+                  <div className={jobsStyles.panelHeaderRow}>
+                    <h3 className={jobsStyles.sidebarHeading}>Job titles in this scan</h3>
+                  </div>
+                  <div className={jobsStyles.titleChips}>
+                    {jobsResponse.summary.titleParameters.map((title) => (
+                      <span key={title} className={jobsStyles.titleChip}>{title}</span>
+                    ))}
+                  </div>
+                  <p className={jobsStyles.chipNote}>To edit job titles, change parameters in this role track in your profile.</p>
+                </div>
+              ) : null}
+
               {searchSettings ? (
                 <div className={jobsStyles.card}>
                   <div className={jobsStyles.panelHeaderRow}>
@@ -468,6 +583,61 @@ export default function DashboardClient() {
                   </div>
                 </div>
               ) : null}
+
+              <div className={jobsStyles.card}>
+                <div className={jobsStyles.panelHeaderRow}>
+                  <h3 className={jobsStyles.sidebarHeading}>Company job boards</h3>
+                </div>
+                <p className={jobsStyles.boardHint}>Watching a company? Paste their careers page and every scan checks their board directly.</p>
+                <div className={jobsStyles.boardInputRow}>
+                  <input
+                    className={jobsStyles.boardInput}
+                    placeholder="Paste a careers page URL"
+                    value={boardUrlDraft}
+                    disabled={boardBusy}
+                    onChange={(event) => setBoardUrlDraft(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        event.preventDefault();
+                        void addBoard();
+                      }
+                    }}
+                  />
+                  <button className={jobsStyles.boardAddBtn} disabled={boardBusy} onClick={() => void addBoard()} type="button">
+                    {boardBusy ? "Adding…" : "Add"}
+                  </button>
+                </div>
+                {boards.length > 0 ? (
+                  <div className={jobsStyles.boardList}>
+                    {boards.map((board) => (
+                      <div className={jobsStyles.boardRow} key={board.id}>
+                        <div className={jobsStyles.boardMain}>
+                          <span className={jobsStyles.boardName}>{board.companyName}</span>
+                          <span className={jobsStyles.boardDomain}>{boardDomain(board.careersUrl)}</span>
+                        </div>
+                        <button
+                          className={jobsStyles.boardRemove}
+                          type="button"
+                          aria-label={`Remove ${board.companyName}`}
+                          disabled={boardBusy}
+                          onClick={() => void removeBoard(board)}
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+                {boardError === "unreadable" ? (
+                  <p className={jobsStyles.boardErr}>
+                    <b>We couldn&apos;t read that page as a job board.</b> Try the company&apos;s careers page link — the page
+                    that lists their open roles. Still stuck? Use the feedback chat bubble to request a job board that
+                    didn&apos;t work.
+                  </p>
+                ) : boardError ? (
+                  <p className={jobsStyles.boardErr}>{boardError.message}</p>
+                ) : null}
+              </div>
             </aside>
           </div>
         </section>

@@ -6,7 +6,17 @@ import {
   type PublicProfileRepositoryRequest,
 } from "../public-profile/repository";
 import type { CandidateProfileAggregate } from "../public-profile/types";
-import type { PublicJobMatchSummary, PublicJobRecord, PublicJobSearchSettings, PublicJobsResponse, PublicJobsScanResponse, PublicJobsSummary } from "./types";
+import { ingestNormalizedJobs } from "../scan/source-scan";
+import { resolveBoardFromUrl } from "../scan/sources/board-registry";
+import {
+  deleteUserJobSource,
+  insertUserJobSource,
+  loadUserJobSources,
+  markJobSourceScanned,
+  type UserJobSourceRecord,
+} from "../scan/sources/registry";
+import { fetchNormalizedConnectorJobs } from "../scan/sources/runner";
+import type { PublicJobBoardRecord, PublicJobBoardsResponse, PublicJobMatchSummary, PublicJobRecord, PublicJobSearchSettings, PublicJobsResponse, PublicJobsScanResponse, PublicJobsSummary } from "./types";
 
 type JobRow = {
   id: string;
@@ -44,6 +54,7 @@ type PublicJobsReadiness =
       status: "ready";
       aggregate: CandidateProfileAggregate;
       scanParameters: string[];
+      titleParameters: string[];
     }
   | {
       status: "not_found";
@@ -83,6 +94,14 @@ function scanParametersForAggregate(aggregate: CandidateProfileAggregate) {
     ...aggregate.roleTracks.flatMap((track) => [track.name, ...track.targetTitles]),
     ...(aggregate.preferences?.targetIndustries ?? []),
   ]).slice(0, 30);
+}
+
+// The job-title subset of the scan parameters (track names + target titles, no
+// industries) — surfaced read-only on the dashboard's "Job titles in this scan" card.
+function titleParametersForAggregate(aggregate: CandidateProfileAggregate) {
+  return unique(
+    aggregate.roleTracks.flatMap((track) => [track.name, ...track.targetTitles]),
+  ).slice(0, 30);
 }
 
 function avoidCompaniesForAggregate(aggregate: CandidateProfileAggregate) {
@@ -180,6 +199,7 @@ async function ensureReadyProfile(
     status: "ready",
     aggregate,
     scanParameters: scanParametersForAggregate(aggregate),
+    titleParameters: titleParametersForAggregate(aggregate),
   };
 }
 
@@ -229,7 +249,7 @@ export async function loadPublicJobsByIds(
   return new Map(rows.map((row) => [row.id, mapPublicJobRecord(row)]));
 }
 
-function summaryForJobs(jobs: PublicJobRecord[], scanParameters: string[]): PublicJobsSummary {
+function summaryForJobs(jobs: PublicJobRecord[], scanParameters: string[], titleParameters: string[]): PublicJobsSummary {
   const lastScanAt = jobs
     .map((job) => job.lastSeenAt)
     .sort()
@@ -240,6 +260,7 @@ function summaryForJobs(jobs: PublicJobRecord[], scanParameters: string[]): Publ
     savedJobs: jobs.filter((job) => job.saved).length,
     lastScanAt,
     scanParameters,
+    titleParameters,
   };
 }
 
@@ -308,18 +329,99 @@ export async function readPublicJobsForUser(
 
   return {
     jobs: rankedJobs,
-    summary: summaryForJobs(rankedJobs, readiness.scanParameters),
+    summary: summaryForJobs(rankedJobs, readiness.scanParameters, readiness.titleParameters),
     searchSettings: searchSettingsForAggregate(readiness.aggregate),
   };
+}
+
+export type PublicJobsScanOptions = {
+  loadUserSources?: typeof loadUserJobSources;
+  fetchSource?: typeof fetchNormalizedConnectorJobs;
+  ingestJobs?: typeof ingestNormalizedJobs;
+  markScanned?: typeof markJobSourceScanned;
+  env?: NodeJS.ProcessEnv;
+  // Boards fetched live per scan; least-recently-scanned first so every board rotates
+  // through even when a user owns more than the budget.
+  maxUserBoards?: number;
+};
+
+const DEFAULT_MAX_USER_BOARDS = 6;
+const USER_BOARD_FETCH_CONCURRENCY = 3;
+const MAX_JOBS_PER_USER_BOARD = 100;
+
+async function mapWithConcurrency<T>(items: T[], limit: number, task: (item: T) => Promise<void>) {
+  const queue = [...items];
+  const workers = Array.from({ length: Math.min(limit, queue.length) }, async () => {
+    for (let item = queue.shift(); item !== undefined; item = queue.shift()) {
+      await task(item);
+    }
+  });
+  await Promise.all(workers);
+}
+
+// Fetch the user's private company boards live and pour their postings into the shared
+// jobs pool, returning the upserted rows so this scan's candidate set always includes
+// them (the newest-250 window alone could miss board postings in a large pool). Failures
+// are isolated per board and recorded on the source row; a failure here never fails the
+// scan (e.g. the job_sources owner column not yet migrated).
+async function fetchUserBoardsForScan(
+  request: PublicProfileRepositoryRequest,
+  userId: string,
+  scannedAt: string,
+  options: PublicJobsScanOptions,
+): Promise<{ rows: JobRow[]; userBoards?: { scanned: number; errors: number } }> {
+  const loadUserSources = options.loadUserSources ?? loadUserJobSources;
+  const fetchSource = options.fetchSource ?? fetchNormalizedConnectorJobs;
+  const ingestJobs = options.ingestJobs ?? ingestNormalizedJobs;
+  const markScanned = options.markScanned ?? markJobSourceScanned;
+
+  let sources: UserJobSourceRecord[];
+  try {
+    sources = await loadUserSources(request, userId);
+  } catch {
+    return { rows: [] };
+  }
+  if (sources.length === 0) return { rows: [], userBoards: { scanned: 0, errors: 0 } };
+
+  const rotation = [...sources]
+    .sort((a, b) => {
+      if (a.lastScannedAt === b.lastScannedAt) return 0;
+      if (a.lastScannedAt === null) return -1;
+      if (b.lastScannedAt === null) return 1;
+      return a.lastScannedAt < b.lastScannedAt ? -1 : 1;
+    })
+    .slice(0, options.maxUserBoards ?? DEFAULT_MAX_USER_BOARDS);
+
+  const rows: JobRow[] = [];
+  let scanned = 0;
+  let errors = 0;
+  await mapWithConcurrency(rotation, USER_BOARD_FETCH_CONCURRENCY, async (source) => {
+    try {
+      const jobs = await fetchSource(source, { workdayVariants: source.workdayVariants, env: options.env });
+      const ingested = await ingestJobs(request, jobs, scannedAt, { limit: MAX_JOBS_PER_USER_BOARD, returnRows: true });
+      rows.push(...(ingested.rows as JobRow[]));
+      await markScanned(request, source.id, { at: scannedAt });
+      scanned += 1;
+    } catch (error) {
+      errors += 1;
+      const message = error instanceof Error ? error.message : "Unable to scan board.";
+      await markScanned(request, source.id, { at: scannedAt, error: message }).catch(() => {});
+    }
+  });
+
+  return { rows, userBoards: { scanned, errors } };
 }
 
 export async function runPublicJobsScanForUser(
   request: PublicProfileRepositoryRequest,
   userId: string,
   scannedAt: string,
+  options: PublicJobsScanOptions = {},
 ): Promise<PublicJobsScanResponse | PublicJobsReadiness> {
   const readiness = await ensureReadyProfile(request, userId, scannedAt);
   if (readiness.status !== "ready") return readiness;
+
+  const boards = await fetchUserBoardsForScan(request, userId, scannedAt, options);
 
   const candidateRows = await request<JobRow[]>("jobs", {
     query: qs({
@@ -328,7 +430,23 @@ export async function runPublicJobsScanForUser(
       limit: "250",
     }),
   });
-  const matchedJobs = candidateRows
+
+  // Skipped jobs stay gone: the results upsert below force-sets status "active" on
+  // conflict, so dismissed rows must never re-enter the candidate set.
+  const dismissedRows = await request<{ job_id: string }[]>("job_scan_results", {
+    query: qs({ user_id: `eq.${userId}`, status: "eq.dismissed", select: "job_id" }),
+  });
+  const dismissedIds = new Set(dismissedRows.map((row) => row.job_id));
+
+  const seenCandidateIds = new Set<string>();
+  const candidates = [...boards.rows, ...candidateRows].filter((job) => {
+    if (seenCandidateIds.has(job.id)) return false;
+    seenCandidateIds.add(job.id);
+    return true;
+  });
+
+  const matchedJobs = candidates
+    .filter((job) => !dismissedIds.has(job.id))
     .filter((job) => jobMatchesProfile(job, readiness.aggregate, readiness.scanParameters))
     .slice(0, 75);
 
@@ -362,8 +480,125 @@ export async function runPublicJobsScanForUser(
       matchedJobs: matchedJobs.length,
       mergedResults: response.jobs.length,
       providerMode: "normalized_public_jobs",
+      ...(boards.userBoards ? { userBoards: boards.userBoards } : {}),
     },
   };
+}
+
+// --- Private company job boards (user-owned job_sources rows, Randall 2026-07-10) ---
+
+const MAX_USER_BOARDS_PER_USER = 15;
+
+function mapUserBoard(record: UserJobSourceRecord): PublicJobBoardRecord {
+  return {
+    id: record.id,
+    companyName: record.companyName,
+    careersUrl: record.careersUrl || record.websiteUrl,
+    provider: record.atsProvider,
+  };
+}
+
+export async function listPublicJobBoardsForUser(
+  request: PublicProfileRepositoryRequest,
+  userId: string,
+): Promise<PublicJobBoardsResponse> {
+  const sources = await loadUserJobSources(request, userId);
+  return { boards: sources.map(mapUserBoard) };
+}
+
+export type AddPublicJobBoardResult =
+  | PublicJobBoardsResponse
+  | { status: "unrecognized_board" }
+  | { status: "board_limit" }
+  | { status: "board_fetch_failed"; message: string };
+
+// Add flow: resolve the pasted URL to a supported board, verify it live (a pattern-valid
+// token can still 404), insert the owner-scoped source row, and pour the fetched postings
+// into the shared jobs pool so the very next scan can match them.
+export async function addPublicJobBoardForUser(
+  request: PublicProfileRepositoryRequest,
+  userId: string,
+  url: string,
+  now: string,
+  options: PublicJobsScanOptions = {},
+): Promise<AddPublicJobBoardResult> {
+  const resolution = resolveBoardFromUrl(url);
+  if (resolution.status !== "resolved") return { status: "unrecognized_board" };
+
+  const existing = await loadUserJobSources(request, userId);
+  if (existing.length >= MAX_USER_BOARDS_PER_USER) return { status: "board_limit" };
+
+  const fetchSource = options.fetchSource ?? fetchNormalizedConnectorJobs;
+  const ingestJobs = options.ingestJobs ?? ingestNormalizedJobs;
+  const markScanned = options.markScanned ?? markJobSourceScanned;
+
+  const board = resolution.board;
+  let jobs;
+  try {
+    jobs = await fetchSource(
+      {
+        id: "pending",
+        companyName: board.companySlug,
+        websiteUrl: "",
+        careersUrl: board.careersUrl,
+        atsBoardToken: board.atsBoardToken,
+        atsProvider: board.provider,
+      },
+      { env: options.env },
+    );
+  } catch (error) {
+    return {
+      status: "board_fetch_failed",
+      message: error instanceof Error ? error.message : "Board fetch failed.",
+    };
+  }
+
+  const source = await insertUserJobSource(request, userId, board, now);
+  await ingestJobs(request, jobs, now, { limit: MAX_JOBS_PER_USER_BOARD });
+  await markScanned(request, source.id, { at: now });
+
+  return listPublicJobBoardsForUser(request, userId);
+}
+
+export async function removePublicJobBoardForUser(
+  request: PublicProfileRepositoryRequest,
+  userId: string,
+  sourceId: string,
+): Promise<PublicJobBoardsResponse> {
+  await deleteUserJobSource(request, userId, sourceId);
+  return listPublicJobBoardsForUser(request, userId);
+}
+
+// Skip ("not interested"): flip the user's result row to 'dismissed'. Dismissed rows drop
+// out of every read (activeResultsForUser filters status=eq.active) and the scan's
+// dismissed-exclusion keeps them from being resurrected by future upserts.
+export async function setPublicJobDismissedForUser(
+  request: PublicProfileRepositoryRequest,
+  userId: string,
+  jobId: string,
+  updatedAt: string,
+): Promise<PublicJobsResponse | PublicJobsReadiness | { status: "not_in_results" }> {
+  const readiness = await ensureReadyProfile(request, userId, updatedAt);
+  if (readiness.status !== "ready") return readiness;
+
+  const resultRows = await request<JobScanResultRow[]>("job_scan_results", {
+    query: qs({
+      user_id: `eq.${userId}`,
+      job_id: `eq.${jobId}`,
+      status: "eq.active",
+      select: "job_id,first_seen_at,last_seen_at,scan_context",
+      limit: "1",
+    }),
+  });
+  if (resultRows.length === 0) return { status: "not_in_results" };
+
+  await request("job_scan_results", {
+    method: "PATCH",
+    query: qs({ user_id: `eq.${userId}`, job_id: `eq.${jobId}` }),
+    body: { status: "dismissed", updated_at: updatedAt },
+  });
+
+  return readPublicJobsForUser(request, userId, updatedAt);
 }
 
 export async function setPublicJobSavedForUser(
