@@ -97,7 +97,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section id="human-path" className={styles.publicLandingSection} aria-labelledby="human-path-title">
+      <section id="human-path" className={`${styles.publicLandingSection} ${styles.publicLandingHumanPathSection}`} aria-labelledby="human-path-title">
         <div className={styles.publicLandingSectionIntro}>
           <h2 id="human-path-title">Human Path</h2>
           <p>You can do this on your own. Dumpster Fire packages the steps so you are not rebuilding the same path every morning.</p>

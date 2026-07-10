@@ -433,12 +433,24 @@
   font-weight: 900;
 }
 
-.publicLandingHumanPathShow {
-  margin-top: 42px;
+/* Scoped: this section must fit a browser viewport (intro + panel + arrows),
+   so its share of the inter-section padding is reduced. */
+.publicLandingHumanPathSection {
+  padding-top: 48px;
 }
 
+.publicLandingHumanPathShow {
+  margin-top: 16px;
+}
+
+/* Fixed + 1px: a focused fixed element is always "in view", so clicking a
+   stepper tab or arrow (labels for these radios) never scrolls the page. */
 .publicLandingHumanPathRadio {
-  position: absolute;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 1px;
   opacity: 0;
   pointer-events: none;
 }
@@ -453,8 +465,12 @@
   grid-template-columns: 1fr;
 }
 
+/* Every slide fills the shared grid cell (sized by the tallest slide), and each
+   panel stretches to that height with its footer pinned — uniform slide height,
+   so switching steps never changes layout height or arrow position. */
 .publicLandingHumanPathSlide {
   grid-area: 1 / 1;
+  display: flex;
   opacity: 0;
   pointer-events: none;
 }
@@ -468,7 +484,7 @@
 }
 
 .publicLandingHumanPathArrows {
-  margin-top: 18px;
+  margin-top: 20px;
 }
 
 .publicLandingHumanPathArrowSet {
@@ -518,6 +534,9 @@
    card components/home-human-path.html — parity with the shipped wizard). --- */
 .publicLandingHumanPanel {
   box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
   background-color: var(--c-paper-deep);
   background-image: var(--fiber-img), var(--grain-img);
   background-blend-mode: normal, soft-light;
@@ -525,7 +544,7 @@
   border: var(--line-bold) solid var(--c-ink);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-card);
-  padding: 32px;
+  padding: 20px 24px;
   color: var(--c-ink);
 }
 
@@ -534,15 +553,15 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 24px;
-  padding-bottom: 12px;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
   border-bottom: var(--line-hair, 1px) solid var(--c-paper-edge);
 }
 
 .publicLandingHumanPanelHeader h3 {
   margin: 0;
   font-family: var(--font-display);
-  font-size: 1.45rem;
+  font-size: 1.2rem;
   line-height: 1.05;
   color: var(--c-ink);
 }
@@ -551,7 +570,7 @@
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
-  margin-bottom: 24px;
+  margin-bottom: 10px;
 }
 
 .publicLandingHumanWizardSteps label {
@@ -562,12 +581,12 @@
   font-family: var(--font-subhead);
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  font-size: 0.92rem;
+  font-size: 0.85rem;
   color: var(--role-text-muted, var(--c-ink-soft));
   background-color: var(--c-paper);
   border: var(--line-reg) solid var(--c-ink);
   border-radius: var(--radius-md);
-  padding: 8px 12px;
+  padding: 6px 10px;
   cursor: pointer;
 }
 
@@ -575,8 +594,8 @@
   display: inline-grid;
   place-items: center;
   flex: none;
-  width: 24px;
-  height: 24px;
+  width: 22px;
+  height: 22px;
   font-family: var(--font-subhead);
   font-weight: 400;
   font-size: 0.92rem;
@@ -602,19 +621,22 @@
 
 .publicLandingHumanPanelStack {
   display: grid;
-  gap: 16px;
+  gap: 8px;
+  margin-bottom: 10px;
 }
 
 .publicLandingHumanPanelStack section > strong {
   display: block;
   font-family: var(--font-display);
-  font-size: 1.1rem;
+  font-size: 1.05rem;
   color: var(--c-ink);
   margin-bottom: 4px;
 }
 
 .publicLandingHumanPanelStack section > p {
   font-family: var(--font-body);
+  font-size: 0.95rem;
+  line-height: 1.4;
   color: var(--role-text-muted, var(--c-ink-soft));
   margin: 0 0 4px;
 }
@@ -631,11 +653,11 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 12px;
+  gap: 10px 12px;
   background-color: var(--c-paper);
   border: var(--line-reg) solid var(--c-ink);
   border-radius: var(--radius-md);
-  padding: 16px;
+  padding: 10px 12px;
 }
 
 .publicLandingHumanMode > span {
@@ -661,7 +683,7 @@
   border: var(--line-hair, 1px) solid var(--c-paper-edge);
   border-left: var(--line-bold) solid var(--c-teal);
   border-radius: var(--radius-sm);
-  padding: 8px 12px;
+  padding: 6px 10px;
   margin: 4px 0 0;
 }
 
@@ -672,22 +694,23 @@
   background-color: var(--c-paper);
   border: var(--line-reg) solid var(--c-ink);
   border-radius: var(--radius-md);
-  padding: 16px;
+  padding: 8px 12px;
 }
 
 .publicLandingHumanContact > span {
   display: grid;
-  gap: 3px;
+  gap: 1px;
 }
 
 .publicLandingHumanContact strong {
   font-family: var(--font-display);
-  font-size: 1.1rem;
+  font-size: 1.05rem;
   color: var(--c-ink);
 }
 
 .publicLandingHumanContact em {
   font-family: var(--font-body);
+  font-size: 0.95rem;
   font-style: italic;
   color: var(--role-text-muted, var(--c-ink-soft));
 }
@@ -696,27 +719,28 @@
   font-family: var(--font-subhead);
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   color: var(--c-teal);
   font-weight: 400;
 }
 
 .publicLandingHumanContact small {
   font-family: var(--font-body);
-  font-size: 0.9rem;
+  font-size: 0.85rem;
+  line-height: 1.35;
   color: var(--c-ink-faint);
 }
 
 /* Step 3 · outreach draft (wizard messageTextarea + feedback) */
 .publicLandingHumanPanelStack .publicLandingHumanMessage {
   font-family: var(--font-body);
-  font-size: 1rem;
+  font-size: 0.95rem;
   color: var(--c-ink);
   background-color: var(--c-paper);
   border: var(--line-reg) solid var(--c-ink);
   border-radius: var(--radius-md);
-  padding: 12px 16px;
-  margin: 8px 0 0;
+  padding: 10px 12px;
+  margin: 6px 0 0;
 }
 
 .publicLandingHumanFeedbackRow {
@@ -741,7 +765,7 @@
   border-radius: var(--radius-md);
   border: var(--line-reg) solid var(--c-ink);
   box-shadow: 2px 2px 0 var(--c-ink);
-  padding: 8px 16px;
+  padding: 6px 12px;
 }
 
 .publicLandingHumanFeedbackApprove {
@@ -765,7 +789,7 @@
 .publicLandingHumanChecklist {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  gap: 8px;
 }
 
 .publicLandingHumanChecklist label {
@@ -777,43 +801,44 @@
   background-color: var(--c-paper);
   border: var(--line-reg) solid var(--c-ink);
   border-radius: var(--radius-md);
-  padding: 8px 12px;
+  padding: 6px 10px;
 }
 
-/* Footer mirrors the wizard footer */
+/* Footer mirrors the wizard footer; margin-top auto pins it to the panel
+   bottom so every slide's footer lands at the same height. */
 .publicLandingHumanPanelFooter {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: flex-end;
   gap: 12px;
-  margin-top: 32px;
-  padding-top: 16px;
+  margin-top: auto;
+  padding-top: 12px;
   border-top: var(--line-hair, 1px) solid var(--c-paper-edge);
 }
 
 .publicLandingHumanFooterLink {
   margin-right: auto;
   font-family: var(--font-display);
-  font-size: 1rem;
+  font-size: 0.95rem;
   color: var(--c-ink);
   background-color: var(--c-paper);
   border: var(--line-reg) solid var(--c-ink);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-card);
-  padding: 12px 24px;
+  padding: 9px 16px;
 }
 
 .publicLandingHumanFooterNext {
   font-family: var(--font-display);
-  font-size: 1rem;
+  font-size: 0.95rem;
   font-weight: 400;
   color: var(--role-action-text, var(--c-paper));
   background-color: var(--role-action, var(--c-tomato));
   border: var(--line-bold) solid var(--c-ink);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-card);
-  padding: 12px 24px;
+  padding: 9px 16px;
 }
 
 .publicLandingFeatureGrid {

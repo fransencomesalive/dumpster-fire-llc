@@ -25,23 +25,23 @@
     font-size: 0.82rem; color: var(--role-text-faint); margin: 0 0 var(--space-2); }
 
   /* --- Slide frame = the wizard's modalBox, sitting on the page (no overlay) --- */
-  .pathPanel { width: 100%; box-sizing: border-box;
+  .pathPanel { width: 100%; box-sizing: border-box; display: flex; flex-direction: column;
     background-color: var(--c-paper-deep); background-image: var(--fiber-img), var(--grain-img);
     background-blend-mode: normal, soft-light; background-size: 170px 170px, 46px 46px;
     border: var(--line-bold) solid var(--c-ink); border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-card); padding: var(--space-6); }
+    box-shadow: var(--shadow-card); padding: 20px 24px; }
   .panelHeader { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-4);
-    margin-bottom: var(--space-5); padding-bottom: var(--space-3); border-bottom: var(--line-hair) solid var(--c-paper-edge); }
-  .panelTitle { font-family: var(--font-display); font-size: 1.45rem; line-height: 1.05; color: var(--c-ink); margin: 0; }
+    margin-bottom: 10px; padding-bottom: 8px; border-bottom: var(--line-hair) solid var(--c-paper-edge); }
+  .panelTitle { font-family: var(--font-display); font-size: 1.2rem; line-height: 1.05; color: var(--c-ink); margin: 0; }
 
   /* --- Stepper · identical to apply-wizard; doubles as the slide indicator --- */
   .wizardSteps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-2);
-    margin-bottom: var(--space-5); }
+    margin-bottom: 10px; }
   .wizardStep { display: flex; align-items: center; gap: var(--space-2); min-width: 0;
-    font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.04em; font-size: 0.92rem;
+    font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.04em; font-size: 0.85rem;
     color: var(--role-text-muted); background-color: var(--c-paper); border: var(--line-reg) solid var(--c-ink);
-    border-radius: var(--radius-md); padding: var(--space-2) var(--space-3); cursor: pointer; }
-  .wizardStep b { display: inline-grid; place-items: center; flex: none; width: 24px; height: 24px;
+    border-radius: var(--radius-md); padding: 6px 10px; cursor: pointer; }
+  .wizardStep b { display: inline-grid; place-items: center; flex: none; width: 22px; height: 22px;
     font-family: var(--font-subhead); font-weight: 400; font-size: 0.92rem; color: var(--c-ink);
     background-color: var(--c-paper-deep); border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-pill); }
   .wizardStepActive { color: var(--c-paper); background-color: var(--c-teal);
@@ -49,14 +49,14 @@
     background-size: 170px 170px, 46px 46px; box-shadow: var(--shadow-card); }
   .wizardStepActive b { color: var(--c-ink); background-color: var(--c-paper); }
 
-  .panelStack { display: grid; gap: var(--space-4); }
-  .panelStack section > strong { display: block; font-family: var(--font-display); font-size: 1.1rem;
+  .panelStack { display: grid; gap: 8px; margin-bottom: 10px; }
+  .panelStack section > strong { display: block; font-family: var(--font-display); font-size: 1.05rem;
     color: var(--c-ink); margin-bottom: var(--space-1); }
-  .panelStack section > p { font-family: var(--font-body); color: var(--role-text-muted); margin: 0 0 var(--space-1); }
+  .panelStack section > p { font-family: var(--font-body); font-size: 0.95rem; line-height: 1.4; color: var(--role-text-muted); margin: 0 0 var(--space-1); }
 
   /* Step 1 · role-track selector + review (apply-wizard modeSection) */
   .modeSection { background-color: var(--c-paper); border: var(--line-reg) solid var(--c-ink);
-    border-radius: var(--radius-md); padding: var(--space-4); }
+    border-radius: var(--radius-md); padding: 10px 12px; }
   .modeSelector { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); }
   .modeSelector > span { font-family: var(--font-display); font-size: 1rem; color: var(--c-ink); }
   .modeSelector label { display: inline-flex; align-items: center; gap: var(--space-2);
@@ -69,50 +69,54 @@
     border-radius: var(--radius-sm); padding: var(--space-2) var(--space-3); margin: var(--space-1) 0 0; }
   .contactSuggestion { display: flex; align-items: flex-start; gap: var(--space-3);
     background-color: var(--c-paper); border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-md);
-    padding: var(--space-4); }
-  .contactSuggestion > span { display: grid; gap: 3px; }
-  .contactSuggestion strong { font-family: var(--font-display); font-size: 1.1rem; color: var(--c-ink); }
-  .contactSuggestion em { font-family: var(--font-body); font-style: italic; color: var(--role-text-muted); }
+    padding: 8px 12px; }
+  .contactSuggestion > span { display: grid; gap: 1px; }
+  .contactSuggestion strong { font-family: var(--font-display); font-size: 1.05rem; color: var(--c-ink); }
+  .contactSuggestion em { font-family: var(--font-body); font-size: 0.95rem; font-style: italic; color: var(--role-text-muted); }
   .contactSuggestion b { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.04em;
-    font-size: 0.9rem; color: var(--c-teal); font-weight: 400; }
-  .contactSuggestion small { font-family: var(--font-body); font-size: var(--type-small); color: var(--role-text-faint); }
+    font-size: 0.85rem; color: var(--c-teal); font-weight: 400; }
+  .contactSuggestion small { font-family: var(--font-body); font-size: 0.85rem; line-height: 1.35; color: var(--role-text-faint); }
 
   /* Step 3 · outreach draft (apply-wizard messageTextarea + feedback) */
   .copyHeader { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3);
     margin-bottom: var(--space-2); }
   .copyHeader strong { font-family: var(--font-display); font-size: 1.1rem; color: var(--c-ink); }
-  .messageBlock { font-family: var(--font-body); font-size: 1rem; color: var(--c-ink);
+  .messageBlock { font-family: var(--font-body); font-size: 0.95rem; color: var(--c-ink);
     background-color: var(--c-paper); border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-md);
-    padding: var(--space-3) var(--space-4); margin: 0; }
+    padding: 10px 12px; margin: 0; }
   .feedbackRow { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); margin-top: var(--space-3); }
   .feedbackPrompt { font-family: var(--font-display); font-size: 1rem; color: var(--c-ink); }
   .feedbackBtn { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.04em; font-size: 0.85rem;
     border-radius: var(--radius-md); border: var(--line-reg) solid var(--c-ink); box-shadow: 2px 2px 0 var(--c-ink);
-    padding: var(--space-2) var(--space-4); cursor: pointer; }
+    padding: 6px 12px; cursor: pointer; }
   .feedbackBtnApprove { color: var(--c-paper); background-color: var(--c-teal); }
   .feedbackBtnReject { color: var(--c-ink); background-color: var(--c-paper); }
   .feedbackNote { font-family: var(--font-body); font-size: var(--type-small); color: var(--role-text-faint);
     margin: var(--space-2) 0 0; }
 
   /* Step 4 · tracking checklist (apply-wizard checklistGrid) */
-  .checklistGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); }
+  .checklistGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
   .checklistGrid label { display: flex; align-items: center; gap: var(--space-2); font-family: var(--font-body);
     color: var(--role-text); background-color: var(--c-paper); border: var(--line-reg) solid var(--c-ink);
-    border-radius: var(--radius-md); padding: var(--space-2) var(--space-3); }
+    border-radius: var(--radius-md); padding: 6px 10px; }
 
   /* Footer mirrors the wizard footer so the preview reads as the real flow */
+  /* margin-top auto pins the footer to the panel bottom: every slide has the SAME
+     height (the tallest), so switching steps never shifts layout or the arrows. */
   .panelFooter { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--space-3);
-    margin-top: var(--space-6); padding-top: var(--space-4); border-top: var(--line-hair) solid var(--c-paper-edge); }
+    margin-top: auto; padding-top: 12px; border-top: var(--line-hair) solid var(--c-paper-edge); }
   .footerLink { margin-right: auto; font-family: var(--font-display); font-size: 1rem; color: var(--c-ink);
     background-color: var(--c-paper); border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-md);
-    box-shadow: var(--shadow-card); padding: var(--space-3) var(--space-5); text-decoration: none; }
+    box-shadow: var(--shadow-card); padding: 9px 16px; text-decoration: none; font-size: 0.95rem; }
   .footerNext { font-family: var(--font-display); font-size: 1rem; color: var(--role-action-text, var(--c-paper));
     background-color: var(--role-action, var(--c-tomato)); border: var(--line-bold) solid var(--c-ink);
-    border-radius: var(--radius-md); box-shadow: var(--shadow-card); padding: var(--space-3) var(--space-5); cursor: pointer; }
+    border-radius: var(--radius-md); box-shadow: var(--shadow-card); padding: 9px 16px; cursor: pointer; font-size: 0.95rem; }
 
   /* --- Carousel arrows · square ink-bordered controls under the panel --- */
+  /* min 20px below the carousel; production radios are position:fixed 1px so
+     clicking a tab/arrow never scrolls the page. Section must fit one viewport. */
   .arrows { display: flex; align-items: center; justify-content: center; gap: var(--space-4);
-    margin-top: var(--space-4); font-family: var(--font-subhead); text-transform: uppercase;
+    margin-top: 20px; font-family: var(--font-subhead); text-transform: uppercase;
     letter-spacing: 0.05em; font-size: 0.85rem; color: var(--role-text-muted); }
   .arrowBtn { display: inline-grid; place-items: center; width: 38px; height: 38px; font-size: 1.05rem;
     color: var(--c-ink); background-color: var(--c-paper); border: var(--line-reg) solid var(--c-ink);
