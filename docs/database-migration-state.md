@@ -100,7 +100,19 @@ https://supabase.com/dashboard/account/tokens if missing.
 
 ## NOT yet applied to production
 
-- None outstanding.
+- `20260710000100_job_scan_results_dismissed_status.sql` — adds `dismissed` to the
+  `job_scan_results.status` check constraint (Skip feature, commit `d4e662b`). Apply
+  AFTER that code deploy is verified live; confirm the constraint name against prod
+  first (the migration drop/recreates `job_scan_results_status_check`). Until applied,
+  POST /api/jobs/skip fails gracefully (API error, nothing crashes).
+- `20260710000200_job_sources_owner_user.sql` — adds `owner_user_id` to `job_sources`
+  + owner-scoped unique index (`nulls not distinct`, requires PG15+ — verify with
+  `select version()`) replacing the global 3-column unique key (private per-user
+  boards, commit `d4e662b`). Apply AFTER the code deploy, same session as 000100.
+  Until applied, GET/POST /api/jobs/boards fail gracefully and the scan's user-board
+  pass no-ops. NOTE: the `job_sources` clean-slate reset Randall wants ships with this
+  feature but is a SEPARATE decision at apply time (scope TBD; deleting `jobs` rows
+  cascades to saved_jobs/job_scan_results/pursuits — do not bundle silently).
 
 ## How the app connects (context)
 

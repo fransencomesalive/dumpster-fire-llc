@@ -79,6 +79,42 @@ Also shipped in this batch:
   ships — not before** (scope of the reset decided at ship time; note that
   deleting `jobs` rows cascades to saved_jobs/job_scan_results/pursuits).
 
+### Scan-batch IMPLEMENTED 2026-07-10 (commit `d4e662b`, committed on main)
+
+All five deliverables from the approved cards built 1:1 in production (plan:
+~/.claude/plans/binary-munching-rossum.md; validation: tsc/lint/build/test:public-jobs
+all green, headless no-overflow at 320/375/390/1280/1440 on / /onboarding /dashboard):
+
+1. Card 1 job-title chips (OnboardingClient + onboarding.module.css `.titleTokens`/
+   `.titleToken`): Enter/blur commits, × removes; saved tracks persist immediately
+   (whole-array role-tracks PATCH), new tracks carry a draft list into Save;
+   create-new-track pre-fills from the active track (duplicate-and-edit).
+2. "Job titles in this scan" sidebar card between Overview and Search settings —
+   NEW `summary.titleParameters` (track names + target titles, no industries).
+3. Skip: `dismissed` status + POST /api/jobs/skip + RESURRECTION GUARD (the scan's
+   merge-duplicates upsert force-sets status active, so dismissed job ids are
+   excluded from the candidate set — covered by a re-scan test). One-click, no
+   confirm, no un-skip (per design). Note: skipping a saved job removes it from
+   the Saved view too (saved list derives from active results).
+4. Private boards: `owner_user_id` on job_sources (NULL = global), owner-scoped
+   uniqueness, resolveBoardFromUrl ported to lib/scan/sources/board-registry.ts,
+   GET/POST/DELETE /api/jobs/boards (add = resolve → live-verify fetch → insert →
+   immediate ingest; cap 15/user), Run scan live-fetches the user's boards
+   (6/scan LRU rotation, concurrency 3, isolated failures, board rows unioned into
+   the candidate set), scan route maxDuration 60. Daily cron picks up user boards
+   automatically (revert lever: owner_user_id=is.null filter in loadActiveJobSources).
+5. Rating tiles condensed to approved values (gap 3px, 6px vertical padding, roles
+   0.82rem — prod had drifted on padding too).
+
+REMAINING GATES (exact steps in docs/database-migration-state.md "NOT yet applied"):
+- Push + Vercel deploy verify, then apply migrations 20260710000100 + 20260710000200
+  with Randall's OK (20260709000300 was ALREADY applied 2026-07-09 — the "not
+  applied" note earlier in this doc is superseded).
+- Authed visual pass on Card 1 chips + both sidebar cards (new UI is behind auth;
+  CSS is a verbatim port of the measured DS cards).
+- Skip + add-a-board E2E after migrations (until then both fail gracefully).
+- job_sources clean-slate reset: separate decision at apply time.
+
 ### Scan-batch review outcomes (Randall, 2026-07-10 — cards approved in Claude Design)
 
 All six scan-batch cards approved with edits (applied same day, re-synced):
