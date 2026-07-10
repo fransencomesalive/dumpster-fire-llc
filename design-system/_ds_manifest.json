@@ -53,6 +53,10 @@
     },
     {
       "group": "Components",
+      "path": "components/scan-controls.html"
+    },
+    {
+      "group": "Components",
       "path": "components/scan-history.html"
     },
     {

@@ -99,6 +99,16 @@
     box-shadow: var(--shadow-card); padding: var(--space-3) var(--space-6); cursor: pointer; }
 
   .lockNote { display: flex; align-items: center; gap: var(--space-3); color: var(--role-text-faint); font-size: 0.9rem; font-style: italic; }
+
+  /* Job-title chips (Randall, 2026-07-10) — multiple titles per track; type in the field,
+     the chip lands ABOVE it. Reuses the onboarding-pickers token primitive (teal = saved/on).
+     These titles are what the scan searches; they surface read-only on the scan page. */
+  .titleTokens { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+  .titleToken { display: inline-flex; align-items: center; gap: 8px; font-family: var(--font-ui), Inter, system-ui, sans-serif;
+    font-size: var(--type-small); color: var(--c-paper); background: var(--c-teal);
+    border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-pill); padding: 5px 6px 5px 12px; }
+  .titleToken .x { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px;
+    border-radius: 50%; background: rgba(36,31,26,0.22); color: var(--c-paper); font-size: 12px; cursor: pointer; }
 </style>
 </head>
 <body>
@@ -106,10 +116,11 @@
   <div>
     <h1 class="page">Onboarding · Role Track + Résumé <span class="step">Card 1</span></h1>
     <p class="lede">Onboarding now opens here. You <b>name (or pick) a Role Track</b> — the lane you're
-    pursuing — and add its résumé, right on this first card. Nothing else in onboarding unlocks until
-    this is saved. From then on, every per-track card (Work Examples, Skills, Fit Signals, Outreach)
-    carries a <b>chip</b> of the active track. Résumé is <b>PDF only</b>, read once to pull quotable
-    highlights, never stored — and the text box is always a fallback.</p>
+    pursuing — add the <b>job titles</b> the scan should search for that lane, and add its résumé, right
+    on this first card. Nothing else in onboarding unlocks until this is saved. From then on, every
+    per-track card (Work Examples, Skills, Fit Signals, Outreach) carries a <b>chip</b> of the active
+    track. Titles are chips: type in the field, the chip lands above it. Résumé is <b>PDF only</b>, read
+    once to pull quotable highlights, never stored — and the text box is always a fallback.</p>
   </div>
 
   <div class="scroller"><div class="frame">
@@ -123,6 +134,11 @@
           <label>Role Track name</label>
           <input class="trackInput placeholder" value="Create a new role track" />
           <span class="subhint">Name the lane you're pursuing — e.g. Program Director, Producer. Want one résumé to cover everything? Make a general track.</span>
+        </div>
+        <div class="field">
+          <label>Job titles</label>
+          <input class="trackInput placeholder" value="Type a title, press Enter" />
+          <span class="subhint">Add every title this track should scan for — each one becomes a search the scan runs.</span>
         </div>
         <div class="field">
           <label>Résumé</label>
@@ -150,6 +166,16 @@
         <div class="field">
           <label>Role Track</label>
           <div class="selectFace"><span>Program Director</span><span class="car">▾</span></div>
+        </div>
+        <div class="field">
+          <label>Job titles</label>
+          <div class="titleTokens">
+            <span class="titleToken">Program Director<span class="x">&times;</span></span>
+            <span class="titleToken">Senior Program Manager<span class="x">&times;</span></span>
+            <span class="titleToken">Program Lead<span class="x">&times;</span></span>
+          </div>
+          <input class="trackInput placeholder" value="Type a title, press Enter" />
+          <span class="subhint">The scan searches each of these titles for this track.</span>
         </div>
         <div class="field">
           <label>Résumé</label>

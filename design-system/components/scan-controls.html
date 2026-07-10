@@ -1,0 +1,137 @@
+<!-- @dsCard group="Components" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Components · Scan Controls (Job Titles + Company Boards)</title>
+<link rel="stylesheet" href="../tokens/tokens.css" />
+<link rel="stylesheet" href="../lib/base.css" />
+<style>
+  /* SCAN CONTROLS · two NEW sidebar cards for the dashboard scan page (Randall, 2026-07-10).
+     1) "Job titles in this scan" — read-only chips revealing the title parameters the scan
+        searches (fed by each Role Track's job-title list, added on Card 1 of onboarding).
+     2) "Company job boards" — user adds a company's careers page; every scan checks that
+        board directly. Ships with the job_sources clean-slate reset.
+     Sidebar card shell + headings mirror dashboard.module.css exactly; chips reuse the
+     onboarding-pickers token primitive (teal = saved/on). Plain paper — no halftone. */
+  body { margin:0; background:var(--c-paper); color:var(--c-ink); font-family:var(--font-body); }
+
+  .wrap { max-width:1080px; margin:0 auto; padding:var(--space-6) var(--space-5); }
+  .dsLabel { font-family:var(--font-subhead); text-transform:uppercase; letter-spacing:var(--tracking-subhead, 0.05em);
+    font-size:var(--type-caption); color:var(--role-text-faint); margin:0 0 var(--space-3); }
+  .dsLabel b { color:var(--c-ink); }
+  .row { display:flex; flex-wrap:wrap; gap:var(--space-6); align-items:flex-start; }
+  .col { width:min(300px, 100%); display:flex; flex-direction:column; gap:var(--space-4); }
+
+  /* Sidebar card shell — mirrors dashboard.module.css .card / .panelHeaderRow / .sidebarHeading */
+  .card { background-color:var(--c-paper-deep); background-image:var(--fiber-img), var(--grain-img);
+    background-blend-mode:normal, soft-light; background-size:170px 170px, 46px 46px;
+    border:var(--line-reg) solid var(--c-ink); border-radius:var(--radius-lg); box-shadow:var(--shadow-card); padding:var(--space-5); }
+  .panelHeaderRow { display:flex; align-items:center; justify-content:space-between; gap:var(--space-3);
+    margin-bottom:var(--space-4); padding-bottom:var(--space-3); border-bottom:var(--line-hair) solid var(--c-paper-edge); }
+  .sidebarHeading { margin:0; font-family:var(--font-display); font-size:1.25rem; color:var(--c-ink); }
+
+  /* Job-title chips — onboarding-pickers .token primitive, read-only here (no ×) */
+  .titleChips { display:flex; flex-wrap:wrap; gap:var(--space-2); }
+  .titleChip { display:inline-flex; align-items:center; font-family:var(--font-ui), Inter, system-ui, sans-serif;
+    font-size:var(--type-small); color:var(--c-paper); background:var(--c-teal);
+    border:var(--line-reg) solid var(--c-ink); border-radius:var(--radius-pill); padding:5px 12px; }
+  .chipNote { font-family:var(--font-body); font-size:0.86rem; color:var(--role-text-muted);
+    margin:var(--space-3) 0 0; line-height:1.45; }
+
+  /* Company boards — URL input + add, then saved boards as removable rows */
+  .boardHint { font-family:var(--font-body); font-size:0.9rem; color:var(--role-text-muted); margin:0 0 var(--space-3); line-height:1.45; }
+  .boardInputRow { display:flex; gap:var(--space-2); margin-bottom:var(--space-3); }
+  .boardInput { flex:1 1 auto; min-width:0; box-sizing:border-box; font-family:var(--font-ui), Inter, system-ui, sans-serif;
+    font-size:var(--type-small); color:var(--c-ink); background:var(--c-paper);
+    border:var(--line-reg) solid var(--c-ink); border-radius:var(--radius-md); padding:9px var(--space-3); }
+  .boardInput::placeholder { color:var(--role-text-faint); }
+  .boardAddBtn { flex:none; font-family:var(--font-display); font-size:0.95rem; color:var(--role-action-text);
+    background-color:var(--role-action); background-image:var(--fiber-img), var(--grain-img);
+    background-blend-mode:normal, soft-light; background-size:170px 170px, 46px 46px;
+    border:var(--line-bold) solid var(--c-ink); border-radius:var(--radius-md); box-shadow:var(--shadow-card);
+    padding:var(--space-2) var(--space-3); cursor:pointer; }
+  .boardList { display:flex; flex-direction:column; gap:var(--space-2); }
+  .boardRow { display:flex; align-items:center; gap:var(--space-3); background:var(--c-paper);
+    border:var(--line-hair) solid var(--c-paper-edge); border-radius:var(--radius-sm); padding:var(--space-2) var(--space-3); }
+  .boardMain { min-width:0; display:grid; gap:1px; }
+  .boardName { font-family:var(--font-display); font-size:0.95rem; color:var(--c-ink); }
+  .boardDomain { font-family:var(--font-ui), Inter, system-ui, sans-serif; font-size:0.78rem; color:var(--role-text-faint);
+    overflow-wrap:anywhere; }
+  .boardRemove { margin-left:auto; flex:none; display:inline-flex; align-items:center; justify-content:center;
+    width:22px; height:22px; border-radius:50%; color:var(--c-ink); background:transparent;
+    border:var(--line-hair) solid var(--c-ink); cursor:pointer; font-size:13px; line-height:1; }
+  .boardRemove:hover { color:var(--c-paper); background:var(--c-tomato); border-color:var(--c-ink); }
+  /* resolving / can't-read states */
+  .boardErr { font-family:var(--font-body); font-size:0.86rem; color:var(--c-ink); background:color-mix(in srgb, var(--c-tomato) 10%, var(--c-paper));
+    border:var(--line-reg) solid var(--c-ink); border-left:6px solid var(--c-tomato); border-radius:var(--radius-md);
+    padding:var(--space-2) var(--space-3); margin-top:var(--space-3); line-height:1.45; }
+  .boardErr b { font-family:var(--font-display); font-weight:normal; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="row">
+
+    <div class="col">
+      <p class="dsLabel"><b>Job titles in this scan</b> — read-only chips; titles are set per Role Track on Card 1</p>
+      <div class="card">
+        <div class="panelHeaderRow">
+          <h3 class="sidebarHeading">Job titles in this scan</h3>
+        </div>
+        <div class="titleChips">
+          <span class="titleChip">Executive Producer</span>
+          <span class="titleChip">Senior Producer</span>
+          <span class="titleChip">Creative Producer</span>
+        </div>
+        <p class="chipNote">To edit job titles, change parameters in this role track in your profile.</p>
+      </div>
+    </div>
+
+    <div class="col">
+      <p class="dsLabel"><b>Company job boards</b> — paste a careers page; every scan checks that board</p>
+      <div class="card">
+        <div class="panelHeaderRow">
+          <h3 class="sidebarHeading">Company job boards</h3>
+        </div>
+        <p class="boardHint">Watching a company? Paste their careers page and every scan checks their board directly.</p>
+        <div class="boardInputRow">
+          <input class="boardInput" placeholder="Paste a careers page URL" />
+          <button type="button" class="boardAddBtn">Add</button>
+        </div>
+        <div class="boardList">
+          <div class="boardRow">
+            <div class="boardMain">
+              <span class="boardName">Hinge Health</span>
+              <span class="boardDomain">jobs.ashbyhq.com</span>
+            </div>
+            <button type="button" class="boardRemove" aria-label="Remove Hinge Health">×</button>
+          </div>
+          <div class="boardRow">
+            <div class="boardMain">
+              <span class="boardName">Northbeam Labs</span>
+              <span class="boardDomain">job-boards.greenhouse.io</span>
+            </div>
+            <button type="button" class="boardRemove" aria-label="Remove Northbeam Labs">×</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="panelHeaderRow">
+          <h3 class="sidebarHeading">Company job boards</h3>
+        </div>
+        <p class="boardHint">Watching a company? Paste their careers page and every scan checks their board directly.</p>
+        <div class="boardInputRow">
+          <input class="boardInput" value="https://careers.example.com/jobs" />
+          <button type="button" class="boardAddBtn">Add</button>
+        </div>
+        <p class="boardErr"><b>We couldn't read that page as a job board.</b> Try the company's careers page link — the page that lists their open roles. Still stuck? Use the feedback chat bubble to request a job board that didn't work.</p>
+      </div>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>

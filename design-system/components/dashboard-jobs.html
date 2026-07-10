@@ -11,10 +11,8 @@
   /* Public dashboard Jobs surface — adapts the scan-page pattern: match-card stack (main)
      + a 300px Overview/Search-settings sidebar. Curated for the public app (no internal
      matcher/rules/tuning). Class names mirror DashboardClient.tsx so CSS ports back. */
+  /* Plain paper — no halftone (rejected pattern, Randall 2026-07-04). */
   body { margin:0; background:var(--c-paper); color:var(--c-ink); font-family:var(--font-body); padding:var(--space-6) 0; }
-  body::before { content:""; position:fixed; inset:0; z-index:-1;
-    background-image: radial-gradient(var(--halftone-color) var(--halftone-dot), transparent calc(var(--halftone-dot) + 0.5px));
-    background-size: var(--halftone-size) var(--halftone-size); }
   .pageWrap { width:min(1080px, calc(100% - 48px)); margin:0 auto; }
 
   /* Section header · headline first, scan line + badge beneath. No eyebrow. */
@@ -33,14 +31,15 @@
 
   /* Rating-filter tabs · paper chips, teal stars; active = teal fill */
   .ratingFilterGrid { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:var(--space-2); margin-bottom:var(--space-4); }
-  .ratingFilterBtn { display:flex; flex-direction:column; align-items:center; gap:5px; min-width:0;
-    padding:var(--space-3) var(--space-2); font:inherit; cursor:pointer;
+  /* Condensed 2026-07-10 (Randall review #3): −20% height, "roles" +10% */
+  .ratingFilterBtn { display:flex; flex-direction:column; align-items:center; gap:3px; min-width:0;
+    padding:6px var(--space-2); font:inherit; cursor:pointer;
     background-color:var(--c-paper); border:var(--line-reg) solid var(--c-ink); border-radius:var(--radius-md); box-shadow:var(--shadow-card); }
   .ratingStars { font-size:0.92rem; letter-spacing:1px; line-height:1; white-space:nowrap; }
   .ratingStars .on { color:var(--c-teal); }
   .ratingStars .off { color:var(--c-paper-edge); }
   .ratingFilterBtn strong { font-family:var(--font-display); font-size:1.2rem; line-height:1; color:var(--c-ink); }
-  .ratingCount { font-family:var(--font-subhead); text-transform:uppercase; letter-spacing:0.04em; font-size:0.74rem; color:var(--role-text-faint); }
+  .ratingCount { font-family:var(--font-subhead); text-transform:uppercase; letter-spacing:0.04em; font-size:0.82rem; line-height:1.1; color:var(--role-text-faint); }
   .ratingFilterBtnActive { background-color:var(--c-teal); border-color:var(--c-ink); box-shadow:var(--reg-box); }
   .ratingFilterBtnActive .on { color:var(--c-paper); }
   .ratingFilterBtnActive .off { color:rgba(243,232,210,0.45); }
@@ -122,7 +121,9 @@
     background-image:var(--fiber-img), var(--grain-img); background-blend-mode:normal, soft-light; background-size:170px 170px, 46px 46px;
     border:var(--line-bold) solid var(--c-ink); box-shadow:var(--shadow-card); margin-left:auto; }
   .btnSave { color:var(--c-ink); background:var(--c-paper); border:var(--line-reg) solid var(--c-ink); }
+  /* Skip = "not interested" — removes the posting from results (Randall, 2026-07-10) */
   .btnSkip { color:var(--role-text-muted); background:transparent; border:var(--line-reg) solid transparent; }
+  .skipNote { flex:1 1 0; min-width:110px; font-family:var(--font-body); font-size:0.8rem; font-style:italic; color:var(--role-text-faint); }
   .btnSource { position:relative; color:var(--c-ink); background:transparent; padding-bottom:3px; }
 
   /* Sidebar */
@@ -151,6 +152,35 @@
   .metaLabel { font-family:var(--font-subhead); text-transform:uppercase; letter-spacing:0.04em; font-size:0.78rem; color:var(--c-teal); }
   .metaValue { font-family:var(--font-display); font-size:1.05rem; color:var(--c-ink); }
 
+  /* NEW sidebar cards (2026-07-10) · Job titles in this scan + Company job boards —
+     see components/scan-controls.html for the focused card. */
+  .titleChips { display:flex; flex-wrap:wrap; gap:var(--space-2); }
+  .titleChip { display:inline-flex; align-items:center; font-family:var(--font-ui), Inter, system-ui, sans-serif;
+    font-size:var(--type-small); color:var(--c-paper); background:var(--c-teal);
+    border:var(--line-reg) solid var(--c-ink); border-radius:var(--radius-pill); padding:5px 12px; }
+  .chipNote { font-family:var(--font-body); font-size:0.86rem; color:var(--role-text-muted); margin:var(--space-3) 0 0; line-height:1.45; }
+  .boardHint { font-family:var(--font-body); font-size:0.9rem; color:var(--role-text-muted); margin:0 0 var(--space-3); line-height:1.45; }
+  .boardInputRow { display:flex; gap:var(--space-2); margin-bottom:var(--space-3); }
+  .boardInput { flex:1 1 auto; min-width:0; box-sizing:border-box; font-family:var(--font-ui), Inter, system-ui, sans-serif;
+    font-size:var(--type-small); color:var(--c-ink); background:var(--c-paper);
+    border:var(--line-reg) solid var(--c-ink); border-radius:var(--radius-md); padding:9px var(--space-3); }
+  .boardInput::placeholder { color:var(--role-text-faint); }
+  .boardAddBtn { flex:none; font-family:var(--font-display); font-size:0.95rem; color:var(--role-action-text);
+    background-color:var(--role-action); background-image:var(--fiber-img), var(--grain-img);
+    background-blend-mode:normal, soft-light; background-size:170px 170px, 46px 46px;
+    border:var(--line-bold) solid var(--c-ink); border-radius:var(--radius-md); box-shadow:var(--shadow-card);
+    padding:var(--space-2) var(--space-3); cursor:pointer; }
+  .boardList { display:flex; flex-direction:column; gap:var(--space-2); }
+  .boardRow { display:flex; align-items:center; gap:var(--space-3); background:var(--c-paper);
+    border:var(--line-hair) solid var(--c-paper-edge); border-radius:var(--radius-sm); padding:var(--space-2) var(--space-3); }
+  .boardMain { min-width:0; display:grid; gap:1px; }
+  .boardName { font-family:var(--font-display); font-size:0.95rem; color:var(--c-ink); }
+  .boardDomain { font-family:var(--font-ui), Inter, system-ui, sans-serif; font-size:0.78rem; color:var(--role-text-faint); overflow-wrap:anywhere; }
+  .boardRemove { margin-left:auto; flex:none; display:inline-flex; align-items:center; justify-content:center;
+    width:22px; height:22px; border-radius:50%; color:var(--c-ink); background:transparent;
+    border:var(--line-hair) solid var(--c-ink); cursor:pointer; font-size:13px; line-height:1; }
+  .boardRemove:hover { color:var(--c-paper); background:var(--c-tomato); border-color:var(--c-ink); }
+
   @media (max-width:900px){
     .dashboardGrid { grid-template-columns:minmax(0,1fr); }
     .dashboardSidebar { position:static; }
@@ -168,7 +198,6 @@
   <div class="sectionHead">
     <h2>Your best matches</h2>
     <p class="lastScan">Last scan Jun 30, 9:14 AM</p>
-    <span class="scanBadge">Completed</span>
   </div>
 
   <div class="dashboardGrid">
@@ -244,9 +273,10 @@
               </ul>
             </div>
           </div>
-          <p class="fitSummary">Strong fit on systems and 0→1 work; salary band and remote both clear.</p>
           <div class="actionRail">
             <button type="button" class="btnSave">Save</button>
+            <button type="button" class="btnSkip">Skip</button>
+            <span class="skipNote">This job will be removed from results.</span>
             <a href="#" class="btnSource">Open posting ↗</a>
             <button type="button" class="btnApply">Pursue</button>
           </div>
@@ -306,13 +336,10 @@
               </ul>
             </div>
           </div>
-          <p class="fitSummary">Delivery and stakeholder strengths line up; creative-marketing domain is a stretch from your track.</p>
-          <div class="flagRow">
-            <span class="flagText">Surfaced as a wildcard — strong on your operating skills, off your stated target titles.</span>
-          </div>
           <div class="actionRail">
             <button type="button" class="btnSave">Save</button>
             <button type="button" class="btnSkip">Skip</button>
+            <span class="skipNote">This job will be removed from results.</span>
             <a href="#" class="btnSource">Open posting ↗</a>
             <button type="button" class="btnApply">Pursue</button>
           </div>
@@ -329,14 +356,27 @@
         <div class="ovScanRow">
           <span class="dim">Last scan</span>
           <span class="date">Jun 30, 9:14 AM</span>
-          <span class="scanBadge">Completed</span>
         </div>
         <div class="ovSources">
           <span><strong>49</strong> active jobs</span>
           <span><strong>6</strong> saved</span>
         </div>
         <button type="button" class="scanNowBtn">Run scan</button>
-        <a class="scanSecondaryBtn" href="#">View saved jobs</a>
+        <button type="button" class="scanSecondaryBtn">View saved jobs</button>
+      </div>
+
+      <!-- NEW (2026-07-10) · Job titles in this scan — read-only reveal of the title
+           parameters, fed by each Role Track's job-title chips from Card 1. -->
+      <div class="card">
+        <div class="panelHeaderRow">
+          <h3 class="sidebarHeading">Job titles in this scan</h3>
+        </div>
+        <div class="titleChips">
+          <span class="titleChip">Executive Producer</span>
+          <span class="titleChip">Senior Producer</span>
+          <span class="titleChip">Creative Producer</span>
+        </div>
+        <p class="chipNote">To edit job titles, change parameters in this role track in your profile.</p>
       </div>
 
       <div class="card">
@@ -349,6 +389,35 @@
           <div class="configStat"><span class="metaLabel">Salary floor</span><strong class="metaValue">$140k</strong></div>
           <div class="configStat"><span class="metaLabel">Target titles</span><strong class="metaValue">5</strong></div>
           <div class="configStat"><span class="metaLabel">Avoided cos.</span><strong class="metaValue">6</strong></div>
+        </div>
+      </div>
+
+      <!-- NEW (2026-07-10) · Company job boards — user adds a careers page; every scan
+           checks that board directly. Ships with the job_sources clean-slate reset. -->
+      <div class="card">
+        <div class="panelHeaderRow">
+          <h3 class="sidebarHeading">Company job boards</h3>
+        </div>
+        <p class="boardHint">Watching a company? Paste their careers page and every scan checks their board directly.</p>
+        <div class="boardInputRow">
+          <input class="boardInput" placeholder="Paste a careers page URL" />
+          <button type="button" class="boardAddBtn">Add</button>
+        </div>
+        <div class="boardList">
+          <div class="boardRow">
+            <div class="boardMain">
+              <span class="boardName">Hinge Health</span>
+              <span class="boardDomain">jobs.ashbyhq.com</span>
+            </div>
+            <button type="button" class="boardRemove" aria-label="Remove Hinge Health">×</button>
+          </div>
+          <div class="boardRow">
+            <div class="boardMain">
+              <span class="boardName">Northbeam Labs</span>
+              <span class="boardDomain">job-boards.greenhouse.io</span>
+            </div>
+            <button type="button" class="boardRemove" aria-label="Remove Northbeam Labs">×</button>
+          </div>
         </div>
       </div>
     </aside>

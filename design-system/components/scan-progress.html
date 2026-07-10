@@ -8,39 +8,40 @@
 <link rel="stylesheet" href="../tokens/tokens.css" />
 <link rel="stylesheet" href="../lib/base.css" />
 <style>
-  /* SCAN PROGRESS · the loading modal shown while a scan runs. The dancing
-     dumpster mascot (DF-small.gif) carries the wait; a screenprinted teal
-     progress bar + three phase bars + a live source feed report status.
+  /* SCAN PROGRESS · production parity with the dashboard Run-scan overlay
+     (DashboardClient.tsx + dashboard.module.css), reconciled 2026-07-10.
+     The dancing dumpster mascot (DF-small.gif) carries the wait; teal progress
+     bar + three phase bars. Generic phases only — the per-user scan matches the
+     shared pool, so there is NO per-source feed (that was legacy /scans).
+     While running there is no close button; counts appear on completion.
      Class names mirror DashboardClient.tsx so the CSS ports straight back. */
-  body { margin: 0; background: var(--c-paper); }
-  body::before { content:""; position: fixed; inset: 0; z-index: -1;
-    background-image: radial-gradient(var(--halftone-color) var(--halftone-dot),
-      transparent calc(var(--halftone-dot) + 0.5px)); background-size: var(--halftone-size) var(--halftone-size); }
+  body { margin: 0; background: var(--c-paper); font-family: var(--font-body); }
 
-  .modalOverlay { position: relative; min-height: 100vh; z-index: 200;
+  .scanOverlay { position: relative; min-height: 100vh; z-index: 210;
     background: rgba(36, 31, 26, 0.62);
     display: flex; flex-direction: column; align-items: center; gap: var(--space-6);
     padding: var(--space-6); box-sizing: border-box; }
 
-  .modalBox { width: min(560px, 100%); box-sizing: border-box;
+  .dsLabel { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: var(--tracking-subhead, 0.05em);
+    font-size: var(--type-caption); color: var(--c-paper); margin: 0; }
+
+  .scanBox { width: min(560px, 100%); box-sizing: border-box; text-align: center;
     background-color: var(--c-paper-deep); background-image: var(--fiber-img), var(--grain-img);
     background-blend-mode: normal, soft-light; background-size: 170px 170px, 46px 46px;
     border: var(--line-bold) solid var(--c-ink); border-radius: var(--radius-lg);
     box-shadow: 6px 6px 0 rgba(36, 31, 26, 0.55); padding: var(--space-6); }
-  .scanModal { text-align: center; }
 
-  /* The dancing mascot · die-cut standee edge + hard block shadow */
+  /* The dancing mascot · die-cut standee edge + hard block shadow (running only) */
   .scanLoadingGif { display: block; width: 132px; height: 132px; margin: 0 auto var(--space-2);
     object-fit: contain;
     filter: drop-shadow(2px 0 0 var(--c-paper)) drop-shadow(-2px 0 0 var(--c-paper))
-            drop-shadow(0 2px 0 var(--c-paper)) drop-shadow(-2px 0 0 var(--c-paper))
-            drop-shadow(4px 5px 0 rgba(36, 31, 26, 0.26)); }
+            drop-shadow(0 2px 0 var(--c-paper)) drop-shadow(4px 5px 0 rgba(36, 31, 26, 0.26)); }
 
   .scanModalHead { position: relative; display: flex; align-items: center; justify-content: center;
     min-height: 34px; margin-bottom: var(--space-4); }
   .scanModalTitle { font-family: var(--font-display); font-size: 1.6rem; line-height: 1.05;
     color: var(--c-ink); margin: 0; }
-  .scanModalHead .modalClose { position: absolute; right: 0; top: 0;
+  .scanClose { position: absolute; right: 0; top: 0;
     display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px;
     color: var(--c-ink); background-color: var(--c-paper); border: var(--line-reg) solid var(--c-ink);
     border-radius: var(--radius-md); box-shadow: 2px 2px 0 var(--c-ink); cursor: pointer; }
@@ -52,10 +53,11 @@
   .scanProgressFill { height: 100%; box-sizing: border-box;
     background-color: var(--c-teal); background-image: var(--fiber-img), var(--grain-img);
     background-blend-mode: normal, soft-light; background-size: 170px 170px, 46px 46px;
-    border-right: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-pill); }
+    border-right: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-pill);
+    transition: width 0.6s var(--ease-snap); }
   .scanProgressFillError { background-color: var(--c-tomato); border-right: none; }
 
-  /* Headline counts */
+  /* Headline counts (completion only) */
   .scanCounts { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-5);
     margin: var(--space-4) 0 0; font-family: var(--font-body); font-size: var(--type-small);
     color: var(--role-text-muted); }
@@ -78,147 +80,78 @@
   .scanError { font-family: var(--font-body); font-size: var(--type-small); color: var(--c-tomato);
     margin: var(--space-4) 0 0; }
 
-  /* Live source feed · status dot + label + job count */
-  .scanFeed { margin: var(--space-5) 0 0; text-align: left;
-    border-top: var(--line-hair) solid var(--c-paper-edge); }
-  .scanFeedEmpty { font-family: var(--font-body); font-style: italic; font-size: var(--type-small);
-    color: var(--role-text-faint); text-align: center; margin: var(--space-4) 0 0; }
-  .scanFeedRow { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-2) 0;
-    border-bottom: var(--line-hair) solid var(--c-paper-edge); }
-  .scanFeedDot { flex: none; width: 10px; height: 10px; border-radius: 50%;
-    border: var(--line-hair) solid var(--c-ink); }
-  .scanFeedDotOk { background-color: var(--c-teal); }
-  .scanFeedDotErr { background-color: var(--c-tomato); }
-  .scanFeedDotSkip { background-color: var(--c-paper); }
-  .scanFeedLabel { flex: 1; min-width: 0; font-family: var(--font-body); font-size: var(--type-small);
-    color: var(--c-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .scanFeedCount { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.04em;
-    font-size: 0.82rem; color: var(--c-teal); }
-  .scanFeedCount.err { color: var(--c-tomato); }
-  .scanFeedCount.skip { color: var(--role-text-faint); }
-
   .scanModalFoot { display: flex; justify-content: center; margin: var(--space-5) 0 0; }
   .scanDoneBtn { font-family: var(--font-display); font-size: 1.05rem; color: var(--role-action-text);
     background-color: var(--role-action); border: var(--line-bold) solid var(--c-ink);
-    border-radius: var(--radius-md); box-shadow: var(--shadow-card); padding: var(--space-3) var(--space-6);
-    cursor: pointer; }
-
-  /* Demo scaffold only */
-  .dsLabel { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.05em;
-    font-size: 0.78rem; color: var(--c-paper); opacity: 0.82; align-self: center; margin: 0; }
-
-  @media (max-width: 560px) {
-    .modalOverlay { padding: var(--space-3); }
-    .modalBox { padding: var(--space-5); }
-    .scanCounts { gap: var(--space-4); }
-  }
+    border-radius: var(--radius-md); box-shadow: var(--shadow-card);
+    padding: var(--space-3) var(--space-6); cursor: pointer; }
 </style>
 </head>
 <body>
-  <div class="modalOverlay">
+  <div class="scanOverlay">
 
-    <p class="dsLabel">Running · the dancing mascot carries the wait</p>
-    <div class="modalBox scanModal">
+    <p class="dsLabel">Running · mascot carries the wait, no close while running</p>
+    <div class="scanBox">
       <img class="scanLoadingGif" src="../DF-small.gif" alt="" aria-hidden="true" />
       <div class="scanModalHead">
         <h3 class="scanModalTitle">Scanning</h3>
       </div>
-
       <div class="scanProgressTrack" aria-hidden="true">
         <div class="scanProgressFill" style="width: 62%;"></div>
       </div>
-
-      <div class="scanCounts">
-        <span><strong>9</strong>/14 sources</span>
-        <span><strong>38</strong> roles</span>
-        <span><strong>&mdash;</strong> a fit</span>
-      </div>
-
       <div class="scanPhases" aria-hidden="true">
         <span class="scanPhase scanPhaseDone">Fetching</span>
         <span class="scanPhase scanPhaseActive">Matching</span>
         <span class="scanPhase">Saving</span>
       </div>
-
-      <div class="scanFeed">
-        <div class="scanFeedRow">
-          <span class="scanFeedDot scanFeedDotOk"></span>
-          <span class="scanFeedLabel">Greenhouse &middot; Northbeam Labs</span>
-          <span class="scanFeedCount">12</span>
-        </div>
-        <div class="scanFeedRow">
-          <span class="scanFeedDot scanFeedDotOk"></span>
-          <span class="scanFeedLabel">Lever &middot; Atlas Health</span>
-          <span class="scanFeedCount">7</span>
-        </div>
-        <div class="scanFeedRow">
-          <span class="scanFeedDot scanFeedDotSkip"></span>
-          <span class="scanFeedLabel">Ashby &middot; Pier 9 Studio</span>
-          <span class="scanFeedCount skip">skip</span>
-        </div>
-        <div class="scanFeedRow">
-          <span class="scanFeedDot scanFeedDotErr"></span>
-          <span class="scanFeedLabel">Workday &middot; Meridian Group</span>
-          <span class="scanFeedCount err">&mdash;</span>
-        </div>
-      </div>
     </div>
 
-    <p class="dsLabel">Complete · close + view matches</p>
-    <div class="modalBox scanModal">
+    <p class="dsLabel">Complete · counts + View matches</p>
+    <div class="scanBox">
       <div class="scanModalHead">
         <h3 class="scanModalTitle">Scan complete</h3>
-        <button type="button" class="modalClose" aria-label="Close">
+        <button type="button" class="scanClose" aria-label="Close">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
           </svg>
         </button>
       </div>
-
       <div class="scanProgressTrack" aria-hidden="true">
         <div class="scanProgressFill" style="width: 100%;"></div>
       </div>
-
       <div class="scanCounts">
-        <span><strong>14</strong>/14 sources</span>
         <span><strong>52</strong> roles</span>
         <span><strong>11</strong> a fit</span>
       </div>
-
       <div class="scanPhases" aria-hidden="true">
         <span class="scanPhase scanPhaseDone">Fetching</span>
         <span class="scanPhase scanPhaseDone">Matching</span>
         <span class="scanPhase scanPhaseDone">Saving</span>
       </div>
-
       <div class="scanModalFoot">
         <button type="button" class="scanDoneBtn">View matches</button>
       </div>
     </div>
 
     <p class="dsLabel">Stopped · error state</p>
-    <div class="modalBox scanModal">
+    <div class="scanBox">
       <div class="scanModalHead">
         <h3 class="scanModalTitle">Scan stopped</h3>
-        <button type="button" class="modalClose" aria-label="Close">
+        <button type="button" class="scanClose" aria-label="Close">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
           </svg>
         </button>
       </div>
-
       <div class="scanProgressTrack" aria-hidden="true">
         <div class="scanProgressFill scanProgressFillError" style="width: 100%;"></div>
       </div>
-
-      <div class="scanCounts">
-        <span><strong>6</strong>/14 sources</span>
-        <span><strong>18</strong> roles</span>
-        <span><strong>&mdash;</strong> a fit</span>
+      <div class="scanPhases" aria-hidden="true">
+        <span class="scanPhase scanPhaseDone">Fetching</span>
+        <span class="scanPhase">Matching</span>
+        <span class="scanPhase">Saving</span>
       </div>
-
-      <p class="scanError">A source timed out before the scan finished. The roles found so far are saved.</p>
-
+      <p class="scanError">The scan hit a problem partway through. Your last results are untouched — run it again.</p>
       <div class="scanModalFoot">
         <button type="button" class="scanDoneBtn">Close</button>
       </div>

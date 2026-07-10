@@ -73,7 +73,58 @@ Also shipped in this batch:
 - Never-sound "skip this input" checkbox (+ backend skip flag designed with it).
 - Writing-sample bucket labeling clarity (root cause of bug #23).
 - "Add a company's job board" to the scan (user-facing add over existing
-  `job_sources` ingestion; port legacy URL→board-token resolution).
+  `job_sources` ingestion; port legacy URL→board-token resolution from
+  `app/scans/board-registry.ts` `resolveBoardFromUrl`). **Decision (Randall,
+  2026-07-10): prod `job_sources` gets a clean-slate reset WHEN this feature
+  ships — not before** (scope of the reset decided at ship time; note that
+  deleting `jobs` rows cascades to saved_jobs/job_scan_results/pursuits).
+
+### Scan-batch review outcomes (Randall, 2026-07-10 — cards approved in Claude Design)
+
+All six scan-batch cards approved with edits (applied same day, re-synced):
+1. Scan Controls: approved; boards error message gained "Use the feedback chat bubble
+   to request a job board that didn't work."
+2. Card 1 job-title chips: approved as designed.
+3. Rating-filter tiles condensed: gap 5→3px, vertical padding →6px, "roles" font
+   0.74→0.82rem (+10.8%); measured 89.7→70.4px (−21.6%) headless at 1440.
+4. **Skip is BACK as a real function** (not just design): skipping removes the posting
+   from the user's results ("not interested"). Visible note by the button: "This job
+   will be removed from results." Needs backend at implementation: a skip/dismiss
+   status on job_scan_results (or equivalent) so skipped jobs stay gone across scans.
+5. **Company job boards are PRIVATE per user** (Randall's decision): job_sources
+   gains user scoping (user_id column or a user_job_sources table); user-added boards
+   feed only that user's scans. Fetched postings still dedupe into the shared jobs
+   pool. Cost impact assessed 2026-07-10: no AI-token cost anywhere in the pipeline
+   (connectors + matching are heuristic, board-URL resolution is pure parsing);
+   storage is negligible (~2–3 MB per active user worst case); the real scale watch
+   item is daily-cron runtime growing linearly with total boards — mitigate by
+   scanning user boards inside that user's own scan run, or batching the cron.
+
+### Scan-batch additions (Randall, 2026-07-10 — scoped, queued for Claude Design)
+
+- **Card 1 job-title chip input (per role track).** Type titles into a field,
+  chips render above — same interaction as the industry/CataloguePicker chip
+  pattern. Example: "Executive Producer, Senior Producer, Creative Producer" on
+  the Executive Producer track. Backend already live end-to-end:
+  `role_tracks.target_titles` exists, feeds scan keywords
+  (lib/public-jobs/repository.ts scanParametersForAggregate) and matching
+  scorers (lib/public-profile/matching/scorers.ts) — the UI input is the only
+  missing piece (OnboardingClient initializes targetTitles empty, no input).
+  **The résumé scan stays exactly as-is** (Randall 2026-07-10: "resume scan
+  should remain… no replacement") — titles are an ADDITION to Card 1, and the
+  résumé highlights pipeline (profile.md + outreach context) is untouched.
+- **Scan page: "Job titles in this scan" section.** Right-hand column of the
+  dashboard scan page, chips listing the active scan's title parameters, with
+  a helper note below: "To edit job titles, change parameters in this role
+  track in your profile."
+- **Scan/results page DS↔production reconciliation.** The DS scan cards
+  (match-card / scan-progress / scan-history / dashboard-jobs / scan-page
+  pattern) were derived from legacy `/scans` markup; production
+  DashboardClient.tsx has since grown surfaces the DS never covered (fit-filter
+  star grid, WEIRD MATCH tag, Overview card, Search settings card, Pursue
+  action, scan overlay's current form). Inventory the divergence, design the
+  missing cards in Claude Design, and re-sync per the Full Design-Sync
+  Checklist. Process approved by Randall 2026-07-10.
 - **Homepage Human Path carousel parity (Randall, 2026-07-09):** the marketing
   slideshow (`humanPathSlides` in app/page.tsx, 4 slides: Review role / Contacts /
   Outreach / Tracking) is outdated and was never designed. Redesign it to mirror

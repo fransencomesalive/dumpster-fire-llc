@@ -8,233 +8,239 @@
 <link rel="stylesheet" href="../tokens/tokens.css" />
 <link rel="stylesheet" href="../lib/base.css" />
 <style>
-  /* Page ground carries the halftone; cards sit on top fully opaque */
-  body { padding: var(--space-6); background: var(--c-paper); }
-  body::before { content:""; position: fixed; inset: 0; z-index: -1;
-    background-image: radial-gradient(var(--halftone-color) var(--halftone-dot),
-      transparent calc(var(--halftone-dot) + 0.5px)); background-size: var(--halftone-size) var(--halftone-size); }
+  /* MATCH CARD · production parity with app/dashboard (DashboardClient.tsx +
+     dashboard.module.css), reconciled 2026-07-10. Fit = label + numeric score + stars;
+     meta = Source/Salary/Remote/Location; actions = Save / Open posting / Pursue.
+     Plain paper — no halftone (rejected pattern, Randall 2026-07-04). */
+  body { margin: 0; padding: var(--space-6); background: var(--c-paper); color: var(--c-ink); font-family: var(--font-body); }
   .wrap { max-width: 720px; margin: 0 auto; }
 
   /* Section header · headline first, scan line beneath. No eyebrow. */
-  .sectionHead { margin-bottom: var(--space-5); }
-  .sectionHead h1 { font-size: var(--type-h1); color: var(--c-ink); }
-  .lastScan { font-family: var(--font-subhead); text-transform: uppercase;
-              letter-spacing: var(--tracking-subhead); font-size: 1.16rem; color: var(--c-tomato);
-              margin: var(--space-2) 0 0; }
+  .sectionHead { display:flex; align-items:baseline; flex-wrap:wrap; gap:var(--space-3) var(--space-4); margin-bottom:var(--space-5); }
+  .sectionHead h2 { font-family:var(--font-display); font-size:var(--type-h2); color:var(--c-ink); margin:0; }
+  .lastScan { font-family:var(--font-subhead); text-transform:uppercase; letter-spacing:var(--tracking-subhead);
+    font-size:1.1rem; color:var(--c-tomato); margin:0; }
+
+  .matchList { display:grid; gap:var(--space-4); }
 
   /* ====== classes mirror DashboardClient.tsx so CSS ports back ====== */
-  .card { background-color: var(--c-paper-deep); background-image: var(--fiber-img), var(--grain-img);
-          background-blend-mode: normal, soft-light; background-size: 170px 170px, 46px 46px;
-          border: var(--line-reg) solid var(--c-ink);
-          border-radius: var(--radius-lg); box-shadow: var(--shadow-card); padding: var(--space-5); }
-  .jobCard { position: relative; padding-right: var(--space-7); }
+  .card { background-color:var(--c-paper-deep); background-image:var(--fiber-img), var(--grain-img);
+    background-blend-mode:normal, soft-light; background-size:170px 170px, 46px 46px;
+    border:var(--line-reg) solid var(--c-ink); border-radius:var(--radius-lg); box-shadow:var(--shadow-card); padding:var(--space-5); }
+  .jobCard { position:relative; padding-right:var(--space-7); }
+  .jobCardHeader { display:flex; align-items:flex-start; justify-content:space-between; gap:var(--space-4); }
+  .jobNumberTitle { display:flex; align-items:center; gap:var(--space-3); min-width:0; }
+  /* Number · solid teal disc + grain, mustard outline misregistered off-centre. */
+  .jobNumber { position:relative; flex:none; display:grid; place-items:center; width:30px; height:30px;
+    border-radius:var(--radius-pill); background-color:var(--c-teal);
+    background-image:var(--fiber-img), var(--grain-img); background-blend-mode:normal, soft-light; background-size:170px 170px, 46px 46px;
+    font-family:var(--font-subhead); font-size:1.1rem; line-height:1; color:var(--c-paper-deep); }
+  .jobNumber::after { content:""; position:absolute; inset:0; border-radius:var(--radius-pill);
+    border:var(--line-reg) solid var(--c-mustard); transform:translate(calc(-1 * var(--reg-shift-x)), calc(-1 * var(--reg-shift-y))); }
+  .jobTitle { font-family:var(--font-display); font-size:1.25rem; line-height:1.15; color:var(--c-ink); margin:0; min-width:0; overflow-wrap:anywhere; }
+  .titleDivider { display:inline-block; width:9px; height:9px; margin:0 9px; background:var(--c-teal);
+    border:1px solid var(--c-ink); transform:rotate(45deg); vertical-align:0.1em; }
+  .companyName { font-family:var(--font-body); font-weight:400; color:var(--c-ink); }
 
-  .jobCardHeader { display: flex; align-items: flex-start; justify-content: space-between;
-                   gap: var(--space-4); }
-  .jobNumberTitle { display: flex; align-items: center; gap: var(--space-3); }
-  /* Number · solid teal disc + grain, mustard outline misregistered off-centre.
-     The "3" is the card background colour, so it reads as unprinted (knockout). */
-  .jobNumber { position: relative; flex: none; display: grid; place-items: center;
-               width: 30px; height: 30px; border-radius: var(--radius-pill);
-               background-color: var(--c-teal); background-image: var(--fiber-img), var(--grain-img);
-               background-blend-mode: normal, soft-light; background-size: 170px 170px, 46px 46px;
-               font-family: var(--font-subhead); font-size: 1.1rem; line-height: 1;
-               color: var(--c-paper-deep); }
-  .jobNumber::after { content: ""; position: absolute; inset: 0; border-radius: var(--radius-pill);
-               border: var(--line-reg) solid var(--c-mustard);
-               transform: translate(calc(-1 * var(--reg-shift-x)), calc(-1 * var(--reg-shift-y))); }
+  /* Weird match · vertical Motel sign, stacked upright letters, mustard block + grain. */
+  .weirdMatchTag { position:absolute; top:calc(-1 * var(--line-reg)); right:var(--space-5);
+    display:flex; flex-direction:column; align-items:center;
+    background-color:var(--c-mustard); background-image:var(--fiber-img), var(--grain-img);
+    background-blend-mode:normal, soft-light; background-size:170px 170px, 46px 46px; color:var(--c-ink);
+    border:var(--line-reg) solid var(--c-ink); border-top:none; border-radius:0 0 var(--radius-sm) var(--radius-sm);
+    padding:var(--space-2) 6px var(--space-3); box-shadow:var(--shadow-card); }
+  .weirdMatchTag span { font-family:var(--font-display-accent); text-transform:uppercase; font-size:0.72rem; line-height:1.04; letter-spacing:0.01em; }
+  .weirdMatchTag .sp { height:6px; }
 
-  .jobTitle { font-family: var(--font-display); font-size: 1.3rem; line-height: 1.15; color: var(--c-ink); }
-  .titleDivider { display: inline-block; width: 9px; height: 9px; margin: 0 9px;
-                  background: var(--c-teal); border: 1px solid var(--c-ink);
-                  transform: rotate(45deg); vertical-align: 0.1em; }
-  .companyName { font-family: var(--font-body); font-weight: 400; color: var(--c-ink); }
+  .stars { display:flex; align-items:center; gap:var(--space-3); margin:var(--space-4) 0; flex-wrap:wrap; }
+  .starLabel { font-family:var(--font-subhead); text-transform:uppercase; letter-spacing:0.05em; font-size:0.9rem; color:var(--c-teal); }
+  .starScore { font-family:var(--font-display); font-size:1.05rem; color:var(--c-ink); }
+  .starScore small { font-family:var(--font-body); font-size:0.85rem; color:var(--role-text-muted); }
+  .starIconRow { display:inline-flex; gap:3px; color:var(--c-teal); }
 
-  /* Weird match · vertical Motel sign, stacked upright letters in Head-OH (heavier,
-     reads better stacked than condensed Bebas), mustard block + grain. */
-  .weirdMatchTag { position: absolute; top: calc(-1 * var(--line-reg)); right: var(--space-5);
-    display: flex; flex-direction: column; align-items: center;
-    background-color: var(--c-mustard); background-image: var(--fiber-img), var(--grain-img);
-    background-blend-mode: normal, soft-light; background-size: 170px 170px, 46px 46px; color: var(--c-ink);
-    border: var(--line-reg) solid var(--c-ink); border-top: none;
-    border-radius: 0 0 var(--radius-sm) var(--radius-sm);
-    padding: var(--space-2) 6px var(--space-3); box-shadow: var(--shadow-card); }
-  .weirdMatchTag span { font-family: var(--font-display-accent); text-transform: uppercase;
-    font-size: 0.72rem; line-height: 1.04; letter-spacing: 0.01em; }
-  .weirdMatchTag .sp { height: 6px; }
+  .jobMetaGrid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:var(--space-3); margin:0 0 var(--space-4);
+    padding:var(--space-3) 0; border-top:var(--line-reg) solid var(--c-ink); border-bottom:var(--line-reg) solid var(--c-ink); }
+  .jobMetaGrid > div { min-width:0; }
+  .jobMetaGrid dt { font-family:var(--font-subhead); text-transform:uppercase; letter-spacing:0.04em; font-size:0.85rem; color:var(--c-teal); margin-bottom:3px; }
+  .jobMetaGrid dd { margin:0; font-family:var(--font-body); font-size:0.95rem; color:var(--c-ink); overflow-wrap:anywhere; }
 
-  .stars { display: flex; align-items: center; gap: var(--space-3); margin: var(--space-4) 0; }
-  .starLabel { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.05em;
-               font-size: 0.9rem; color: var(--c-teal); }
-  .starIconRow { display: inline-flex; gap: 3px; color: var(--c-teal); }
-
-  .jobMetaGrid { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-3);
-                 margin: 0 0 var(--space-4); padding: var(--space-3) 0;
-                 border-top: var(--line-reg) solid var(--c-ink);
-                 border-bottom: var(--line-reg) solid var(--c-ink); }
-  .jobMetaGrid dt { font-family: var(--font-subhead); text-transform: uppercase;
-                    letter-spacing: 0.04em; font-size: 0.9rem; color: var(--c-teal); margin-bottom: 3px; }
-  .jobMetaGrid dd { margin: 0; font-family: var(--font-body); font-size: 1rem; color: var(--c-ink); }
-
-  .descriptionBox { background-color: var(--c-paper);
-                    background-image: var(--fiber-img), var(--grain-img);
-                    background-blend-mode: normal, soft-light; background-size: 170px 170px, 46px 46px;
-                    border: var(--line-hair) solid var(--c-paper-edge);
-                    border-radius: var(--radius-md); padding: var(--space-4); margin-bottom: var(--space-4); }
-  .descriptionText { margin: 0 0 var(--space-3); font-family: var(--font-body);
-                     font-size: 0.95rem; color: var(--role-text-muted); }
-
-  .keywordPills { display: flex; flex-wrap: wrap; gap: var(--space-3) var(--space-5); margin-bottom: 0; }
-  .keywordPill { font-family: var(--font-display); font-size: 0.9rem; line-height: 1.1;
-                 color: var(--c-ink); border-bottom: 2.5px dotted var(--c-teal); padding-bottom: 1px; }
+  .descriptionBox { background-color:var(--c-paper); background-image:var(--fiber-img), var(--grain-img);
+    background-blend-mode:normal, soft-light; background-size:170px 170px, 46px 46px;
+    border:var(--line-hair) solid var(--c-paper-edge); border-radius:var(--radius-md); padding:var(--space-4); margin-bottom:var(--space-4); }
+  .descriptionText { margin:0 0 var(--space-3); font-family:var(--font-body); font-size:0.95rem; color:var(--role-text-muted); }
+  .keywordPills { display:flex; flex-wrap:wrap; gap:var(--space-3) var(--space-5); }
+  .keywordPill { font-family:var(--font-display); font-size:0.9rem; line-height:1.1; color:var(--c-ink); border-bottom:2.5px dotted var(--c-teal); padding-bottom:1px; }
 
   /* Two sub-cards · Responsibilities + Required experience */
-  .matchSections { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4);
-                   margin-bottom: var(--space-4); }
-  .matchSection { background-color: var(--c-paper);
-                  background-image: var(--fiber-img), var(--grain-img);
-                  background-blend-mode: normal, soft-light; background-size: 170px 170px, 46px 46px;
-                  border: var(--line-reg) solid var(--c-ink);
-                  border-radius: var(--radius-md); padding: var(--space-4); }
-  .matchSectionLabel { display: block; font-family: var(--font-subhead); text-transform: uppercase;
-                       letter-spacing: 0.05em; font-size: 0.95rem; color: var(--c-teal);
-                       padding-bottom: var(--space-2); margin-bottom: var(--space-2);
-                       border-bottom: var(--line-hair) solid var(--c-paper-edge); }
-  .matchSectionList { margin: 0; padding-left: 1.1em; font-family: var(--font-body);
-                      font-size: 0.92rem; color: var(--c-ink); }
-  .matchSectionList li { margin-bottom: var(--space-2); }
-  .matchSectionList li:last-child { margin-bottom: 0; }
-  /* Highlight · solid mustard marker, rotated a smidge off the baseline and
-     tilted differently each time so it reads hand-done, not robotic. The blob
-     is a pseudo behind the text, so only the highlight tilts, never the letters. */
-  .matchHighlight { position: relative; color: var(--c-ink); background: transparent; z-index: 0; }
-  .matchHighlight::before { content: ""; position: absolute; z-index: -1;
-    inset: -0.14em -0.24em -0.02em -0.2em; background: var(--c-mustard);
-    border-radius: 0.6em 0.95em 0.5em 0.85em / 0.9em 0.5em 0.95em 0.55em;
-    transform: rotate(var(--rot, -1.4deg)); }
+  .matchSections { display:grid; grid-template-columns:1fr 1fr; gap:var(--space-4); margin-bottom:var(--space-4); }
+  .matchSection { background-color:var(--c-paper); background-image:var(--fiber-img), var(--grain-img);
+    background-blend-mode:normal, soft-light; background-size:170px 170px, 46px 46px;
+    border:var(--line-reg) solid var(--c-ink); border-radius:var(--radius-md); padding:var(--space-4); }
+  .matchSectionLabel { display:block; font-family:var(--font-subhead); text-transform:uppercase; letter-spacing:0.05em;
+    font-size:0.95rem; color:var(--c-teal); padding-bottom:var(--space-2); margin-bottom:var(--space-2);
+    border-bottom:var(--line-hair) solid var(--c-paper-edge); }
+  .matchSectionList { margin:0; padding-left:1.1em; font-family:var(--font-body); font-size:0.92rem; color:var(--c-ink); }
+  .matchSectionList li { margin-bottom:var(--space-2); }
+  .matchSectionList li:last-child { margin-bottom:0; }
+  .matchHighlight { position:relative; color:var(--c-ink); background:transparent; z-index:0; }
+  .matchHighlight::before { content:""; position:absolute; z-index:-1; inset:-0.14em -0.24em -0.02em -0.2em;
+    background:var(--c-mustard); border-radius:0.6em 0.95em 0.5em 0.85em / 0.9em 0.5em 0.95em 0.55em; transform:rotate(var(--rot, -1.4deg)); }
 
-  .fitSummary { font-family: var(--font-body); font-style: italic; color: var(--c-ink);
-                margin: var(--space-4) 0; }
+  .actionRail { display:flex; flex-wrap:wrap; gap:var(--space-3); align-items:center; }
+  .actionRail button, .actionRail a { font-family:var(--font-display); font-size:0.95rem; border-radius:var(--radius-md);
+    padding:var(--space-2) var(--space-4); cursor:pointer; text-decoration:none; }
+  .btnApply { color:var(--role-action-text); background-color:var(--role-action);
+    background-image:var(--fiber-img), var(--grain-img); background-blend-mode:normal, soft-light; background-size:170px 170px, 46px 46px;
+    border:var(--line-bold) solid var(--c-ink); box-shadow:var(--shadow-card); margin-left:auto; }
+  .btnSave { color:var(--c-ink); background:var(--c-paper); border:var(--line-reg) solid var(--c-ink); }
+  /* Skip = "not interested" — removes the posting from results (Randall, 2026-07-10) */
+  .btnSkip { color:var(--role-text-muted); background:transparent; border:var(--line-reg) solid transparent; }
+  .skipNote { flex:1 1 0; min-width:110px; font-family:var(--font-body); font-size:0.8rem; font-style:italic; color:var(--role-text-faint); }
+  .btnSource { position:relative; color:var(--c-ink); background:transparent; padding-bottom:3px; }
 
-  /* Note · informational comment, calm blue accent (not an error red) */
-  .flagRow { display: flex; align-items: center; gap: var(--space-3); background: var(--c-paper);
-             border: var(--line-hair) solid var(--c-paper-edge);
-             border-left: var(--line-bold) solid var(--c-bluebird);
-             border-radius: var(--radius-sm); padding: var(--space-3) var(--space-4);
-             margin-bottom: var(--space-4); }
-  .flagRow::before { content: "Note"; flex: none; font-family: var(--font-subhead);
-             text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.72rem; color: var(--c-bluebird); }
-  .flagText { font-family: var(--font-body); font-size: 0.9rem; color: var(--c-ink-soft); }
-
-  .actionRail { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: center; }
-  .actionRail button, .actionRail a { font-family: var(--font-display); font-size: 0.95rem;
-    border-radius: var(--radius-md); padding: var(--space-2) var(--space-4); cursor: pointer;
-    transition: background-color var(--dur-fast) var(--ease-snap),
-                box-shadow var(--dur-fast) var(--ease-snap); text-decoration: none; }
-  .btnApply { color: var(--role-action-text); background-color: var(--role-action);
-              background-image: var(--fiber-img), var(--grain-img); background-blend-mode: normal, soft-light; background-size: 170px 170px, 46px 46px;
-              border: var(--line-bold) solid var(--c-ink); box-shadow: var(--shadow-card); margin-left: auto; }
-  .btnApply:hover { background-color: var(--role-info); box-shadow: var(--reg-box);
-                    text-shadow: 1px 1px 0 rgba(36,31,26,0.35); }
-  .btnSave { color: var(--c-ink); background: var(--c-paper); border: var(--line-reg) solid var(--c-ink); }
-  .btnSave:hover { background: color-mix(in srgb, var(--c-teal) 18%, var(--c-paper)); }
-  .btnSkip { color: var(--role-text-muted); background: transparent; border: var(--line-reg) solid transparent; }
-  .btnSkip:hover { border-color: var(--c-paper-edge); }
-  .btnSource { position: relative; color: var(--c-ink); background: transparent; padding-bottom: 3px; }
-  .btnSource::after { content:""; position:absolute; left: var(--space-4); right: var(--space-4);
-    bottom: 4px; height: var(--line-reg); background: var(--role-accent);
-    mix-blend-mode: multiply; transition: box-shadow var(--dur-fast) var(--ease-snap); }
-  .btnSource:hover::after { box-shadow: var(--reg-shadow); }
-
-  @media (max-width: 480px) {
-    .jobMetaGrid { grid-template-columns: repeat(2, 1fr); row-gap: var(--space-3); }
-    .matchSections { grid-template-columns: 1fr; }
+  @media (max-width:560px){
+    .matchSections { grid-template-columns:minmax(0,1fr); }
+    .jobMetaGrid { grid-template-columns:repeat(2,minmax(0,1fr)); row-gap:var(--space-3); }
   }
 </style>
 </head>
 <body>
 <div class="wrap">
   <div class="sectionHead">
-    <h1>Today's Best Matches</h1>
-    <p class="lastScan">Last scan Jun 22, 8:49 PM</p>
+    <h2>Your best matches</h2>
+    <p class="lastScan">Last scan Jun 30, 9:14 AM</p>
   </div>
 
-  <article class="card jobCard">
-    <span class="weirdMatchTag" aria-label="Weird match">
-      <span>W</span><span>E</span><span>I</span><span>R</span><span>D</span>
-      <span class="sp"></span>
-      <span>M</span><span>A</span><span>T</span><span>C</span><span>H</span>
-    </span>
-    <div class="jobCardHeader">
-      <div class="jobNumberTitle">
-        <span class="jobNumber">3</span>
-        <h3 class="jobTitle">Senior Product Designer<span class="titleDivider"></span><span class="companyName">Northbeam Labs</span></h3>
+  <div class="matchList">
+    <!-- Strong match · full card -->
+    <article class="card jobCard">
+      <div class="jobCardHeader">
+        <div class="jobNumberTitle">
+          <span class="jobNumber" aria-hidden="true">1</span>
+          <h3 class="jobTitle">Senior Product Designer<span class="titleDivider" aria-hidden="true"></span><span class="companyName">Northbeam Labs</span></h3>
+        </div>
       </div>
-    </div>
+      <div class="stars">
+        <span class="starLabel">Fit</span>
+        <span class="starScore">84<small>/100</small></span>
+        <span class="starIconRow" title="84/100" aria-hidden="true">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5"><polygon points="12 2 15 9 22 9.3 16.5 14 18.5 21 12 17 5.5 21 7.5 14 2 9.3 9 9"/></svg>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5"><polygon points="12 2 15 9 22 9.3 16.5 14 18.5 21 12 17 5.5 21 7.5 14 2 9.3 9 9"/></svg>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5"><polygon points="12 2 15 9 22 9.3 16.5 14 18.5 21 12 17 5.5 21 7.5 14 2 9.3 9 9"/></svg>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5"><polygon points="12 2 15 9 22 9.3 16.5 14 18.5 21 12 17 5.5 21 7.5 14 2 9.3 9 9"/></svg>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="12 2 15 9 22 9.3 16.5 14 18.5 21 12 17 5.5 21 7.5 14 2 9.3 9 9"/></svg>
+        </span>
+      </div>
+      <dl class="jobMetaGrid">
+        <div><dt>Source</dt><dd>Greenhouse</dd></div>
+        <div><dt>Salary</dt><dd>$140k – $165k</dd></div>
+        <div><dt>Remote</dt><dd>Remote (US)</dd></div>
+        <div><dt>Location</dt><dd>Denver, CO</dd></div>
+      </dl>
+      <div class="descriptionBox">
+        <p class="descriptionText">Lead end-to-end design for a new B2B analytics product, partnering
+        with PM and engineering from discovery through ship. Own the design system and mentor two
+        mid-level designers.</p>
+        <div class="keywordPills">
+          <span class="keywordPill">Design systems</span>
+          <span class="keywordPill">B2B</span>
+          <span class="keywordPill">0→1</span>
+          <span class="keywordPill">Mentorship</span>
+        </div>
+      </div>
+      <div class="matchSections">
+        <div class="matchSection">
+          <span class="matchSectionLabel">Responsibilities</span>
+          <ul class="matchSectionList">
+            <li>Own the <mark class="matchHighlight" style="--rot:-1.8deg">design system</mark> across web and mobile.</li>
+            <li>Drive <mark class="matchHighlight" style="--rot:1.3deg">0→1</mark> product discovery with PM and research.</li>
+            <li>Partner with engineering from concept through ship.</li>
+          </ul>
+        </div>
+        <div class="matchSection">
+          <span class="matchSectionLabel">Required experience</span>
+          <ul class="matchSectionList">
+            <li>7+ years in <mark class="matchHighlight" style="--rot:-1deg">B2B</mark> product design.</li>
+            <li>Proven <mark class="matchHighlight" style="--rot:1.7deg">design systems</mark> ownership at scale.</li>
+            <li>Comfortable with <mark class="matchHighlight" style="--rot:-2.1deg">0→1</mark> ambiguity.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="actionRail">
+        <button type="button" class="btnSave">Save</button>
+        <button type="button" class="btnSkip">Skip</button>
+        <span class="skipNote">This job will be removed from results.</span>
+        <a href="#" class="btnSource">Open posting ↗</a>
+        <button type="button" class="btnApply">Pursue</button>
+      </div>
+    </article>
 
-    <div class="stars">
-      <span class="starLabel">Fit filter</span>
-      <span class="starIconRow" title="84/100">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5"><polygon points="12 2 15 9 22 9.3 16.5 14 18.5 21 12 17 5.5 21 7.5 14 2 9.3 9 9"/></svg>
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5"><polygon points="12 2 15 9 22 9.3 16.5 14 18.5 21 12 17 5.5 21 7.5 14 2 9.3 9 9"/></svg>
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5"><polygon points="12 2 15 9 22 9.3 16.5 14 18.5 21 12 17 5.5 21 7.5 14 2 9.3 9 9"/></svg>
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5"><polygon points="12 2 15 9 22 9.3 16.5 14 18.5 21 12 17 5.5 21 7.5 14 2 9.3 9 9"/></svg>
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="12 2 15 9 22 9.3 16.5 14 18.5 21 12 17 5.5 21 7.5 14 2 9.3 9 9"/></svg>
+    <!-- Off-target surfaced with context · weird-match tag -->
+    <article class="card jobCard">
+      <span class="weirdMatchTag" aria-label="Weird match">
+        <span>W</span><span>E</span><span>I</span><span>R</span><span>D</span>
+        <span class="sp"></span>
+        <span>M</span><span>A</span><span>T</span><span>C</span><span>H</span>
       </span>
-    </div>
-
-    <dl class="jobMetaGrid">
-      <div><dt>Job Posting</dt><dd>LinkedIn</dd></div>
-      <div><dt>Salary</dt><dd>$140–165k</dd></div>
-      <div><dt>Remote</dt><dd>Remote (US)</dd></div>
-      <div><dt>Location</dt><dd>Denver, CO</dd></div>
-    </dl>
-
-    <div class="descriptionBox">
-      <p class="descriptionText">Lead end-to-end design for a new B2B analytics product, partnering
-      with PM and engineering from discovery through ship. Own the design system and mentor two
-      mid-level designers.</p>
-      <div class="keywordPills">
-        <span class="keywordPill">Design systems</span>
-        <span class="keywordPill">B2B</span>
-        <span class="keywordPill">0→1</span>
-        <span class="keywordPill">Mentorship</span>
+      <div class="jobCardHeader">
+        <div class="jobNumberTitle">
+          <span class="jobNumber" aria-hidden="true">2</span>
+          <h3 class="jobTitle">Program Director, Creative Ops<span class="titleDivider" aria-hidden="true"></span><span class="companyName">Atlas Health</span></h3>
+        </div>
       </div>
-    </div>
-
-    <div class="matchSections">
-      <div class="matchSection">
-        <span class="matchSectionLabel">Responsibilities</span>
-        <ul class="matchSectionList">
-          <li>Own the <mark class="matchHighlight" style="--rot:-1.8deg">design system</mark> across web and mobile.</li>
-          <li>Drive <mark class="matchHighlight" style="--rot:1.3deg">0→1</mark> product discovery with PM and research.</li>
-          <li>Partner with engineering from concept through ship.</li>
-          <li>Mentor two mid-level designers and run weekly critiques.</li>
-        </ul>
+      <div class="stars">
+        <span class="starLabel">Fit</span>
+        <span class="starScore">61<small>/100</small></span>
+        <span class="starIconRow" title="61/100" aria-hidden="true">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5"><polygon points="12 2 15 9 22 9.3 16.5 14 18.5 21 12 17 5.5 21 7.5 14 2 9.3 9 9"/></svg>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5"><polygon points="12 2 15 9 22 9.3 16.5 14 18.5 21 12 17 5.5 21 7.5 14 2 9.3 9 9"/></svg>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5"><polygon points="12 2 15 9 22 9.3 16.5 14 18.5 21 12 17 5.5 21 7.5 14 2 9.3 9 9"/></svg>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="12 2 15 9 22 9.3 16.5 14 18.5 21 12 17 5.5 21 7.5 14 2 9.3 9 9"/></svg>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="12 2 15 9 22 9.3 16.5 14 18.5 21 12 17 5.5 21 7.5 14 2 9.3 9 9"/></svg>
+        </span>
       </div>
-      <div class="matchSection">
-        <span class="matchSectionLabel">Required experience</span>
-        <ul class="matchSectionList">
-          <li>7+ years in <mark class="matchHighlight" style="--rot:-1deg">B2B</mark> product design.</li>
-          <li>Proven <mark class="matchHighlight" style="--rot:1.7deg">design systems</mark> ownership at scale.</li>
-          <li>Comfortable with <mark class="matchHighlight" style="--rot:-2.1deg">0→1</mark> ambiguity and fast iteration.</li>
-        </ul>
+      <dl class="jobMetaGrid">
+        <div><dt>Source</dt><dd>Ashby</dd></div>
+        <div><dt>Salary</dt><dd>Not listed</dd></div>
+        <div><dt>Remote</dt><dd>Hybrid</dd></div>
+        <div><dt>Location</dt><dd>San Francisco</dd></div>
+      </dl>
+      <div class="descriptionBox">
+        <p class="descriptionText">Run cross-functional creative delivery across brand and product
+        marketing, owning timelines, staffing, and stakeholder alignment for high-visibility launches.</p>
+        <div class="keywordPills">
+          <span class="keywordPill">Program delivery</span>
+          <span class="keywordPill">Stakeholders</span>
+          <span class="keywordPill">Launches</span>
+        </div>
       </div>
-    </div>
-
-    <p class="fitSummary">Strong fit on systems and 0→1 work; salary band and remote both clear.</p>
-
-    <div class="flagRow">
-      <span class="flagText">Title leans senior IC; no management track mentioned.</span>
-    </div>
-
-    <div class="actionRail">
-      <button type="button" class="btnSave">Save</button>
-      <button type="button" class="btnSkip">Skip</button>
-      <a href="#" class="btnSource">Source ↗</a>
-      <button type="button" class="btnApply">Pursue</button>
-    </div>
-  </article>
+      <div class="matchSections">
+        <div class="matchSection">
+          <span class="matchSectionLabel">Responsibilities</span>
+          <ul class="matchSectionList">
+            <li>Own <mark class="matchHighlight" style="--rot:-1.5deg">cross-functional delivery</mark> for launches.</li>
+            <li>Drive <mark class="matchHighlight" style="--rot:1.2deg">stakeholder alignment</mark> across teams.</li>
+            <li>Manage staffing and timelines end to end.</li>
+          </ul>
+        </div>
+        <div class="matchSection">
+          <span class="matchSectionLabel">Required experience</span>
+          <ul class="matchSectionList">
+            <li>8+ years in <mark class="matchHighlight" style="--rot:-1.1deg">program / delivery</mark> leadership.</li>
+            <li>Track record running large <mark class="matchHighlight" style="--rot:1.6deg">launches</mark>.</li>
+            <li>Agency or in-house creative background.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="actionRail">
+        <button type="button" class="btnSave">Save</button>
+        <button type="button" class="btnSkip">Skip</button>
+        <span class="skipNote">This job will be removed from results.</span>
+        <a href="#" class="btnSource">Open posting ↗</a>
+        <button type="button" class="btnApply">Pursue</button>
+      </div>
+    </article>
+  </div>
 </div>
 </body>
 </html>
