@@ -539,8 +539,12 @@ function CataloguePicker(props: CataloguePickerProps) {
           { method: "GET", accessToken },
         );
         if (!cancelled) {
-          setResults(response.results ?? []);
-          setActiveIndex(0);
+          const nextResults = response.results ?? [];
+          setResults(nextResults);
+          // Highlight the first MATCH by default (the add-row above it is
+          // discoverable but Enter should still pick the top suggestion).
+          const hasAddRow = !nextResults.some((result) => result.label.toLowerCase() === trimmed.toLowerCase());
+          setActiveIndex(hasAddRow && nextResults.length > 0 ? 1 : 0);
         }
       } catch {
         if (!cancelled) setResults([]);
@@ -564,12 +568,15 @@ function CataloguePicker(props: CataloguePickerProps) {
 
   const trimmedQuery = query.trim();
   const hasExactMatch = results.some((result) => result.label.toLowerCase() === trimmedQuery.toLowerCase());
+  // Custom add sits at the TOP of the menu in its own section (approved pickers
+  // card, 2026-07-09): users must see that adding is possible without scrolling.
+  const customOption = trimmedQuery && !hasExactMatch
+    ? { key: `custom-${trimmedQuery}`, label: trimmedQuery, custom: true }
+    : undefined;
   const options: Array<{ key: string; label: string; custom: boolean }> = [
+    ...(customOption ? [customOption] : []),
     ...results.map((result) => ({ key: result.id, label: result.label, custom: false })),
   ];
-  if (trimmedQuery && !hasExactMatch) {
-    options.push({ key: `custom-${trimmedQuery}`, label: trimmedQuery, custom: true });
-  }
 
   function choose(value: string) {
     if (props.mode === "single") {
@@ -655,11 +662,11 @@ function CataloguePicker(props: CataloguePickerProps) {
                 <li key={option.key} role="option" aria-selected={index === activeIndex}>
                   <button
                     type="button"
-                    className={`${styles.pickerOption} ${index === activeIndex ? styles.pickerOptionActive : ""}`}
+                    className={`${styles.pickerOption} ${option.custom ? styles.pickerOptionAdd : ""} ${index === activeIndex ? styles.pickerOptionActive : ""}`}
                     onMouseEnter={() => setActiveIndex(index)}
                     onClick={() => choose(option.label)}
                   >
-                    {option.custom ? `Add "${option.label}"` : option.label}
+                    {option.custom ? <>+ Add &ldquo;<b>{option.label}</b>&rdquo;</> : option.label}
                   </button>
                 </li>
               ))

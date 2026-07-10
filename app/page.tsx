@@ -23,59 +23,10 @@ const operatingLoop = [
   },
 ];
 
-const humanPathSlides = [
-  {
-    title: "Review role",
-    activeStep: 0,
-    sections: [
-      {
-        heading: "Job review",
-        copy: "Good Vibes All Day Co. · Senior Product Manager · Remote · Full-time",
-        items: ["Fit: Good / 86", "Owns roadmap clarity across product, customer insight, and GTM handoff", "Risk: may skew too growth-ops if discovery ownership is shallow"],
-      },
-      {
-        heading: "Recommended strategy",
-        copy: "Lead with product discovery, cross-functional launch rhythm, and turning vague customer signals into shipped roadmap decisions.",
-        items: ["Use PM operating examples", "Avoid generic passionate-about-product language"],
-      },
-    ],
-  },
-  {
-    title: "Contacts",
-    activeStep: 1,
-    sections: [
-      {
-        heading: "Contact identification",
-        copy: "Research starts with the likely reporting chain: owning product leader, manager layer, functional partner, then recruiter.",
-        items: ["Maya Chen · VP Product · Hiring Manager · 91% confidence", "Dev Patel · Director, Product Ops · Functional partner · 74% confidence", "Jordan Lee · Senior Recruiter · Talent partner · 68% confidence"],
-      },
-    ],
-  },
-  {
-    title: "Outreach",
-    activeStep: 2,
-    sections: [
-      {
-        heading: "Tailored outreach message",
-        copy: "Maya - saw Good Vibes is hiring a Senior PM to tighten the path from customer signal to shipped product bets. That shape is close to work I have led.",
-        items: ["Work example: customer insight to roadmap launch", "Tone: direct, specific, human", "Status: editable draft, not sent"],
-      },
-    ],
-  },
-  {
-    title: "Tracking",
-    activeStep: 3,
-    sections: [
-      {
-        heading: "Pursuit tracking",
-        copy: "Saving this screen moves the role into the right pipeline state and keeps outreach context attached.",
-        items: ["Opened the company posting", "Messaged Maya Chen", "Saved resume notes", "Follow up in five business days"],
-      },
-    ],
-  },
-];
-
+// Approved DS card components/home-human-path.html: each slide is the matching
+// Apply Wizard step 1:1 — the marketing preview IS the product screen.
 const humanPathSteps = ["Review", "Contacts", "Outreach", "Track"];
+const humanPathSlideCount = 4;
 
 const subscriptionTiers = [
   { name: "Good", price: "" },
@@ -151,58 +102,173 @@ export default function HomePage() {
           <h2 id="human-path-title">Human Path</h2>
           <p>You can do this on your own. Dumpster Fire packages the steps so you are not rebuilding the same path every morning.</p>
         </div>
-        <div className={styles.publicLandingHumanPathShow} aria-label="Human Path preview for a senior product manager role">
-          {humanPathSlides.map((slide, index) => (
-            <input className={styles.publicLandingHumanPathRadio} defaultChecked={index === 0} id={`human-path-slide-${index + 1}`} key={`${slide.title}-radio`} name="human-path-slide" type="radio" />
+        <div className={styles.publicLandingHumanPathShow} aria-label="Human Path preview for a senior producer role">
+          {humanPathSteps.map((label, index) => (
+            <input className={styles.publicLandingHumanPathRadio} defaultChecked={index === 0} id={`human-path-slide-${index + 1}`} key={`${label}-radio`} name="human-path-slide" type="radio" />
           ))}
           <div className={styles.publicLandingHumanPathViewport}>
             <div className={styles.publicLandingHumanPathTrack}>
-              {humanPathSlides.map((slide) => (
-                <article className={styles.publicLandingHumanPathSlide} key={slide.title} aria-label={`${slide.title} Human Path preview`}>
-                  <div className={styles.publicLandingHumanModal}>
-                    <div className={styles.publicLandingHumanModalHeader}>
-                      <h3>Human Path: Senior Product Manager</h3>
-                      <span aria-hidden="true">×</span>
+
+              {/* Slide 1 · Review */}
+              <article className={styles.publicLandingHumanPathSlide} aria-label="Review Human Path preview">
+                <div className={styles.publicLandingHumanPanel}>
+                  <div className={styles.publicLandingHumanPanelHeader}>
+                    <h3>Human Path: Senior Producer</h3>
+                  </div>
+                  <div className={styles.publicLandingHumanWizardSteps} aria-label="Human Path steps">
+                    {humanPathSteps.map((label, index) => (
+                      <label className={index === 0 ? styles.publicLandingHumanWizardStepActive : undefined} htmlFor={`human-path-slide-${index + 1}`} key={label}>
+                        <b>{index + 1}</b>
+                        {label}
+                      </label>
+                    ))}
+                  </div>
+                  <div className={styles.publicLandingHumanPanelStack}>
+                    <section className={styles.publicLandingHumanMode}>
+                      <span>Applying as:</span>
+                      <label><input defaultChecked type="checkbox" /><span>Executive Producer recommended</span></label>
+                      <label><input type="checkbox" /><span>Program Director</span></label>
+                    </section>
+                    <section>
+                      <strong>Job review</strong>
+                      <p>Liquid Death · $150k–$185k · Remote (US)</p>
+                      <p>Fit: Good / 88. Strong overlap on creative production and launch delivery.</p>
+                    </section>
+                    <section>
+                      <strong>Recommended strategy</strong>
+                      <p>Lead with the launch you shipped end to end; name the metric. Keep it to four sentences.</p>
+                    </section>
+                  </div>
+                  <div className={styles.publicLandingHumanPanelFooter}>
+                    <span className={styles.publicLandingHumanFooterLink}>Open job posting</span>
+                    <strong className={styles.publicLandingHumanFooterNext}>Continue</strong>
+                  </div>
+                </div>
+              </article>
+
+              {/* Slide 2 · Contacts */}
+              <article className={styles.publicLandingHumanPathSlide} aria-label="Contacts Human Path preview">
+                <div className={styles.publicLandingHumanPanel}>
+                  <div className={styles.publicLandingHumanPanelHeader}>
+                    <h3>Human Path: Senior Producer</h3>
+                  </div>
+                  <div className={styles.publicLandingHumanWizardSteps} aria-label="Human Path steps">
+                    {humanPathSteps.map((label, index) => (
+                      <label className={index === 1 ? styles.publicLandingHumanWizardStepActive : undefined} htmlFor={`human-path-slide-${index + 1}`} key={label}>
+                        <b>{index + 1}</b>
+                        {label}
+                      </label>
+                    ))}
+                  </div>
+                  <div className={styles.publicLandingHumanPanelStack}>
+                    <section>
+                      <strong>Human Path</strong>
+                      <p>The reporting chain is built automatically when you pursue this role: owning function, manager, functional leader, then recruiter.</p>
+                      <p className={styles.publicLandingHumanSuccess}>Found 2 reporting-chain contacts.</p>
+                    </section>
+                    <div className={styles.publicLandingHumanContact}>
+                      <input defaultChecked type="checkbox" />
+                      <span>
+                        <strong>Sam Lewis</strong>
+                        <em>VP, Brand &amp; Creative · Hiring Manager</em>
+                        <b>★★★★☆ · 82% confidence · Verified</b>
+                        <small>Owns the function this role reports into; confirmed current at Liquid Death.</small>
+                      </span>
                     </div>
-                    <div className={styles.publicLandingHumanWizardSteps} aria-label="Human Path steps">
-                      {humanPathSteps.map((label, index) => (
-                        <span className={index === slide.activeStep ? styles.publicLandingHumanWizardStepActive : undefined} key={label}>
-                          <b>{index + 1}</b>
-                          {label}
-                        </span>
-                      ))}
-                    </div>
-                    <div className={styles.publicLandingHumanModalStack}>
-                      {slide.sections.map((section) => (
-                        <section key={section.heading}>
-                          <strong>{section.heading}</strong>
-                          <p>{section.copy}</p>
-                          <ul>
-                            {section.items.map((item) => (
-                              <li key={item}>{item}</li>
-                            ))}
-                          </ul>
-                        </section>
-                      ))}
-                    </div>
-                    <div className={styles.publicLandingHumanModalFooter}>
-                      <span>Open job posting</span>
-                      <strong>{slide.activeStep === 3 ? "Save pursuit" : "Continue"}</strong>
+                    <div className={styles.publicLandingHumanContact}>
+                      <input type="checkbox" />
+                      <span>
+                        <strong>Willem Blom</strong>
+                        <em>Senior Recruiter · Recruiter</em>
+                        <b>★★★☆☆ · 64% confidence · Unverified lead</b>
+                        <small>Confirm this person before reaching out.</small>
+                      </span>
                     </div>
                   </div>
-                </article>
-              ))}
+                  <div className={styles.publicLandingHumanPanelFooter}>
+                    <span className={styles.publicLandingHumanFooterLink}>Open job posting</span>
+                    <strong className={styles.publicLandingHumanFooterNext}>Continue</strong>
+                  </div>
+                </div>
+              </article>
+
+              {/* Slide 3 · Outreach */}
+              <article className={styles.publicLandingHumanPathSlide} aria-label="Outreach Human Path preview">
+                <div className={styles.publicLandingHumanPanel}>
+                  <div className={styles.publicLandingHumanPanelHeader}>
+                    <h3>Human Path: Senior Producer</h3>
+                  </div>
+                  <div className={styles.publicLandingHumanWizardSteps} aria-label="Human Path steps">
+                    {humanPathSteps.map((label, index) => (
+                      <label className={index === 2 ? styles.publicLandingHumanWizardStepActive : undefined} htmlFor={`human-path-slide-${index + 1}`} key={label}>
+                        <b>{index + 1}</b>
+                        {label}
+                      </label>
+                    ))}
+                  </div>
+                  <div className={styles.publicLandingHumanPanelStack}>
+                    <section>
+                      <strong>Sam Lewis</strong>
+                      <p className={styles.publicLandingHumanMessage}>Hi Sam — I produced Topo Chico&apos;s launch end to end and shipped it across 40+ SKUs in a quarter. Liquid Death&apos;s Senior Producer role looks like the same problem at a louder volume. Worth a short conversation?</p>
+                      <span className={styles.publicLandingHumanFeedbackRow}>
+                        <span className={styles.publicLandingHumanFeedbackPrompt}>How&apos;s this draft?</span>
+                        <span className={`${styles.publicLandingHumanFeedbackBtn} ${styles.publicLandingHumanFeedbackApprove}`}>Approve</span>
+                        <span className={`${styles.publicLandingHumanFeedbackBtn} ${styles.publicLandingHumanFeedbackReject}`}>Reject</span>
+                      </span>
+                      <p className={styles.publicLandingHumanFeedbackNote}>Editable draft in your voice — never auto-sent.</p>
+                    </section>
+                  </div>
+                  <div className={styles.publicLandingHumanPanelFooter}>
+                    <span className={styles.publicLandingHumanFooterLink}>Open job posting</span>
+                    <strong className={styles.publicLandingHumanFooterNext}>Continue</strong>
+                  </div>
+                </div>
+              </article>
+
+              {/* Slide 4 · Track */}
+              <article className={styles.publicLandingHumanPathSlide} aria-label="Track Human Path preview">
+                <div className={styles.publicLandingHumanPanel}>
+                  <div className={styles.publicLandingHumanPanelHeader}>
+                    <h3>Human Path: Senior Producer</h3>
+                  </div>
+                  <div className={styles.publicLandingHumanWizardSteps} aria-label="Human Path steps">
+                    {humanPathSteps.map((label, index) => (
+                      <label className={index === 3 ? styles.publicLandingHumanWizardStepActive : undefined} htmlFor={`human-path-slide-${index + 1}`} key={label}>
+                        <b>{index + 1}</b>
+                        {label}
+                      </label>
+                    ))}
+                  </div>
+                  <div className={styles.publicLandingHumanPanelStack}>
+                    <section>
+                      <strong>Pursuit tracking</strong>
+                      <p>Check what happened. Saving moves the role into the right pipeline state.</p>
+                    </section>
+                    <div className={styles.publicLandingHumanChecklist}>
+                      <label><input defaultChecked type="checkbox" /><span>Applied online</span></label>
+                      <label><input type="checkbox" /><span>Applied via LinkedIn</span></label>
+                      <label><input defaultChecked type="checkbox" /><span>Messaged Sam Lewis</span></label>
+                      <label><input type="checkbox" /><span>Saved for follow-up</span></label>
+                    </div>
+                  </div>
+                  <div className={styles.publicLandingHumanPanelFooter}>
+                    <span className={styles.publicLandingHumanFooterLink}>Open job posting</span>
+                    <strong className={styles.publicLandingHumanFooterNext}>Save pursuit</strong>
+                  </div>
+                </div>
+              </article>
+
             </div>
           </div>
           <div className={styles.publicLandingHumanPathArrows} aria-label="Human Path slideshow controls">
-            {humanPathSlides.map((slide, index) => {
-              const previousSlide = index === 0 ? humanPathSlides.length : index;
-              const nextSlide = index === humanPathSlides.length - 1 ? 1 : index + 2;
+            {humanPathSteps.map((label, index) => {
+              const previousSlide = index === 0 ? humanPathSlideCount : index;
+              const nextSlide = index === humanPathSlideCount - 1 ? 1 : index + 2;
 
               return (
-                <div className={styles.publicLandingHumanPathArrowSet} key={`${slide.title}-arrows`}>
+                <div className={styles.publicLandingHumanPathArrowSet} key={`${label}-arrows`}>
                   <label htmlFor={`human-path-slide-${previousSlide}`} aria-label="Previous Human Path slide">←</label>
-                  <span>Slide {index + 1} of {humanPathSlides.length}</span>
+                  <span>Slide {index + 1} of {humanPathSlideCount}</span>
                   <label htmlFor={`human-path-slide-${nextSlide}`} aria-label="Next Human Path slide">→</label>
                 </div>
               );
