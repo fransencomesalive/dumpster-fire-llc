@@ -90,6 +90,14 @@ https://supabase.com/dashboard/account/tokens if missing.
   production aliases (2026-07-09); columns confirmed gone; recorded as
   `drop_identity_url_fields`.
 
+- `20260709000300_drop_overclaim_rolefit_companytypes.sql` — drops
+  `candidate_profile_preferences.target_company_types`, `role_tracks.do_not_overclaim`,
+  `skill_profiles.best_role_fit`, `skill_profiles.do_not_overclaim` (findings-batch
+  decisions #1-#3). Validated first on a throwaway local Postgres 16 (clean apply +
+  idempotent re-apply). Applied via the Management API AFTER deploy `58c6734` was
+  verified live (new OnboardingClient chunk confirmed serving); `information_schema`
+  confirms all four columns gone; recorded as `drop_overclaim_rolefit_companytypes`.
+
 ## NOT yet applied to production
 
 - None outstanding.
