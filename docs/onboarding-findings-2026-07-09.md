@@ -62,6 +62,26 @@ Also shipped in this batch:
   register_assets + local design-system/ mirror + sweep all cards showing a
   changed surface).
 
+### Card-interior batch DESIGNED 2026-07-10 (in Claude Design, PENDING Randall's approval there)
+
+Randall's direction (2026-07-10, Work Examples screenshot): card interiors follow no
+grid/hierarchy; "Add ____" buttons too big → teal [+] beside the title; saved work
+examples collapse to title-only expandable cards; every saved section/prose field shows
+its copy as plain text with a themed thick-pencil Edit button that flips back to the
+prefilled input. Three cards built + synced (Onboarding group):
+- **onboarding-card-interior.html (NEW spec):** head row (title + [+] + track chip),
+  single intro type style (kills the mixed-font collision), saved-text/pencil-edit
+  field states, control specs (34px teal [+], 32px pencil, 2.6-stroke).
+- **onboarding-work-examples.html (NEW):** folds in findings #7–#10 — new intro line,
+  collapsed live-title rows, expand→read w/ pencil per field, [+] add flow, per-entry
+  Save (card-bottom "Save Work Examples" retired; supersedes #9's next-to-Save).
+- **onboarding-skills.html (NEW):** folds in #12–#15 — Evidence → "Metrics / Results",
+  44px proficiency dropdown, name+proficiency collapsed rows, per-entry Save
+  (supersedes #13).
+NOT implemented in production — waiting on approval in Claude Design. Implementation
+note when approved: per-entry save + saved/edit states touch OnboardingClient section
+save flows (whole-array PATCHes stay; UI state machine per entry/field).
+
 ### Design-batch queue (Claude Design pipeline; nothing built yet)
 - #1 industries picker custom-add at TOP of dropdown (own section + divider).
 - #5 avoid-companies chip/token feedback + visible saved list.

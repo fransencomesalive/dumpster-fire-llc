@@ -1,0 +1,176 @@
+<!-- @dsCard group="Onboarding" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Onboarding · Card interior — hierarchy, [+] add, saved states</title>
+<link rel="stylesheet" href="../tokens/tokens.css" />
+<link rel="stylesheet" href="../lib/base.css" />
+<style>
+  /* Plain paper — no halftone in new work (Randall, 2026-07-04). */
+  body { margin: 0; color: var(--c-ink); font-family: var(--font-body); background: var(--c-paper); }
+
+  .wrap { max-width: 1080px; margin: 0 auto; padding: var(--space-6) var(--space-5); display: grid; gap: var(--space-6); }
+  h1.page { font-family: var(--font-display); font-size: var(--type-h1); margin: 0 0 var(--space-2); }
+  .lede { color: var(--role-text-muted); max-width: 76ch; margin: 0; }
+  .lede b { color: var(--c-ink); font-weight: normal; }
+  .scroller { overflow-x: auto; }
+  .frame { width: 100%; min-width: 640px; display: grid; gap: var(--space-6); }
+  .state { display: grid; gap: var(--space-3); }
+  .stateCap { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: var(--tracking-subhead, 0.05em);
+    font-size: var(--type-caption); color: var(--role-text-faint); }
+  .stateCap b { color: var(--c-ink); }
+
+  .section { max-width: 720px; background-color: var(--c-paper-deep); background-image: var(--fiber-img), var(--grain-img);
+    background-blend-mode: normal, soft-light; background-size: 170px 170px, 46px 46px;
+    border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-lg); box-shadow: var(--shadow-card);
+    padding: var(--space-5); display: grid; gap: var(--space-4); }
+
+  /* ==== THE CARD-HEAD HIERARCHY (Randall, 2026-07-10) ====
+     One row: title + teal [+] add button beside it; the active-track chip on the right.
+     The oversized "Add Work Example" / "Add Skill" secondary buttons are RETIRED. */
+  .cardHead { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); flex-wrap: wrap; }
+  .titleGroup { display: inline-flex; align-items: center; gap: var(--space-3); }
+  .cardHead h2 { font-family: var(--font-display); font-size: var(--type-h2); color: var(--c-ink); margin: 0; }
+  .addBtn { flex: none; display: inline-flex; align-items: center; justify-content: center;
+    width: 34px; height: 34px; border-radius: 50%; color: var(--c-paper); background-color: var(--c-teal);
+    background-image: var(--fiber-img), var(--grain-img); background-blend-mode: normal, soft-light;
+    background-size: 170px 170px, 46px 46px; border: var(--line-bold) solid var(--c-ink);
+    box-shadow: 2px 2px 0 var(--c-ink); cursor: pointer;
+    font-family: var(--font-display); font-size: 1.25rem; line-height: 1; padding: 0 0 2px; }
+  .trackChip { display: inline-flex; align-items: center; gap: 8px; font-family: var(--font-subhead);
+    text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.8rem; color: var(--c-paper);
+    background: var(--c-teal); border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-pill);
+    padding: 5px 12px; }
+  .trackChip .dot { width: 8px; height: 8px; border-radius: 999px; background: var(--c-paper); }
+
+  /* ==== THE INTRO STACK ====
+     Both helper lines share ONE type style — font-ui, type-small, muted, 1.45 —
+     killing the current mixed-font, cramped-leading collision. Track name is the
+     only emphasis. Grid gap between lines is space-1; the card grid provides the
+     space before content. */
+  .cardIntro { display: grid; gap: var(--space-1); }
+  .cardIntro p { font-family: var(--font-ui), Inter, system-ui, sans-serif; font-size: var(--type-small);
+    color: var(--role-text-muted); margin: 0; line-height: 1.45; max-width: 62ch; }
+  .cardIntro b { color: var(--c-ink); font-weight: 600; }
+
+  /* ==== SAVED vs EDITING field states (every section, incl. prose) ====
+     Saved: the copy renders as plain text with a pencil edit button on the label row.
+     Editing: the current input/textarea, prefilled, with a small per-field Save. */
+  .field { display: grid; gap: var(--space-2); }
+  .fieldHead { display: flex; align-items: center; gap: var(--space-3); }
+  .fieldLabel { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: var(--tracking-subhead);
+    font-size: var(--type-subhead); color: var(--c-ink); }
+  .editPencil { margin-left: auto; flex: none; display: inline-flex; align-items: center; justify-content: center;
+    width: 32px; height: 32px; color: var(--c-ink); background: var(--c-paper);
+    border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-md);
+    box-shadow: 2px 2px 0 var(--c-ink); cursor: pointer; }
+  .editPencil:hover { background: color-mix(in srgb, var(--c-teal) 14%, var(--c-paper)); }
+  .savedText { font-family: var(--font-body); font-size: var(--type-body); color: var(--c-ink);
+    margin: 0; line-height: 1.5; white-space: pre-line; }
+  .savedText.faint { color: var(--role-text-faint); font-style: italic; }
+
+  .ta { box-sizing: border-box; width: 100%; min-height: 96px; resize: vertical; font-family: var(--font-body);
+    font-size: var(--type-body); color: var(--c-ink); background: var(--c-paper);
+    border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-md); padding: 10px var(--space-3); }
+  .subhint { font-size: 0.86rem; color: var(--role-text-faint); }
+
+  .saveSmall { justify-self: start; font-family: var(--font-display); font-size: 0.95rem; color: var(--c-paper);
+    background-color: var(--c-teal); border: var(--line-bold) solid var(--c-ink); border-radius: var(--radius-md);
+    box-shadow: var(--shadow-card); padding: var(--space-2) var(--space-4); cursor: pointer; }
+
+  /* Spec swatches */
+  .swatchRow { display: flex; align-items: center; gap: var(--space-5); flex-wrap: wrap; }
+  .swatchCap { font-size: var(--type-caption); color: var(--role-text-faint); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div>
+    <h1 class="page">Onboarding · Card interior <span style="font-size:0.6em; color: var(--role-text-faint);">hierarchy · [+] add · saved states</span></h1>
+    <p class="lede">The interior spec every onboarding section card follows (Randall, 2026-07-10).
+    Three rules. <b>One head row:</b> title + teal <b>[+]</b> beside it (the oversized "Add ____"
+    buttons are retired), active-track chip on the right. <b>One intro style:</b> the "You're
+    populating…" line and the card's purpose line share a single font, size, and leading — no more
+    mixed families. <b>Two field states:</b> saved copy renders as plain text with a pencil edit
+    button; the pencil flips it back to the prefilled input with a small Save. Entry-style sections
+    (Work Examples, Skills) collapse each saved entry to a title-only row — see their own cards.</p>
+  </div>
+
+  <div class="scroller"><div class="frame">
+
+    <!-- STATE 1 — head + intro anatomy -->
+    <div class="state">
+      <div class="stateCap"><b>1 · Head + intro</b> — title + [+] + chip on one row; two intro lines, one type style.</div>
+      <div class="section">
+        <div class="cardHead">
+          <span class="titleGroup">
+            <h2>Work Examples</h2>
+            <button type="button" class="addBtn" aria-label="Add work example">+</button>
+          </span>
+          <span class="trackChip"><span class="dot"></span>Executive Producer</span>
+        </div>
+        <div class="cardIntro">
+          <p>You&rsquo;re populating <b>Executive Producer</b>. Switch lanes from Card 1&rsquo;s dropdown.</p>
+          <p>Add examples of your work that are worth mentioning to hiring managers. The one-hitter is the punchy line that can drop straight into a message.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- STATE 2 — prose field, SAVED -->
+    <div class="state">
+      <div class="stateCap"><b>2 · Prose field, saved</b> — copy reads as text; the pencil is the only control.</div>
+      <div class="section">
+        <div class="field">
+          <div class="fieldHead">
+            <span class="fieldLabel">What makes a role a poor fit</span>
+            <button type="button" class="editPencil" aria-label="Edit what makes a role a poor fit">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+            </button>
+          </div>
+          <p class="savedText">Pure maintenance work with nothing to build
+Roles where I&rsquo;d own the plan but not the budget
+Teams that treat production as a service desk</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- STATE 3 — same field, EDITING -->
+    <div class="state">
+      <div class="stateCap"><b>3 · Same field, editing</b> — pencil clicked: the prefilled input is back, with a small Save.</div>
+      <div class="section">
+        <div class="field">
+          <div class="fieldHead">
+            <span class="fieldLabel">What makes a role a poor fit</span>
+          </div>
+          <textarea class="ta">Pure maintenance work with nothing to build
+Roles where I&rsquo;d own the plan but not the budget
+Teams that treat production as a service desk</textarea>
+          <span class="subhint">One signal per line. These shape rating context, never hard filters.</span>
+          <button type="button" class="saveSmall">Save</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- STATE 4 — control specs -->
+    <div class="state">
+      <div class="stateCap"><b>4 · Controls</b> — the [+] add (34px, teal, bold ink ring) and the pencil (32px, paper, thick 2.6 stroke).</div>
+      <div class="section">
+        <div class="swatchRow">
+          <button type="button" class="addBtn" aria-label="Add">+</button>
+          <span class="swatchCap">[+] add — 34px circle, teal fill, --line-bold ink border, 2px ink shadow, display-font plus. Sits beside the section title: &ldquo;Skills [+]&rdquo;.</span>
+        </div>
+        <div class="swatchRow">
+          <button type="button" class="editPencil" aria-label="Edit">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+          </button>
+          <span class="swatchCap">Edit pencil — 32px square, paper fill, --line-reg ink border, 2px ink shadow, 2.6-stroke pencil; teal-tint hover. Right-aligned on the field&rsquo;s label row.</span>
+        </div>
+      </div>
+    </div>
+
+  </div></div>
+</div>
+</body>
+</html>

@@ -1,0 +1,254 @@
+<!-- @dsCard group="Onboarding" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Onboarding · Work Examples — collapsed entries, [+] add, saved/edit</title>
+<link rel="stylesheet" href="../tokens/tokens.css" />
+<link rel="stylesheet" href="../lib/base.css" />
+<style>
+  /* Plain paper — no halftone in new work (Randall, 2026-07-04). */
+  body { margin: 0; color: var(--c-ink); font-family: var(--font-body); background: var(--c-paper); }
+
+  .wrap { max-width: 1080px; margin: 0 auto; padding: var(--space-6) var(--space-5); display: grid; gap: var(--space-6); }
+  h1.page { font-family: var(--font-display); font-size: var(--type-h1); margin: 0 0 var(--space-2); }
+  .lede { color: var(--role-text-muted); max-width: 76ch; margin: 0; }
+  .lede b { color: var(--c-ink); font-weight: normal; }
+  .scroller { overflow-x: auto; }
+  .frame { width: 100%; min-width: 640px; display: grid; gap: var(--space-6); }
+  .state { display: grid; gap: var(--space-3); }
+  .stateCap { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: var(--tracking-subhead, 0.05em);
+    font-size: var(--type-caption); color: var(--role-text-faint); }
+  .stateCap b { color: var(--c-ink); }
+
+  .section { max-width: 720px; background-color: var(--c-paper-deep); background-image: var(--fiber-img), var(--grain-img);
+    background-blend-mode: normal, soft-light; background-size: 170px 170px, 46px 46px;
+    border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-lg); box-shadow: var(--shadow-card);
+    padding: var(--space-5); display: grid; gap: var(--space-4); }
+
+  /* Card-interior spec (onboarding-card-interior card): head row + intro stack */
+  .cardHead { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); flex-wrap: wrap; }
+  .titleGroup { display: inline-flex; align-items: center; gap: var(--space-3); }
+  .cardHead h2 { font-family: var(--font-display); font-size: var(--type-h2); color: var(--c-ink); margin: 0; }
+  .addBtn { flex: none; display: inline-flex; align-items: center; justify-content: center;
+    width: 34px; height: 34px; border-radius: 50%; color: var(--c-paper); background-color: var(--c-teal);
+    background-image: var(--fiber-img), var(--grain-img); background-blend-mode: normal, soft-light;
+    background-size: 170px 170px, 46px 46px; border: var(--line-bold) solid var(--c-ink);
+    box-shadow: 2px 2px 0 var(--c-ink); cursor: pointer;
+    font-family: var(--font-display); font-size: 1.25rem; line-height: 1; padding: 0 0 2px; }
+  .trackChip { display: inline-flex; align-items: center; gap: 8px; font-family: var(--font-subhead);
+    text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.8rem; color: var(--c-paper);
+    background: var(--c-teal); border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-pill);
+    padding: 5px 12px; }
+  .trackChip .dot { width: 8px; height: 8px; border-radius: 999px; background: var(--c-paper); }
+  .cardIntro { display: grid; gap: var(--space-1); }
+  .cardIntro p { font-family: var(--font-ui), Inter, system-ui, sans-serif; font-size: var(--type-small);
+    color: var(--role-text-muted); margin: 0; line-height: 1.45; max-width: 62ch; }
+  .cardIntro b { color: var(--c-ink); font-weight: 600; }
+
+  /* ==== Saved entries collapse to title-only rows (Randall, 2026-07-10) ==== */
+  .entryList { display: grid; gap: var(--space-2); }
+  .entryRow { display: flex; align-items: center; gap: var(--space-3); text-align: left; width: 100%;
+    box-sizing: border-box; background: var(--c-paper); border: var(--line-reg) solid var(--c-ink);
+    border-radius: var(--radius-md); padding: var(--space-3) var(--space-4); cursor: pointer; }
+  .entryRow:hover { background: color-mix(in srgb, var(--c-teal) 8%, var(--c-paper)); }
+  .entryTitle { font-family: var(--font-display); font-size: 1.05rem; color: var(--c-ink); min-width: 0;
+    overflow-wrap: anywhere; }
+  .entryCaret { margin-left: auto; flex: none; color: var(--role-text-faint); font-size: 0.9rem; }
+
+  /* Expanded entry — a panel that grows out of the row */
+  .entryOpen { background: var(--c-paper); border: var(--line-reg) solid var(--c-ink);
+    border-radius: var(--radius-md); padding: var(--space-4); display: grid; gap: var(--space-4); }
+  .entryOpenHead { display: flex; align-items: center; gap: var(--space-3); }
+  .entryOpenHead .entryCaret { color: var(--c-ink); }
+
+  /* Field states (card-interior spec) */
+  .field { display: grid; gap: var(--space-2); }
+  .fieldHead { display: flex; align-items: center; gap: var(--space-3); }
+  .fieldLabel { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: var(--tracking-subhead);
+    font-size: var(--type-subhead); color: var(--c-ink); }
+  .help { font-size: var(--type-caption); color: var(--role-text-faint); }
+  .editPencil { margin-left: auto; flex: none; display: inline-flex; align-items: center; justify-content: center;
+    width: 32px; height: 32px; color: var(--c-ink); background: var(--c-paper);
+    border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-md);
+    box-shadow: 2px 2px 0 var(--c-ink); cursor: pointer; }
+  .editPencil:hover { background: color-mix(in srgb, var(--c-teal) 14%, var(--c-paper)); }
+  .savedText { font-family: var(--font-body); font-size: var(--type-body); color: var(--c-ink);
+    margin: 0; line-height: 1.5; white-space: pre-line; }
+  .savedText a { color: var(--c-ink); }
+
+  .grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-4); }
+  .input { box-sizing: border-box; width: 100%; min-height: 44px; font-family: var(--font-body);
+    font-size: var(--type-body); color: var(--c-ink); background: var(--c-paper-deep);
+    border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-md); padding: 10px var(--space-3); }
+  .input.placeholder { font-style: italic; color: var(--role-text-faint); }
+  .ta { box-sizing: border-box; width: 100%; min-height: 88px; resize: vertical; font-family: var(--font-body);
+    font-size: var(--type-body); color: var(--c-ink); background: var(--c-paper-deep);
+    border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-md); padding: 10px var(--space-3); }
+  .ta.placeholder { font-style: italic; color: var(--role-text-faint); }
+
+  .entryActions { display: flex; align-items: center; gap: var(--space-3); }
+  .saveSmall { font-family: var(--font-display); font-size: 0.95rem; color: var(--c-paper);
+    background-color: var(--c-teal); border: var(--line-bold) solid var(--c-ink); border-radius: var(--radius-md);
+    box-shadow: var(--shadow-card); padding: var(--space-2) var(--space-4); cursor: pointer; }
+  .removeGhost { margin-left: auto; font-family: var(--font-display); font-size: 0.9rem; color: var(--role-text-muted);
+    background: transparent; border: var(--line-reg) solid transparent; border-radius: var(--radius-md);
+    padding: var(--space-2) var(--space-3); cursor: pointer; }
+  .removeGhost:hover { color: var(--c-paper); background: var(--c-tomato); border-color: var(--c-ink); }
+
+  .emptyState { font-family: var(--font-ui), Inter, system-ui, sans-serif; font-size: var(--type-small);
+    color: var(--role-text-muted); background: var(--c-paper); border: var(--line-hair) dashed var(--c-paper-edge);
+    border-radius: var(--radius-md); padding: var(--space-4); margin: 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div>
+    <h1 class="page">Onboarding · Work Examples</h1>
+    <p class="lede">Rebuilt to the card-interior spec (Randall, 2026-07-10; folds in findings #7–#10).
+    <b>[+] beside the title</b> adds an example (the big button is gone — supersedes #9&rsquo;s
+    &ldquo;next to Save&rdquo;). A saved example <b>collapses to a title-only row</b> — its live title,
+    not &ldquo;Example 1&rdquo; (#10). Expanding shows the saved copy as text with a pencil per field;
+    <b>each entry saves itself</b> from its own Save, so the card-bottom &ldquo;Save Work Examples&rdquo;
+    button is retired. New intro line per #7.</p>
+  </div>
+
+  <div class="scroller"><div class="frame">
+
+    <!-- STATE 1 — saved entries collapsed, one expanded in read mode -->
+    <div class="state">
+      <div class="stateCap"><b>1 · Saved</b> — collapsed title rows; the expanded entry reads as text, pencil per field.</div>
+      <div class="section">
+        <div class="cardHead">
+          <span class="titleGroup">
+            <h2>Work Examples</h2>
+            <button type="button" class="addBtn" aria-label="Add work example">+</button>
+          </span>
+          <span class="trackChip"><span class="dot"></span>Executive Producer</span>
+        </div>
+        <div class="cardIntro">
+          <p>You&rsquo;re populating <b>Executive Producer</b>. Switch lanes from Card 1&rsquo;s dropdown.</p>
+          <p>Add examples of your work that are worth mentioning to hiring managers. The one-hitter is the punchy line that can drop straight into a message.</p>
+        </div>
+
+        <div class="entryList">
+          <button type="button" class="entryRow">
+            <span class="entryTitle">Fortnite × Nike Air Max activation</span>
+            <span class="entryCaret">▸</span>
+          </button>
+
+          <div class="entryOpen">
+            <div class="entryOpenHead">
+              <span class="entryTitle">Dumpster Fire launch site</span>
+              <span class="entryCaret">▾</span>
+            </div>
+            <div class="field">
+              <div class="fieldHead">
+                <span class="fieldLabel">One-hitter</span>
+                <button type="button" class="editPencil" aria-label="Edit one-hitter">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                </button>
+              </div>
+              <p class="savedText">Took a job-search tool from zero to launched in six weeks with a two-person team.</p>
+            </div>
+            <div class="field">
+              <div class="fieldHead">
+                <span class="fieldLabel">Link</span>
+                <button type="button" class="editPencil" aria-label="Edit link">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                </button>
+              </div>
+              <p class="savedText"><a href="#">thejobmarketisadumpsterfire.com</a></p>
+            </div>
+            <div class="field">
+              <div class="fieldHead">
+                <span class="fieldLabel">Context</span>
+                <button type="button" class="editPencil" aria-label="Edit context">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                </button>
+              </div>
+              <p class="savedText">Owned scope, build sequencing, and launch. Shipped auth, matching, and outreach generation against a hard date.</p>
+            </div>
+            <div class="entryActions">
+              <button type="button" class="removeGhost">Remove example</button>
+            </div>
+          </div>
+
+          <button type="button" class="entryRow">
+            <span class="entryTitle">Corn Dog Digital rebrand</span>
+            <span class="entryCaret">▸</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- STATE 2 — [+] clicked: a fresh entry editor -->
+    <div class="state">
+      <div class="stateCap"><b>2 · Adding</b> — [+] opens an empty editor below the rows; its Save collapses it into a titled row.</div>
+      <div class="section">
+        <div class="cardHead">
+          <span class="titleGroup">
+            <h2>Work Examples</h2>
+            <button type="button" class="addBtn" aria-label="Add work example">+</button>
+          </span>
+          <span class="trackChip"><span class="dot"></span>Executive Producer</span>
+        </div>
+
+        <div class="entryList">
+          <button type="button" class="entryRow">
+            <span class="entryTitle">Fortnite × Nike Air Max activation</span>
+            <span class="entryCaret">▸</span>
+          </button>
+
+          <div class="entryOpen">
+            <div class="grid2">
+              <div class="field">
+                <div class="fieldHead"><span class="fieldLabel">Title</span></div>
+                <input class="input placeholder" value="Name the work" />
+              </div>
+              <div class="field">
+                <div class="fieldHead"><span class="fieldLabel">Link</span><span class="help">optional</span></div>
+                <input class="input placeholder" value="https://" />
+              </div>
+            </div>
+            <div class="field">
+              <div class="fieldHead"><span class="fieldLabel">One-hitter</span></div>
+              <input class="input placeholder" value="A single punchy line you could drop into a message" />
+            </div>
+            <div class="field">
+              <div class="fieldHead"><span class="fieldLabel">Context</span></div>
+              <textarea class="ta placeholder">What it was, what you owned, what came of it</textarea>
+            </div>
+            <div class="entryActions">
+              <button type="button" class="saveSmall">Save example</button>
+              <button type="button" class="removeGhost">Discard</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STATE 3 — empty card -->
+    <div class="state">
+      <div class="stateCap"><b>3 · Empty</b> — first visit; the [+] is the only path in.</div>
+      <div class="section">
+        <div class="cardHead">
+          <span class="titleGroup">
+            <h2>Work Examples</h2>
+            <button type="button" class="addBtn" aria-label="Add work example">+</button>
+          </span>
+          <span class="trackChip"><span class="dot"></span>Executive Producer</span>
+        </div>
+        <div class="cardIntro">
+          <p>You&rsquo;re populating <b>Executive Producer</b>. Switch lanes from Card 1&rsquo;s dropdown.</p>
+          <p>Add examples of your work that are worth mentioning to hiring managers. The one-hitter is the punchy line that can drop straight into a message.</p>
+        </div>
+        <p class="emptyState">No work examples yet. Hit + and add a few with a punchy one-hitter and the context behind it.</p>
+      </div>
+    </div>
+
+  </div></div>
+</div>
+</body>
+</html>

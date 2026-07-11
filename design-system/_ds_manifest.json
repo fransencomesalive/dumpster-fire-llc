@@ -154,6 +154,18 @@
     {
       "group": "Chrome",
       "path": "components/footer.html"
+    },
+    {
+      "path": "components/onboarding-card-interior.html",
+      "group": "Onboarding"
+    },
+    {
+      "path": "components/onboarding-work-examples.html",
+      "group": "Onboarding"
+    },
+    {
+      "path": "components/onboarding-skills.html",
+      "group": "Onboarding"
     }
   ],
   "templates": [],
