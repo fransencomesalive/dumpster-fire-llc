@@ -1,0 +1,77 @@
+<!-- @dsCard group="Onboarding" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Onboarding · Profile complete — first-scan handoff</title>
+<link rel="stylesheet" href="../tokens/tokens.css" />
+<link rel="stylesheet" href="../lib/base.css" />
+<style>
+  /* PROFILE COMPLETE · the moment onboarding finishes. Replaces the silent
+     auto-redirect to the scan page (Randall, 2026-07-11): a modal that names
+     the win and hands off to the first scan, with a way back to keep editing.
+     Layout + mascot borrowed from the Run-scan overlay (scan-progress card) so
+     the two moments feel like one system. Class names mirror the intended
+     production port (OnboardingClient / dashboard module). -->
+  body { margin: 0; background: var(--c-paper); font-family: var(--font-body); }
+
+  .completeOverlay { position: relative; min-height: 100vh; z-index: 210;
+    background: rgba(36, 31, 26, 0.62);
+    display: flex; align-items: flex-start; justify-content: center;
+    padding: var(--space-6); box-sizing: border-box; }
+
+  .completeBox { width: min(520px, 100%); box-sizing: border-box; text-align: center;
+    background-color: var(--c-paper-deep); background-image: var(--fiber-img), var(--grain-img);
+    background-blend-mode: normal, soft-light; background-size: 170px 170px, 46px 46px;
+    border: var(--line-bold) solid var(--c-ink); border-radius: var(--radius-lg);
+    box-shadow: 6px 6px 0 rgba(36, 31, 26, 0.55); padding: var(--space-6); }
+
+  /* Mascot · same die-cut standee edge + hard block shadow as the scan overlay. */
+  .completeMascot { display: block; width: 132px; height: 132px; margin: 0 auto var(--space-3);
+    object-fit: contain;
+    filter: drop-shadow(2px 0 0 var(--c-paper)) drop-shadow(-2px 0 0 var(--c-paper))
+            drop-shadow(0 2px 0 var(--c-paper)) drop-shadow(4px 5px 0 rgba(36, 31, 26, 0.26)); }
+
+  .completeTitle { font-family: var(--font-display); font-size: 2rem; line-height: 1.02;
+    color: var(--c-ink); margin: 0 0 var(--space-3); }
+
+  .completeBody { font-family: var(--font-body); font-size: var(--type-body); line-height: 1.5;
+    color: var(--role-text-muted); margin: 0 auto var(--space-5); max-width: 40ch; }
+  .completeBody b { color: var(--c-ink); font-weight: normal; }
+
+  .completeFoot { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-3); }
+
+  /* Primary = teal forward motion (positive CTA convention, Randall 2026-07-04). */
+  .btnScan { font-family: var(--font-display); font-size: 1.05rem; color: var(--c-paper);
+    background-color: var(--c-teal); background-image: var(--fiber-img), var(--grain-img);
+    background-blend-mode: normal, soft-light; background-size: 170px 170px, 46px 46px;
+    border: var(--line-bold) solid var(--c-ink); border-radius: var(--radius-md);
+    box-shadow: var(--shadow-card); padding: var(--space-3) var(--space-6); cursor: pointer; }
+
+  /* Secondary = quiet paper; keep editing is a step back, not a dead end. */
+  .btnKeep { font-family: var(--font-display); font-size: 1.05rem; color: var(--c-ink);
+    background: var(--c-paper); border: var(--line-reg) solid var(--c-ink);
+    border-radius: var(--radius-md); box-shadow: var(--shadow-card);
+    padding: var(--space-3) var(--space-5); cursor: pointer; }
+
+  .dsLabel { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: var(--tracking-subhead, 0.05em);
+    font-size: var(--type-caption); color: var(--c-paper); margin: 0 0 var(--space-3); position: absolute; top: var(--space-4); }
+</style>
+</head>
+<body>
+  <div class="completeOverlay">
+    <p class="dsLabel">Profile complete · hands off to the first scan, or back to editing</p>
+    <div class="completeBox" role="dialog" aria-modal="true" aria-labelledby="complete-title">
+      <img class="completeMascot" src="../DF-small.gif" alt="" aria-hidden="true" />
+      <h2 id="complete-title" class="completeTitle">Profile complete</h2>
+      <p class="completeBody">That&rsquo;s the hard part done. Your profile is ready to work &mdash; let&rsquo;s point it at some
+      real jobs and see what comes back. You can always <b>keep editing</b> later.</p>
+      <div class="completeFoot">
+        <button type="button" class="btnScan">Start your first scan</button>
+        <button type="button" class="btnKeep">Keep editing</button>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

@@ -124,6 +124,10 @@
       "group": "Onboarding"
     },
     {
+      "path": "components/onboarding-profile-complete.html",
+      "group": "Onboarding"
+    },
+    {
       "group": "Components",
       "path": "components/compiler.html"
     },
