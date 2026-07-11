@@ -405,6 +405,12 @@ function weakFieldBelongsToSection(sectionKey: PublicProfileOnboardingSectionKey
   return reasonBelongsToSection(sectionKey, weakField);
 }
 
+function proficiencyLabel(proficiency: SkillProficiency) {
+  if (proficiency === "expert") return "Expert";
+  if (proficiency === "strong") return "Strong";
+  return "Working";
+}
+
 function readinessLabel(status: SectionReadinessStatus) {
   switch (status) {
     case "complete":
@@ -834,6 +840,20 @@ export default function OnboardingClient({
   const resumeFileInputRef = useRef<HTMLInputElement>(null);
   const trackSelectRef = useRef<HTMLDivElement>(null);
 
+  // Card-interior spec (Randall, 2026-07-10). Saved entries (Work Examples, Skills)
+  // collapse to title rows; one expands at a time. A brand-new entry lives in a
+  // separate draft slot — NOT in the persisted array — until its Save, because the
+  // server reassigns a fresh id to any unowned entry (resolveOwnedItemId) and a
+  // whole-array PATCH would otherwise persist every half-filled new entry at once.
+  const [openWorkExampleId, setOpenWorkExampleId] = useState<string | null>(null);
+  const [draftWorkExample, setDraftWorkExample] = useState<WorkExampleSectionItem | null>(null);
+  const [openSkillId, setOpenSkillId] = useState<string | null>(null);
+  const [draftSkill, setDraftSkill] = useState<SkillsInventorySectionItem | null>(null);
+  // Per-field edit toggles, namespaced: `we.<id>.<field>`, `sk.<id>.<field>`,
+  // `voice.q1|q4|avoidNote`, `ws.<id>`, `fit.good|poor`. A key present = that field
+  // is showing its input; absent = its saved text + pencil (or the input if empty).
+  const [editingFields, setEditingFields] = useState<Set<string>>(() => new Set());
+
   // Comma-list inputs keep the user's raw text while typing. Parsing trims each
   // entry, and round-tripping the trimmed value back into the input used to eat
   // the space after every word (Randall, 2026-07-08 — "freelancefulltime").
@@ -1142,7 +1162,10 @@ export default function OnboardingClient({
   const saveIdentity = () =>
     saveSection<IdentitySearchSection>("Identity & Search", "/api/public-profile/identity-search", identity, (section) => setIdentity(section));
   const saveFitSignals = () =>
-    saveSection<FitSignalsSection>("Fit Signals", "/api/public-profile/fit-signals", fitSignals, (section) => setFitSignals(section));
+    saveSection<FitSignalsSection>("Fit Signals", "/api/public-profile/fit-signals", fitSignals, (section) => {
+      setFitSignals(section);
+      closeFields("fit."); // populated fields collapse back to saved-text/pencil
+    });
   // --- Card 1: Role Track + Résumé (onboarding-resume-upload DS card) ---
 
   const firstRun = roleTracks.length === 0;
@@ -1391,10 +1414,131 @@ export default function OnboardingClient({
       setBusy(false);
     }
   }
-  const saveWorkExamples = () =>
-    saveSection<WorkExamplesSection>("Work Examples", "/api/public-profile/work-examples", { workExamples }, (section) => setWorkExamples(section.workExamples));
-  const saveSkills = () =>
-    saveSection<SkillsInventorySection>("Skills", "/api/public-profile/skills", { skills }, (section) => setSkills(section.skills));
+  /* --- Card-interior field editing + entry saves (Randall, 2026-07-10) --- */
+
+  const isEditing = (key: string) => editingFields.has(key);
+  function openField(key: string) {
+    setEditingFields((current) => new Set(current).add(key));
+  }
+  function closeField(key: string) {
+    setEditingFields((current) => {
+      const next = new Set(current);
+      next.delete(key);
+      return next;
+    });
+  }
+  function closeFields(...prefixes: string[]) {
+    setEditingFields((current) => new Set([...current].filter((key) => !prefixes.some((prefix) => key.startsWith(prefix)))));
+  }
+
+  // Whole-array PATCH shared by per-field edits, new-draft saves, and removes
+  // (Card 1 titles precedent). Returns the response so callers collapse the right
+  // piece only when the save actually lands.
+  async function patchSection<T>(label: string, path: string, body: unknown): Promise<SectionResponse<T> | null> {
+    if (!accessToken) return null;
+    setBusy(true);
+    setMessage(`Saving ${label}…`);
+    try {
+      const response = await requestPublicProfileApi<SectionResponse<T>>(path, { method: "PATCH", accessToken, body });
+      applyProfileQuality(response.profileQuality);
+      if (!isProfileEditor) setReviewOpen(response.profileQuality.status === "incomplete");
+      setMessage(`${label} saved.`);
+      return response;
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Save failed.");
+      return null;
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function commitWorkExamples(nextExamples: WorkExampleSectionItem[], onSaved?: () => void) {
+    const response = await patchSection<WorkExamplesSection>("Work Examples", "/api/public-profile/work-examples", { workExamples: nextExamples });
+    if (!response) return;
+    setWorkExamples(response.section.workExamples);
+    onSaved?.();
+  }
+
+  async function commitSkills(nextSkills: SkillsInventorySectionItem[], onSaved?: () => void) {
+    const response = await patchSection<SkillsInventorySection>("Skills", "/api/public-profile/skills", { skills: nextSkills });
+    if (!response) return;
+    setSkills(response.section.skills);
+    onSaved?.();
+  }
+
+  const toggleWorkExampleOpen = (id: string) => setOpenWorkExampleId((current) => (current === id ? null : id));
+  const toggleSkillOpen = (id: string) => setOpenSkillId((current) => (current === id ? null : id));
+
+  function saveDraftWorkExample() {
+    if (!draftWorkExample) return;
+    void commitWorkExamples([...workExamples, draftWorkExample], () => setDraftWorkExample(null));
+  }
+  function removeWorkExample(id: string) {
+    void commitWorkExamples(workExamples.filter((item) => item.id !== id), () => {
+      if (openWorkExampleId === id) setOpenWorkExampleId(null);
+      closeFields(`we.${id}.`);
+    });
+  }
+  function saveDraftSkill() {
+    if (!draftSkill) return;
+    void commitSkills([...skills, draftSkill], () => setDraftSkill(null));
+  }
+  function removeSkill(id: string) {
+    void commitSkills(skills.filter((item) => item.id !== id), () => {
+      if (openSkillId === id) setOpenSkillId(null);
+      closeFields(`sk.${id}.`);
+    });
+  }
+
+  // A saved-entry field with the presentation read/edit toggle (card-interior spec):
+  // saved value + mustard pencil ↔ input + small per-field Save (whole-array PATCH).
+  // For list/checkbox fields the caller passes readNode + editNode instead.
+  function savedEntryField(opts: {
+    fieldKey: string;
+    label: string;
+    value?: string;
+    onChange?: (value: string) => void;
+    onSave: () => void;
+    isLink?: boolean;
+    multiline?: boolean;
+    readNode?: React.ReactNode;
+    editNode?: React.ReactNode;
+  }) {
+    const editing = isEditing(opts.fieldKey);
+    const trimmed = (opts.value ?? "").trim();
+    let read: React.ReactNode;
+    if (opts.readNode !== undefined) {
+      read = opts.readNode;
+    } else if (!trimmed) {
+      read = <p className={`${styles.savedText} ${styles.faint}`}>Not set yet</p>;
+    } else if (opts.isLink) {
+      read = <p className={styles.savedText}><a href={opts.value} target="_blank" rel="noreferrer">{opts.value}</a></p>;
+    } else {
+      read = <p className={styles.savedText}>{opts.value}</p>;
+    }
+    return (
+      <div className={styles.entryField}>
+        <div className={styles.entryFieldHead}>
+          <span className={styles.entryFieldLabel}>{opts.label}</span>
+          {editing ? null : editPencilButton(opts.fieldKey, `Edit ${opts.label.toLowerCase()}`)}
+        </div>
+        {editing ? (
+          <>
+            {opts.editNode ?? (
+              opts.multiline ? (
+                <textarea className={styles.entryTa} value={opts.value ?? ""} onChange={(event) => opts.onChange?.(event.target.value)} />
+              ) : (
+                <input className={styles.entryInput} value={opts.value ?? ""} onChange={(event) => opts.onChange?.(event.target.value)} />
+              )
+            )}
+            <button type="button" className={styles.saveSmall} disabled={busy} onClick={opts.onSave}>Save</button>
+          </>
+        ) : (
+          read
+        )}
+      </div>
+    );
+  }
 
   // Voice & Personality persists to two endpoints: voice-personality + writing-samples.
   async function saveVoiceAndPersonality() {
@@ -1415,6 +1559,8 @@ export default function OnboardingClient({
       setWritingSamples(writingResponse.section.writingSamples);
       applyProfileQuality(writingResponse.profileQuality);
       if (!isProfileEditor) setReviewOpen(writingResponse.profileQuality.status === "incomplete");
+      // Populated prose fields collapse back to their saved-text/pencil read state.
+      closeFields("voice.", "ws.");
       setMessage("Voice & Personality saved.");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Save failed.");
@@ -1561,24 +1707,90 @@ export default function OnboardingClient({
     <span className={styles.trackChip}><span className={styles.trackChipDot} />{activeTrack.name}</span>
   ) : null;
 
-  // Per-track card header (DS card state 4): h3 title + active-track chip.
-  function perTrackHeader(title: string, action?: React.ReactNode) {
+  // Per-track card header (card-interior spec): title + teal [+] add beside it,
+  // active-track chip on the right. onAdd omitted (Fit Signals) → no [+].
+  function perTrackHeader(title: string, onAdd?: () => void, addLabel?: string) {
     return (
       <div className={styles.cardHead}>
-        <h3 className={styles.cardTitle}>{title}</h3>
-        <span className={styles.cardHeadSide}>
-          {action}
-          {trackChip}
+        <span className={styles.titleGroup}>
+          <h3 className={styles.cardTitle}>{title}</h3>
+          {onAdd ? (
+            <button
+              type="button"
+              className={styles.addBtn}
+              aria-label={addLabel ?? `Add to ${title}`}
+              disabled={!accessToken || busy}
+              onClick={onAdd}
+            >
+              +
+            </button>
+          ) : null}
         </span>
+        {trackChip}
       </div>
     );
   }
 
-  // "You're populating {track}. Switch lanes from Card 1's dropdown." — the
-  // orientation helper each per-track card carries (DS card state 4).
-  const populatingHelper = activeTrack ? (
-    <p className={styles.card1Helper}>You&apos;re populating <b>{activeTrack.name}</b>. Switch lanes from Card 1&apos;s dropdown.</p>
-  ) : null;
+  // Card-interior intro stack: the "You're populating {track}" orientation line +
+  // the card's purpose line share one muted type style (kills the old mixed-font
+  // populatingHelper + cardLede collision).
+  function cardIntro(purpose: React.ReactNode) {
+    return (
+      <div className={styles.cardIntro}>
+        {activeTrack ? (
+          <p>You&apos;re populating <b>{activeTrack.name}</b>. Switch lanes from Card 1&apos;s dropdown.</p>
+        ) : null}
+        <p>{purpose}</p>
+      </div>
+    );
+  }
+
+  // The mustard thick-stroke edit pencil (card-interior spec). Flips a saved field
+  // back to its input.
+  function editPencilButton(key: string, label: string) {
+    return (
+      <button type="button" className={styles.editPencil} aria-label={label} disabled={busy} onClick={() => openField(key)}>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M12 20h9" />
+          <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+        </svg>
+      </button>
+    );
+  }
+
+  // A Voice prose field with the presentation read/edit toggle + word counter.
+  // Persistence stays on the card-bottom Save (Randall, 2026-07-11) — no per-field Save.
+  function voiceProseField(opts: {
+    fieldKey: string;
+    label: string;
+    value: string;
+    onChange: (value: string) => void;
+    words: number;
+    cap: number;
+    placeholder: string;
+    required?: boolean;
+  }) {
+    const showRead = opts.value.trim().length > 0 && !isEditing(opts.fieldKey);
+    const over = opts.words > opts.cap;
+    return (
+      <div className={styles.voiceField}>
+        <div className={styles.entryFieldHead}>
+          <span className={styles.subFieldLabel}>{opts.label}{opts.required ? <span className={styles.requiredMark}> *</span> : null}</span>
+          {showRead ? editPencilButton(opts.fieldKey, `Edit ${opts.label.toLowerCase()}`) : null}
+        </div>
+        {showRead ? (
+          <p className={styles.savedText}>{opts.value}</p>
+        ) : (
+          <>
+            <textarea value={opts.value} placeholder={opts.placeholder} onChange={(event) => opts.onChange(event.target.value)} />
+            <span className={`${styles.wordNote} ${over ? styles.wordNoteOver : ""}`}>
+              {over ? `${opts.words}/${opts.cap} words, trim it down` : `${opts.cap}-word limit`}
+            </span>
+          </>
+        )}
+      </div>
+    );
+  }
 
   const signedIn = Boolean(accessToken);
   const blockedSections = sections.filter(
@@ -2190,12 +2402,26 @@ export default function OnboardingClient({
           {/* --- Fit Signals --- */}
           <article className={styles.formCard} id="career-profile-fitSignals">
             {perTrackHeader("Fit Signals")}
-            {populatingHelper}
-            <p className={styles.cardLede}>Soft signals that nudge job ratings up or down. Poor-fit jobs still surface, rated lower, with the reason shown.</p>
-            <div className={styles.formGrid}>
-              <label className={styles.fullWidth}>What makes a role a strong fit<textarea {...lineListField("fitSignals.goodSignals", fitSignals.goodSignals, (values) => setFitSignals({ ...fitSignals, goodSignals: values }))} /></label>
-              <label className={styles.fullWidth}>What makes a role a poor fit<textarea {...lineListField("fitSignals.poorFitSignals", fitSignals.poorFitSignals, (values) => setFitSignals({ ...fitSignals, poorFitSignals: values }))} /></label>
-            </div>
+            {cardIntro("Soft signals that nudge job ratings up or down. Poor-fit jobs still surface, rated lower, with the reason shown.")}
+            {[
+              { key: "fit.good", label: "What makes a role a strong fit", draftKey: "fitSignals.goodSignals", values: fitSignals.goodSignals, set: (values: string[]) => setFitSignals({ ...fitSignals, goodSignals: values }) },
+              { key: "fit.poor", label: "What makes a role a poor fit", draftKey: "fitSignals.poorFitSignals", values: fitSignals.poorFitSignals, set: (values: string[]) => setFitSignals({ ...fitSignals, poorFitSignals: values }) },
+            ].map((field) => {
+              const showRead = field.values.length > 0 && !isEditing(field.key);
+              return (
+                <div className={styles.voiceField} key={field.key}>
+                  <div className={styles.entryFieldHead}>
+                    <span className={styles.subFieldLabel}>{field.label}</span>
+                    {showRead ? editPencilButton(field.key, `Edit ${field.label.toLowerCase()}`) : null}
+                  </div>
+                  {showRead ? (
+                    <p className={styles.savedText}>{linesToText(field.values)}</p>
+                  ) : (
+                    <textarea {...lineListField(field.draftKey, field.values, field.set)} />
+                  )}
+                </div>
+              );
+            })}
             <div className={styles.formActions}>
               <button className={styles.primaryButton} disabled={!accessToken || busy} onClick={saveFitSignals} type="button">Save Fit Signals</button>
               <p>One signal per line. These shape rating context, never hard filters.</p>
@@ -2204,53 +2430,135 @@ export default function OnboardingClient({
 
           {/* --- Work Examples --- */}
           <article className={styles.formCard} id="career-profile-workExamples">
-            {perTrackHeader("Work Examples", (
-              <button className={styles.secondaryButton} disabled={!accessToken || busy} onClick={() => setWorkExamples((items) => [...items, emptyWorkExample()])} type="button">Add Work Example</button>
-            ))}
-            {populatingHelper}
-            <p className={styles.cardLede}>Text-only examples the outreach generator can reach for. The one-hitter is the punchy line that can drop straight into a message.</p>
-            {workExamples.length === 0 ? (
-              <p className={styles.emptyState}>No work examples yet. Add a few with a punchy one-hitter and the context behind it.</p>
+            {perTrackHeader("Work Examples", () => { setDraftWorkExample(emptyWorkExample()); setOpenWorkExampleId(null); }, "Add work example")}
+            {cardIntro("Add examples of your work that are worth mentioning to hiring managers. The one-hitter is the punchy line that can drop straight into a message.")}
+            {workExamples.length === 0 && !draftWorkExample ? (
+              <p className={styles.emptyState}>No work examples yet. Hit + and add a few with a punchy one-hitter and the context behind it.</p>
             ) : (
-              <div className={styles.roleTrackList}>
-                {workExamples.map((example, index) => (
-                  <div className={styles.roleTrackEditor} key={example.id}>
-                    <div className={styles.roleTrackHeader}>
-                      <h3>Example {index + 1}</h3>
-                      <button className={styles.secondaryButton} disabled={busy} onClick={() => setWorkExamples((items) => items.filter((item) => item.id !== example.id))} type="button">Remove</button>
+              <div className={styles.entryList}>
+                {workExamples.map((example) => (
+                  openWorkExampleId === example.id ? (
+                    <div className={styles.entryOpen} key={example.id}>
+                      <button type="button" className={styles.entryOpenHead} onClick={() => setOpenWorkExampleId(null)}>
+                        <span className={styles.entryTitle}>{example.title || "Untitled example"}</span>
+                        <span className={styles.entryCaret}>▾</span>
+                      </button>
+                      {savedEntryField({
+                        fieldKey: `we.${example.id}.oneHitter`,
+                        label: "One-hitter",
+                        value: example.oneHitter,
+                        onChange: (value) => updateWorkExample(example.id, { oneHitter: value }),
+                        onSave: () => void commitWorkExamples(workExamples, () => closeField(`we.${example.id}.oneHitter`)),
+                      })}
+                      {savedEntryField({
+                        fieldKey: `we.${example.id}.link`,
+                        label: "Link",
+                        value: example.link ?? "",
+                        isLink: true,
+                        onChange: (value) => updateWorkExample(example.id, { link: value }),
+                        onSave: () => void commitWorkExamples(workExamples, () => closeField(`we.${example.id}.link`)),
+                      })}
+                      {savedEntryField({
+                        fieldKey: `we.${example.id}.context`,
+                        label: "Context",
+                        value: example.context,
+                        multiline: true,
+                        onChange: (value) => updateWorkExample(example.id, { context: value }),
+                        onSave: () => void commitWorkExamples(workExamples, () => closeField(`we.${example.id}.context`)),
+                      })}
+                      <div className={styles.entryActions}>
+                        <button type="button" className={styles.removeGhost} disabled={busy} onClick={() => removeWorkExample(example.id)}>Remove example</button>
+                      </div>
                     </div>
+                  ) : (
+                    <button type="button" className={styles.entryRow} key={example.id} onClick={() => toggleWorkExampleOpen(example.id)}>
+                      <span className={styles.entryTitle}>{example.title || "Untitled example"}</span>
+                      <span className={styles.entryCaret}>▸</span>
+                    </button>
+                  )
+                ))}
+                {draftWorkExample ? (
+                  <div className={styles.entryOpen}>
                     <div className={styles.formGrid}>
-                      <label>Title<input value={example.title} onChange={(event) => updateWorkExample(example.id, { title: event.target.value })} /></label>
-                      <label>Link (optional)<input value={example.link ?? ""} onChange={(event) => updateWorkExample(example.id, { link: event.target.value })} /></label>
-                      <label className={styles.fullWidth}>One-hitter<input value={example.oneHitter} placeholder="A single punchy line you could drop into a message" onChange={(event) => updateWorkExample(example.id, { oneHitter: event.target.value })} /></label>
-                      <label className={styles.fullWidth}>Context<textarea value={example.context} onChange={(event) => updateWorkExample(example.id, { context: event.target.value })} /></label>
+                      <label>Title<input value={draftWorkExample.title} placeholder="Name the work" onChange={(event) => setDraftWorkExample({ ...draftWorkExample, title: event.target.value })} /></label>
+                      <label>Link (optional)<input value={draftWorkExample.link ?? ""} placeholder="https://" onChange={(event) => setDraftWorkExample({ ...draftWorkExample, link: event.target.value })} /></label>
+                      <label className={styles.fullWidth}>One-hitter<input value={draftWorkExample.oneHitter} placeholder="A single punchy line you could drop into a message" onChange={(event) => setDraftWorkExample({ ...draftWorkExample, oneHitter: event.target.value })} /></label>
+                      <label className={styles.fullWidth}>Context<textarea value={draftWorkExample.context} placeholder="What it was, what you owned, what came of it" onChange={(event) => setDraftWorkExample({ ...draftWorkExample, context: event.target.value })} /></label>
+                    </div>
+                    <div className={styles.entryActions}>
+                      <button type="button" className={styles.saveSmall} disabled={busy || !draftWorkExample.title.trim()} onClick={saveDraftWorkExample}>Save example</button>
+                      <button type="button" className={styles.removeGhost} disabled={busy} onClick={() => setDraftWorkExample(null)}>Discard</button>
                     </div>
                   </div>
-                ))}
+                ) : null}
               </div>
             )}
-            <div className={styles.formActions}>
-              <button className={styles.primaryButton} disabled={!accessToken || busy} onClick={saveWorkExamples} type="button">Save Work Examples</button>
-              <p>Keep examples text-only. The generator picks the most relevant one per message.</p>
-            </div>
           </article>
 
           {/* --- Skills --- */}
           <article className={styles.formCard} id="career-profile-skills">
-            {perTrackHeader("Skills", (
-              <button className={styles.secondaryButton} disabled={!accessToken || busy} onClick={() => setSkills((items) => [...items, emptySkill()])} type="button">Add Skill</button>
-            ))}
-            {populatingHelper}
-            {skills.length === 0 ? (
-              <p className={styles.emptyState}>No skills yet. Search the catalogue or add your own, then back each one with evidence and guardrails.</p>
+            {perTrackHeader("Skills", () => { setDraftSkill(emptySkill()); setOpenSkillId(null); }, "Add skill")}
+            {cardIntro("Back each skill with metrics or results — those lines are what outreach can actually quote.")}
+            {skills.length === 0 && !draftSkill ? (
+              <p className={styles.emptyState}>No skills yet. Hit + to add one, then back it with metrics or results and link the work behind it.</p>
             ) : (
-              <div className={styles.roleTrackList}>
-                {skills.map((skill, index) => (
-                  <div className={styles.roleTrackEditor} key={skill.id}>
-                    <div className={styles.roleTrackHeader}>
-                      <h3>Skill {index + 1}</h3>
-                      <button className={styles.secondaryButton} disabled={busy} onClick={() => setSkills((items) => items.filter((item) => item.id !== skill.id))} type="button">Remove</button>
+              <div className={styles.entryList}>
+                {skills.map((skill) => (
+                  openSkillId === skill.id ? (
+                    <div className={styles.entryOpen} key={skill.id}>
+                      <button type="button" className={styles.entryOpenHead} onClick={() => setOpenSkillId(null)}>
+                        <span className={styles.entryTitle}>{skill.skillName || "Untitled skill"}</span>
+                        <span className={styles.profPill}>{proficiencyLabel(skill.proficiency)}</span>
+                        <span className={styles.entryCaret}>▾</span>
+                      </button>
+                      {savedEntryField({
+                        fieldKey: `sk.${skill.id}.evidence`,
+                        label: "Metrics / Results",
+                        onSave: () => void commitSkills(skills, () => closeField(`sk.${skill.id}.evidence`)),
+                        readNode: skill.evidence.length > 0
+                          ? <p className={styles.savedText}>{linesToText(skill.evidence)}</p>
+                          : <p className={`${styles.savedText} ${styles.faint}`}>No metrics or results yet</p>,
+                        editNode: <textarea className={styles.entryTa} placeholder="One metric or result per line — numbers beat adjectives" {...lineListField(`skills.${skill.id}.evidence`, skill.evidence, (values) => updateSkill(skill.id, { evidence: values }))} />,
+                      })}
+                      {savedEntryField({
+                        fieldKey: `sk.${skill.id}.related`,
+                        label: "Related Work Examples",
+                        onSave: () => void commitSkills(skills, () => closeField(`sk.${skill.id}.related`)),
+                        readNode: (() => {
+                          const titles = skill.relatedWorkExampleIds
+                            .map((id) => workExamples.find((example) => example.id === id)?.title)
+                            .filter((title): title is string => Boolean(title));
+                          return titles.length > 0
+                            ? <p className={styles.savedText}>{titles.join(" · ")}</p>
+                            : <p className={`${styles.savedText} ${styles.faint}`}>None linked</p>;
+                        })(),
+                        editNode: workExamples.length > 0 ? (
+                          <div className={styles.checkboxGrid}>
+                            {workExamples.map((example) => (
+                              <label key={example.id}>
+                                <input type="checkbox" checked={skill.relatedWorkExampleIds.includes(example.id)} onChange={() => toggleSkillWorkExample(skill, example.id)} />
+                                {example.title || example.id}
+                              </label>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className={styles.emptyState}>Add and save at least one Work Example before linking it here.</p>
+                        ),
+                      })}
+                      <div className={styles.entryActions}>
+                        <button type="button" className={styles.removeGhost} disabled={busy} onClick={() => removeSkill(skill.id)}>Remove skill</button>
+                      </div>
                     </div>
+                  ) : (
+                    <button type="button" className={styles.entryRow} key={skill.id} onClick={() => toggleSkillOpen(skill.id)}>
+                      <span className={styles.entryTitle}>{skill.skillName || "Untitled skill"}</span>
+                      <span className={styles.profPill}>{proficiencyLabel(skill.proficiency)}</span>
+                      <span className={styles.entryCaret}>▸</span>
+                    </button>
+                  )
+                ))}
+                {draftSkill ? (
+                  <div className={styles.entryOpen}>
                     <div className={styles.formGrid}>
                       <div className={styles.fullWidth}>
                         <CataloguePicker
@@ -2258,18 +2566,18 @@ export default function OnboardingClient({
                           mode="single"
                           accessToken={accessToken}
                           label="Skill"
-                          placeholder={skill.skillName || "Search skills…"}
+                          placeholder={draftSkill.skillName || "Search skills…"}
                           disabled={!accessToken || busy}
-                          value={skill.skillName}
-                          onSelect={(value) => updateSkill(skill.id, { skillName: value })}
+                          value={draftSkill.skillName}
+                          onSelect={(value) => setDraftSkill((current) => (current ? { ...current, skillName: value } : current))}
                         />
                       </div>
-                      <label>Proficiency<select value={skill.proficiency} onChange={(event) => updateSkill(skill.id, { proficiency: event.target.value as SkillProficiency })}>
+                      <label>Proficiency<select value={draftSkill.proficiency} onChange={(event) => setDraftSkill((current) => (current ? { ...current, proficiency: event.target.value as SkillProficiency } : current))}>
                         <option value="working">Working</option>
                         <option value="strong">Strong</option>
                         <option value="expert">Expert</option>
                       </select></label>
-                      <label>Evidence<textarea {...lineListField(`skills.${skill.id}.evidence`, skill.evidence, (values) => updateSkill(skill.id, { evidence: values }))} /></label>
+                      <label className={styles.fullWidth}>Metrics / Results<textarea placeholder="One metric or result per line — numbers beat adjectives" {...lineListField(`skills.${draftSkill.id}.evidence`, draftSkill.evidence, (values) => setDraftSkill((current) => (current ? { ...current, evidence: values } : current)))} /></label>
                     </div>
                     <div className={styles.attachmentBlock}>
                       <p className={styles.statusLabel}>Related Work Examples</p>
@@ -2279,109 +2587,152 @@ export default function OnboardingClient({
                         <div className={styles.checkboxGrid}>
                           {workExamples.map((example) => (
                             <label key={example.id}>
-                              <input checked={skill.relatedWorkExampleIds.includes(example.id)} onChange={() => toggleSkillWorkExample(skill, example.id)} type="checkbox" />
+                              <input
+                                type="checkbox"
+                                checked={draftSkill.relatedWorkExampleIds.includes(example.id)}
+                                onChange={() => setDraftSkill((current) => {
+                                  if (!current) return current;
+                                  const has = current.relatedWorkExampleIds.includes(example.id);
+                                  return { ...current, relatedWorkExampleIds: has ? current.relatedWorkExampleIds.filter((id) => id !== example.id) : [...current.relatedWorkExampleIds, example.id] };
+                                })}
+                              />
                               {example.title || example.id}
                             </label>
                           ))}
                         </div>
                       )}
                     </div>
+                    <div className={styles.entryActions}>
+                      <button type="button" className={styles.saveSmall} disabled={busy || !draftSkill.skillName.trim()} onClick={saveDraftSkill}>Save skill</button>
+                      <button type="button" className={styles.removeGhost} disabled={busy} onClick={() => setDraftSkill(null)}>Discard</button>
+                    </div>
                   </div>
-                ))}
+                ) : null}
               </div>
             )}
-            <div className={styles.formActions}>
-              <button className={styles.primaryButton} disabled={!accessToken || busy} onClick={saveSkills} type="button">Save Skills</button>
-              <p>One piece of evidence per line. Save related Work Examples first.</p>
-            </div>
           </article>
 
           {/* --- Voice & Personality --- */}
           <article className={styles.formCard} id="career-profile-voicePersonality">
-            {sectionHeader("voicePersonality", "Voice & Personality")}
-            <p className={styles.cardLede}>Tap what fits, paste a little of your real writing, then answer two quick questions in your own words.</p>
+            <div className={styles.formHeader}>
+              <div><h2>Voice &amp; Personality</h2></div>
+            </div>
 
-            <ChipGroup
-              legend="Lean into"
-              presets={leanIntoPresets}
-              selected={voice.toneTags}
-              onToggle={toggleTone}
-              onAddCustom={(value) => setVoice((current) => ({ ...current, toneTags: [...current.toneTags, value] }))}
-              onRemoveCustom={(value) => setVoice((current) => ({ ...current, toneTags: current.toneTags.filter((tag) => tag !== value) }))}
-              addLabel="+ your own"
-              disabled={!accessToken || busy}
-            />
-            <ChipGroup
-              legend="Steer clear"
-              presets={steerClearPresets}
-              selected={voice.avoidTags}
-              onToggle={toggleAvoidTag}
-              onAddCustom={(value) => setVoice((current) => ({ ...current, avoidTags: [...current.avoidTags, value] }))}
-              onRemoveCustom={(value) => setVoice((current) => ({ ...current, avoidTags: current.avoidTags.filter((tag) => tag !== value) }))}
-              addLabel="+ your own"
-              disabled={!accessToken || busy}
-            />
-            <label className={styles.voiceField}>
-              <span className={styles.subFieldLabel}>Anything else to avoid?</span>
-              <textarea value={voice.avoidNote} placeholder='e.g. never open with "I hope this email finds you well"' onChange={(event) => setVoice({ ...voice, avoidNote: event.target.value })} />
-              <span className={`${styles.wordNote} ${avoidNoteWords > avoidNoteWordCap ? styles.wordNoteOver : ""}`}>
-                {avoidNoteWords > avoidNoteWordCap ? `${avoidNoteWords}/${avoidNoteWordCap} words, trim it down` : `${avoidNoteWordCap}-word limit`}
-              </span>
-            </label>
-
-            <div className={styles.bucketStack}>
-              {writingBucketConfigs.map((config) => {
-                const samples = bucketSamples(config.bucket);
-                const canAdd = samples.length < config.max;
-                return (
-                  <div className={styles.bucketField} key={config.bucket}>
-                    <div className={styles.bucketHead}>
-                      <span className={styles.subFieldLabel}>{config.label}{config.required ? <span className={styles.requiredMark}> *</span> : null}</span>
-                      {canAdd ? (
-                        <button type="button" className={styles.secondaryButton} disabled={!accessToken || busy} onClick={() => addWritingSample(config.bucket)}>
-                          {samples.length === 0 ? "Add a snippet" : "+ add one more"}
-                        </button>
-                      ) : null}
-                    </div>
-                    <p className={styles.bucketHelper}>{config.helper}</p>
-                    {samples.length === 0 ? (
-                      <p className={styles.emptyState}>No snippet yet.</p>
-                    ) : (
-                      samples.map((sample) => {
-                        const words = countWords(sample.text);
-                        const over = words > writingSampleWordCap;
-                        return (
-                          <div className={styles.snippet} key={sample.id}>
-                            <textarea value={sample.text} placeholder={config.placeholder} onChange={(event) => updateWritingSample(sample.id, { text: event.target.value })} />
-                            <div className={styles.snippetFoot}>
-                              <span className={`${styles.wordNote} ${over ? styles.wordNoteOver : ""}`}>
-                                {over ? `${words}/${writingSampleWordCap} words, trim it down` : `${writingSampleWordCap}-word limit`}
-                              </span>
-                              <button type="button" className={styles.chipRemove} aria-label="Remove snippet" disabled={busy} onClick={() => removeWritingSample(sample.id)}>✕</button>
-                            </div>
-                          </div>
-                        );
-                      })
-                    )}
-                  </div>
-                );
+            {/* How should you sound? — tone chips + avoid note */}
+            <div className={styles.voiceGroup}>
+              <h3 className={styles.cardTitle}>How should you sound?</h3>
+              <div className={styles.cardIntro}><p>Tap the ones that fit. This is the personality we bring to your outreach, so it sounds like you and not a press release.</p></div>
+              <ChipGroup
+                legend="Lean into"
+                presets={leanIntoPresets}
+                selected={voice.toneTags}
+                onToggle={toggleTone}
+                onAddCustom={(value) => setVoice((current) => ({ ...current, toneTags: [...current.toneTags, value] }))}
+                onRemoveCustom={(value) => setVoice((current) => ({ ...current, toneTags: current.toneTags.filter((tag) => tag !== value) }))}
+                addLabel="+ your own"
+                disabled={!accessToken || busy}
+              />
+              <ChipGroup
+                legend="Steer clear"
+                presets={steerClearPresets}
+                selected={voice.avoidTags}
+                onToggle={toggleAvoidTag}
+                onAddCustom={(value) => setVoice((current) => ({ ...current, avoidTags: [...current.avoidTags, value] }))}
+                onRemoveCustom={(value) => setVoice((current) => ({ ...current, avoidTags: current.avoidTags.filter((tag) => tag !== value) }))}
+                addLabel="+ your own"
+                disabled={!accessToken || busy}
+              />
+              {voiceProseField({
+                fieldKey: "voice.avoidNote",
+                label: "Anything else to avoid?",
+                value: voice.avoidNote,
+                onChange: (value) => setVoice({ ...voice, avoidNote: value }),
+                words: avoidNoteWords,
+                cap: avoidNoteWordCap,
+                placeholder: 'e.g. never open with "I hope this email finds you well"',
               })}
             </div>
 
-            <label className={styles.voiceField}>
-              <span className={styles.subFieldLabel}>What are you the person for?<span className={styles.requiredMark}> *</span></span>
-              <textarea value={voice.q1Value} placeholder="When something specific goes sideways, what makes people come to you?" onChange={(event) => setVoice({ ...voice, q1Value: event.target.value })} />
-              <span className={`${styles.wordNote} ${q1Words > voiceAnswerWordCap ? styles.wordNoteOver : ""}`}>
-                {q1Words > voiceAnswerWordCap ? `${q1Words}/${voiceAnswerWordCap} words, trim it down` : `${voiceAnswerWordCap}-word limit`}
-              </span>
-            </label>
-            <label className={styles.voiceField}>
-              <span className={styles.subFieldLabel}>A take you&apos;ll defend?<span className={styles.requiredMark}> *</span></span>
-              <textarea value={voice.q4Opinion} placeholder="An opinion about your field you'll stand behind, even if it's not the popular one." onChange={(event) => setVoice({ ...voice, q4Opinion: event.target.value })} />
-              <span className={`${styles.wordNote} ${q4Words > voiceAnswerWordCap ? styles.wordNoteOver : ""}`}>
-                {q4Words > voiceAnswerWordCap ? `${q4Words}/${voiceAnswerWordCap} words, trim it down` : `${voiceAnswerWordCap}-word limit`}
-              </span>
-            </label>
+            {/* Things you've already written — writing samples */}
+            <div className={styles.voiceGroup}>
+              <h3 className={styles.cardTitle}>Things you&apos;ve already written</h3>
+              <div className={styles.cardIntro}><p>Paste a few real snippets: an email, a post, a Slack message. This is how we learn your actual voice, so don&apos;t polish them.</p></div>
+              <div className={styles.bucketStack}>
+                {writingBucketConfigs.map((config) => {
+                  const samples = bucketSamples(config.bucket);
+                  const canAdd = samples.length < config.max;
+                  return (
+                    <div className={styles.bucketField} key={config.bucket}>
+                      <div className={styles.bucketHead}>
+                        <span className={styles.subFieldLabel}>{config.label}{config.required ? <span className={styles.requiredMark}> *</span> : null}</span>
+                        {canAdd ? (
+                          <button type="button" className={styles.secondaryButton} disabled={!accessToken || busy} onClick={() => addWritingSample(config.bucket)}>
+                            {samples.length === 0 ? "Add a snippet" : "+ add one more"}
+                          </button>
+                        ) : null}
+                      </div>
+                      <p className={styles.bucketHelper}>{config.helper}</p>
+                      {samples.length === 0 ? (
+                        <p className={styles.emptyState}>No snippet yet.</p>
+                      ) : (
+                        samples.map((sample) => {
+                          const fieldKey = `ws.${sample.id}`;
+                          const words = countWords(sample.text);
+                          const over = words > writingSampleWordCap;
+                          const showRead = sample.text.trim().length > 0 && !isEditing(fieldKey);
+                          return (
+                            <div className={styles.snippet} key={sample.id}>
+                              {showRead ? (
+                                <div className={styles.entryFieldHead}>
+                                  <p className={styles.savedText}>{sample.text}</p>
+                                  {editPencilButton(fieldKey, "Edit snippet")}
+                                </div>
+                              ) : (
+                                <>
+                                  <textarea value={sample.text} placeholder={config.placeholder} onChange={(event) => updateWritingSample(sample.id, { text: event.target.value })} />
+                                  <div className={styles.snippetFoot}>
+                                    <span className={`${styles.wordNote} ${over ? styles.wordNoteOver : ""}`}>
+                                      {over ? `${words}/${writingSampleWordCap} words, trim it down` : `${writingSampleWordCap}-word limit`}
+                                    </span>
+                                    <button type="button" className={styles.chipRemove} aria-label="Remove snippet" disabled={busy} onClick={() => removeWritingSample(sample.id)}>✕</button>
+                                  </div>
+                                </>
+                              )}
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* In your own words — Q1 / Q4 */}
+            <div className={styles.voiceGroup}>
+              <h3 className={styles.cardTitle}>In your own words</h3>
+              <div className={styles.cardIntro}><p>Two quick ones, in your voice. No right answer, no buzzwords. This is the substance the outreach leans on.</p></div>
+              {voiceProseField({
+                fieldKey: "voice.q1",
+                label: "What are you the person for?",
+                value: voice.q1Value,
+                onChange: (value) => setVoice({ ...voice, q1Value: value }),
+                words: q1Words,
+                cap: voiceAnswerWordCap,
+                placeholder: "When something specific goes sideways, what makes people come to you?",
+                required: true,
+              })}
+              {voiceProseField({
+                fieldKey: "voice.q4",
+                label: "A take you'll defend?",
+                value: voice.q4Opinion,
+                onChange: (value) => setVoice({ ...voice, q4Opinion: value }),
+                words: q4Words,
+                cap: voiceAnswerWordCap,
+                placeholder: "An opinion about your field you'll stand behind, even if it's not the popular one.",
+                required: true,
+              })}
+            </div>
 
             <div className={styles.formActions}>
               <button className={styles.primaryButton} disabled={!accessToken || busy} onClick={saveVoiceAndPersonality} type="button">Save Voice & Personality</button>

@@ -62,7 +62,33 @@ Also shipped in this batch:
   register_assets + local design-system/ mirror + sweep all cards showing a
   changed surface).
 
-## ⛳ NEXT SESSION — START HERE (bookmark, Randall 2026-07-10 end of session)
+## ⛳ NEXT SESSION — START HERE (bookmark, updated 2026-07-11)
+
+**STATUS 2026-07-11: card-interior batch IMPLEMENTED + committed to `main`.** The 1:1 port
+of the six approved DS cards landed in `app/onboarding/OnboardingClient.tsx` +
+`onboarding.module.css` (no backend/API/migration/route changes). Static verification is
+GREEN: `tsc` clean, `lint` 0 errors, `test:public-jobs` passes, `npm run build` succeeds,
+and a headless-Chrome pass at 320/375/390/1280/1440 showed no overflow and full-hit-area
+controls (one bug caught + fixed: `.entryOpenHead` was leaking native `<button>` chrome).
+
+**NEXT SESSION — START HERE: the authed interactive pass.** The redesigned cards render
+only when signed in, so the state logic is verified structurally (a faithful static
+harness), NOT yet driven on a live profile. Sign in on `/onboarding` and confirm:
+add/edit/remove a Work Example and a Skill (each persists via its per-entry Save and
+re-renders in read mode after reload); the [+] draft editor Save/Discard; the collapse/
+expand caret; and the Voice + Fit Signals prose fields (pencil ↔ textarea, card-bottom
+Save collapses populated fields to read mode). Then close out the other open items below.
+
+**Session decisions locked (Randall, 2026-07-11 — do NOT re-litigate):** Voice stays ONE
+card (three approved sub-ledes folded in, not split); Voice + Fit Signals keep their
+card-bottom Save and the saved/edit prose states are PRESENTATION ONLY (no per-field Save;
+tone chips don't auto-save); the "Editable Section" eyebrow + in-card readiness badge were
+dropped from the Voice card (readiness stays in the sections rail). Non-obvious impl note:
+new Work Example/Skill entries use a separate draft slot until Save, because
+`resolveOwnedItemId` reassigns a fresh server id to any unowned entry.
+
+---
+_Original implementation brief (now DONE) preserved below for reference._
 
 **Task: implement the APPROVED card-interior design batch 1:1 in production.** Randall
 approved the six cards (with his review edits applied same day: mustard pencil, mustard

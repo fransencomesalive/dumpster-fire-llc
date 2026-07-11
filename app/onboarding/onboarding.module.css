@@ -914,6 +914,313 @@
   gap: 12px;
 }
 
+/* ============================================================
+   Card-interior spec (Randall, 2026-07-10) — heads, one-style
+   intro stack, saved/edit field states, collapsible entry rows.
+   Source DS cards: onboarding-card-interior / -work-examples /
+   -skills / -q1-q4 / -tone-chips / -writing-samples. Global
+   tokens only; no halftone in new work.
+   ============================================================ */
+
+/* Section title + teal [+] add — replaces the oversized "Add ___" buttons. */
+.titleGroup {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.addBtn {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  color: var(--c-paper);
+  background-color: var(--c-teal);
+  background-image: var(--fiber-img), var(--grain-img);
+  background-blend-mode: normal, soft-light;
+  background-size: 170px 170px, 46px 46px;
+  border: var(--line-bold) solid var(--c-ink);
+  box-shadow: 2px 2px 0 var(--c-ink);
+  cursor: pointer;
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  line-height: 1;
+  padding: 0 0 2px;
+}
+
+.addBtn:disabled {
+  cursor: not-allowed;
+  filter: grayscale(0.3);
+  opacity: 0.55;
+}
+
+/* One intro type style — the "You're populating…" + purpose lines share it,
+   killing the old .cardLede / .card1Helper mixed-font collision. */
+.cardIntro {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0 0 4px;
+}
+
+.cardIntro p {
+  margin: 0;
+  font-family: var(--font-ui);
+  font-size: var(--type-small);
+  color: var(--role-text-muted);
+  line-height: 1.45;
+  max-width: 62ch;
+}
+
+.cardIntro b {
+  color: var(--c-ink);
+  font-weight: 600;
+}
+
+/* Saved value renders as plain text; the mustard pencil is the only control. */
+.savedText {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: var(--type-body);
+  color: var(--c-ink);
+  line-height: 1.5;
+  white-space: pre-line;
+}
+
+.savedText.faint {
+  color: var(--role-text-faint);
+  font-style: italic;
+}
+
+.savedText a {
+  color: var(--c-ink);
+}
+
+.editPencil {
+  margin-left: auto;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  color: var(--c-ink);
+  background: var(--c-mustard);
+  border: var(--line-reg) solid var(--c-ink);
+  border-radius: var(--radius-md);
+  box-shadow: 2px 2px 0 var(--c-ink);
+  cursor: pointer;
+}
+
+.editPencil:hover {
+  background: color-mix(in srgb, var(--c-mustard) 78%, var(--c-paper));
+}
+
+.editPencil:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+/* Small teal per-entry / per-field Save. */
+.saveSmall {
+  justify-self: start;
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 0.95rem;
+  color: var(--c-paper);
+  background-color: var(--c-teal);
+  border: var(--line-bold) solid var(--c-ink);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
+  padding: var(--space-2) var(--space-4);
+  cursor: pointer;
+}
+
+.saveSmall:disabled {
+  cursor: not-allowed;
+  filter: grayscale(0.3);
+  opacity: 0.55;
+}
+
+/* Quiet but unmistakably destructive — tomato text, no box (Randall 2026-07-10). */
+.removeGhost {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 0.9rem;
+  color: var(--c-tomato);
+  background: transparent;
+  border: var(--line-reg) solid transparent;
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-3);
+  cursor: pointer;
+}
+
+.removeGhost:hover {
+  color: var(--c-paper);
+  background: var(--c-tomato);
+  border-color: var(--c-ink);
+}
+
+.removeGhost:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+/* Collapsible saved entries (Work Examples, Skills). */
+.entryList {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.entryRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  text-align: left;
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--c-paper);
+  border: var(--line-reg) solid var(--c-ink);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+  cursor: pointer;
+}
+
+.entryRow:hover {
+  background: color-mix(in srgb, var(--c-teal) 8%, var(--c-paper));
+}
+
+.entryTitle {
+  min-width: 0;
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  color: var(--c-ink);
+  overflow-wrap: anywhere;
+}
+
+.entryCaret {
+  margin-left: auto;
+  flex: none;
+  color: var(--role-text-faint);
+  font-size: 0.9rem;
+}
+
+.entryOpen {
+  display: grid;
+  gap: var(--space-4);
+  background: var(--c-paper);
+  border: var(--line-reg) solid var(--c-ink);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+}
+
+/* The expanded-entry header is a full-width collapse button — reset native chrome. */
+.entryOpenHead {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  appearance: none;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.entryOpenHead .entryCaret {
+  color: var(--c-ink);
+}
+
+/* Mustard proficiency chip on collapsed skill rows. */
+.profPill {
+  flex: none;
+  font-family: var(--font-subhead);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 0.7rem;
+  color: var(--c-ink);
+  background: var(--c-mustard);
+  border: var(--line-hair) solid var(--c-ink);
+  border-radius: var(--radius-pill);
+  padding: 3px 9px;
+}
+
+/* Field block within an entry or a prose card: label row + saved-text or input. */
+.entryField {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.entryFieldHead {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.entryFieldLabel {
+  font-family: var(--font-subhead);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-subhead);
+  font-size: var(--type-subhead);
+  color: var(--c-ink);
+}
+
+.entryActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.entryActions .removeGhost {
+  margin-left: auto;
+}
+
+/* Entry-editor inputs (paper-deep like the DS card's .input / .ta). */
+.entryInput,
+.entryTa {
+  box-sizing: border-box;
+  width: 100%;
+  font-family: var(--font-body);
+  font-size: var(--type-body);
+  color: var(--c-ink);
+  background: var(--c-paper-deep);
+  border: var(--line-reg) solid var(--c-ink);
+  border-radius: var(--radius-md);
+  padding: 10px var(--space-3);
+}
+
+.entryInput {
+  min-height: 44px;
+}
+
+.entryTa {
+  min-height: 88px;
+  resize: vertical;
+}
+
+.entryInput:focus,
+.entryTa:focus {
+  outline: 3px solid color-mix(in srgb, var(--c-teal) 28%, transparent);
+  outline-offset: 1px;
+}
+
+/* Voice sub-groups — three approved cards folded into one Voice & Personality card
+   (Randall, 2026-07-11): a display sub-title + one muted intro line each. */
+.voiceGroup {
+  display: grid;
+  gap: var(--space-3);
+  margin-top: var(--space-6);
+}
+
+.voiceGroup:first-of-type {
+  margin-top: var(--space-2);
+}
+
 @media (max-width: 840px) {
   .hero {
     grid-template-columns: 1fr;
