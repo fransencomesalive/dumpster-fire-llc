@@ -62,7 +62,45 @@ Also shipped in this batch:
   register_assets + local design-system/ mirror + sweep all cards showing a
   changed surface).
 
-### Card-interior batch DESIGNED 2026-07-10 (in Claude Design, PENDING Randall's approval there)
+## ⛳ NEXT SESSION — START HERE (bookmark, Randall 2026-07-10 end of session)
+
+**Task: implement the APPROVED card-interior design batch 1:1 in production.** Randall
+approved the six cards (with his review edits applied same day: mustard pencil, mustard
+skill chips, tomato quiet Remove, saved states on Q1/Q4 + avoid note + writing samples)
+and directed that the next session implements immediately — no further design gate.
+
+Approved sources (design-system/components/, all synced to Claude Design 2026-07-10):
+`onboarding-card-interior.html` (THE spec), `onboarding-work-examples.html`,
+`onboarding-skills.html`, `onboarding-q1-q4.html`, `onboarding-tone-chips.html`,
+`onboarding-writing-samples.html`.
+
+Production targets: `app/onboarding/OnboardingClient.tsx` + `onboarding.module.css`.
+Work items, in build order:
+1. **CSS port** from the cards: `.addBtn` (34px teal circle), `.cardIntro` (single intro
+   type style), `.editPencil` (32px MUSTARD fill, ink 2.6-stroke pencil), `.savedText`,
+   `.entryRow`/`.entryOpen`/`.entryTitle`/`.entryCaret`, `.profPill` (mustard),
+   `.removeGhost` (tomato quiet), `.saveSmall`.
+2. **Card heads:** `perTrackHeader` → title + [+] + track chip; retire the "Add Work
+   Example"/"Add Skill" secondary buttons; merge `populatingHelper` + `cardLede` into
+   the `.cardIntro` stack (one font/size/leading).
+3. **Work Examples:** saved entries collapse to live-title rows; expand → read mode
+   (savedText + pencil per field) → edit; [+] opens an empty editor; per-entry Save
+   (retire card-bottom "Save Work Examples"); Remove = tomato ghost. Whole-array
+   PATCH stays the persistence mechanism — per-entry Save just PATCHes the array with
+   that entry updated (Card 1 titles precedent).
+4. **Skills:** same entry pattern; label "Evidence" → **"Metrics / Results"** (label
+   only — backend field stays `evidence`); proficiency select at normal 44px input
+   proportions; mustard proficiency pills on collapsed rows.
+5. **Saved/edit field states** (page copy + mustard pencil ↔ prefilled input + small
+   Save) for: Q1 + Q4 answers, tone-chips avoid note, each writing-sample snippet,
+   and the fit-signals textareas (card-interior spec state 2/3).
+6. Validation: tsc/lint/build/test:public-jobs + headless UI checklist (320–1440) +
+   authed visual pass. Full design-sync checklist if any card needs reconciling.
+
+Also open (not this batch): job_sources clean-slate reset (Randall's scope call);
+authed live test of Skip + add-a-board (migrations applied 2026-07-10, code live).
+
+### Card-interior batch DESIGNED 2026-07-10 → **APPROVED same day w/ review edits** (see START HERE above)
 
 Randall's direction (2026-07-10, Work Examples screenshot): card interiors follow no
 grid/hierarchy; "Add ____" buttons too big → teal [+] beside the title; saved work
@@ -78,9 +116,10 @@ prefilled input. Three cards built + synced (Onboarding group):
 - **onboarding-skills.html (NEW):** folds in #12–#15 — Evidence → "Metrics / Results",
   44px proficiency dropdown, name+proficiency collapsed rows, per-entry Save
   (supersedes #13).
-NOT implemented in production — waiting on approval in Claude Design. Implementation
-note when approved: per-entry save + saved/edit states touch OnboardingClient section
-save flows (whole-array PATCHes stay; UI state machine per entry/field).
+APPROVED 2026-07-10 with review edits (mustard pencil everywhere, mustard skill
+proficiency chips, tomato quiet Remove, saved states added to q1-q4 / tone-chips
+avoid note / writing-samples). NOT yet implemented in production — that is the next
+session's first task; see the START HERE block at the top of this doc.
 
 ### Design-batch queue (Claude Design pipeline; nothing built yet)
 - #1 industries picker custom-add at TOP of dropdown (own section + divider).
