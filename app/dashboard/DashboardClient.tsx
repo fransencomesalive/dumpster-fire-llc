@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { clearPublicProfileAccessToken, readPublicProfileAccessToken } from "@/lib/public-profile/browser-session";
 import { syncPublicProfileSession } from "@/lib/public-auth/supabase-browser";
@@ -111,14 +111,32 @@ function highlightText(text: string, signals: string[]): ReactNode {
     );
 }
 
+// Collapsed to a ~5-line preview so a long posting doesn't dominate the scroll
+// (Randall, 2026-07-11). Measures the full list once; only long sections get a
+// clamp + "Show more" toggle.
+const MATCH_CLAMP_PX = 148;
+
 function MatchSection({ label, items, signals }: { label: string; items: string[]; signals: string[] }) {
+  const [expanded, setExpanded] = useState(false);
+  const [overflowing, setOverflowing] = useState(false);
+  const listRef = useRef<HTMLUListElement>(null);
+  useEffect(() => {
+    const el = listRef.current;
+    if (el) setOverflowing(el.scrollHeight > MATCH_CLAMP_PX + 8);
+  }, [items]);
   if (items.length === 0) return null;
+  const clamped = overflowing && !expanded;
   return (
     <div className={jobsStyles.matchSection}>
       <span className={jobsStyles.matchSectionLabel}>{label}</span>
-      <ul className={jobsStyles.matchSectionList}>
+      <ul ref={listRef} className={`${jobsStyles.matchSectionList} ${clamped ? jobsStyles.matchSectionListClamped : ""}`}>
         {items.map((item, index) => <li key={index}>{highlightText(item, signals)}</li>)}
       </ul>
+      {overflowing ? (
+        <button type="button" className={jobsStyles.matchSectionToggle} onClick={() => setExpanded((value) => !value)}>
+          {expanded ? "Show less" : "Show more"}
+        </button>
+      ) : null}
     </div>
   );
 }
@@ -510,8 +528,7 @@ export default function DashboardClient() {
                           <button className={jobsStyles.btnSave} disabled={jobsBusy} onClick={() => setJobSaved(job, !job.saved)} type="button">
                             {job.saved ? "Saved" : "Save"}
                           </button>
-                          <button className={jobsStyles.btnSkip} disabled={jobsBusy} onClick={() => skipJob(job)} type="button">Skip</button>
-                          <span className={jobsStyles.skipNote}>This job will be removed from results.</span>
+                          <button className={jobsStyles.btnSkip} disabled={jobsBusy} onClick={() => skipJob(job)} type="button" title="This job will be removed from results.">Skip</button>
                           <a className={jobsStyles.btnSource} href={job.sourceUrl} rel="noreferrer" target="_blank">Open posting ↗</a>
                           <button className={jobsStyles.btnApply} disabled={jobsBusy} onClick={() => startPursuit(job)} type="button">Pursue</button>
                         </div>

@@ -88,9 +88,16 @@
   .matchSectionLabel { display:block; font-family:var(--font-subhead); text-transform:uppercase; letter-spacing:0.05em;
     font-size:0.95rem; color:var(--c-teal); padding-bottom:var(--space-2); margin-bottom:var(--space-2);
     border-bottom:var(--line-hair) solid var(--c-paper-edge); }
-  .matchSectionList { margin:0; padding-left:1.1em; font-family:var(--font-body); font-size:0.92rem; color:var(--c-ink); }
+  .matchSectionList { margin:0; padding-left:1.1em; list-style:disc; font-family:var(--font-body); font-size:0.92rem; color:var(--c-ink); }
   .matchSectionList li { margin-bottom:var(--space-2); }
   .matchSectionList li:last-child { margin-bottom:0; }
+  /* ~5-line preview; the mask fades the clipped edge so it reads as "more below". */
+  .matchSectionListClamped { max-height:148px; overflow:hidden;
+    -webkit-mask-image:linear-gradient(to bottom, #000 72%, transparent);
+    mask-image:linear-gradient(to bottom, #000 72%, transparent); }
+  .matchSectionToggle { margin-top:var(--space-2); padding:0; background:transparent; border:0; cursor:pointer;
+    font-family:var(--font-subhead); text-transform:uppercase; letter-spacing:0.05em; font-size:0.8rem; color:var(--c-teal); }
+  .matchSectionToggle:hover { text-decoration:underline; }
   .matchHighlight { position:relative; color:var(--c-ink); background:transparent; z-index:0; }
   .matchHighlight::before { content:""; position:absolute; z-index:-1; inset:-0.14em -0.24em -0.02em -0.2em;
     background:var(--c-mustard); border-radius:0.6em 0.95em 0.5em 0.85em / 0.9em 0.5em 0.95em 0.55em; transform:rotate(var(--rot, -1.4deg)); }

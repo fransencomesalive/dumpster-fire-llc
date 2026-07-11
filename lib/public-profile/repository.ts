@@ -1505,24 +1505,37 @@ export async function resetCandidateProfileDataForUser(
   const skillIds = skillRows.map((row) => row.id);
   const pursuitIds = pursuitRows.map((row) => row.id);
 
+  // Best-effort per-table deletes: a single failing table (renamed, absent, or an
+  // FK/RLS quirk) must not abort the whole reset and leave the profile intact
+  // (Randall, 2026-07-11 — reset "did nothing"; all-or-nothing was masking one
+  // failing delete). Failures are collected and logged, never thrown.
+  const failures: string[] = [];
+  const safeDelete = async (table: string, query: string) => {
+    try {
+      await request(table, { method: "DELETE", query });
+    } catch (error) {
+      failures.push(`${table}: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  };
+
   // Children and join rows first so nothing dangles mid-delete.
   if (trackIds.length > 0) {
-    await request("resume_role_tracks", { method: "DELETE", query: qs({ role_track_id: `in.(${trackIds.join(",")})` }) });
-    await request("role_track_outreach_rules", { method: "DELETE", query: qs({ role_track_id: `in.(${trackIds.join(",")})` }) });
+    await safeDelete("resume_role_tracks", qs({ role_track_id: `in.(${trackIds.join(",")})` }));
+    await safeDelete("role_track_outreach_rules", qs({ role_track_id: `in.(${trackIds.join(",")})` }));
   }
   if (resumeIds.length > 0) {
-    await request("resume_role_tracks", { method: "DELETE", query: qs({ resume_id: `in.(${resumeIds.join(",")})` }) });
+    await safeDelete("resume_role_tracks", qs({ resume_id: `in.(${resumeIds.join(",")})` }));
   }
   if (skillIds.length > 0) {
-    await request("skill_work_examples", { method: "DELETE", query: qs({ skill_id: `in.(${skillIds.join(",")})` }) });
+    await safeDelete("skill_work_examples", qs({ skill_id: `in.(${skillIds.join(",")})` }));
   }
   if (pursuitIds.length > 0) {
     const pursuitQuery = qs({ pursuit_id: `in.(${pursuitIds.join(",")})` });
-    await request("pursuit_events", { method: "DELETE", query: pursuitQuery });
-    await request("outreach_messages", { method: "DELETE", query: pursuitQuery });
-    await request("contact_suggestions", { method: "DELETE", query: pursuitQuery });
+    await safeDelete("pursuit_events", pursuitQuery);
+    await safeDelete("outreach_messages", pursuitQuery);
+    await safeDelete("contact_suggestions", pursuitQuery);
   }
-  await request("pursuits", { method: "DELETE", query: qs({ user_id: `eq.${userId}` }) });
+  await safeDelete("pursuits", qs({ user_id: `eq.${userId}` }));
 
   const profileTables = [
     "quality_scored_text_fields",
@@ -1540,11 +1553,15 @@ export async function resetCandidateProfileDataForUser(
     "profile_quality",
   ];
   for (const table of profileTables) {
-    await request(table, { method: "DELETE", query: profileQuery });
+    await safeDelete(table, profileQuery);
   }
 
-  await request("usage_ledger", { method: "DELETE", query: qs({ user_id: `eq.${userId}` }) });
-  await request("candidate_profiles", { method: "DELETE", query: qs({ id: `eq.${profile.id}` }) });
+  await safeDelete("usage_ledger", qs({ user_id: `eq.${userId}` }));
+  await safeDelete("candidate_profiles", qs({ id: `eq.${profile.id}` }));
+
+  if (failures.length > 0) {
+    console.error(`[profile-reset] user ${userId}: ${failures.length} table(s) failed to clear:\n  ${failures.join("\n  ")}`);
+  }
 
   return { status: "reset" };
 }
