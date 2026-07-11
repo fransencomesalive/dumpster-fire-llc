@@ -12,7 +12,11 @@
   /* Plain paper — halftone ground removed 2026-07-09 (pattern rejected, Randall 2026-07-04). */
   body { margin: 0; background: var(--c-paper); font-family: var(--font-ui), Inter, system-ui, sans-serif;
     padding: var(--space-6) var(--space-5); }
-  .wrap { max-width: 660px; margin: 0 auto; }
+  .wrap { max-width: 660px; margin: 0 auto; display: grid; gap: var(--space-6); }
+
+  .stateCap { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: var(--tracking-subhead, 0.05em);
+    font-size: var(--type-caption); color: var(--role-text-faint); margin: 0 0 var(--space-3); }
+  .stateCap b { color: var(--c-ink); }
 
   .section { background-color: var(--c-paper-deep); border: var(--line-bold) solid var(--c-ink);
     border-radius: var(--radius-lg); box-shadow: var(--shadow-card); padding: var(--space-5); }
@@ -47,42 +51,104 @@
     font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.04em; font-size: 0.8rem;
     color: var(--role-text-muted); background: transparent; cursor: pointer;
     border: var(--line-reg) dashed var(--role-text-faint); border-radius: var(--radius-pill); padding: 6px 13px; }
+
+  .saveSmall { margin-top: var(--space-3); font-family: var(--font-display); font-size: 0.95rem; color: var(--c-paper);
+    background-color: var(--c-teal); border: var(--line-bold) solid var(--c-ink); border-radius: var(--radius-md);
+    box-shadow: var(--shadow-card); padding: var(--space-2) var(--space-4); cursor: pointer; }
+
+  /* Saved state (onboarding-card-interior spec, Randall 2026-07-10): each saved snippet
+     reads as page copy with its own MUSTARD pencil; editing shows the textarea exactly
+     as before. */
+  .savedSnippet { display: flex; align-items: flex-start; gap: var(--space-3); margin-bottom: var(--space-3); }
+  .savedSnippet:last-child { margin-bottom: 0; }
+  .savedText { flex: 1 1 auto; min-width: 0; font-family: var(--font-body); font-size: var(--type-body);
+    color: var(--c-ink); margin: 0; line-height: 1.5; white-space: pre-line; }
+  .editPencil { flex: none; display: inline-flex; align-items: center; justify-content: center;
+    width: 32px; height: 32px; color: var(--c-ink); background: var(--c-mustard);
+    border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-md);
+    box-shadow: 2px 2px 0 var(--c-ink); cursor: pointer; }
+  .editPencil:hover { background: color-mix(in srgb, var(--c-mustard) 78%, var(--c-paper)); }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <div class="section">
-    <h2 class="sectionTitle">Things you've already written</h2>
-    <p class="sectionLede">Paste a few real snippets: an email, a post, a Slack message. This is how we learn your actual voice, so don't polish them.</p>
 
-    <div class="bucket">
-      <div class="bucketHead">
-        <span class="bucketLabel">Sounds like me</span>
-        <span class="req">need at least one</span>
-      </div>
-      <textarea>Hey, quick one. Deploy's green, smoke tests pass, I'm shipping it. If anything looks weird in prod ping me and I'll roll it back, no drama.</textarea>
-      <div class="meta"><span class="limitNote">200-word limit</span></div>
-      <button class="addMore">+ add one more</button>
-    </div>
+  <div>
+    <p class="stateCap"><b>1 · Saved</b> — snippets read as page copy, one mustard pencil each; the ghost add stays.</p>
+    <div class="section">
+      <h2 class="sectionTitle">Things you've already written</h2>
+      <p class="sectionLede">Paste a few real snippets: an email, a post, a Slack message. This is how we learn your actual voice, so don't polish them.</p>
 
-    <div class="bucket">
-      <div class="bucketHead">
-        <span class="bucketLabel">Want to sound like</span>
-        <span class="opt">optional</span>
+      <div class="bucket">
+        <div class="bucketHead">
+          <span class="bucketLabel">Sounds like me</span>
+        </div>
+        <div class="savedSnippet">
+          <p class="savedText">Hey, quick one. Deploy&rsquo;s green, smoke tests pass, I&rsquo;m shipping it. If anything looks weird in prod ping me and I&rsquo;ll roll it back, no drama.</p>
+          <button type="button" class="editPencil" aria-label="Edit snippet">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+          </button>
+        </div>
+        <div class="savedSnippet">
+          <p class="savedText">Honestly the deck says everything the client needs. Let&rsquo;s not add ten slides of throat-clearing — send it today and spend Thursday on the demo instead.</p>
+          <button type="button" class="editPencil" aria-label="Edit snippet">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+          </button>
+        </div>
+        <button class="addMore">+ add one more</button>
       </div>
-      <textarea placeholder="Paste a snippet whose voice you'd love yours to read like."></textarea>
-      <div class="meta"><span class="limitNote">200-word limit</span></div>
-    </div>
 
-    <div class="bucket">
-      <div class="bucketHead">
-        <span class="bucketLabel">Never sound like</span>
-        <span class="req">need at least one</span>
+      <div class="bucket">
+        <div class="bucketHead">
+          <span class="bucketLabel">Never sound like</span>
+        </div>
+        <div class="savedSnippet">
+          <p class="savedText">We are thrilled to leverage our cross-functional synergies to drive holistic, best-in-class outcomes that move the needle for all stakeholders.</p>
+          <button type="button" class="editPencil" aria-label="Edit snippet">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+          </button>
+        </div>
       </div>
-      <textarea class="over">We are thrilled to leverage our cross-functional synergies to drive holistic, best-in-class outcomes that move the needle and unlock value across the entire stakeholder ecosystem going forward at this point in time as we circle back to ideate on a paradigm-shifting, results-oriented framework for sustainable growth.</textarea>
-      <div class="meta"><span class="limitNote over">Over the 200-word limit. Trim it.</span></div>
     </div>
   </div>
+
+  <div>
+    <p class="stateCap"><b>2 · Editing / first fill</b> — pencil clicked (or nothing saved yet): the textareas exactly as before, small Save per snippet.</p>
+    <div class="section">
+      <h2 class="sectionTitle">Things you've already written</h2>
+      <p class="sectionLede">Paste a few real snippets: an email, a post, a Slack message. This is how we learn your actual voice, so don't polish them.</p>
+
+      <div class="bucket">
+        <div class="bucketHead">
+          <span class="bucketLabel">Sounds like me</span>
+          <span class="req">need at least one</span>
+        </div>
+        <textarea>Hey, quick one. Deploy's green, smoke tests pass, I'm shipping it. If anything looks weird in prod ping me and I'll roll it back, no drama.</textarea>
+        <div class="meta"><span class="limitNote">200-word limit</span></div>
+        <button type="button" class="saveSmall">Save</button>
+        <button class="addMore">+ add one more</button>
+      </div>
+
+      <div class="bucket">
+        <div class="bucketHead">
+          <span class="bucketLabel">Want to sound like</span>
+          <span class="opt">optional</span>
+        </div>
+        <textarea placeholder="Paste a snippet whose voice you'd love yours to read like."></textarea>
+        <div class="meta"><span class="limitNote">200-word limit</span></div>
+      </div>
+
+      <div class="bucket">
+        <div class="bucketHead">
+          <span class="bucketLabel">Never sound like</span>
+          <span class="req">need at least one</span>
+        </div>
+        <textarea class="over">We are thrilled to leverage our cross-functional synergies to drive holistic, best-in-class outcomes that move the needle and unlock value across the entire stakeholder ecosystem going forward at this point in time as we circle back to ideate on a paradigm-shifting, results-oriented framework for sustainable growth.</textarea>
+        <div class="meta"><span class="limitNote over">Over the 200-word limit. Trim it.</span></div>
+      </div>
+    </div>
+  </div>
+
 </div>
 </body>
 </html>

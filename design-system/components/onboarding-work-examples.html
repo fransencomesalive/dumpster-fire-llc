@@ -70,10 +70,10 @@
     font-size: var(--type-subhead); color: var(--c-ink); }
   .help { font-size: var(--type-caption); color: var(--role-text-faint); }
   .editPencil { margin-left: auto; flex: none; display: inline-flex; align-items: center; justify-content: center;
-    width: 32px; height: 32px; color: var(--c-ink); background: var(--c-paper);
+    width: 32px; height: 32px; color: var(--c-ink); background: var(--c-mustard);
     border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-md);
     box-shadow: 2px 2px 0 var(--c-ink); cursor: pointer; }
-  .editPencil:hover { background: color-mix(in srgb, var(--c-teal) 14%, var(--c-paper)); }
+  .editPencil:hover { background: color-mix(in srgb, var(--c-mustard) 78%, var(--c-paper)); }
   .savedText { font-family: var(--font-body); font-size: var(--type-body); color: var(--c-ink);
     margin: 0; line-height: 1.5; white-space: pre-line; }
   .savedText a { color: var(--c-ink); }
@@ -92,7 +92,8 @@
   .saveSmall { font-family: var(--font-display); font-size: 0.95rem; color: var(--c-paper);
     background-color: var(--c-teal); border: var(--line-bold) solid var(--c-ink); border-radius: var(--radius-md);
     box-shadow: var(--shadow-card); padding: var(--space-2) var(--space-4); cursor: pointer; }
-  .removeGhost { margin-left: auto; font-family: var(--font-display); font-size: 0.9rem; color: var(--role-text-muted);
+  /* Quiet but unmistakably destructive — tomato text, no box (Randall 2026-07-10). */
+  .removeGhost { margin-left: auto; font-family: var(--font-display); font-size: 0.9rem; color: var(--c-tomato);
     background: transparent; border: var(--line-reg) solid transparent; border-radius: var(--radius-md);
     padding: var(--space-2) var(--space-3); cursor: pointer; }
   .removeGhost:hover { color: var(--c-paper); background: var(--c-tomato); border-color: var(--c-ink); }
