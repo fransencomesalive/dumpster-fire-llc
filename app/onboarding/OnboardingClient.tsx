@@ -1782,7 +1782,7 @@ export default function OnboardingClient({
           <p className={styles.savedText}>{opts.value}</p>
         ) : (
           <>
-            <textarea value={opts.value} placeholder={opts.placeholder} onChange={(event) => opts.onChange(event.target.value)} />
+            <textarea value={opts.value} placeholder={opts.placeholder} onFocus={() => openField(opts.fieldKey)} onChange={(event) => opts.onChange(event.target.value)} />
             <span className={`${styles.wordNote} ${over ? styles.wordNoteOver : ""}`}>
               {over ? `${opts.words}/${opts.cap} words, trim it down` : `${opts.cap}-word limit`}
             </span>
@@ -2417,7 +2417,7 @@ export default function OnboardingClient({
                   {showRead ? (
                     <p className={styles.savedText}>{linesToText(field.values)}</p>
                   ) : (
-                    <textarea {...lineListField(field.draftKey, field.values, field.set)} />
+                    <textarea onFocus={() => openField(field.key)} {...lineListField(field.draftKey, field.values, field.set)} />
                   )}
                 </div>
               );
@@ -2689,7 +2689,7 @@ export default function OnboardingClient({
                                 </div>
                               ) : (
                                 <>
-                                  <textarea value={sample.text} placeholder={config.placeholder} onChange={(event) => updateWritingSample(sample.id, { text: event.target.value })} />
+                                  <textarea value={sample.text} placeholder={config.placeholder} onFocus={() => openField(fieldKey)} onChange={(event) => updateWritingSample(sample.id, { text: event.target.value })} />
                                   <div className={styles.snippetFoot}>
                                     <span className={`${styles.wordNote} ${over ? styles.wordNoteOver : ""}`}>
                                       {over ? `${words}/${writingSampleWordCap} words, trim it down` : `${writingSampleWordCap}-word limit`}

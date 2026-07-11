@@ -536,7 +536,7 @@ export default function DashboardClient() {
                   <span><strong>{jobsResponse?.summary.savedJobs ?? 0}</strong> saved</span>
                 </div>
                 <button className={jobsStyles.scanNowBtn} disabled={jobsBusy} onClick={runScan} type="button">
-                  {jobsBusy ? "Scanning…" : "Run scan"}
+                  {scanProgress.status === "running" ? "Scanning…" : "Run scan"}
                 </button>
                 <button className={jobsStyles.scanSecondaryBtn} onClick={() => setSavedOnly((current) => !current)} type="button">
                   {savedOnly ? "Show all jobs" : "View saved jobs"}

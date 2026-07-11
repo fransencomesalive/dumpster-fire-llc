@@ -77,7 +77,11 @@ function decodeHtmlEntities(value: string) {
 }
 
 export function textFromHtml(value: string) {
-  return decodeHtmlEntities(value)
+  // Decode twice: several ATS feeds (e.g. Greenhouse `content`) return
+  // entity-encoded HTML, so an original `&nbsp;` arrives double-encoded as
+  // `&amp;nbsp;`. One pass yields a literal `&nbsp;` that survives tag-stripping;
+  // the second pass resolves it before whitespace is normalized.
+  return decodeHtmlEntities(decodeHtmlEntities(value))
     .replace(/<script[\s\S]*?<\/script>/gi, " ")
     .replace(/<style[\s\S]*?<\/style>/gi, " ")
     .replace(/<(?:br|hr)\s*\/?>/gi, "\n")

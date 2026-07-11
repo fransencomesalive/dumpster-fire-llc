@@ -115,7 +115,10 @@
   .btnSource { position:relative; color:var(--c-ink); background:transparent; padding-bottom:3px; }
 
   /* Sidebar */
-  .dashboardSidebar { position:sticky; top:var(--space-5); display:flex; flex-direction:column; gap:var(--space-4); }
+  /* Sticky, but the column has grown past one viewport (Overview + titles + search
+     settings + board adder) — cap its height and let it scroll internally so the
+     lower cards (incl. the company-board adder) stay reachable. */
+  .dashboardSidebar { position:sticky; top:var(--space-5); align-self:start; max-height:calc(100svh - 2 * var(--space-5)); overflow-y:auto; display:flex; flex-direction:column; gap:var(--space-4); }
   .panelHeaderRow { display:flex; align-items:center; justify-content:space-between; gap:var(--space-3);
     margin-bottom:var(--space-4); padding-bottom:var(--space-3); border-bottom:var(--line-hair) solid var(--c-paper-edge); }
   .sidebarHeading { margin:0; font-family:var(--font-display); font-size:1.25rem; color:var(--c-ink); }
