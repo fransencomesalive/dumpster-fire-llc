@@ -115,6 +115,28 @@ REMAINING GATES (exact steps in docs/database-migration-state.md "NOT yet applie
 - Skip + add-a-board E2E after migrations (until then both fail gracefully).
 - job_sources clean-slate reset: separate decision at apply time.
 
+### Input normalization SHIPPED 2026-07-10 (approved strategy, same day)
+
+Randall's comma-chip finding on Card 1 titles triggered a full list-input audit +
+approved normalization (strategy + audit table in the session log; durable rule now in
+AGENTS.md "Input Conventions — List-Like Fields"):
+
+- Shared `TokenListInput` primitive in OnboardingClient (Enter/comma/blur commit, comma
+  splits typed OR pasted lists into one chip per segment, case-insensitive dedupe, chips
+  ABOVE the input). Card 1 titles refactored onto it; placeholder now teaches the
+  gesture ("Type a title — Enter or comma adds it").
+- **Avoid companies → chips** (absorbs finding #5): visible saved list, same gestures,
+  picker-token skin. DS identity-search card updated + approved + re-synced.
+- **Fit Signals + Skills Evidence textareas now split on NEWLINES, not commas** — prose
+  entries keep their commas; copy flipped to "One signal/piece of evidence per line."
+  (Comma-splitting was silently shredding sentences into fragments.)
+- Confirmed harm of the pre-fix merged title chip: one 8-word title signal scores ~0
+  title-fit for its component titles, scan keyword goes word-loose, profile.md renders
+  one bullet. Users with merged chips: remove + re-paste the list once this is live.
+- onboarding-pickers DS card now carries the written gesture contract + free-text
+  flavor; noted in-card that its catalogue examples still show tokens BELOW the input
+  (Card 1 order = above) — reconcile at next rework.
+
 ### Scan-batch review outcomes (Randall, 2026-07-10 — cards approved in Claude Design)
 
 All six scan-batch cards approved with edits (applied same day, re-synced):

@@ -263,6 +263,16 @@ function textToList(value: string) {
   return value.split(",").map((entry) => entry.trim()).filter(Boolean);
 }
 
+// Newline-separated variants for prose-length list entries (fit signals, skill
+// evidence): sentences keep their commas; each line is one entry (Randall 2026-07-10).
+function linesToText(values: string[] | undefined) {
+  return (values ?? []).join("\n");
+}
+
+function textToLines(value: string) {
+  return value.split("\n").map((entry) => entry.trim()).filter(Boolean);
+}
+
 // Mirrors the server's tolerant compensation parsing: "150,000", "$150k",
 // "72.50" all read correctly. Yearly rounds to dollars; hourly keeps cents.
 function compensationNumber(value: string, options: { decimals?: boolean } = {}) {
@@ -679,6 +689,103 @@ function CataloguePicker(props: CataloguePickerProps) {
 }
 
 /* ============================================================
+   Token-list input — the shared free-text chip primitive
+   (onboarding-pickers DS card gesture contract, Randall 2026-07-10):
+   Enter, comma, and blur all commit; a typed or pasted comma splits into one
+   chip per segment; × removes; dedupe is case-insensitive; chips sit ABOVE
+   the input. Callers pass the skin (Card 1 titleTokens vs picker chips).
+   ============================================================ */
+
+function TokenListInput({
+  values,
+  onChange,
+  placeholder,
+  disabled,
+  inputId,
+  removeGlyph = "×",
+  classes,
+}: {
+  values: string[];
+  onChange: (next: string[]) => void;
+  placeholder: string;
+  disabled?: boolean;
+  inputId?: string;
+  removeGlyph?: string;
+  classes: { chips: string; chip: string; remove: string; input: string };
+}) {
+  const [draft, setDraft] = useState("");
+
+  function addValues(rawValues: string[]) {
+    const additions: string[] = [];
+    for (const raw of rawValues) {
+      const trimmed = raw.trim();
+      if (!trimmed) continue;
+      const lower = trimmed.toLowerCase();
+      if (values.some((value) => value.toLowerCase() === lower)) continue;
+      if (additions.some((value) => value.toLowerCase() === lower)) continue;
+      additions.push(trimmed);
+    }
+    if (additions.length > 0) onChange([...values, ...additions]);
+  }
+
+  function commit() {
+    const value = draft;
+    setDraft("");
+    addValues(value.split(","));
+  }
+
+  // A typed or pasted comma commits the completed segments immediately; whatever
+  // follows the last comma stays in the input as the in-progress value.
+  function handleChange(value: string) {
+    if (!value.includes(",")) {
+      setDraft(value);
+      return;
+    }
+    const lastComma = value.lastIndexOf(",");
+    addValues(value.slice(0, lastComma).split(","));
+    setDraft(value.slice(lastComma + 1).replace(/^\s+/, ""));
+  }
+
+  return (
+    <>
+      {values.length > 0 ? (
+        <div className={classes.chips}>
+          {values.map((value) => (
+            <span key={value} className={classes.chip}>
+              {value}
+              <button
+                type="button"
+                className={classes.remove}
+                aria-label={`Remove ${value}`}
+                disabled={disabled}
+                onClick={() => onChange(values.filter((entry) => entry !== value))}
+              >
+                {removeGlyph}
+              </button>
+            </span>
+          ))}
+        </div>
+      ) : null}
+      <input
+        id={inputId}
+        className={classes.input}
+        value={draft}
+        placeholder={placeholder}
+        disabled={disabled}
+        onChange={(event) => handleChange(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") {
+            event.preventDefault();
+            commit();
+          }
+        }}
+        onBlur={commit}
+      />
+    </>
+  );
+}
+
+/* ============================================================
    Main client
    ============================================================ */
 
@@ -720,7 +827,6 @@ export default function OnboardingClient({
   // Job-title chips (Randall, 2026-07-10). Saved tracks persist edits straight away;
   // a not-yet-saved track (first run / creating) collects titles in a local draft list.
   const [draftTitles, setDraftTitles] = useState<string[]>([]);
-  const [titleDraft, setTitleDraft] = useState("");
   const [card1Note, setCard1Note] = useState<{ count?: number; trackName: string; fileSize?: number } | null>(null);
   // Loader modal for the Card 1 save (scan-progress component). Closes on both
   // success (card flips to its saved state) and failure (message reports it).
@@ -1212,7 +1318,6 @@ export default function OnboardingClient({
       setResumeScan({ status: "idle" });
       setPastedResumeText("");
       setDraftTitles([]);
-      setTitleDraft("");
       setMessage("Role Track & Résumé saved.");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Save failed.");
@@ -1251,23 +1356,9 @@ export default function OnboardingClient({
     }
   }
 
-  function commitTitle() {
-    const value = titleDraft.trim();
-    if (!value) return;
-    if (titleChips.some((title) => title.toLowerCase() === value.toLowerCase())) {
-      setTitleDraft("");
-      return;
-    }
-    setTitleDraft("");
-    if (firstRun || creatingTrack) {
-      setDraftTitles([...draftTitles, value]);
-    } else {
-      void saveTrackTitles([...titleChips, value]);
-    }
-  }
-
-  function removeTitle(value: string) {
-    const next = titleChips.filter((title) => title !== value);
+  // Title edits route through the shared TokenListInput: draft list for a track that
+  // doesn't exist yet, immediate persist for a saved track.
+  function handleTitleChipsChange(next: string[]) {
     if (firstRun || creatingTrack) {
       setDraftTitles(next);
     } else {
@@ -1343,6 +1434,19 @@ export default function OnboardingClient({
         const raw = event.target.value;
         setListFieldDrafts((drafts) => ({ ...drafts, [key]: raw }));
         onValues(textToList(raw));
+      },
+    };
+  }
+
+  // Newline-separated list textarea: one entry per line, so prose entries with commas
+  // ("owns the budget, not just the plan") stay whole (Randall 2026-07-10, input audit #3a).
+  function lineListField(key: string, values: string[] | undefined, onValues: (values: string[]) => void) {
+    return {
+      value: listFieldDrafts[key] ?? linesToText(values),
+      onChange: (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+        const raw = event.target.value;
+        setListFieldDrafts((drafts) => ({ ...drafts, [key]: raw }));
+        onValues(textToLines(raw));
       },
     };
   }
@@ -1769,7 +1873,7 @@ export default function OnboardingClient({
                             role="option"
                             aria-selected={track.id === activeTrackId}
                             className={`${styles.selectOpt} ${track.id === activeTrackId ? styles.selectOptSel : ""}`}
-                            onClick={() => { setActiveTrackId(track.id); setTrackMenuOpen(false); setCard1Note(null); setResumeScan({ status: "idle" }); setTitleDraft(""); }}
+                            onClick={() => { setActiveTrackId(track.id); setTrackMenuOpen(false); setCard1Note(null); setResumeScan({ status: "idle" }); }}
                           >
                             {track.name || track.id}
                           </button>
@@ -1777,7 +1881,7 @@ export default function OnboardingClient({
                         <button
                           type="button"
                           className={`${styles.selectOpt} ${styles.selectOptNew}`}
-                          onClick={() => { setCreatingTrack(true); setNewTrackName(""); setTrackMenuOpen(false); setCard1Note(null); setResumeScan({ status: "idle" }); setDraftTitles(activeTrack?.targetTitles ?? []); setTitleDraft(""); }}
+                          onClick={() => { setCreatingTrack(true); setNewTrackName(""); setTrackMenuOpen(false); setCard1Note(null); setResumeScan({ status: "idle" }); setDraftTitles(activeTrack?.targetTitles ?? []); }}
                         >
                           ＋ Create a new role track
                         </button>
@@ -1791,38 +1895,14 @@ export default function OnboardingClient({
 
             <div className={styles.card1Field}>
               <label className={styles.card1Label} htmlFor="card1-title-input">Job titles</label>
-              {titleChips.length > 0 ? (
-                <div className={styles.titleTokens}>
-                  {titleChips.map((title) => (
-                    <span key={title} className={styles.titleToken}>
-                      {title}
-                      <button
-                        type="button"
-                        className={styles.x}
-                        aria-label={`Remove ${title}`}
-                        disabled={!accessToken || busy}
-                        onClick={() => removeTitle(title)}
-                      >
-                        ×
-                      </button>
-                    </span>
-                  ))}
-                </div>
-              ) : null}
-              <input
-                id="card1-title-input"
-                className={styles.trackInput}
-                value={titleDraft}
-                placeholder="Type a title, press Enter"
+              <TokenListInput
+                key={`${creatingTrack ? "new" : activeTrackId || "first"}`}
+                inputId="card1-title-input"
+                values={titleChips}
+                placeholder="Type a title — Enter or comma adds it"
                 disabled={!accessToken || busy}
-                onChange={(event) => setTitleDraft(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") {
-                    event.preventDefault();
-                    commitTitle();
-                  }
-                }}
-                onBlur={commitTitle}
+                classes={{ chips: styles.titleTokens, chip: styles.titleToken, remove: styles.x, input: styles.trackInput }}
+                onChange={handleTitleChipsChange}
               />
               <span className={styles.subhint}>
                 {firstRun || creatingTrack
@@ -2077,7 +2157,29 @@ export default function OnboardingClient({
                   onRemove={(value) => setIdentity((current) => ({ ...current, avoidIndustries: current.avoidIndustries.filter((entry) => entry !== value) }))}
                 />
               </div>
-              <label>Avoid companies<input {...listField("identity.avoidCompanies", identity.avoidCompanies, (values) => setIdentity({ ...identity, avoidCompanies: values }))} /></label>
+              {/* Avoid companies — free-text token input (identity-search DS card, approved
+                  2026-07-10): the saved list is finally visible as chips right here. */}
+              <div className={styles.fullWidth}>
+                <div className={styles.pickerField}>
+                  <div className={styles.fieldHead}>
+                    <span className={styles.pickerLabel}>Avoid companies</span>
+                    <span className={styles.fieldHelp}>Enter or comma adds it</span>
+                  </div>
+                  <TokenListInput
+                    values={identity.avoidCompanies ?? []}
+                    placeholder="Type a company — Enter or comma adds it"
+                    disabled={!accessToken || busy}
+                    removeGlyph="✕"
+                    classes={{
+                      chips: styles.pickerChips,
+                      chip: `${styles.chip} ${styles.chipOn}`,
+                      remove: styles.chipRemove,
+                      input: `${styles.pickerInput} ${styles.pickerInputItalic}`,
+                    }}
+                    onChange={(values) => setIdentity({ ...identity, avoidCompanies: values })}
+                  />
+                </div>
+              </div>
             </div>
             <div className={styles.formActions}>
               <button className={styles.primaryButton} disabled={!accessToken || busy} onClick={saveIdentity} type="button">Save Identity & Search</button>
@@ -2091,12 +2193,12 @@ export default function OnboardingClient({
             {populatingHelper}
             <p className={styles.cardLede}>Soft signals that nudge job ratings up or down. Poor-fit jobs still surface, rated lower, with the reason shown.</p>
             <div className={styles.formGrid}>
-              <label className={styles.fullWidth}>What makes a role a strong fit<textarea {...listField("fitSignals.goodSignals", fitSignals.goodSignals, (values) => setFitSignals({ ...fitSignals, goodSignals: values }))} /></label>
-              <label className={styles.fullWidth}>What makes a role a poor fit<textarea {...listField("fitSignals.poorFitSignals", fitSignals.poorFitSignals, (values) => setFitSignals({ ...fitSignals, poorFitSignals: values }))} /></label>
+              <label className={styles.fullWidth}>What makes a role a strong fit<textarea {...lineListField("fitSignals.goodSignals", fitSignals.goodSignals, (values) => setFitSignals({ ...fitSignals, goodSignals: values }))} /></label>
+              <label className={styles.fullWidth}>What makes a role a poor fit<textarea {...lineListField("fitSignals.poorFitSignals", fitSignals.poorFitSignals, (values) => setFitSignals({ ...fitSignals, poorFitSignals: values }))} /></label>
             </div>
             <div className={styles.formActions}>
               <button className={styles.primaryButton} disabled={!accessToken || busy} onClick={saveFitSignals} type="button">Save Fit Signals</button>
-              <p>Comma-separate signals. These shape rating context, never hard filters.</p>
+              <p>One signal per line. These shape rating context, never hard filters.</p>
             </div>
           </article>
 
@@ -2167,7 +2269,7 @@ export default function OnboardingClient({
                         <option value="strong">Strong</option>
                         <option value="expert">Expert</option>
                       </select></label>
-                      <label>Evidence<textarea {...listField(`skills.${skill.id}.evidence`, skill.evidence, (values) => updateSkill(skill.id, { evidence: values }))} /></label>
+                      <label>Evidence<textarea {...lineListField(`skills.${skill.id}.evidence`, skill.evidence, (values) => updateSkill(skill.id, { evidence: values }))} /></label>
                     </div>
                     <div className={styles.attachmentBlock}>
                       <p className={styles.statusLabel}>Related Work Examples</p>
@@ -2190,7 +2292,7 @@ export default function OnboardingClient({
             )}
             <div className={styles.formActions}>
               <button className={styles.primaryButton} disabled={!accessToken || busy} onClick={saveSkills} type="button">Save Skills</button>
-              <p>Comma-separate evidence. Save related Work Examples first.</p>
+              <p>One piece of evidence per line. Save related Work Examples first.</p>
             </div>
           </article>
 

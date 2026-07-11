@@ -119,7 +119,8 @@
     pursuing — add the <b>job titles</b> the scan should search for that lane, and add its résumé, right
     on this first card. Nothing else in onboarding unlocks until this is saved. From then on, every
     per-track card (Work Examples, Skills, Fit Signals, Outreach) carries a <b>chip</b> of the active
-    track. Titles are chips: type in the field, the chip lands above it. Résumé is <b>PDF only</b>, read
+    track. Titles are chips: Enter or comma lands each one above the field — paste a
+    comma-separated list and every title becomes its own chip. Résumé is <b>PDF only</b>, read
     once to pull quotable highlights, never stored — and the text box is always a fallback.</p>
   </div>
 
@@ -137,7 +138,7 @@
         </div>
         <div class="field">
           <label>Job titles</label>
-          <input class="trackInput placeholder" value="Type a title, press Enter" />
+          <input class="trackInput placeholder" value="Type a title — Enter or comma adds it" />
           <span class="subhint">Add every title this track should scan for — each one becomes a search the scan runs.</span>
         </div>
         <div class="field">
@@ -174,7 +175,7 @@
             <span class="titleToken">Senior Program Manager<span class="x">&times;</span></span>
             <span class="titleToken">Program Lead<span class="x">&times;</span></span>
           </div>
-          <input class="trackInput placeholder" value="Type a title, press Enter" />
+          <input class="trackInput placeholder" value="Type a title — Enter or comma adds it" />
           <span class="subhint">The scan searches each of these titles for this track.</span>
         </div>
         <div class="field">

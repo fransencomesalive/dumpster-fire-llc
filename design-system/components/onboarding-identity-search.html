@@ -184,9 +184,17 @@
           <div class="tokens"><span class="token">Gambling<span class="x">&times;</span></span></div>
         </div>
 
+        <!-- Avoid companies → free-text token input (Randall 2026-07-10 input-normalization
+             approval; absorbs findings #5 "no feedback"): chips ABOVE the input, same
+             gestures as every token input — Enter/comma/blur add, comma splits, × removes.
+             The saved list is finally visible right here. -->
         <div class="field">
-          <div class="fieldHead"><span class="fieldLabel">Avoid companies</span><span class="help">comma-separated</span></div>
-          <input class="input" value="Acme Corp" />
+          <div class="fieldHead"><span class="fieldLabel">Avoid companies</span><span class="help">Enter or comma adds it</span></div>
+          <div class="tokens" style="margin-top:0; margin-bottom: var(--space-2);">
+            <span class="token">Acme Corp<span class="x">&times;</span></span>
+            <span class="token">Globex<span class="x">&times;</span></span>
+          </div>
+          <div class="picker"><div class="pickerInput placeholder">Type a company — Enter or comma adds it</div></div>
         </div>
 
         <button type="button" class="primary">Save Identity &amp; Search</button>

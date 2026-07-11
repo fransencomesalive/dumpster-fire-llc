@@ -100,6 +100,25 @@ These are standing copy rules for all user-facing surfaces (Randall, 2026-06-26)
 - **No "improve the profile / improve matching" framing.** Matches are rated by the system to provide better matching; the user maintains/keeps their profile current, they do not "improve matching."
 - **Brand voice: anti-corporate-speak.** Dumpster Fire is not a tool for corporate-speak lovers. The positioning is about bringing the user's personality to the table when pursuing a job. Copy should sound human and specific, never generic corporate boilerplate.
 
+### Input Conventions — List-Like Fields (Randall, 2026-07-10)
+
+Every user-facing input that collects a LIST of values must behave identically, on
+current surfaces and anything built later (onboarding, dashboard, scan page):
+
+- **Short values (titles, companies, tags, industries) = token/chip input.** Chips render
+  above the input; Enter, comma, and blur all commit; a typed or pasted comma splits into
+  one chip per segment; × removes; dedupe is case-insensitive. Catalogue-backed fields
+  keep their type-ahead + custom-add on top of the same gestures.
+- **Prose-length entries (fit signals, skill evidence) = newline-separated textarea** —
+  one entry per line. NEVER split prose fields on commas; sentences contain commas.
+- **Single-value action inputs (e.g. paste-a-URL + Add) = input + button, Enter also
+  commits.** No comma handling.
+- Instructional copy must state the gesture ("Enter or comma adds it" / "one per line").
+  Never ship a list input whose saved values are invisible to the user.
+
+New list inputs map to the shared token-input primitive in the design system; do not
+invent a fourth interaction pattern.
+
 ### Design Authority
 
 Codex must not invent UI, layout, CSS, visual hierarchy, component structure, or public-facing presentation from its own judgment.

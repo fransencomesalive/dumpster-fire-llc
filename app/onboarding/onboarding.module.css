@@ -667,6 +667,19 @@
   gap: 7px;
 }
 
+/* Label + gesture-hint head row (onboarding-identity-search DS card fieldHead/help) */
+.fieldHead {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+}
+
+.fieldHelp {
+  font-family: var(--font-ui), Inter, system-ui, sans-serif;
+  font-size: var(--type-caption);
+  color: var(--role-text-faint);
+}
+
 .pickerLabel {
   color: var(--c-ink);
   font-family: var(--font-subhead);

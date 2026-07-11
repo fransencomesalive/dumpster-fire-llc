@@ -51,6 +51,15 @@
     border-bottom: var(--line-reg) dashed var(--role-line-soft); }
   .menuAdd b { color: var(--c-ink); }
 
+  /* Gesture contract callout — the shared token-input rules (Randall, 2026-07-10) */
+  .gestureRules { background: var(--c-paper); border: var(--line-hair) solid var(--c-paper-edge);
+    border-left: var(--line-bold) solid var(--c-teal); border-radius: var(--radius-sm);
+    padding: var(--space-3) var(--space-4); margin: 0 0 var(--space-5); }
+  .gestureRules p { font-family: var(--font-ui), Inter, system-ui, sans-serif; font-size: var(--type-small);
+    color: var(--c-ink); margin: 0 0 var(--space-2); line-height: 1.5; }
+  .gestureRules p:last-child { margin-bottom: 0; }
+  .gestureRules b { font-family: var(--font-display); font-weight: normal; }
+
   /* selected tokens — teal = saved/on (DS stSaved); case-preserving for real names */
   .tokens { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-3); }
   .token { display: inline-flex; align-items: center; gap: 8px; font-family: var(--font-ui), Inter, system-ui, sans-serif;
@@ -65,6 +74,16 @@
   <div class="section">
     <h2 class="sectionTitle">Where you fit</h2>
     <p class="sectionLede">Start typing and pick from the list. Not finding yours? Add it. The list is a head start, not a fence.</p>
+
+    <!-- THE token-input primitive contract (Randall, 2026-07-10 — input-normalization
+         approval). Every list-like input in the product shares these gestures, in three
+         flavors: catalogue-backed (below), preset+custom (tone chips card), and
+         free-text (job titles, avoid companies). New surfaces map to one of the three —
+         never a fourth interaction pattern. Mirrored as a hard rule in AGENTS.md. -->
+    <div class="gestureRules">
+      <p><b>One gesture set, every list input:</b> Enter, comma, and clicking away all add the value. A typed or pasted comma splits into one chip per segment ("VP Product, Head of Production" lands as two). × removes. Duplicates are ignored, whatever the casing. Saved chips sit ABOVE the input (Card 1 order) — the catalogue examples below predate that call and show them beneath; reconcile when this card is next reworked.</p>
+      <p><b>Copy teaches the gesture:</b> placeholders read "…Enter or comma adds it". Prose-length lists (fit signals, evidence) are NOT chips — they're one-per-line textareas, because sentences contain commas.</p>
+    </div>
 
     <div class="field">
       <div class="fieldHead">
@@ -121,6 +140,24 @@
       </div>
       <div class="tokens" style="margin-top:0;">
         <span class="token">Denver, CO, US<span class="x">&times;</span></span>
+      </div>
+    </div>
+
+    <!-- Free-text flavor — no catalogue, no menu; same tokens, same gestures; chips
+         ABOVE the input (Card 1 order). Used by Card 1 job titles and (pending
+         approval) Avoid companies. -->
+    <div class="field">
+      <div class="fieldHead">
+        <span class="fieldLabel">Free-text tokens</span>
+        <span class="help">no catalogue — Enter or comma adds it</span>
+      </div>
+      <div class="tokens" style="margin-top:0; margin-bottom: var(--space-3);">
+        <span class="token">Executive Producer<span class="x">&times;</span></span>
+        <span class="token">Creative Producer<span class="x">&times;</span></span>
+        <span class="token">Senior Producer<span class="x">&times;</span></span>
+      </div>
+      <div class="picker">
+        <div class="pickerInput" style="color:var(--role-text-faint); font-style: italic;">Type one — Enter or comma adds it</div>
       </div>
     </div>
   </div>
