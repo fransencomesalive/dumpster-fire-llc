@@ -164,17 +164,12 @@ type ResumeScanState =
    ============================================================ */
 
 const notLoadedReadinessLabel = "Not loaded";
-const incompleteProfileJustification = "Without the full picture, outreach won't be good. And if outreach isn't good, your chances drop. Finish your profile.";
-const incompleteProfileLockout = "Scanning is locked until the profile is complete. Matching, Saved Jobs, Pursuits, and Human Path stay locked with it.";
 
 // Card 1 save pipeline phases, shown in the scan-progress loader modal
 // (design-system/components/scan-progress.html, live in DashboardClient):
 // save the track, read the résumé + pull highlights, route them to the lane.
 const CARD1_SAVE_PHASES = ["Saving", "Reading", "Routing"] as const;
 
-// Testing control (Randall, 2026-07-08): the profile factory-reset button renders
-// for these accounts only. The server enforces the same list — this just hides it.
-const PROFILE_RESET_ALLOWED_EMAILS = new Set(["fransencomesalive@gmail.com"]);
 
 const voiceAnswerWordCap = 120;
 const avoidNoteWordCap = 25;
@@ -796,14 +791,11 @@ function TokenListInput({
    ============================================================ */
 
 export default function OnboardingClient({
-  mode = "onboarding",
   sections,
 }: {
-  mode?: "onboarding" | "profile-editor";
   sections: PublicProfileOnboardingSection[];
 }) {
   const router = useRouter();
-  const isProfileEditor = mode === "profile-editor";
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -869,8 +861,7 @@ export default function OnboardingClient({
 
   const [profileStatus, setProfileStatus] = useState<"incomplete" | "complete">("incomplete");
   const [profileQuality, setProfileQuality] = useState<ProfileQualitySummary | null>(null);
-  const [issues, setIssues] = useState<string[]>([]);
-  const [message, setMessage] = useState(isProfileEditor ? "Loading your Career Profile." : "Sign in to start your profile.");
+  const [message, setMessage] = useState("Sign in to start your profile.");
   const [busy, setBusy] = useState(false);
 
   const requiredSections = useMemo(() => sections.filter((section) => section.required), [sections]);
@@ -878,7 +869,6 @@ export default function OnboardingClient({
   const applyProfileQuality = useCallback((summary: ProfileQualitySummary) => {
     setProfileQuality(summary);
     setProfileStatus(summary.status);
-    setIssues(summary.incompleteReasons);
   }, []);
 
   const readinessBySection = useMemo(() => {
@@ -996,11 +986,22 @@ export default function OnboardingClient({
     };
   }, [loadProfile]);
 
+  // Onboarding is also the profile edit surface. Only auto-advance to the dashboard when the
+  // profile TRANSITIONS to complete during this session (first-run completion handoff). A user
+  // who arrives already-complete is editing, so they stay here.
+  const initialCompletionRecorded = useRef(false);
+  const arrivedComplete = useRef(false);
   useEffect(() => {
-    if (!isProfileEditor && profileQuality?.status === "complete") {
+    if (!profileQuality) return;
+    if (!initialCompletionRecorded.current) {
+      initialCompletionRecorded.current = true;
+      arrivedComplete.current = profileQuality.status === "complete";
+      return;
+    }
+    if (!arrivedComplete.current && profileQuality.status === "complete") {
       router.replace("/dashboard");
     }
-  }, [isProfileEditor, profileQuality?.status, router]);
+  }, [profileQuality, router]);
 
   // Card 1: default the active Role Track to the first saved one.
   useEffect(() => {
@@ -1093,19 +1094,6 @@ export default function OnboardingClient({
     }
   }
 
-  async function reloadProfile() {
-    if (!accessToken) return;
-    setBusy(true);
-    setMessage("Reloading profile sections…");
-    try {
-      await loadProfile(accessToken);
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Reload failed.");
-    } finally {
-      setBusy(false);
-    }
-  }
-
   function clearLocalDrafts() {
     if (draftStorageKeyRef.current) {
       try {
@@ -1133,7 +1121,6 @@ export default function OnboardingClient({
     setWritingSamples([]);
     setProfileStatus("incomplete");
     setProfileQuality(null);
-    setIssues([]);
     setAccountEmail("");
     setPlanName(null);
     setReviewOpen(false);
@@ -1150,7 +1137,7 @@ export default function OnboardingClient({
       applyProfileQuality(response.profileQuality);
       // The review panel surfaces only when a save leaves the profile incomplete
       // (design-pass note #8). A clean save clears it.
-      if (!isProfileEditor) setReviewOpen(response.profileQuality.status === "incomplete");
+      setReviewOpen(response.profileQuality.status === "incomplete");
       setMessage(`${label} saved.`);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Save failed.");
@@ -1334,7 +1321,7 @@ export default function OnboardingClient({
         fileSize: scan.status === "read" ? scan.fileSize : undefined,
       });
       applyProfileQuality(linkResponse.profileQuality);
-      if (!isProfileEditor) setReviewOpen(linkResponse.profileQuality.status === "incomplete");
+      setReviewOpen(linkResponse.profileQuality.status === "incomplete");
       setCreatingTrack(false);
       setNewTrackName("");
       setTrackMenuOpen(false);
@@ -1391,29 +1378,6 @@ export default function OnboardingClient({
 
   // Testing control: factory-reset this account's profile (server re-checks the
   // allowlist), then bootstrap + reload so the page returns to first run.
-  async function resetProfileData() {
-    if (!accessToken) return;
-    if (!window.confirm("Reset ALL profile data for this account? Every section, pursuit, and the compiled profile will be wiped.")) return;
-    setBusy(true);
-    setMessage("Resetting profile…");
-    try {
-      await requestPublicProfileApi<{ status: string }>("/api/public-profile/reset", { method: "POST", accessToken });
-      clearLocalDrafts();
-      setActiveTrackId("");
-      setCreatingTrack(false);
-      setNewTrackName("");
-      setTrackMenuOpen(false);
-      setResumeScan({ status: "idle" });
-      setPastedResumeText("");
-      setCard1Note(null);
-      await loadProfile(accessToken);
-      setMessage("Profile reset.");
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Reset failed.");
-    } finally {
-      setBusy(false);
-    }
-  }
   /* --- Card-interior field editing + entry saves (Randall, 2026-07-10) --- */
 
   const isEditing = (key: string) => editingFields.has(key);
@@ -1441,7 +1405,7 @@ export default function OnboardingClient({
     try {
       const response = await requestPublicProfileApi<SectionResponse<T>>(path, { method: "PATCH", accessToken, body });
       applyProfileQuality(response.profileQuality);
-      if (!isProfileEditor) setReviewOpen(response.profileQuality.status === "incomplete");
+      setReviewOpen(response.profileQuality.status === "incomplete");
       setMessage(`${label} saved.`);
       return response;
     } catch (error) {
@@ -1558,7 +1522,7 @@ export default function OnboardingClient({
       });
       setWritingSamples(writingResponse.section.writingSamples);
       applyProfileQuality(writingResponse.profileQuality);
-      if (!isProfileEditor) setReviewOpen(writingResponse.profileQuality.status === "incomplete");
+      setReviewOpen(writingResponse.profileQuality.status === "incomplete");
       // Populated prose fields collapse back to their saved-text/pencil read state.
       closeFields("voice.", "ws.");
       setMessage("Voice & Personality saved.");
@@ -1808,6 +1772,13 @@ export default function OnboardingClient({
             <span className={styles.accountEmail}>{accountEmail || "Signed in"}</span>
             {planName ? <span className={styles.planChip}>{planName}</span> : null}
           </span>
+          {/* Return to the dashboard, shown once the profile is complete (this account bar is a
+              placeholder for a future action menu / profile page). */}
+          {profileStatus === "complete" ? (
+            <button type="button" className={styles.secondaryButton} onClick={() => router.push("/dashboard")}>
+              Back to dashboard
+            </button>
+          ) : null}
         </div>
         <div className={styles.accountCode}>
           <label className={styles.accountCodeLabel} htmlFor="account-access-code">Access code</label>
@@ -1965,76 +1936,22 @@ export default function OnboardingClient({
   ) : null;
 
   return (
-    <div className={isProfileEditor ? styles.profileEditorMode : undefined}>
+    <div>
       {saveLoader}
-      {!isProfileEditor ? (
-        <SiteHeader
-          sectionHrefPrefix="/"
-          actions={signedIn ? (
-            <button type="button" className={styles.headerSignOut} onClick={signOut}>Sign out</button>
-          ) : undefined}
-        />
-      ) : null}
+      <SiteHeader
+        sectionHrefPrefix="/"
+        actions={signedIn ? (
+          <button type="button" className={styles.headerSignOut} onClick={signOut}>Sign out</button>
+        ) : undefined}
+      />
 
-      <div className={isProfileEditor ? undefined : styles.shell}>
-        {!isProfileEditor && !signedIn ? loginCard : (
+      <div className={styles.shell}>
+        {!signedIn ? loginCard : (
           <>
-            {isProfileEditor ? (
-              <>
-                <section className={styles.authPanelCompact} aria-label="Profile sign in">
-                  <div>
-                    <p className={styles.statusLabel}>Account</p>
-                    <p className={styles.statusDetail}>{accessToken ? "Signed in." : "Sign in to continue."}</p>
-                  </div>
-                  {accessToken ? (
-                    <div className={styles.authActions}>
-                      <button className={styles.secondaryButton} disabled={busy} onClick={reloadProfile} type="button">Reload</button>
-                      <button className={styles.secondaryButton} onClick={signOut} type="button">Sign out</button>
-                      <input aria-label="Access code" onChange={(event) => setInviteCode(event.target.value)} placeholder="Access code" type="text" value={inviteCode} />
-                      <button className={styles.secondaryButton} disabled={redeemingCode || !inviteCode.trim()} onClick={redeemInviteCode} type="button">Redeem</button>
-                    </div>
-                  ) : (
-                    <div className={styles.authForm}>
-                      <input aria-label="Email" autoComplete="email" onChange={(event) => setEmail(event.target.value)} placeholder="email@example.com" type="email" value={email} />
-                      <input aria-label="Password" autoComplete="current-password" onChange={(event) => setPassword(event.target.value)} placeholder="Password" type="password" value={password} />
-                      <button className={styles.primaryButton} disabled={busy || !email || !password} onClick={signIn} type="button">Sign in</button>
-                      {isGoogleSignInEnabled() ? (
-                        <button className={styles.secondaryButton} disabled={busy} onClick={signInGoogle} type="button">Continue with Google</button>
-                      ) : null}
-                    </div>
-                  )}
-                </section>
+            {accountPanel}
+            {reviewPanel}
 
-                <section className={styles.readinessPanelCompact} aria-label="Profile readiness summary">
-                  <div>
-                    <p className={styles.statusLabel}>Profile Readiness</p>
-                    <p className={styles.statusValue}>{profileQuality ? (profileStatus === "complete" ? "Complete" : "Incomplete") : notLoadedReadinessLabel}</p>
-                    <p className={styles.statusDetail}>
-                      {profileQuality
-                        ? `${completeRequiredSections} of ${requiredSections.length} required sections currently clear. ${issues.length} blocker${issues.length === 1 ? "" : "s"} remain.`
-                        : "Sign in to load section readiness, blocker counts, and weak profile fields."}
-                    </p>
-                    {profileQuality?.status === "incomplete" ? (
-                      <div className={styles.gateNotice} role="status">
-                        <p>{incompleteProfileJustification}</p>
-                        <p>{incompleteProfileLockout}</p>
-                      </div>
-                    ) : null}
-                  </div>
-                  <div className={styles.readinessStats}>
-                    <span>{profileQuality?.weakResponseCount ?? 0} weak response{(profileQuality?.weakResponseCount ?? 0) === 1 ? "" : "s"}</span>
-                    <span>{profileQuality?.lastCheckedAt ? `Checked ${new Date(profileQuality.lastCheckedAt).toLocaleString()}` : "Not checked yet"}</span>
-                  </div>
-                </section>
-              </>
-            ) : (
-              <>
-                {accountPanel}
-                {reviewPanel}
-              </>
-            )}
-
-            <section className={`${styles.editorGrid} ${isProfileEditor ? styles.profileEditorGrid : ""}`} aria-label="Editable onboarding form">
+            <section className={styles.editorGrid} aria-label="Editable onboarding form">
               <div className={styles.formStack}>
 
           {/* --- Card 1: Role Track + Résumé (onboarding-resume-upload DS card) --- */}
@@ -2256,21 +2173,6 @@ export default function OnboardingClient({
             ) : null}
             {firstRun ? (
               <p className={styles.lockNote}>🔒 The rest of onboarding unlocks once this is saved.</p>
-            ) : null}
-
-            {/* Testing control — renders only for allowlisted accounts; server enforces too. */}
-            {accountEmail && PROFILE_RESET_ALLOWED_EMAILS.has(accountEmail.toLowerCase()) ? (
-              <div className={styles.card1Field}>
-                <button
-                  type="button"
-                  className={styles.primaryButton}
-                  disabled={!accessToken || busy}
-                  onClick={() => void resetProfileData()}
-                >
-                  Reset profile
-                </button>
-                <p className={styles.card1Helper}>Wipes every section, pursuit, and the compiled profile for this account so onboarding runs from first run again. Only this account sees this.</p>
-              </div>
             ) : null}
           </article>
 
@@ -2743,20 +2645,7 @@ export default function OnboardingClient({
           </fieldset>
         </div>
 
-              {isProfileEditor ? (
-                <aside className={styles.issueCard}>
-                  <p className={styles.statusLabel}>Current blockers</p>
-                  {issues.length === 0 ? (
-                    <p>{profileQuality?.status === "complete" ? "Profile complete. Scan and downstream workflow gates can open." : "No profile blockers loaded yet."}</p>
-                  ) : (
-                    <ul>
-                      {issues.slice(0, 8).map((issue) => (<li key={issue}>{issue}</li>))}
-                    </ul>
-                  )}
-                </aside>
-              ) : (
-                sectionsRail
-              )}
+              {sectionsRail}
             </section>
           </>
         )}

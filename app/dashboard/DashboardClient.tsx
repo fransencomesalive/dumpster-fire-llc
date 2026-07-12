@@ -6,8 +6,6 @@ import { useRouter } from "next/navigation";
 import { clearPublicProfileAccessToken, readPublicProfileAccessToken } from "@/lib/public-profile/browser-session";
 import { syncPublicProfileSession } from "@/lib/public-auth/supabase-browser";
 import { PublicProfileApiError, requestPublicProfileApi } from "@/lib/public-profile/client";
-import { publicProfileOnboardingSections } from "@/lib/public-profile/onboarding";
-import OnboardingClient from "../onboarding/OnboardingClient";
 import ApplyWizardModal from "./ApplyWizardModal";
 import styles from "../site.module.css";
 import jobsStyles from "./dashboard.module.css";
@@ -158,7 +156,6 @@ export default function DashboardClient() {
   const [guardState, setGuardState] = useState<GuardState>({ status: "checking" });
   const [jobsState, setJobsState] = useState<JobsState>({ status: "idle" });
   const [jobsBusy, setJobsBusy] = useState(false);
-  const [isProfileEditorOpen, setIsProfileEditorOpen] = useState(false);
   const [pursuitContext, setPursuitContext] = useState<{ job: PublicJobRecord; accessToken: string } | null>(null);
   const [fitFilter, setFitFilter] = useState<number | null>(null);
   const [savedOnly, setSavedOnly] = useState(false);
@@ -396,7 +393,7 @@ export default function DashboardClient() {
         <h1 className={jobsStyles.topTitle} id="dashboard-title">Your career dashboard</h1>
         <div className={jobsStyles.topActions}>
           {guardState.status === "complete" ? (
-            <button className={jobsStyles.topEdit} onClick={() => setIsProfileEditorOpen(true)} type="button">
+            <button className={jobsStyles.topEdit} onClick={() => router.push("/onboarding")} type="button">
               Edit Career Profile
             </button>
           ) : null}
@@ -568,7 +565,7 @@ export default function DashboardClient() {
                 <div className={jobsStyles.card}>
                   <div className={jobsStyles.panelHeaderRow}>
                     <h3 className={jobsStyles.sidebarHeading}>Search settings</h3>
-                    <button className={jobsStyles.editBtn} onClick={() => setIsProfileEditorOpen(true)} type="button">Edit</button>
+                    <button className={jobsStyles.editBtn} onClick={() => router.push("/onboarding")} type="button">Edit</button>
                   </div>
                   <div className={jobsStyles.configStats}>
                     <div className={jobsStyles.configStat}>
@@ -698,38 +695,6 @@ export default function DashboardClient() {
                 </button>
               </div>
             ) : null}
-          </div>
-        </div>
-      ) : null}
-      {isProfileEditorOpen ? (
-        <div className={jobsStyles.editorOverlay} aria-labelledby="profile-editor-title" role="dialog" aria-modal="true">
-          <div className={jobsStyles.editorBox}>
-            <header className={jobsStyles.editorHeader}>
-              <div>
-                <h2 className={jobsStyles.editorTitle} id="profile-editor-title">Edit Career Profile</h2>
-                <p className={jobsStyles.editorIntro}>
-                  Keep the profile current so scans, saved jobs, and outreach stay grounded in what you actually want.
-                </p>
-              </div>
-              <button className={jobsStyles.editorClose} onClick={() => setIsProfileEditorOpen(false)} type="button" aria-label="Close">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-                </svg>
-              </button>
-            </header>
-            <div className={jobsStyles.editorBody}>
-              <nav className={jobsStyles.editorNav} aria-label="Career Profile sections">
-                {publicProfileOnboardingSections.map((section) => (
-                  <a href={`#career-profile-${section.key}`} key={section.key}>
-                    <span>{section.label}</span>
-                    <small>{section.required ? "Required" : "Optional"}</small>
-                  </a>
-                ))}
-              </nav>
-              <div className={jobsStyles.editorContent}>
-                <OnboardingClient sections={publicProfileOnboardingSections} mode="profile-editor" />
-              </div>
-            </div>
           </div>
         </div>
       ) : null}
