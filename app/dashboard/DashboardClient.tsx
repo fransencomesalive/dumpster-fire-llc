@@ -394,14 +394,6 @@ export default function DashboardClient() {
       <SiteHeader profileHref="/onboarding" />
       <header className={jobsStyles.topBar}>
         <h1 className={jobsStyles.topTitle} id="dashboard-title">Your career dashboard</h1>
-        <div className={jobsStyles.topActions}>
-          {guardState.status === "complete" ? (
-            <button className={jobsStyles.topEdit} onClick={() => router.push("/onboarding")} type="button">
-              Edit Career Profile
-            </button>
-          ) : null}
-          <Link className={jobsStyles.topLink} href="/">Home</Link>
-        </div>
       </header>
 
       {guardState.status === "checking" ? (

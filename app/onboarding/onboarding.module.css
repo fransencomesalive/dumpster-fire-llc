@@ -1577,6 +1577,14 @@
   margin: 0 8px;
 }
 
+/* On phones the actions wrap and Job scan drops to its own line, so the divider would
+   dangle at the end of the Plan/Billing row — hide it there (Randall, 2026-07-12). */
+@media (max-width: 640px) {
+  .actionDivider {
+    display: none;
+  }
+}
+
 /* --- Plan / Billing popup --- */
 .popupOverlay {
   position: fixed;

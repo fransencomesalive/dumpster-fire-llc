@@ -75,6 +75,8 @@
   .actionDivider { flex: none; align-self: center; width: 3px; height: 30px; border-radius: 2px;
     background-color: var(--c-ink); box-shadow: 2px 2px 0 color-mix(in srgb, var(--c-teal) 45%, transparent);
     margin: 0 var(--space-2); }
+  /* On phones the actions wrap and Job scan drops to its own line — hide the dangling divider. */
+  @container (max-width: 640px) { .actionDivider { display: none; } }
 
   /* Header stub, for the in-context view — carries the profile-icon link (→ onboarding). */
   .siteHeader { position: relative; background-color: var(--c-paper);
