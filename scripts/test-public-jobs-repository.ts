@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import {
   addPublicJobBoardForUser,
+  logUnrecognizedBoardSubmissionBestEffort,
   readPublicJobsForUser,
   removePublicJobBoardForUser,
   runPublicJobsScanForUser,
@@ -105,6 +106,8 @@ const jobs: JobRow[] = [
 const scanResults: ScanResultRow[] = [];
 const savedJobs: SavedJobRow[] = [];
 const jobSources: JobSourceRow[] = [];
+const unrecognizedBoardSubmissions: Array<{ user_id: string; url: string; reason: string }> = [];
+let failSubmissionLogging = false;
 
 const request: PublicProfileRepositoryRequest = async <T>(
   table: string,
@@ -298,6 +301,12 @@ const request: PublicProfileRepositoryRequest = async <T>(
     const careersUrl = query.match(/careers_url=eq\.([^&]+)/)?.[1];
     if (careersUrl) rows = rows.filter((row) => row.careers_url === careersUrl);
     return rows as T;
+  }
+
+  if (table === "unrecognized_board_submissions" && options.method === "POST") {
+    if (failSubmissionLogging) throw new Error("submission logging unavailable");
+    unrecognizedBoardSubmissions.push(options.body as { user_id: string; url: string; reason: string });
+    return {} as T;
   }
 
   if (table === "job_scan_results") {
@@ -501,6 +510,60 @@ async function main() {
   const removed = await removePublicJobBoardForUser(request, userId, jobSources[0].id);
   assert.equal(removed.boards.length, 0);
   assert.equal(jobSources.length, 0);
+
+  // A generic company careers page uses the existing HTML connector, then inserts only
+  // after the live parse returns at least one posting.
+  const genericAdded = await addPublicJobBoardForUser(
+    request,
+    userId,
+    "https://www.trainingpeaks.com/careers/#openings",
+    now,
+    { fetchSource: async (source) => [{
+      ...boardPosting,
+      companyId: source.id,
+      sourceProvider: "html",
+      companyName: source.companyName,
+      sourceUrl: "https://peaksware.workable.com/jobs/5566576",
+      applyUrl: "https://peaksware.workable.com/jobs/5566576",
+    }] },
+  );
+  assert.equal("status" in genericAdded, false);
+  assert.equal(jobSources[0].ats_provider, "html");
+  assert.equal(jobSources[0].careers_url, "https://www.trainingpeaks.com/careers/");
+
+  await removePublicJobBoardForUser(request, userId, jobSources[0].id);
+  const genericEmpty = await addPublicJobBoardForUser(request, userId, "https://careers.acme.test/open-roles", now, {
+    fetchSource: async () => [],
+  });
+  assert.deepEqual(genericEmpty, { status: "unrecognized_board" });
+  assert.equal(jobSources.length, 0);
+
+  const genericFalsePositive = await addPublicJobBoardForUser(request, userId, "https://acme.test/careers", now, {
+    fetchSource: async () => [{
+      ...boardPosting,
+      sourceProvider: "html",
+      title: "Skip to content",
+      sourceUrl: "https://acme.test/#content",
+      applyUrl: "https://acme.test/#content",
+    }],
+  });
+  assert.deepEqual(genericFalsePositive, { status: "unrecognized_board" });
+  assert.equal(jobSources.length, 0);
+
+  // Failure logging retains the raw pasted URL. Telemetry failure is swallowed so the API can
+  // preserve its existing add-board response.
+  const rawUnreadableUrl = " https://careers.acme.test/about#jobs ";
+  await logUnrecognizedBoardSubmissionBestEffort(request, userId, rawUnreadableUrl, "unrecognized_board");
+  assert.deepEqual(unrecognizedBoardSubmissions.at(-1), {
+    user_id: userId,
+    url: rawUnreadableUrl,
+    reason: "unrecognized_board",
+  });
+
+  failSubmissionLogging = true;
+  await assert.doesNotReject(
+    logUnrecognizedBoardSubmissionBestEffort(request, userId, rawUnreadableUrl, "board_fetch_failed"),
+  );
 
   console.log("public jobs repository: all assertions passed");
 }

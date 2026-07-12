@@ -633,9 +633,7 @@ export default function DashboardClient() {
                 ) : null}
                 {boardError === "unreadable" ? (
                   <p className={jobsStyles.boardErr}>
-                    <b>We couldn&apos;t read that page as a job board.</b> Try the company&apos;s careers page link — the page
-                    that lists their open roles. Still stuck? Use the feedback chat bubble to request a job board that
-                    didn&apos;t work.
+                    Couldn&apos;t read that one yet. We&apos;ve saved the link and we&apos;ll see about adding it. Got a direct link to their listings? Paste that and it may scan right now.
                   </p>
                 ) : boardError ? (
                   <p className={jobsStyles.boardErr}>{boardError.message}</p>

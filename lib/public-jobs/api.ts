@@ -6,6 +6,7 @@ import {
 } from "@/lib/public-profile/repository";
 import {
   addPublicJobBoardForUser,
+  logUnrecognizedBoardSubmissionBestEffort,
   listPublicJobBoardsForUser,
   readPublicJobsForUser,
   removePublicJobBoardForUser,
@@ -225,6 +226,9 @@ export async function handlePublicJobBoardAddRequest(
     ...options.scanOptions,
   });
   if ("status" in result) {
+    if (result.status === "unrecognized_board" || result.status === "board_fetch_failed") {
+      await logUnrecognizedBoardSubmissionBestEffort(repositoryRequest, session.userId, body.url, result.status);
+    }
     if (result.status === "unrecognized_board") {
       return json({
         error: "That page could not be read as a job board.",

@@ -155,3 +155,27 @@ Follow the AGENTS.md `handoff` protocol on completion: stage the intended change
 commit hash and any remaining dirty files, and update this file (or a handoff note) with the exact
 next step — including the **pending prod migration apply** that Randall must run. Do not report done
 without a real commit hash and green validation.
+
+---
+
+## Codex completion handoff — 2026-07-12
+
+Track A is implemented and committed on `main` (commit hash reported in the session handoff).
+
+- Generic non-ATS careers URLs now resolve through the existing HTML connector, and add-time
+  verification requires at least one plausible posting URL before insert.
+- Existing ATS resolution, Gem blocking, board limits, duplicate behavior, dismissed-job behavior,
+  scan concurrency, scan timeout, and per-board failure isolation remain in place.
+- Unreadable adds are logged best-effort to `unrecognized_board_submissions`; logging errors do not
+  change the existing 422 response.
+- The approved dashboard failure sentence is installed without layout or CSS changes.
+- Migration `20260712000100_unrecognized_board_submissions.sql` passed local PostgreSQL 16.14
+  validation and is recorded as pending in `docs/database-migration-state.md`.
+- Real-page connector checks on 2026-07-12 found plausible postings on TrainingPeaks (5), Airbnb
+  careers (10 after navigation filtering), and Mozilla careers (30).
+
+Next immediate starting point: Randall must apply
+`supabase/migrations/20260712000100_unrecognized_board_submissions.sql` to production and record its
+production migration-history row. After the migration and code deploy, verify one unreadable board
+add writes a submission row while returning the same 422, then add TrainingPeaks and run a scan to
+confirm its postings appear for the authenticated user. Codex did not apply or alter production.

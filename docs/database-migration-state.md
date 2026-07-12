@@ -116,7 +116,14 @@ https://supabase.com/dashboard/account/tokens if missing.
 
 ## NOT yet applied to production
 
-- None outstanding. (Open, separate decision — NOT a migration: the `job_sources`
+- `20260712000100_unrecognized_board_submissions.sql` — unreadable company-board URL logging.
+  Pending production apply by Randall. Validated locally on throwaway PostgreSQL 16.14 with a
+  stubbed `auth.users` schema: clean apply, idempotent re-apply, UUID/timestamp defaults, reason
+  CHECK, user FK, RLS, and index all verified. Version `20260712000100` was recorded and read back
+  from the throwaway `supabase_migrations.schema_migrations` table only; production history was not
+  touched.
+
+(Open, separate decision — NOT a migration: the `job_sources`
   clean-slate reset Randall wants alongside the private-boards feature. Scope TBD;
   deleting `jobs` rows cascades to saved_jobs/job_scan_results/pursuits — needs his
   explicit scope call before any delete runs.)

@@ -40,7 +40,15 @@ assert.equal(embedded.board.provider, "greenhouse");
 assert.equal(embedded.board.atsBoardToken, "instacart");
 assert.equal(embedded.board.confidence, "guess");
 
-assert.equal(resolveBoardFromUrl("https://example.com/careers").status, "unrecognized");
+const generic = resolveBoardFromUrl("https://www.trainingpeaks.com/careers/#openings");
+assert.equal(generic.status, "resolved");
+assert.equal(generic.board.provider, "html");
+assert.equal(generic.board.atsBoardToken, "trainingpeaks");
+assert.equal(generic.board.companySlug, "Trainingpeaks");
+assert.equal(generic.board.careersUrl, "https://www.trainingpeaks.com/careers/");
+assert.equal(generic.board.confidence, "guess");
+
+assert.equal(resolveBoardFromUrl("https://example.com/about").status, "unrecognized");
 assert.equal(resolveBoardFromUrl("not a url").status, "unrecognized");
 
 // WWR-style RSS items parse into normalized raw jobs with company/title split.

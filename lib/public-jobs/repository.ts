@@ -512,6 +512,46 @@ export type AddPublicJobBoardResult =
   | { status: "board_limit" }
   | { status: "board_fetch_failed"; message: string };
 
+export type UnrecognizedBoardReason = "unrecognized_board" | "board_fetch_failed";
+
+export async function logUnrecognizedBoardSubmission(
+  request: PublicProfileRepositoryRequest,
+  userId: string,
+  url: string,
+  reason: UnrecognizedBoardReason,
+): Promise<void> {
+  await request("unrecognized_board_submissions", {
+    method: "POST",
+    body: { user_id: userId, url, reason },
+  });
+}
+
+export async function logUnrecognizedBoardSubmissionBestEffort(
+  request: PublicProfileRepositoryRequest,
+  userId: string,
+  url: string,
+  reason: UnrecognizedBoardReason,
+): Promise<void> {
+  try {
+    await logUnrecognizedBoardSubmission(request, userId, url, reason);
+  } catch {
+    // Failure telemetry must never alter the user's add-board response.
+  }
+}
+
+function isPlausibleGenericBoardJob(job: { title: string; sourceUrl: string }) {
+  const title = job.title.trim();
+  if (title.length < 4) return false;
+  if (/^(?:skip to|view all|see all|browse all)\b/i.test(title)) return false;
+  if (/\b(?:careers?|jobs?|openings?|opportunities?)$/i.test(title)) return false;
+  try {
+    const url = new URL(job.sourceUrl);
+    return /\/(?:jobs?|careers?|positions?|openings?|vacancies?|opportunities?)(?:\/|$)/i.test(url.pathname);
+  } catch {
+    return false;
+  }
+}
+
 // Add flow: resolve the pasted URL to a supported board, verify it live (a pattern-valid
 // token can still 404), insert the owner-scoped source row, and pour the fetched postings
 // into the shared jobs pool so the very next scan can match them.
@@ -551,6 +591,11 @@ export async function addPublicJobBoardForUser(
       status: "board_fetch_failed",
       message: error instanceof Error ? error.message : "Board fetch failed.",
     };
+  }
+
+  if (board.provider === "html" && board.confidence === "guess") {
+    jobs = jobs.filter(isPlausibleGenericBoardJob);
+    if (jobs.length === 0) return { status: "unrecognized_board" };
   }
 
   const source = await insertUserJobSource(request, userId, board, now);

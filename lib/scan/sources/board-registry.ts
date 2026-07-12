@@ -37,6 +37,21 @@ function resolved(provider: SourceProvider, token: string, careersUrl: string, c
   };
 }
 
+function genericCompanySlug(hostname: string) {
+  const host = hostname.replace(/^www\./, "");
+  const parts = host.split(".").filter(Boolean);
+  return parts.length > 1 ? parts.at(-2) ?? parts[0] : parts[0] ?? "";
+}
+
+function isUnsafeGenericHost(hostname: string) {
+  if (hostname === "localhost" || hostname.endsWith(".localhost")) return true;
+  if (hostname === "example.com" || hostname.endsWith(".example.com")) return true;
+  if (/^(?:127|10)\./.test(hostname)) return true;
+  if (/^192\.168\./.test(hostname)) return true;
+  const private172 = hostname.match(/^172\.(\d{1,3})\./);
+  return private172 ? Number(private172[1]) >= 16 && Number(private172[1]) <= 31 : false;
+}
+
 export function resolveBoardFromUrl(rawUrl: string): BoardResolution {
   let url: URL;
 
@@ -48,6 +63,8 @@ export function resolveBoardFromUrl(rawUrl: string): BoardResolution {
 
   const hostname = url.hostname.toLowerCase();
   const pathParts = url.pathname.split("/").filter(Boolean);
+
+  if (url.protocol !== "http:" && url.protocol !== "https:") return { status: "unrecognized" };
 
   if (hostname === "job-boards.greenhouse.io" || hostname === "boards.greenhouse.io") {
     const token = pathParts[0] ?? "";
@@ -92,5 +109,10 @@ export function resolveBoardFromUrl(rawUrl: string): BoardResolution {
     return resolved("greenhouse", token, `https://job-boards.greenhouse.io/${token}`, tokenFromQuery ? "exact" : "guess");
   }
 
-  return { status: "unrecognized" };
+  if (url.username || url.password || isUnsafeGenericHost(hostname)) return { status: "unrecognized" };
+
+  const token = genericCompanySlug(hostname);
+  if (!token) return { status: "unrecognized" };
+  url.hash = "";
+  return resolved("html", token, url.toString(), "guess");
 }

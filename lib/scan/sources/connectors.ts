@@ -454,7 +454,7 @@ function parseJsonLdJobs(html: string) {
 
 function parseAnchorJobs(html: string, baseUrl = "") {
   const links = Array.from(html.matchAll(/<a\s+[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi));
-  const titleHints = /(producer|production|creative|program|operations|manager|director|lead|designer|content|brand|studio)/i;
+  const titleHints = /(producer|production|creative|program|operations|manager|director|lead|designer|content|brand|studio|engineer|developer|scientist|technologist|analyst|specialist|coordinator|recruiter|executive|associate|counsel|marketing|sales|product|software)/i;
 
   return links.flatMap((match) => {
     const href = decodeHtmlEntities(match[1]).trim();
