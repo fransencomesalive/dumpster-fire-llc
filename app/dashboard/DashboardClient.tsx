@@ -8,6 +8,7 @@ import { syncPublicProfileSession } from "@/lib/public-auth/supabase-browser";
 import { PublicProfileApiError, requestPublicProfileApi } from "@/lib/public-profile/client";
 import { publicProfileOnboardingSections } from "@/lib/public-profile/onboarding";
 import OnboardingClient from "../onboarding/OnboardingClient";
+import ApplyWizardModal from "./ApplyWizardModal";
 import styles from "../site.module.css";
 import jobsStyles from "./dashboard.module.css";
 import type { PublicJobBoardRecord, PublicJobBoardsResponse, PublicJobRecord, PublicJobsResponse, PublicJobsScanResponse } from "@/lib/public-jobs/types";
@@ -158,6 +159,7 @@ export default function DashboardClient() {
   const [jobsState, setJobsState] = useState<JobsState>({ status: "idle" });
   const [jobsBusy, setJobsBusy] = useState(false);
   const [isProfileEditorOpen, setIsProfileEditorOpen] = useState(false);
+  const [pursuitContext, setPursuitContext] = useState<{ job: PublicJobRecord; accessToken: string } | null>(null);
   const [fitFilter, setFitFilter] = useState<number | null>(null);
   const [savedOnly, setSavedOnly] = useState(false);
   const [scanProgress, setScanProgress] = useState<ScanProgress>({ status: "idle" });
@@ -361,28 +363,16 @@ export default function DashboardClient() {
     }
   }
 
-  async function startPursuit(job: PublicJobRecord) {
+  // Pursue opens the Human Path apply wizard (Review → Contacts → Outreach → Track). The wizard
+  // itself creates/ensures the pursuit and drives every step; here we only gate on auth and hand
+  // it the access token.
+  function startPursuit(job: PublicJobRecord) {
     const accessToken = readPublicProfileAccessToken();
     if (!accessToken) {
       router.replace("/onboarding");
       return;
     }
-
-    setJobsBusy(true);
-    try {
-      await requestPublicProfileApi("/api/public-profile/pursuits", {
-        method: "POST",
-        accessToken,
-        body: { jobId: job.id },
-      });
-      setJobsState((state) => state.status === "ready" ? { ...state, message: `Pursuit started for ${job.title}.` } : state);
-    } catch (error) {
-      setJobsState((state) => state.status === "ready"
-        ? { ...state, message: error instanceof Error ? error.message : "Could not start pursuit." }
-        : state);
-    } finally {
-      setJobsBusy(false);
-    }
+    setPursuitContext({ job, accessToken });
   }
 
   const jobsResponse = jobsState.status === "ready" ? jobsState.response : undefined;
@@ -742,6 +732,14 @@ export default function DashboardClient() {
             </div>
           </div>
         </div>
+      ) : null}
+      {pursuitContext ? (
+        <ApplyWizardModal
+          job={pursuitContext.job}
+          accessToken={pursuitContext.accessToken}
+          onClose={() => setPursuitContext(null)}
+          onPursuitChanged={(message) => { void loadJobs(pursuitContext.accessToken, message); }}
+        />
       ) : null}
     </main>
   );
