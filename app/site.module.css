@@ -150,6 +150,32 @@
   background: var(--role-info);
 }
 
+/* Signed-in profile icon · a silhouette photo placeholder (not initials) that links to
+   the profile page. Sign out and all account actions live on the profile card, so the
+   header needs only this one link (Randall, 2026-07-12). */
+.publicLandingNavProfile {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border: var(--line-reg, 2px) solid var(--c-ink);
+  border-radius: 999px;
+  background: var(--c-paper);
+  color: var(--c-ink-soft);
+  text-decoration: none;
+}
+
+.publicLandingNavProfile:hover {
+  box-shadow: var(--reg-box);
+}
+
+.publicLandingNavProfile svg {
+  width: 24px;
+  height: 24px;
+  display: block;
+}
+
 .publicLandingHeroSection {
   min-height: 610px;
   padding: 18px 0 76px;

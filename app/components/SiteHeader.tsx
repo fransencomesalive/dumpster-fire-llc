@@ -11,9 +11,13 @@ import styles from "../site.module.css";
 export default function SiteHeader({
   sectionHrefPrefix = "",
   actions,
+  profileHref,
 }: {
   sectionHrefPrefix?: string;
   actions?: ReactNode;
+  // When set (a signed-in surface), the actions slot shows a single profile icon
+  // that links here instead of the signed-out Sign in / Create profile pair.
+  profileHref?: string;
 }) {
   return (
     <header className={styles.publicLandingNav} aria-label="Dumpster Fire navigation">
@@ -30,7 +34,11 @@ export default function SiteHeader({
         </nav>
       </div>
       <div className={styles.publicLandingNavActions}>
-        {actions ?? (
+        {actions ?? (profileHref ? (
+          <Link className={styles.publicLandingNavProfile} href={profileHref} aria-label="Your profile">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="8" r="4" /><path d="M12 14c-5 0-8 2.7-8 6v0h16v0c0-3.3-3-6-8-6z" /></svg>
+          </Link>
+        ) : (
           <>
             <Link className={styles.publicLandingNavSignIn} href="/onboarding">
               Sign in
@@ -39,7 +47,7 @@ export default function SiteHeader({
               Create profile
             </Link>
           </>
-        )}
+        ))}
       </div>
     </header>
   );

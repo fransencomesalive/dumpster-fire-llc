@@ -4,7 +4,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Onboarding · Account Bar</title>
+<title>Onboarding · Profile Card</title>
 <link rel="stylesheet" href="../tokens/tokens.css" />
 <link rel="stylesheet" href="../lib/base.css" />
 <style>
@@ -19,56 +19,64 @@
   .scroller { overflow-x: auto; }
   .frame { container-type: inline-size; width: 100%; min-width: 820px; display: grid; gap: var(--space-4); }
 
-  /* ======================= ACCOUNT PANEL (distinct element — NOT the header) =======================
-     Redesigned from scratch per round-2 feedback: this is its own titled panel, not the
-     header/profile-menu structure. Mapped to existing primitives — panel.html card surface,
-     forms.html input, a teal plan badge. Sits at the TOP of the profile page in every
-     signed-in state. Shows the account EMAIL (never a generic "Signed in."), the plan, and a
-     properly styled access-code field. No Reload button (the profile loads on sign-in and
-     after every save); Sign out lives in the header profile menu, not here. */
-  .accountPanel { background-color: var(--c-paper-deep); background-image: var(--fiber-img), var(--grain-img);
+  /* ======================= PROFILE CARD (compact full-width bar) =======================
+     Reworked to a single low bar, not a stacked menu (Randall, 2026-07-12): it runs across the
+     card width without gaining height. Left: an identity group — silhouette photo on top, email
+     below it in body copy, Sign out below that (red text, filling to a red button on hover). Right:
+     a Job scan shortcut back to the dashboard, then Plan and Billing buttons that will open their own
+     popups in a later step (access code folds into the Billing popup). Mapped to existing primitives —
+     panel surface, .ds-btn, teal CTA. The photo is a neutral silhouette placeholder until photo storage lands. */
+  .profileCard { background-color: var(--c-paper-deep); background-image: var(--fiber-img), var(--grain-img);
     background-blend-mode: normal, soft-light; background-size: 170px 170px, 46px 46px;
     border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-lg); box-shadow: var(--shadow-card);
     padding: 0; overflow: hidden; }
-  .accountHead { display: flex; align-items: center; gap: var(--space-3);
+  .profileHead { display: flex; align-items: center; gap: var(--space-3);
     padding: var(--space-2) var(--space-5); border-bottom: var(--line-reg) solid var(--c-ink);
     background-color: color-mix(in srgb, var(--c-teal) 12%, var(--c-paper-deep)); }
-  /* Font sizes bumped +10% globally for this execution (round-3). */
-  .accountHead .title { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.05em;
+  .profileHead .title { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.05em;
     font-size: 0.99rem; color: var(--c-ink); }
-  .accountBody { display: flex; align-items: center; gap: var(--space-5) var(--space-6); flex-wrap: wrap;
+
+  /* The bar: identity group left, action buttons right, on one line that wraps only when narrow. */
+  .profileBar { display: flex; align-items: center; gap: var(--space-5) var(--space-6); flex-wrap: wrap;
     padding: var(--space-4) var(--space-5); }
-  .accountWho { display: grid; gap: 3px; min-width: 0; }
-  .accountWho .caption { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.05em;
-    font-size: 0.79rem; color: var(--role-text-faint); }
-  /* Round-3: plan pill sits BELOW the email, left-justified (was inline to the right). */
-  .accountWho .idRow { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-2); min-width: 0; }
-  .accountWho .email { font-family: var(--font-display); font-size: 1.27rem; color: var(--c-ink);
-    max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .planChip { flex: none; display: inline-flex; align-items: center; font-family: var(--font-subhead);
-    text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.79rem; line-height: 1;
-    color: var(--c-paper); background-color: var(--c-teal); border: var(--line-reg) solid var(--c-ink);
-    border-radius: var(--radius-pill); padding: 5px 11px; }
 
-  /* Access-code field — proper forms.html input treatment (round-2: needs a real input). */
-  .accountCode { margin-left: auto; display: grid; gap: var(--space-2); min-width: 260px; }
-  .accountCode label { font-family: var(--font-display); font-size: 1.08rem; color: var(--c-ink); }
-  .codeRow { display: flex; gap: var(--space-3); }
-  .accountCode input { flex: 1; box-sizing: border-box; font-family: var(--font-mono, var(--font-body));
-    font-size: 1.08rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--c-ink);
+  /* Identity group · icon on top, email below, sign out below. Left-justified. */
+  .identity { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-2); min-width: 0; }
+  .photo { flex: none; width: 45px; height: 45px; border-radius: var(--radius-pill);
     background-color: var(--c-paper); border: var(--line-reg) solid var(--c-ink);
-    border-radius: var(--radius-md); padding: var(--space-3) var(--space-4); }
-  .accountCode input::placeholder { text-transform: none; letter-spacing: normal; color: var(--role-text-faint); }
-  .accountCode input:focus { outline: none; border-color: var(--c-teal);
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--c-teal) 28%, transparent); }
-  .btnRedeem { flex: none; font-family: var(--font-display); font-size: 1.08rem; color: var(--c-paper);
-    background-color: var(--c-teal); border: var(--line-bold) solid var(--c-ink);
-    border-radius: var(--radius-md); box-shadow: var(--shadow-card); padding: var(--space-3) var(--space-5);
-    cursor: pointer; transition: background-color var(--dur-fast) var(--ease-snap), box-shadow var(--dur-fast) var(--ease-snap); }
-  .btnRedeem:hover { background-color: var(--role-info); box-shadow: var(--reg-box);
-    text-shadow: 1px 1px 0 rgba(36,31,26,0.35); }
+    display: grid; place-items: center; overflow: hidden; color: var(--role-text-muted); }
+  .photo svg { width: 30px; height: 30px; display: block; }
+  .email { font-family: var(--font-body); font-size: 1rem; color: var(--c-ink);
+    max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* Sign out · red text by default, fills to a red button on hover. Border reserved so nothing shifts. */
+  .btnSignOut { font-family: var(--font-display); font-size: 0.95rem; color: var(--c-tomato);
+    background-color: transparent; border: var(--line-reg) solid transparent; border-radius: var(--radius-md);
+    padding: var(--space-2) var(--space-3); margin-left: calc(-1 * var(--space-3)); cursor: pointer;
+    transition: background-color var(--dur-fast) var(--ease-snap), color var(--dur-fast) var(--ease-snap),
+      border-color var(--dur-fast) var(--ease-snap), box-shadow var(--dur-fast) var(--ease-snap); }
+  .btnSignOut:hover { color: var(--c-paper); background-color: var(--c-tomato);
+    border-color: var(--c-ink); box-shadow: var(--shadow-card); }
 
-  /* Header + form stub, for the in-context view. */
+  /* Actions · pushed right. Job scan is the teal nav CTA; Plan/Billing are ghost buttons → popups. */
+  .actions { margin-left: auto; display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
+  .btnScan { flex: none; font-family: var(--font-display); font-size: 1.05rem; color: var(--c-paper);
+    background-color: var(--c-teal); border: var(--line-bold) solid var(--c-ink); border-radius: var(--radius-md);
+    box-shadow: var(--shadow-card); padding: var(--space-3) var(--space-5); cursor: pointer; text-decoration: none;
+    display: inline-flex; align-items: center; gap: var(--space-2);
+    transition: background-color var(--dur-fast) var(--ease-snap), box-shadow var(--dur-fast) var(--ease-snap); }
+  .btnScan:hover { background-color: var(--role-info); box-shadow: var(--reg-box);
+    text-shadow: 1px 1px 0 rgba(36,31,26,0.35); }
+  .btnGhost { flex: none; font-family: var(--font-display); font-size: 1.02rem; color: var(--c-ink);
+    background-color: var(--c-paper); border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-md);
+    box-shadow: var(--shadow-card); padding: var(--space-3) var(--space-4); cursor: pointer;
+    transition: background-color var(--dur-fast) var(--ease-snap), box-shadow var(--dur-fast) var(--ease-snap); }
+  .btnGhost:hover { background-color: color-mix(in srgb, var(--c-teal) 16%, var(--c-paper)); box-shadow: var(--reg-box); }
+  /* Small printed divider between the settings buttons and the Job scan CTA. */
+  .actionDivider { flex: none; align-self: center; width: 3px; height: 30px; border-radius: 2px;
+    background-color: var(--c-ink); box-shadow: 2px 2px 0 color-mix(in srgb, var(--c-teal) 45%, transparent);
+    margin: 0 var(--space-2); }
+
+  /* Header stub, for the in-context view — carries the profile-icon link (→ onboarding). */
   .siteHeader { position: relative; background-color: var(--c-paper);
     background-image: var(--fiber-img), var(--grain-img); background-blend-mode: normal, soft-light;
     background-size: 170px 170px, 46px 46px; border: var(--line-reg) solid var(--c-ink);
@@ -79,45 +87,48 @@
   .brandWord { display: flex; flex-direction: column; line-height: 1; }
   .brandWord .top { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.68rem; color: var(--c-tomato); }
   .brandWord .name { font-family: var(--font-display); font-size: 1.12rem; letter-spacing: var(--tracking-display); color: var(--c-ink); }
-  .headerActions { margin-left: auto; display: inline-flex; align-items: center; gap: var(--space-3);
-    font-family: var(--font-display); font-size: 0.95rem; color: var(--role-text-muted); }
-  .formStub { border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-md);
-    background-color: var(--c-paper); box-shadow: var(--shadow-card);
-    padding: var(--space-4) var(--space-5); color: var(--role-text-faint);
-    font-family: var(--font-display); font-size: 1rem; }
+  .headerActions { margin-left: auto; display: inline-flex; align-items: center; gap: var(--space-3); }
+  .profileLink { display: inline-flex; align-items: center; justify-content: center; width: 38px; height: 38px;
+    border-radius: var(--radius-pill); background-color: var(--c-paper); border: var(--line-reg) solid var(--c-ink);
+    box-shadow: var(--shadow-card); color: var(--role-text-muted); text-decoration: none;
+    transition: box-shadow var(--dur-fast) var(--ease-snap); }
+  .profileLink:hover { box-shadow: var(--reg-box); }
+  .profileLink svg { width: 24px; height: 24px; display: block; }
 </style>
 </head>
 <body>
 <div class="wrap">
   <div>
-    <h1 class="page">Onboarding · Account Bar</h1>
-    <p class="lede">The account element, redesigned from scratch as its own titled panel — deliberately
-    NOT the header/profile-menu structure. It sits at the top of the profile page in every signed-in
-    state and states plainly who you are (the account email, not a generic "Signed in."), your plan,
-    and a properly styled access-code field. No Reload button: the profile loads on sign-in and after
-    every save. Sign out stays in the header profile menu.</p>
+    <h1 class="page">Onboarding · Profile Card</h1>
+    <p class="lede">A single compact bar, not a menu — it runs across the card width without gaining height.
+    Left is the identity group: the silhouette photo (a placeholder until photo storage lands), the account
+    email in body copy, and <strong>Sign out</strong> below it (red, filling to a red button on hover). Right
+    are the actions: a <strong>Job scan</strong> shortcut back to the dashboard, then <strong>Plan</strong> and
+    <strong>Billing</strong> buttons that open their own popups in a later step (the access code folds into the
+    Billing popup). In the global header, the matching profile icon links back here.</p>
   </div>
 
   <!-- Isolated element -->
   <div>
-    <p class="stateLabel">The element, on its own</p>
+    <p class="stateLabel">The profile card, on its own</p>
     <div class="scroller"><div class="frame">
-      <section class="accountPanel" aria-label="Account">
-        <div class="accountHead"><span class="title">Account</span></div>
-        <div class="accountBody">
-          <div class="accountWho">
-            <span class="caption">Signed in as</span>
-            <span class="idRow">
-              <span class="email">fransencomesalive@gmail.com</span>
-              <span class="planChip">Goodest</span>
+      <section class="profileCard" aria-label="Profile">
+        <div class="profileHead"><span class="title">Profile</span></div>
+        <div class="profileBar">
+          <div class="identity">
+            <span class="photo" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="8" r="4"/><path d="M12 14c-5 0-8 2.7-8 6v0h16v0c0-3.3-3-6-8-6z"/></svg>
             </span>
+            <span class="email">fransencomesalive@gmail.com</span>
+            <button type="button" class="btnSignOut">Sign out</button>
           </div>
-          <div class="accountCode">
-            <label for="oa-code">Access code</label>
-            <div class="codeRow">
-              <input id="oa-code" type="text" placeholder="Enter code" />
-              <button type="button" class="btnRedeem">Redeem</button>
-            </div>
+          <div class="actions">
+            <button type="button" class="btnGhost">Plan</button>
+            <button type="button" class="btnGhost">Billing</button>
+            <span class="actionDivider" aria-hidden="true"></span>
+            <a class="btnScan" href="#">Job scan
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+            </a>
           </div>
         </div>
       </section>
@@ -126,7 +137,7 @@
 
   <!-- In context -->
   <div>
-    <p class="stateLabel">In context · header, account panel on top</p>
+    <p class="stateLabel">In context · header profile icon links here</p>
     <div class="scroller"><div class="frame">
       <header class="siteHeader">
         <div class="headerInner">
@@ -134,26 +145,31 @@
             <img src="../dumpsterfireguy.png" alt="" aria-hidden="true" />
             <span class="brandWord"><span class="top">The Job Market Is A</span><span class="name">Dumpster Fire</span></span>
           </a>
-          <span class="headerActions">Profile menu &amp; Sign out live here</span>
+          <span class="headerActions">
+            <a class="profileLink" href="#" aria-label="Your profile">
+              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M12 14c-5 0-8 2.7-8 6v0h16v0c0-3.3-3-6-8-6z"/></svg>
+            </a>
+          </span>
         </div>
       </header>
 
-      <section class="accountPanel" aria-label="Account">
-        <div class="accountHead"><span class="title">Account</span></div>
-        <div class="accountBody">
-          <div class="accountWho">
-            <span class="caption">Signed in as</span>
-            <span class="idRow">
-              <span class="email">fransencomesalive@gmail.com</span>
-              <span class="planChip">Goodest</span>
+      <section class="profileCard" aria-label="Profile">
+        <div class="profileHead"><span class="title">Profile</span></div>
+        <div class="profileBar">
+          <div class="identity">
+            <span class="photo" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="8" r="4"/><path d="M12 14c-5 0-8 2.7-8 6v0h16v0c0-3.3-3-6-8-6z"/></svg>
             </span>
+            <span class="email">fransencomesalive@gmail.com</span>
+            <button type="button" class="btnSignOut">Sign out</button>
           </div>
-          <div class="accountCode">
-            <label for="oa-code2">Access code</label>
-            <div class="codeRow">
-              <input id="oa-code2" type="text" placeholder="Enter code" />
-              <button type="button" class="btnRedeem">Redeem</button>
-            </div>
+          <div class="actions">
+            <button type="button" class="btnGhost">Plan</button>
+            <button type="button" class="btnGhost">Billing</button>
+            <span class="actionDivider" aria-hidden="true"></span>
+            <a class="btnScan" href="#">Job scan
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+            </a>
           </div>
         </div>
       </section>

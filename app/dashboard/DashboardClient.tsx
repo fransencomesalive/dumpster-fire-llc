@@ -7,6 +7,7 @@ import { clearPublicProfileAccessToken, readPublicProfileAccessToken } from "@/l
 import { syncPublicProfileSession } from "@/lib/public-auth/supabase-browser";
 import { PublicProfileApiError, requestPublicProfileApi } from "@/lib/public-profile/client";
 import ApplyWizardModal from "./ApplyWizardModal";
+import SiteHeader from "../components/SiteHeader";
 import styles from "../site.module.css";
 import jobsStyles from "./dashboard.module.css";
 import type { PublicJobBoardRecord, PublicJobBoardsResponse, PublicJobRecord, PublicJobsResponse, PublicJobsScanResponse } from "@/lib/public-jobs/types";
@@ -157,7 +158,8 @@ export default function DashboardClient() {
   const [jobsState, setJobsState] = useState<JobsState>({ status: "idle" });
   const [jobsBusy, setJobsBusy] = useState(false);
   const [pursuitContext, setPursuitContext] = useState<{ job: PublicJobRecord; accessToken: string } | null>(null);
-  const [fitFilter, setFitFilter] = useState<number | null>(null);
+  // Each star tier toggles on/off independently; an empty set shows every match.
+  const [fitFilters, setFitFilters] = useState<Set<number>>(() => new Set());
   const [savedOnly, setSavedOnly] = useState(false);
   const [scanProgress, setScanProgress] = useState<ScanProgress>({ status: "idle" });
   // Company job boards card — the user's private job_sources rows.
@@ -382,13 +384,14 @@ export default function DashboardClient() {
   }));
   const visibleJobs = savedOnly
     ? savedJobs
-    : (fitFilter ? jobs.filter((job) => starsFromScore(job.match?.score ?? 0) === fitFilter) : jobs);
+    : (fitFilters.size > 0 ? jobs.filter((job) => fitFilters.has(starsFromScore(job.match?.score ?? 0))) : jobs);
   const scanFillWidth = scanProgress.status === "running"
     ? (scanProgress.phase === 0 ? "30%" : scanProgress.phase === 1 ? "62%" : "88%")
     : "100%";
 
   return (
     <main className={styles.page}>
+      <SiteHeader profileHref="/onboarding" />
       <header className={jobsStyles.topBar}>
         <h1 className={jobsStyles.topTitle} id="dashboard-title">Your career dashboard</h1>
         <div className={jobsStyles.topActions}>
@@ -435,9 +438,13 @@ export default function DashboardClient() {
                     <button
                       key={tier}
                       type="button"
-                      aria-pressed={fitFilter === tier}
-                      className={`${jobsStyles.ratingFilterBtn} ${fitFilter === tier ? jobsStyles.ratingFilterBtnActive : ""}`}
-                      onClick={() => setFitFilter((current) => current === tier ? null : tier)}
+                      aria-pressed={fitFilters.has(tier)}
+                      className={`${jobsStyles.ratingFilterBtn} ${fitFilters.has(tier) ? jobsStyles.ratingFilterBtnActive : ""}`}
+                      onClick={() => setFitFilters((current) => {
+                        const next = new Set(current);
+                        if (next.has(tier)) next.delete(tier); else next.add(tier);
+                        return next;
+                      })}
                     >
                       <span className={jobsStyles.ratingStars}>
                         <span className={jobsStyles.on}>{"★".repeat(tier)}</span>

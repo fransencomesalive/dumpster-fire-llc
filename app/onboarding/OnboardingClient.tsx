@@ -804,6 +804,9 @@ export default function OnboardingClient({
   const [planName, setPlanName] = useState<string | null>(null);
   const [inviteCode, setInviteCode] = useState("");
   const [redeemingCode, setRedeemingCode] = useState(false);
+  // Plan / Billing open lightweight popups; the full management flows land later. The
+  // access-code redeem field folds into the Billing popup (Randall, 2026-07-12).
+  const [accountPopup, setAccountPopup] = useState<null | "plan" | "billing">(null);
   const [reviewOpen, setReviewOpen] = useState(false);
 
   const [identity, setIdentity] = useState<IdentitySearchSection>(emptyIdentity);
@@ -1761,50 +1764,78 @@ export default function OnboardingClient({
     (section) => section.required && readinessBySection.get(section.key)?.status === "incomplete",
   );
 
-  // Account panel — sits on top in every signed-in state (onboarding-account-bar DS card).
+  // Profile card — a compact full-width bar in every signed-in state (onboarding-account-bar
+  // DS card). Identity group left (photo/email/sign out); actions right (Plan, Billing, then
+  // Job scan pinned far right once the profile is complete).
   const accountPanel = (
-    <section className={styles.accountPanel} aria-label="Account">
-      <div className={styles.accountHead}><span className={styles.accountTitle}>Account</span></div>
-      <div className={styles.accountBody}>
-        <div className={styles.accountWho}>
-          <span className={styles.accountCaption}>Signed in as</span>
-          <span className={styles.accountIdRow}>
-            <span className={styles.accountEmail}>{accountEmail || "Signed in"}</span>
-            {planName ? <span className={styles.planChip}>{planName}</span> : null}
+    <section className={styles.accountPanel} aria-label="Profile">
+      <div className={styles.accountHead}><span className={styles.accountTitle}>Profile</span></div>
+      <div className={styles.profileBar}>
+        <div className={styles.identity}>
+          <span className={styles.profilePhoto} aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="8" r="4" /><path d="M12 14c-5 0-8 2.7-8 6v0h16v0c0-3.3-3-6-8-6z" /></svg>
           </span>
-          {/* Return to the dashboard, shown once the profile is complete (this account bar is a
-              placeholder for a future action menu / profile page). */}
-          {profileStatus === "complete" ? (
-            <button type="button" className={styles.secondaryButton} onClick={() => router.push("/dashboard")}>
-              Back to dashboard
-            </button>
-          ) : null}
+          <span className={styles.profileEmail}>{accountEmail || "Signed in"}</span>
+          <button type="button" className={styles.btnSignOut} onClick={signOut}>Sign out</button>
         </div>
-        <div className={styles.accountCode}>
-          <label className={styles.accountCodeLabel} htmlFor="account-access-code">Access code</label>
-          <div className={styles.codeRow}>
-            <input
-              id="account-access-code"
-              className={styles.codeInput}
-              value={inviteCode}
-              onChange={(event) => setInviteCode(event.target.value)}
-              placeholder="Enter code"
-              type="text"
-              aria-label="Access code"
-            />
-            <button
-              type="button"
-              className={styles.btnRedeem}
-              disabled={redeemingCode || !inviteCode.trim()}
-              onClick={redeemInviteCode}
-            >
-              Redeem
-            </button>
-          </div>
+        <div className={styles.profileActions}>
+          <button type="button" className={styles.btnGhost} onClick={() => setAccountPopup("plan")}>Plan</button>
+          <button type="button" className={styles.btnGhost} onClick={() => setAccountPopup("billing")}>Billing</button>
+          {profileStatus === "complete" ? (
+            <>
+              <span className={styles.actionDivider} aria-hidden="true" />
+              <button type="button" className={styles.btnScan} onClick={() => router.push("/dashboard")}>
+                Job scan
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12" /><polyline points="12 5 19 12 12 19" /></svg>
+              </button>
+            </>
+          ) : null}
         </div>
       </div>
     </section>
   );
+
+  // Plan / Billing popups. Plan is informational for now; Billing hosts the working
+  // access-code redeem field until full billing management ships.
+  const accountPopupModal = accountPopup ? (
+    <div className={styles.popupOverlay} role="dialog" aria-modal="true" onClick={() => setAccountPopup(null)}>
+      <div className={styles.popupCard} onClick={(event) => event.stopPropagation()}>
+        <div className={styles.popupHead}>
+          <h3 className={styles.popupTitle}>{accountPopup === "plan" ? "Plan" : "Billing"}</h3>
+          <button type="button" className={styles.popupClose} aria-label="Close" onClick={() => setAccountPopup(null)}>✕</button>
+        </div>
+        {accountPopup === "plan" ? (
+          <div className={styles.popupBody}>
+            <p className={styles.popupNote}>{`You're on the ${planName || "Good"} plan. Plan changes are coming soon.`}</p>
+          </div>
+        ) : (
+          <div className={styles.popupBody}>
+            <p className={styles.popupNote}>Payment methods and invoices are coming soon.</p>
+            <label className={styles.accountCodeLabel} htmlFor="billing-access-code">Access code</label>
+            <div className={styles.codeRow}>
+              <input
+                id="billing-access-code"
+                className={styles.codeInput}
+                value={inviteCode}
+                onChange={(event) => setInviteCode(event.target.value)}
+                placeholder="Enter code"
+                type="text"
+                aria-label="Access code"
+              />
+              <button
+                type="button"
+                className={styles.btnRedeem}
+                disabled={redeemingCode || !inviteCode.trim()}
+                onClick={redeemInviteCode}
+              >
+                Redeem
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  ) : null;
 
   // Save-blocked review panel — only when a save left required sections incomplete
   // (onboarding-review-panel DS card + design-pass note #8).
@@ -1938,11 +1969,10 @@ export default function OnboardingClient({
   return (
     <div>
       {saveLoader}
+      {accountPopupModal}
       <SiteHeader
         sectionHrefPrefix="/"
-        actions={signedIn ? (
-          <button type="button" className={styles.headerSignOut} onClick={signOut}>Sign out</button>
-        ) : undefined}
+        profileHref={signedIn ? "/onboarding" : undefined}
       />
 
       <div className={styles.shell}>
