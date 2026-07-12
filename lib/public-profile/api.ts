@@ -24,6 +24,7 @@ import { generateResumeParse, type ResumeParseVerdict } from "./resume-parse";
 import {
   createPursuitForJob,
   loadContactSuggestionsForPursuit,
+  loadOutreachMessageById,
   loadOutreachMessagesForPursuit,
   loadPursuitByIdForUser,
   loadPursuitEventsForPursuit,
@@ -33,9 +34,16 @@ import {
   persistOutreachGeneration,
   persistPursuitTransition,
   recordProfileExportUsage,
+  updateOutreachMessage,
 } from "./pursuits/repository";
 import { openAIHumanPathProvider } from "./pursuits/contact-provider";
-import { completeReview, expireInactivePursuit, transitionPursuit } from "./pursuits/state-machine";
+import {
+  applyOutreachMessageAction,
+  completeReview,
+  expireInactivePursuit,
+  transitionPursuit,
+  type OutreachMessageAction,
+} from "./pursuits/state-machine";
 import type {
   CompleteReviewInput,
   CreatePursuitInput,
@@ -438,6 +446,14 @@ export type PublicProfilePursuitsHandlerOptions = PublicProfileMatchHandlerOptio
     request: PublicProfileRepositoryRequest,
     pursuitId: string,
   ) => Promise<OutreachMessageRecord[]>;
+  loadOutreachMessage?: (
+    request: PublicProfileRepositoryRequest,
+    messageId: string,
+  ) => Promise<OutreachMessageRecord | undefined>;
+  updateOutreachMessage?: (
+    request: PublicProfileRepositoryRequest,
+    message: OutreachMessageRecord,
+  ) => Promise<void>;
   loadPursuitEvents?: (
     request: PublicProfileRepositoryRequest,
     pursuitId: string,
@@ -1579,26 +1595,33 @@ export async function handlePublicProfilePursuitOutreachRequest(
     return profileIncompleteResponse(aggregate, profileQuality, "generating outreach");
   }
   let profileMarkdown = aggregate.profile.generatedMarkdown?.trim();
-  if (!profileMarkdown) {
-    return json({
-      error: "Complete and generate your profile before generating outreach.",
-      status: "profile_incomplete",
-    }, { status: 409 });
-  }
 
-  // Lazily refresh the compiled profile.md if the candidate edited their profile after the
-  // last generation, so outreach never runs against stale content. Invisible to the user;
-  // the regeneration cost is only paid here, once, when it is actually needed.
-  if (isProfileStale(aggregate.profile)) {
+  // Compile profile.md on demand at the outreach step (Randall, 2026-07-11): compilation is
+  // triggered here, when the user reaches Outreach with a selected contact — not on Pursue or
+  // profile completion. The profile is already confirmed complete above, so a missing
+  // profile.md (never generated) is compiled now, and an existing one is refreshed if the
+  // candidate edited their profile after the last generation. isProfileStale treats a
+  // never-generated profile as stale, so both cases route through one regeneration. Invisible
+  // to the user; the regeneration cost is only paid here, once, when it is actually needed.
+  if (!profileMarkdown || isProfileStale(aggregate.profile)) {
     const regenerateProfile = options.regenerateProfile ?? regeneratePublicProfileForUser;
     const regenerated = await regenerateProfile(repositoryRequest, session.userId, {
       generatedAt,
-      changeSummary: "Refreshed before outreach after profile edits.",
+      changeSummary: profileMarkdown
+        ? "Refreshed before outreach after profile edits."
+        : "Compiled before outreach on first Human Path generation.",
     });
     if (regenerated.status === "regenerated") {
       const refreshed = regenerated.generation.aggregate.profile.generatedMarkdown?.trim();
       if (refreshed) profileMarkdown = refreshed;
     }
+  }
+
+  if (!profileMarkdown) {
+    return json({
+      error: "Complete and generate your profile before generating outreach.",
+      status: "profile_incomplete",
+    }, { status: 409 });
   }
 
   const loadPursuit = options.loadPursuit ?? loadPursuitByIdForUser;
@@ -1723,6 +1746,102 @@ export async function handlePublicProfilePursuitOutreachRequest(
     })),
     event: result.event,
     subscription: enforcement,
+  });
+}
+
+function parseOutreachMessageAction(
+  input: Record<string, unknown> | null,
+): { ok: true; value: OutreachMessageAction } | { ok: false; issues: { field: string; message: string }[] } {
+  const actionType = optionalString(input?.action);
+  if (!actionType) {
+    return { ok: false, issues: [{ field: "action", message: "action is required." }] };
+  }
+  switch (actionType) {
+    case "approve":
+      return { ok: true, value: { type: "approve" } };
+    case "send":
+      return { ok: true, value: { type: "send" } };
+    case "edit": {
+      const message = optionalString(input?.message);
+      if (!message) {
+        return { ok: false, issues: [{ field: "message", message: "message is required to edit a draft." }] };
+      }
+      return { ok: true, value: { type: "edit", message } };
+    }
+    case "reject": {
+      const rejectionReason = optionalString(input?.rejectionReason);
+      if (!rejectionReason) {
+        return { ok: false, issues: [{ field: "rejectionReason", message: "rejectionReason is required to reject a draft." }] };
+      }
+      return { ok: true, value: { type: "reject", rejectionReason } };
+    }
+    default:
+      return { ok: false, issues: [{ field: "action", message: "action must be approve, edit, reject, or send." }] };
+  }
+}
+
+// Per-message approve / edit / reject / send. The pursuit-level Track step transitions the
+// whole pursuit; this transitions a single outreach_messages row so the user can shape each
+// draft independently. The message's pursuit must belong to the authenticated user.
+export async function handlePublicProfilePursuitOutreachMessageUpdateRequest(
+  request: Request,
+  messageId: string,
+  options: PublicProfilePursuitsHandlerOptions = {},
+) {
+  const session = await sessionForRequest(request, options);
+  if (session.status !== "authenticated") return authErrorResponse(session);
+
+  const repositoryRequest = repositoryRequestForOptions(options);
+  if (!repositoryRequest) return repositoryConfigErrorResponse();
+
+  const trimmedMessageId = messageId?.trim();
+  if (!trimmedMessageId) {
+    return json({
+      error: "Expected messageId.",
+      status: "validation_error",
+      issues: [{ field: "messageId", message: "messageId is required." }],
+    }, { status: 400 });
+  }
+
+  const input = await request.json().catch(() => null) as Record<string, unknown> | null;
+  const action = parseOutreachMessageAction(input);
+  if (action.ok === false) {
+    return json({
+      error: "Could not update the outreach message.",
+      status: "validation_error",
+      issues: action.issues,
+    }, { status: 400 });
+  }
+
+  const loadMessage = options.loadOutreachMessage ?? loadOutreachMessageById;
+  const message = await loadMessage(repositoryRequest, trimmedMessageId);
+  if (!message) {
+    return json({ error: "Outreach message not found.", status: "not_found" }, { status: 404 });
+  }
+
+  const loadPursuit = options.loadPursuit ?? loadPursuitByIdForUser;
+  const pursuit = await loadPursuit(repositoryRequest, session.userId, message.pursuitId);
+  if (!pursuit) {
+    return json({ error: "Outreach message not found.", status: "not_found" }, { status: 404 });
+  }
+
+  const updatedAt = options.now?.() ?? new Date().toISOString();
+  const transition = applyOutreachMessageAction(message, action.value, updatedAt);
+  if (transition.ok === false) {
+    return json({
+      error: "Could not update the outreach message.",
+      status: "transition_error",
+      issues: transition.issues,
+    }, { status: 409 });
+  }
+
+  const persist = options.updateOutreachMessage ?? updateOutreachMessage;
+  await persist(repositoryRequest, transition.message);
+
+  return json({
+    status: "outreach_message_updated",
+    pursuitId: pursuit.id,
+    message: transition.message,
   });
 }
 

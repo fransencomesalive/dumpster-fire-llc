@@ -1,6 +1,8 @@
 import type {
   CompleteReviewInput,
   CreatePursuitInput,
+  OutreachMessageRecord,
+  OutreachMessageStatus,
   Pursuit,
   PursuitEvent,
   PursuitEventType,
@@ -200,4 +202,65 @@ export function expireInactivePursuit(
   }
 
   return transitionPursuit(pursuit, "expired", now, { inactiveDays });
+}
+
+// Per-outreach-message actions (Randall, 2026-07-11). Individual drafts are approved, edited,
+// rejected, or marked sent one row at a time — this is separate from the pursuit-level state
+// machine above. "sent" is terminal (a sent message is never revised); the system never sends,
+// so reaching "sent" is always an explicit user action after approval ("never auto-sent").
+export type OutreachMessageAction =
+  | { type: "approve" }
+  | { type: "reject"; rejectionReason: string }
+  | { type: "edit"; message: string }
+  | { type: "send" };
+
+export type OutreachMessageTransitionResult =
+  | { ok: true; message: OutreachMessageRecord }
+  | { ok: false; issues: string[] };
+
+const OUTREACH_MESSAGE_ALLOWED_FROM: Record<OutreachMessageAction["type"], OutreachMessageStatus[]> = {
+  // Editing an approved/rejected draft returns it to "draft" so revised copy is re-approved
+  // before it can be marked sent.
+  edit: ["draft", "approved", "rejected"],
+  approve: ["draft", "rejected"],
+  reject: ["draft", "approved"],
+  send: ["approved"],
+};
+
+export function applyOutreachMessageAction(
+  message: OutreachMessageRecord,
+  action: OutreachMessageAction,
+  updatedAt: string,
+): OutreachMessageTransitionResult {
+  if (message.status === "sent") {
+    return { ok: false, issues: ["This message was already sent and can no longer be changed."] };
+  }
+
+  const allowedFrom = OUTREACH_MESSAGE_ALLOWED_FROM[action.type];
+  if (!allowedFrom.includes(message.status)) {
+    return {
+      ok: false,
+      issues: [`Cannot ${action.type} a message that is ${message.status}.`],
+    };
+  }
+
+  switch (action.type) {
+    case "edit": {
+      const body = action.message.trim();
+      if (!body) return { ok: false, issues: ["An edited message cannot be empty."] };
+      return {
+        ok: true,
+        message: { ...message, message: body, status: "draft", rejectionReason: undefined, updatedAt },
+      };
+    }
+    case "approve":
+      return { ok: true, message: { ...message, status: "approved", rejectionReason: undefined, updatedAt } };
+    case "reject": {
+      const reason = action.rejectionReason.trim();
+      if (!reason) return { ok: false, issues: ["A rejection reason is required."] };
+      return { ok: true, message: { ...message, status: "rejected", rejectionReason: reason, updatedAt } };
+    }
+    case "send":
+      return { ok: true, message: { ...message, status: "sent", updatedAt } };
+  }
 }

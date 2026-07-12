@@ -313,6 +313,37 @@ export async function loadOutreachMessagesForPursuit(
   return rows.map(mapOutreachMessage);
 }
 
+export async function loadOutreachMessageById(
+  request: PublicProfileRepositoryRequest,
+  messageId: string,
+): Promise<OutreachMessageRecord | undefined> {
+  const rows = await request<OutreachMessageRow[]>("outreach_messages", {
+    query: qs({
+      id: `eq.${messageId}`,
+      select: "id,pursuit_id,contact_suggestion_id,recipient_type,channel,message,status,rejection_reason,selected_role_track_id,selected_resume_id,selected_work_example_id,created_at,updated_at",
+      limit: "1",
+    }),
+  });
+  const row = first(rows);
+  return row ? mapOutreachMessage(row) : undefined;
+}
+
+export async function updateOutreachMessage(
+  request: PublicProfileRepositoryRequest,
+  message: OutreachMessageRecord,
+): Promise<void> {
+  await request("outreach_messages", {
+    method: "PATCH",
+    query: qs({ id: `eq.${message.id}` }),
+    body: {
+      message: message.message,
+      status: message.status,
+      rejection_reason: message.rejectionReason ?? null,
+      updated_at: message.updatedAt,
+    },
+  });
+}
+
 export async function loadPursuitEventsForPursuit(
   request: PublicProfileRepositoryRequest,
   pursuitId: string,

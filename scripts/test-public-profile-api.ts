@@ -15,6 +15,7 @@ import {
   handlePublicProfilePursuitHumanPathRequest,
   handlePublicProfilePursuitLifecycleRequest,
   handlePublicProfilePursuitOutreachRequest,
+  handlePublicProfilePursuitOutreachMessageUpdateRequest,
   handlePublicProfilePursuitReadRequest,
   handlePublicProfilePursuitReviewRequest,
   handlePublicProfilePursuitsListRequest,
@@ -1114,13 +1115,35 @@ async function main() {
 
   const noGeneratedProfile = {
     ...agg,
-    profile: { ...agg.profile, generatedMarkdown: "" },
+    profile: { ...agg.profile, generatedMarkdown: "", markdownGeneratedAt: undefined },
   };
+  // Compile-on-missing (Randall, 2026-07-11): a COMPLETE profile with no compiled profile.md
+  // must compile it at the outreach step, not dead-end at profile_incomplete. Here regenerate
+  // yields fresh markdown, so the handler moves past the markdown gate (reaching a later 404
+  // for the missing pursuit) instead of 409ing.
+  let compiledOnMissing = false;
+  const pursuitOutreachCompilesMissingMarkdown = await handlePublicProfilePursuitOutreachRequest(postRequest("pursuits/outreach", { pursuitId: "pursuit-404" }), {
+    now: () => now,
+    getSession: async () => authed(),
+    repositoryRequest,
+    loadAggregate: async () => noGeneratedProfile,
+    regenerateProfile: async () => {
+      compiledOnMissing = true;
+      return regeneratedResult();
+    },
+    loadPursuit: async () => undefined,
+  });
+  assert.equal(compiledOnMissing, true);
+  assert.equal(pursuitOutreachCompilesMissingMarkdown.status, 404);
+
+  // If compilation still yields no markdown (e.g. profile vanished mid-flight), fall back to
+  // the 409 profile_incomplete guard.
   const pursuitOutreachProfileIncomplete = await handlePublicProfilePursuitOutreachRequest(postRequest("pursuits/outreach", { pursuitId: "pursuit-1" }), {
     now: () => now,
     getSession: async () => authed(),
     repositoryRequest,
     loadAggregate: async () => noGeneratedProfile,
+    regenerateProfile: async () => ({ status: "not_found", userId: "user-1" }),
   });
   assert.equal(pursuitOutreachProfileIncomplete.status, 409);
   assert.equal((await body(pursuitOutreachProfileIncomplete)).status, "profile_incomplete");
@@ -1264,6 +1287,95 @@ async function main() {
   assert.equal((persistedDrafts as GeneratedOutreachDraft[]).length, 2);
   assert.deepEqual((persistedDrafts as GeneratedOutreachDraft[]).map((draft) => draft.recipientType), ["likely_hiring_manager", "recruiter"]);
   assert.equal((persistedDrafts as GeneratedOutreachDraft[])[0].selectedWorkExampleId, "example-1");
+
+  // ---- Per-message outreach update route ----
+  const draftMessage: OutreachMessageRecord = {
+    id: "message-1",
+    pursuitId: "pursuit-1",
+    contactSuggestionId: "contact-1",
+    recipientType: "likely_hiring_manager",
+    channel: "email",
+    message: "Hi Dana.",
+    status: "draft",
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  const messageUpdateValidation = await handlePublicProfilePursuitOutreachMessageUpdateRequest(
+    patchRequest("pursuits/outreach/message-1", {}),
+    "message-1",
+    {
+      getSession: async () => authed(),
+      repositoryRequest,
+      loadOutreachMessage: async () => { throw new Error("should not load message on validation error"); },
+    },
+  );
+  assert.equal(messageUpdateValidation.status, 400);
+  assert.equal((await body(messageUpdateValidation)).status, "validation_error");
+
+  const messageUpdateUnauthorized = await handlePublicProfilePursuitOutreachMessageUpdateRequest(
+    patchRequest("pursuits/outreach/message-1", { action: "approve" }),
+    "message-1",
+    { getSession: async () => ({ status: "unauthenticated", reason: "Missing bearer token." }) },
+  );
+  assert.equal(messageUpdateUnauthorized.status, 401);
+
+  const messageUpdateNotFound = await handlePublicProfilePursuitOutreachMessageUpdateRequest(
+    patchRequest("pursuits/outreach/message-404", { action: "approve" }),
+    "message-404",
+    {
+      getSession: async () => authed(),
+      repositoryRequest,
+      loadOutreachMessage: async () => undefined,
+    },
+  );
+  assert.equal(messageUpdateNotFound.status, 404);
+
+  const messageUpdateNotOwned = await handlePublicProfilePursuitOutreachMessageUpdateRequest(
+    patchRequest("pursuits/outreach/message-1", { action: "approve" }),
+    "message-1",
+    {
+      getSession: async () => authed(),
+      repositoryRequest,
+      loadOutreachMessage: async () => draftMessage,
+      loadPursuit: async () => undefined,
+      updateOutreachMessage: async () => { throw new Error("should not persist when pursuit is not owned"); },
+    },
+  );
+  assert.equal(messageUpdateNotOwned.status, 404);
+
+  const messageUpdateBadTransition = await handlePublicProfilePursuitOutreachMessageUpdateRequest(
+    patchRequest("pursuits/outreach/message-1", { action: "send" }),
+    "message-1",
+    {
+      getSession: async () => authed(),
+      repositoryRequest,
+      loadOutreachMessage: async () => draftMessage,
+      loadPursuit: async () => savedPursuit({ status: "outreach_ready" }),
+      updateOutreachMessage: async () => { throw new Error("should not persist an invalid transition"); },
+    },
+  );
+  assert.equal(messageUpdateBadTransition.status, 409);
+  assert.equal((await body(messageUpdateBadTransition)).status, "transition_error");
+
+  let persistedMessage: OutreachMessageRecord | undefined;
+  const messageUpdateApproved = await handlePublicProfilePursuitOutreachMessageUpdateRequest(
+    patchRequest("pursuits/outreach/message-1", { action: "approve" }),
+    "message-1",
+    {
+      now: () => now,
+      getSession: async () => authed(),
+      repositoryRequest,
+      loadOutreachMessage: async () => draftMessage,
+      loadPursuit: async () => savedPursuit({ status: "outreach_ready" }),
+      updateOutreachMessage: async (_request, message) => { persistedMessage = message; },
+    },
+  );
+  assert.equal(messageUpdateApproved.status, 200);
+  const messageUpdateApprovedJson = await body(messageUpdateApproved);
+  assert.equal(messageUpdateApprovedJson.status, "outreach_message_updated");
+  assert.equal((messageUpdateApprovedJson.message as OutreachMessageRecord).status, "approved");
+  assert.equal(persistedMessage?.status, "approved");
 
   // ---- Pursuit status route ----
   const pursuitStatusValidation = await handlePublicProfilePursuitStatusRequest(postRequest("pursuits/status", {}), {

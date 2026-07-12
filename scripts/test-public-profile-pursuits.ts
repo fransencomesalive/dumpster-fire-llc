@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import type { PublicProfileRepositoryRequest } from "../lib/public-profile/repository";
 import { unavailableHumanPathProvider } from "../lib/public-profile/pursuits/human-path";
 import {
+  applyOutreachMessageAction,
   completeReview,
   createPursuit,
   expireInactivePursuit,
@@ -10,6 +11,7 @@ import {
 import {
   createPursuitForJob,
   loadContactSuggestionsForPursuit,
+  loadOutreachMessageById,
   loadOutreachMessagesForPursuit,
   loadPursuitEventsForPursuit,
   loadPursuitsForUser,
@@ -17,7 +19,9 @@ import {
   persistHumanPathGeneration,
   persistOutreachGeneration,
   persistPursuitTransition,
+  updateOutreachMessage,
 } from "../lib/public-profile/pursuits/repository";
+import type { OutreachMessageRecord } from "../lib/public-profile/pursuits/types";
 
 const now = "2026-06-29T12:00:00.000Z";
 const later = "2026-06-29T13:00:00.000Z";
@@ -332,6 +336,113 @@ async function main() {
   assert.equal(pursuitEvents[0].eventType, "created");
   assert.equal(pursuitEvents[0].toStatus, "saved");
   assert.equal(pursuitEvents[0].fromStatus, undefined);
+
+  // ---- Per-message outreach actions ----
+  const baseMessage: OutreachMessageRecord = {
+    id: "message-1",
+    pursuitId: "pursuit-1",
+    contactSuggestionId: "contact-1",
+    recipientType: "likely_hiring_manager",
+    channel: "linkedin",
+    message: "Original draft.",
+    status: "draft",
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  const approved = applyOutreachMessageAction(baseMessage, { type: "approve" }, later);
+  assert.equal(approved.ok, true);
+  if (approved.ok) {
+    assert.equal(approved.message.status, "approved");
+    assert.equal(approved.message.rejectionReason, undefined);
+    assert.equal(approved.message.updatedAt, later);
+  }
+
+  const rejected = applyOutreachMessageAction(baseMessage, { type: "reject", rejectionReason: "Too formal" }, later);
+  assert.equal(rejected.ok, true);
+  if (rejected.ok) {
+    assert.equal(rejected.message.status, "rejected");
+    assert.equal(rejected.message.rejectionReason, "Too formal");
+  }
+
+  const rejectNoReason = applyOutreachMessageAction(baseMessage, { type: "reject", rejectionReason: "  " }, later);
+  assert.equal(rejectNoReason.ok, false);
+
+  const edited = applyOutreachMessageAction(
+    { ...baseMessage, status: "approved" },
+    { type: "edit", message: "  Revised copy.  " },
+    later,
+  );
+  assert.equal(edited.ok, true);
+  if (edited.ok) {
+    assert.equal(edited.message.message, "Revised copy.");
+    // Editing an approved draft returns it to draft so it must be re-approved before sending.
+    assert.equal(edited.message.status, "draft");
+  }
+
+  const editEmpty = applyOutreachMessageAction(baseMessage, { type: "edit", message: "   " }, later);
+  assert.equal(editEmpty.ok, false);
+
+  const sent = applyOutreachMessageAction({ ...baseMessage, status: "approved" }, { type: "send" }, later);
+  assert.equal(sent.ok, true);
+  if (sent.ok) assert.equal(sent.message.status, "sent");
+
+  // Cannot send a draft that was never approved ("never auto-sent").
+  const sendUnapproved = applyOutreachMessageAction(baseMessage, { type: "send" }, later);
+  assert.equal(sendUnapproved.ok, false);
+
+  // A sent message is terminal.
+  const modifySent = applyOutreachMessageAction({ ...baseMessage, status: "sent" }, { type: "edit", message: "x" }, later);
+  assert.equal(modifySent.ok, false);
+
+  // Re-approving a rejected draft is allowed.
+  const reapproved = applyOutreachMessageAction({ ...baseMessage, status: "rejected", rejectionReason: "old" }, { type: "approve" }, later);
+  assert.equal(reapproved.ok, true);
+  if (reapproved.ok) assert.equal(reapproved.message.rejectionReason, undefined);
+
+  // Repository: load one message by id.
+  const messageRequest: PublicProfileRepositoryRequest = async <T>() => [{
+    id: "message-1",
+    pursuit_id: "pursuit-1",
+    contact_suggestion_id: "contact-1",
+    recipient_type: "likely_hiring_manager",
+    channel: "linkedin",
+    message: "Original draft.",
+    status: "draft",
+    rejection_reason: null,
+    selected_role_track_id: "track-1",
+    selected_resume_id: null,
+    selected_work_example_id: "example-1",
+    created_at: now,
+    updated_at: now,
+  }] as T;
+  const loadedMessage = await loadOutreachMessageById(messageRequest, "message-1");
+  assert.equal(loadedMessage?.id, "message-1");
+  assert.equal(loadedMessage?.status, "draft");
+  assert.equal(loadedMessage?.selectedWorkExampleId, "example-1");
+  assert.equal(loadedMessage?.rejectionReason, undefined);
+
+  // Repository: persist a message update via PATCH.
+  const updateCalls: Array<{ table: string; method?: string; query?: string; body?: unknown }> = [];
+  const updateRequest: PublicProfileRepositoryRequest = async <T>(table: string, init?: { method?: string; query?: string; body?: unknown }) => {
+    updateCalls.push({ table, method: init?.method, query: init?.query, body: init?.body });
+    return [] as T;
+  };
+  await updateOutreachMessage(updateRequest, {
+    ...baseMessage,
+    status: "rejected",
+    rejectionReason: "Too formal",
+    updatedAt: later,
+  });
+  assert.equal(updateCalls[0].table, "outreach_messages");
+  assert.equal(updateCalls[0].method, "PATCH");
+  assert.ok(updateCalls[0].query?.includes("id=eq.message-1"));
+  assert.deepEqual(updateCalls[0].body, {
+    message: "Original draft.",
+    status: "rejected",
+    rejection_reason: "Too formal",
+    updated_at: later,
+  });
 
   console.log("public profile pursuits: all assertions passed");
 }
