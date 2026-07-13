@@ -395,7 +395,7 @@ async function main() {
   // path must keep common technical/marketing titles while the add-flow plausibility gate rejects
   // ordinary navigation links that happen to contain title-like words.
   const careersFixtureJobs = parseHtmlJobs(`
-    <a href="https://jobs.example.test/jobs/1001"><div><p>Data Scientist</p><p>Denver, CO</p></div></a>
+    <a href="https://jobs.example.test/jobs/1001"><div><p>Data Scientist &ndash; Platform</p><p>Denver, CO</p></div></a>
     <a href="https://jobs.example.test/jobs/1002"><div><p>iOS Engineer</p><p>Remote</p></div></a>
     <a href="/#content">Skip to content</a>
   `, {
@@ -407,7 +407,8 @@ async function main() {
     atsBoardToken: "fixture-company",
   });
   assert.equal(careersFixtureJobs.length, 2);
-  assert.equal((careersFixtureJobs[0] as { title: string }).title.includes("Data Scientist"), true);
+  assert.equal((careersFixtureJobs[0] as { title: string }).title.includes("Data Scientist – Platform"), true);
+  assert.equal((careersFixtureJobs[0] as { title: string }).title.includes("&ndash;"), false);
   assert.equal((careersFixtureJobs[1] as { title: string }).title.includes("iOS Engineer"), true);
 
   const emptyRead = await readPublicJobsForUser(request, userId, now);

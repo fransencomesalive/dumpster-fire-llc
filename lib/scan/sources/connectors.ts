@@ -65,6 +65,14 @@ function firstString(...values: unknown[]) {
   return "";
 }
 
+function decodeNumericEntity(raw: string, radix: 10 | 16, fallback: string) {
+  const codePoint = Number.parseInt(raw, radix);
+  if (!Number.isInteger(codePoint) || codePoint < 0 || codePoint > 0x10ffff || (codePoint >= 0xd800 && codePoint <= 0xdfff)) {
+    return fallback;
+  }
+  return String.fromCodePoint(codePoint);
+}
+
 function decodeHtmlEntities(value: string) {
   return value
     .replace(/&nbsp;/gi, " ")
@@ -73,7 +81,14 @@ function decodeHtmlEntities(value: string) {
     .replace(/&gt;/gi, ">")
     .replace(/&quot;/gi, "\"")
     .replace(/&#39;/gi, "'")
-    .replace(/&apos;/gi, "'");
+    .replace(/&apos;/gi, "'")
+    .replace(/&ndash;/gi, "–")
+    .replace(/&mdash;/gi, "—")
+    .replace(/&lsquo;|&rsquo;/gi, "'")
+    .replace(/&ldquo;|&rdquo;/gi, "\"")
+    .replace(/&hellip;/gi, "…")
+    .replace(/&#(\d+);/g, (match, decimal: string) => decodeNumericEntity(decimal, 10, match))
+    .replace(/&#x([0-9a-f]+);/gi, (match, hex: string) => decodeNumericEntity(hex, 16, match));
 }
 
 export function textFromHtml(value: string) {
