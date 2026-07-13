@@ -1,0 +1,1551 @@
+{
+  "schemaVersion": 1,
+  "experimentId": "voice-matrix-v3",
+  "baseVersion": "v3",
+  "generatedAt": "2026-07-13T23:20:57.737Z",
+  "models": {
+    "fingerprint": "claude-opus-4-8",
+    "outreach": "claude-opus-4-8"
+  },
+  "hashes": {
+    "v3Prompt": "b161dd70978499f76e363944e60eb8f5e71c24157f9b8f6f21b9815d1d74dc4d",
+    "baseProfile": "5fe67fba3708ff8c8a3d6f614ab7eea73b637d544dc9f0dff2a590802a9993fc",
+    "baseEvidence": "6433625999a3a7fa799b42b95d503d124c993e7d6ecc786e5e77f66cfcef6c71",
+    "jobs": "4a13785087173a8aee1b35cef6b54c357c5b9369ddce0d5d62714d0810eb6b59",
+    "fixtures": "bad18403461fc7ecf20759c17840917aeca68234c3c826322a5e277f387da0f4",
+    "evidenceManifest": "0804669a816684966f0ddfce21144bc54fe5e9e814524bcc93f444a7cb7e3e7c"
+  },
+  "workExampleInventory": {
+    "checkedAt": "2026-07-13T16:30:55.501Z",
+    "profileUpdatedAt": "2026-07-13T04:32:57.323+00:00",
+    "markdownGeneratedAt": "2026-07-13T04:32:57.323+00:00",
+    "ok": true,
+    "count": 4,
+    "compiledCount": 4,
+    "issues": [],
+    "entries": [
+      {
+        "key": "work-example-0ae80e2d0613",
+        "title": "P.H.R.E.D.",
+        "fingerprint": "0ae80e2d0613c2b223edd94a8e57c149b9e8b9826e89b6b507b767edda700663",
+        "fields": {
+          "title": true,
+          "oneHitter": true,
+          "link": true,
+          "context": true
+        }
+      },
+      {
+        "key": "work-example-21e1cc5b27f2",
+        "title": "Billionaire Blast-off | Mozilla",
+        "fingerprint": "21e1cc5b27f203e4fea04fe20c7a9725cc848619ac614184130e65a1e9ea2497",
+        "fields": {
+          "title": true,
+          "oneHitter": true,
+          "link": true,
+          "context": true
+        }
+      },
+      {
+        "key": "work-example-f9155962c042",
+        "title": "BORED APE YACHT CLUB | Website Redesign",
+        "fingerprint": "f9155962c0428427f1ebb946b9d4017cb8e5068afcadb4bd2ab91a7021f8af74",
+        "fields": {
+          "title": true,
+          "oneHitter": true,
+          "link": true,
+          "context": true
+        }
+      },
+      {
+        "key": "work-example-e4cbe178b6d3",
+        "title": "Bot Busters",
+        "fingerprint": "e4cbe178b6d320b048b2f812e4cca9270858c3b7060db99d342e3f225655f2dd",
+        "fields": {
+          "title": true,
+          "oneHitter": true,
+          "link": true,
+          "context": true
+        }
+      }
+    ]
+  },
+  "jobs": [
+    {
+      "jobId": "39b61911-7535-4a1f-864b-a0ddca52cecd",
+      "title": "Product Program Manager, Roadmap Planning & Program Management",
+      "company": "Airbnb",
+      "sourceUrl": "https://careers.airbnb.com/positions/6557174?gh_jid=6557174",
+      "location": "San Francisco, United States",
+      "remoteType": "unclear",
+      "fit": "good",
+      "contact": {
+        "role": "Head of Product Program Management",
+        "seniority": "Director"
+      },
+      "inputHash": "b6e234a5dcd8c368b5477451a93a450c76c9bfb0dad8f50312f2f03786f2db32"
+    },
+    {
+      "jobId": "470a510f-8dea-4fde-8f19-07d13f29fa8d",
+      "title": "Field Technical Program Manager",
+      "company": "Databricks",
+      "sourceUrl": "https://databricks.com/company/careers/open-positions/job?gh_jid=8598531002",
+      "location": "Seoul, South Korea",
+      "remoteType": "hybrid",
+      "fit": "good",
+      "contact": {
+        "role": "Director, Technical Program Management",
+        "seniority": "Director"
+      },
+      "inputHash": "a81c3fea67db4f6e5869d30318f2a5fa3ac1fa37d96849ac5ec3f538d0b65904"
+    },
+    {
+      "jobId": "1632c065-e9f9-4599-b06e-6f95af09a5d7",
+      "title": "Process Strategy and Optimization Lead",
+      "company": "Airbnb",
+      "sourceUrl": "https://careers.airbnb.com/positions/8042076?gh_jid=8042076",
+      "location": "United States",
+      "remoteType": "remote",
+      "fit": "good",
+      "contact": {
+        "role": "Director of Operations",
+        "seniority": "Director"
+      },
+      "inputHash": "28f91760dd3f73361f466a04f83c5d67fa6b1c4b2059e65e63d3ec443d019112"
+    },
+    {
+      "jobId": "7ccf8feb-dc02-42ce-ae8d-c58954fa7cb4",
+      "title": "Manager Business Process Improvement",
+      "company": "Airbnb",
+      "sourceUrl": "https://careers.airbnb.com/positions/7973847?gh_jid=7973847",
+      "location": "United States",
+      "remoteType": "remote",
+      "fit": "medium",
+      "contact": {
+        "role": "VP, Business Operations",
+        "seniority": "VP"
+      },
+      "inputHash": "8df10f1ced3abd6738dac8f5c6224e7472aa60b2ce82aef2c7a541339fce7c1b"
+    },
+    {
+      "jobId": "f69261df-7751-4c3b-a27c-a2164dd7d2df",
+      "title": "Manager, Luxe Supply",
+      "company": "Airbnb",
+      "sourceUrl": "https://careers.airbnb.com/positions/7895517?gh_jid=7895517",
+      "location": "Canada",
+      "remoteType": "remote",
+      "fit": "medium",
+      "contact": {
+        "role": "Head of Luxe Supply",
+        "seniority": "Director"
+      },
+      "inputHash": "a564ff3b74019fa946802ae1bfcc9b8a66f7e32547ee3faa1391456502df9786"
+    },
+    {
+      "jobId": "bd3447e4-2343-4127-8b1f-1e895db2cdc9",
+      "title": "Senior Platform Manager, Trust and Safety",
+      "company": "Airbnb",
+      "sourceUrl": "https://careers.airbnb.com/positions/8029984?gh_jid=8029984",
+      "location": "United States",
+      "remoteType": "remote",
+      "fit": "medium",
+      "contact": {
+        "role": "Director, Trust & Safety",
+        "seniority": "Director"
+      },
+      "inputHash": "a793c413e255cfb84b1fbbbe27380a80e260b44406a09ea662f4c0206e8a749f"
+    }
+  ],
+  "personas": [
+    {
+      "id": "minimal-direct",
+      "label": "Minimal / direct",
+      "kind": "full",
+      "expectations": {
+        "targetCharacters": [
+          350,
+          550
+        ],
+        "warmth": "low",
+        "directness": "high",
+        "humor": "none",
+        "formality": "low"
+      },
+      "input": {
+        "q1Value": "I bring structure to complex cross-functional work and keep teams moving without losing the people in the process.",
+        "q4Opinion": "Good systems make the right action easier without pretending every decision can be automated.",
+        "toneTags": [
+          "punchy",
+          "no-fluff",
+          "blunt",
+          "brief"
+        ],
+        "avoidTags": [
+          "corporate jargon",
+          "biz-formal"
+        ],
+        "avoidNote": "No throat-clearing, hype, jokes, or decorative metaphors.",
+        "soundsLikeSamples": [
+          "Quick update: the draft is ready. Two questions remain. I marked both and included the decisions needed."
+        ],
+        "wantToSoundSamples": [],
+        "neverSoundSamples": [
+          "I am absolutely thrilled to leverage my dynamic background and unlock transformative synergies."
+        ]
+      },
+      "fingerprint": {
+        "toneDescription": "Direct, brief, and no-nonsense. Leads with the point, states what matters, and cuts everything else. Clear about decisions and what's needed next, without hype or filler.",
+        "doList": [
+          "Lead with the point",
+          "State what's done and what's needed",
+          "Keep sentences short",
+          "Flag decisions and open questions explicitly",
+          "Use plain, concrete words"
+        ],
+        "dontList": [
+          "No throat-clearing or warm-up lines",
+          "Avoid corporate jargon and buzzwords",
+          "Skip hype, thrill, or synergy talk",
+          "No jokes or decorative metaphors",
+          "Don't pad with formal courtesies"
+        ],
+        "exemplarLines": [
+          "Quick update: the draft is ready. Two questions remain, both marked.",
+          "Here's what's done and the one decision I need from you."
+        ]
+      },
+      "renderedFingerprint": "**Voice fingerprint (write like this):**\n\nDirect, brief, and no-nonsense. Leads with the point, states what matters, and cuts everything else. Clear about decisions and what's needed next, without hype or filler.\n\nDo:\n- Lead with the point\n- State what's done and what's needed\n- Keep sentences short\n- Flag decisions and open questions explicitly\n- Use plain, concrete words\n\nDon't:\n- No throat-clearing or warm-up lines\n- Avoid corporate jargon and buzzwords\n- Skip hype, thrill, or synergy talk\n- No jokes or decorative metaphors\n- Don't pad with formal courtesies\n\nExemplar lines:\n> Quick update: the draft is ready. Two questions remain, both marked.\n> Here's what's done and the one decision I need from you.",
+      "fingerprintSystemHash": "900fdec62b7daa796c53edfa9ff21c018600d7e1718fe143adf0c742fbf23292",
+      "fingerprintUserHash": "a25c3d5587392ad7a3c992b1cd8c4ca92a95cc7e6306eece0f8f4bc8e6f3f136",
+      "profileHash": "649a570db4c7e06b469f631dd3652a2185be95f19169243c104396625a4b4743",
+      "fingerprintViolations": []
+    },
+    {
+      "id": "warm-peer",
+      "label": "Warm peer",
+      "kind": "full",
+      "expectations": {
+        "targetCharacters": [
+          500,
+          700
+        ],
+        "warmth": "high",
+        "directness": "medium",
+        "humor": "none",
+        "formality": "medium-low"
+      },
+      "input": {
+        "q1Value": "I bring structure to complex cross-functional work and keep teams moving without losing the people in the process.",
+        "q4Opinion": "Good systems make the right action easier without pretending every decision can be automated.",
+        "toneTags": [
+          "warm",
+          "specific",
+          "casual"
+        ],
+        "avoidTags": [
+          "corporate jargon",
+          "cold",
+          "snarky"
+        ],
+        "avoidNote": "Be generous and clear without sounding overeager or familiar too quickly.",
+        "soundsLikeSamples": [
+          "Thanks for sending this over. I read it this morning and added a few questions where more context would help. Happy to compare notes whenever it is useful.",
+          "I appreciate the care that went into this. The main idea is clear, and I left a couple of specific suggestions that may make the next pass easier."
+        ],
+        "wantToSoundSamples": [],
+        "neverSoundSamples": [
+          "Your team clearly needs someone who can finally fix the way this work has been handled."
+        ]
+      },
+      "fingerprint": {
+        "toneDescription": "Warm, specific, and grounded, with a conversational ease that never tips into over-familiarity. They acknowledge others' effort genuinely, point to concrete details, and offer help as an open door rather than a pitch. The result feels like a thoughtful colleague, not a salesperson.",
+        "doList": [
+          "Open by acknowledging the other person's work or effort sincerely",
+          "Point to specific details rather than speaking in generalities",
+          "Frame help as an offer the other person can take or leave",
+          "Keep sentences plain and readable, like talking to a peer",
+          "Use light hedges like 'may' or 'whenever it is useful' to stay unpushy"
+        ],
+        "dontList": [
+          "Avoid corporate jargon and buzzwords",
+          "Don't sound cold, clinical, or transactional",
+          "Skip snark or backhanded compliments",
+          "Don't imply their current process is broken or that they need rescuing",
+          "Avoid overeager enthusiasm or assuming closeness too soon"
+        ],
+        "exemplarLines": [
+          "Thanks for sending this over. I read it this morning and left a few specific notes where more context might help.",
+          "The main idea is clear, and I'd be happy to compare notes whenever it's useful."
+        ]
+      },
+      "renderedFingerprint": "**Voice fingerprint (write like this):**\n\nWarm, specific, and grounded, with a conversational ease that never tips into over-familiarity. They acknowledge others' effort genuinely, point to concrete details, and offer help as an open door rather than a pitch. The result feels like a thoughtful colleague, not a salesperson.\n\nDo:\n- Open by acknowledging the other person's work or effort sincerely\n- Point to specific details rather than speaking in generalities\n- Frame help as an offer the other person can take or leave\n- Keep sentences plain and readable, like talking to a peer\n- Use light hedges like 'may' or 'whenever it is useful' to stay unpushy\n\nDon't:\n- Avoid corporate jargon and buzzwords\n- Don't sound cold, clinical, or transactional\n- Skip snark or backhanded compliments\n- Don't imply their current process is broken or that they need rescuing\n- Avoid overeager enthusiasm or assuming closeness too soon\n\nExemplar lines:\n> Thanks for sending this over. I read it this morning and left a few specific notes where more context might help.\n> The main idea is clear, and I'd be happy to compare notes whenever it's useful.",
+      "fingerprintSystemHash": "900fdec62b7daa796c53edfa9ff21c018600d7e1718fe143adf0c742fbf23292",
+      "fingerprintUserHash": "6d592b31a47623ccadf5051d762abcb2083867328d684385bb74fec67cfdf988",
+      "profileHash": "30c108ab41391fbf56abb0da78e792582f416db51df3360253c7848e9d1c30a3",
+      "fingerprintViolations": []
+    },
+    {
+      "id": "wry-casual",
+      "label": "Wry / casual",
+      "kind": "full",
+      "expectations": {
+        "targetCharacters": [
+          450,
+          650
+        ],
+        "warmth": "medium",
+        "directness": "high",
+        "humor": "one_flourish_max",
+        "formality": "low"
+      },
+      "input": {
+        "q1Value": "I bring structure to complex cross-functional work and keep teams moving without losing the people in the process.",
+        "q4Opinion": "Good systems make the right action easier without pretending every decision can be automated.",
+        "toneTags": [
+          "funny",
+          "punchy",
+          "casual",
+          "specific"
+        ],
+        "avoidTags": [
+          "biz-formal",
+          "LinkedIn malarky"
+        ],
+        "avoidNote": "One dry observation is enough. Never turn the message into a comedy bit.",
+        "soundsLikeSamples": [
+          "The calendar and the actual schedule have apparently stopped speaking. I highlighted the two dates that need to become friends again.",
+          "The draft is in good shape, with one small plot twist. Page four answers a slightly different question than the rest of the document."
+        ],
+        "wantToSoundSamples": [
+          "Clear first, lightly funny second. The joke should make the point easier to remember, not become the point."
+        ],
+        "neverSoundSamples": [
+          "Buckle up, rockstars. I am the chaos wizard your dumpster fire has been waiting for."
+        ]
+      },
+      "fingerprint": {
+        "toneDescription": "They sound casual and specific with a dry wit, leading with clarity and letting a single light joke land the point rather than steal it. Punchy sentences, concrete details, and a warm sense that people matter as much as the process. Never manic or performative.",
+        "doList": [
+          "Lead with the clear point, add humor second",
+          "Use one dry observation, then stop",
+          "Be specific: name the date, the page, the exact snag",
+          "Keep sentences short and punchy",
+          "Sound like a person, not a job title",
+          "Acknowledge people, not just tasks"
+        ],
+        "dontList": [
+          "Avoid biz-formal phrasing and corporate speak",
+          "No LinkedIn hype or motivational posturing",
+          "Don't turn the message into a comedy bit",
+          "No hype words like 'rockstar' or 'chaos wizard'",
+          "Don't pile on multiple jokes",
+          "Don't pretend everything can be automated"
+        ],
+        "exemplarLines": [
+          "The calendar and the actual schedule have stopped speaking. I flagged the two dates that need to become friends again.",
+          "Draft's in good shape, with one small plot twist: page four answers a slightly different question than the rest."
+        ]
+      },
+      "renderedFingerprint": "**Voice fingerprint (write like this):**\n\nThey sound casual and specific with a dry wit, leading with clarity and letting a single light joke land the point rather than steal it. Punchy sentences, concrete details, and a warm sense that people matter as much as the process. Never manic or performative.\n\nDo:\n- Lead with the clear point, add humor second\n- Use one dry observation, then stop\n- Be specific: name the date, the page, the exact snag\n- Keep sentences short and punchy\n- Sound like a person, not a job title\n- Acknowledge people, not just tasks\n\nDon't:\n- Avoid biz-formal phrasing and corporate speak\n- No LinkedIn hype or motivational posturing\n- Don't turn the message into a comedy bit\n- No hype words like 'rockstar' or 'chaos wizard'\n- Don't pile on multiple jokes\n- Don't pretend everything can be automated\n\nExemplar lines:\n> The calendar and the actual schedule have stopped speaking. I flagged the two dates that need to become friends again.\n> Draft's in good shape, with one small plot twist: page four answers a slightly different question than the rest.",
+      "fingerprintSystemHash": "900fdec62b7daa796c53edfa9ff21c018600d7e1718fe143adf0c742fbf23292",
+      "fingerprintUserHash": "03cf93017fa372b8fc46ef5970c4f5f64d76fa5a24e3724a2922c7c3aacbd09f",
+      "profileHash": "e6db3fbf34281b508787036e5b0afb41388ce73c1af25e7a0901f0cfe41b8e26",
+      "fingerprintViolations": []
+    },
+    {
+      "id": "calm-polished",
+      "label": "Calm / polished",
+      "kind": "full",
+      "expectations": {
+        "targetCharacters": [
+          500,
+          700
+        ],
+        "warmth": "medium",
+        "directness": "medium",
+        "humor": "none",
+        "formality": "medium-high"
+      },
+      "input": {
+        "q1Value": "I bring structure to complex cross-functional work and keep teams moving without losing the people in the process.",
+        "q4Opinion": "Good systems make the right action easier without pretending every decision can be automated.",
+        "toneTags": [
+          "measured",
+          "thoughtful",
+          "plainspoken"
+        ],
+        "avoidTags": [
+          "LinkedIn malarky",
+          "slang",
+          "hype"
+        ],
+        "avoidNote": "Use composed complete sentences. Avoid slang, forced intimacy, and promotional language.",
+        "soundsLikeSamples": [
+          "I reviewed the material and noted the decisions that still require clarification. The overall direction is sound, and the remaining questions are specific and manageable."
+        ],
+        "wantToSoundSamples": [
+          "Thoughtful, precise, and measured. The evidence should carry the message without exaggerated confidence."
+        ],
+        "neverSoundSamples": [
+          "I could not be more excited to bring my visionary leadership and unparalleled passion to this incredible opportunity."
+        ]
+      },
+      "fingerprint": {
+        "toneDescription": "They sound measured, thoughtful, and plainspoken, favoring composed complete sentences that let the substance carry the message. Their writing is precise and grounded, acknowledging complexity without overstating confidence or resorting to promotional language.",
+        "doList": [
+          "Write in complete, composed sentences",
+          "State direction clearly and note what remains open",
+          "Let evidence and specifics carry the point",
+          "Stay measured and grounded in tone",
+          "Acknowledge complexity without overstating certainty"
+        ],
+        "dontList": [
+          "Avoid slang and casual shorthand",
+          "Avoid hype and exaggerated confidence",
+          "Avoid promotional or self-aggrandizing language",
+          "Avoid forced intimacy or familiarity",
+          "Avoid LinkedIn-style buzzwords and filler"
+        ],
+        "exemplarLines": [
+          "I reviewed the material and noted the decisions that still require clarification; the overall direction is sound, and the remaining questions are specific and manageable.",
+          "The evidence should carry the message without exaggerated confidence."
+        ]
+      },
+      "renderedFingerprint": "**Voice fingerprint (write like this):**\n\nThey sound measured, thoughtful, and plainspoken, favoring composed complete sentences that let the substance carry the message. Their writing is precise and grounded, acknowledging complexity without overstating confidence or resorting to promotional language.\n\nDo:\n- Write in complete, composed sentences\n- State direction clearly and note what remains open\n- Let evidence and specifics carry the point\n- Stay measured and grounded in tone\n- Acknowledge complexity without overstating certainty\n\nDon't:\n- Avoid slang and casual shorthand\n- Avoid hype and exaggerated confidence\n- Avoid promotional or self-aggrandizing language\n- Avoid forced intimacy or familiarity\n- Avoid LinkedIn-style buzzwords and filler\n\nExemplar lines:\n> I reviewed the material and noted the decisions that still require clarification; the overall direction is sound, and the remaining questions are specific and manageable.\n> The evidence should carry the message without exaggerated confidence.",
+      "fingerprintSystemHash": "900fdec62b7daa796c53edfa9ff21c018600d7e1718fe143adf0c742fbf23292",
+      "fingerprintUserHash": "547044e83af2bf09634be845b3ec30d674e820dc9a3ebc300ae98081a8bbfeee",
+      "profileHash": "14fe5b765f189948265c5ac52ea7c8bb239b624ee4487d0728b5e795f5e97542",
+      "fingerprintViolations": []
+    },
+    {
+      "id": "conflict-sentinel",
+      "label": "Conflict sentinel",
+      "kind": "diagnostic",
+      "expectations": {
+        "targetCharacters": [
+          450,
+          700
+        ],
+        "warmth": "high",
+        "directness": "medium",
+        "humor": "none_if_snarky",
+        "formality": "medium"
+      },
+      "input": {
+        "q1Value": "I bring structure to complex cross-functional work and keep teams moving without losing the people in the process.",
+        "q4Opinion": "Good systems make the right action easier without pretending every decision can be automated.",
+        "toneTags": [
+          "funny",
+          "blunt"
+        ],
+        "avoidTags": [
+          "snarky",
+          "cold"
+        ],
+        "avoidNote": "Understatement and respect override any request for a joke or hard edge.",
+        "soundsLikeSamples": [
+          "Thank you for the context. I have one direct question and a few smaller notes, but the overall direction makes sense to me."
+        ],
+        "wantToSoundSamples": [
+          "A little more direct, but still calm and considerate."
+        ],
+        "neverSoundSamples": [
+          "Let me be blunt: your process is broken, and it is almost funny nobody has fixed it yet."
+        ]
+      },
+      "fingerprint": {
+        "toneDescription": "They sound calm, direct, and considerate—someone who gets to the point without steamrolling people. Light, dry humor may surface, but it never comes at anyone's expense. Understatement and respect always win over a hard edge or a punchline.",
+        "doList": [
+          "Lead with a clear, direct point",
+          "Keep it calm and grounded",
+          "Show respect for the reader and their work",
+          "Use plain, structured phrasing",
+          "Let humor stay dry and light, if at all",
+          "Acknowledge context before raising questions"
+        ],
+        "dontList": [
+          "Don't be snarky or sarcastic",
+          "Don't sound cold or dismissive",
+          "Don't call someone's work broken or laughable",
+          "Don't force a joke at the reader's expense",
+          "Don't overstate or dramatize",
+          "Don't bury the point in qualifiers"
+        ],
+        "exemplarLines": [
+          "Thanks for the context—this direction makes sense to me. I have one direct question and a couple of smaller notes.",
+          "A bit more direct here, but nothing that changes the overall plan."
+        ]
+      },
+      "renderedFingerprint": "**Voice fingerprint (write like this):**\n\nThey sound calm, direct, and considerate—someone who gets to the point without steamrolling people. Light, dry humor may surface, but it never comes at anyone's expense. Understatement and respect always win over a hard edge or a punchline.\n\nDo:\n- Lead with a clear, direct point\n- Keep it calm and grounded\n- Show respect for the reader and their work\n- Use plain, structured phrasing\n- Let humor stay dry and light, if at all\n- Acknowledge context before raising questions\n\nDon't:\n- Don't be snarky or sarcastic\n- Don't sound cold or dismissive\n- Don't call someone's work broken or laughable\n- Don't force a joke at the reader's expense\n- Don't overstate or dramatize\n- Don't bury the point in qualifiers\n\nExemplar lines:\n> Thanks for the context—this direction makes sense to me. I have one direct question and a couple of smaller notes.\n> A bit more direct here, but nothing that changes the overall plan.",
+      "fingerprintSystemHash": "900fdec62b7daa796c53edfa9ff21c018600d7e1718fe143adf0c742fbf23292",
+      "fingerprintUserHash": "beb5f6b10e9cc0b6ba83a2846729ab6462b05106514f1b6dd6190d8754ceabe1",
+      "profileHash": "a02ffcc783bcdd584e17390c246b9c3ad8ea70d5496267067d6372652d0c4630",
+      "fingerprintViolations": []
+    },
+    {
+      "id": "minimum-input",
+      "label": "Minimum input",
+      "kind": "diagnostic",
+      "expectations": {
+        "targetCharacters": [
+          450,
+          700
+        ],
+        "warmth": "unspecified",
+        "directness": "unspecified",
+        "humor": "unspecified",
+        "formality": "unspecified"
+      },
+      "input": {
+        "q1Value": "I bring structure to complex cross-functional work and keep teams moving without losing the people in the process.",
+        "q4Opinion": "Good systems make the right action easier without pretending every decision can be automated.",
+        "toneTags": [
+          "specific"
+        ],
+        "avoidTags": [],
+        "avoidNote": "",
+        "soundsLikeSamples": [
+          "The proposal is attached. I marked the open questions and listed the next decisions in order."
+        ],
+        "wantToSoundSamples": [],
+        "neverSoundSamples": [
+          "I am a results-driven visionary with a proven track record of excellence."
+        ]
+      },
+      "fingerprint": {
+        "toneDescription": "They sound clear, structured, and concrete—leading with specifics rather than adjectives. Their writing organizes complexity into open questions and ordered next steps, and it respects the reader's time without sounding cold or automated.",
+        "doList": [
+          "Lead with specifics and concrete details",
+          "List open questions and next decisions in order",
+          "Structure complex points into clear sequences",
+          "Keep messages efficient while acknowledging the people involved",
+          "State what is done and what comes next"
+        ],
+        "dontList": [
+          "Avoid buzzwords like 'results-driven' or 'visionary'",
+          "Don't claim a 'proven track record of excellence'",
+          "Skip vague self-praise and inflated adjectives",
+          "Don't pretend decisions can be fully automated"
+        ],
+        "exemplarLines": [
+          "The proposal is attached. I marked the open questions and listed the next decisions in order.",
+          "Here's what's done and what we need to decide next, in sequence."
+        ]
+      },
+      "renderedFingerprint": "**Voice fingerprint (write like this):**\n\nThey sound clear, structured, and concrete—leading with specifics rather than adjectives. Their writing organizes complexity into open questions and ordered next steps, and it respects the reader's time without sounding cold or automated.\n\nDo:\n- Lead with specifics and concrete details\n- List open questions and next decisions in order\n- Structure complex points into clear sequences\n- Keep messages efficient while acknowledging the people involved\n- State what is done and what comes next\n\nDon't:\n- Avoid buzzwords like 'results-driven' or 'visionary'\n- Don't claim a 'proven track record of excellence'\n- Skip vague self-praise and inflated adjectives\n- Don't pretend decisions can be fully automated\n\nExemplar lines:\n> The proposal is attached. I marked the open questions and listed the next decisions in order.\n> Here's what's done and what we need to decide next, in sequence.",
+      "fingerprintSystemHash": "900fdec62b7daa796c53edfa9ff21c018600d7e1718fe143adf0c742fbf23292",
+      "fingerprintUserHash": "398f17e914a8bad81b8fe58953fbe56e81f539872d2542b03f0ce53288b3f6d9",
+      "profileHash": "b55dfeb942fe7d7fd5caf48e2b296d5325620da49072707e4cde0ad733dcaa25",
+      "fingerprintViolations": []
+    }
+  ],
+  "selectionStability": [
+    {
+      "jobId": "39b61911-7535-4a1f-864b-a0ddca52cecd",
+      "choices": [
+        "none",
+        "none",
+        "none",
+        "none"
+      ],
+      "uniqueChoices": [
+        "none"
+      ],
+      "varies": false
+    },
+    {
+      "jobId": "470a510f-8dea-4fde-8f19-07d13f29fa8d",
+      "choices": [
+        "work-example-0ae80e2d0613",
+        "none",
+        "work-example-0ae80e2d0613",
+        "work-example-0ae80e2d0613"
+      ],
+      "uniqueChoices": [
+        "work-example-0ae80e2d0613",
+        "none"
+      ],
+      "varies": true
+    },
+    {
+      "jobId": "1632c065-e9f9-4599-b06e-6f95af09a5d7",
+      "choices": [
+        "work-example-0ae80e2d0613",
+        "none",
+        "work-example-0ae80e2d0613",
+        "work-example-0ae80e2d0613"
+      ],
+      "uniqueChoices": [
+        "work-example-0ae80e2d0613",
+        "none"
+      ],
+      "varies": true
+    },
+    {
+      "jobId": "7ccf8feb-dc02-42ce-ae8d-c58954fa7cb4",
+      "choices": [
+        "work-example-0ae80e2d0613",
+        "work-example-0ae80e2d0613",
+        "work-example-0ae80e2d0613",
+        "work-example-0ae80e2d0613"
+      ],
+      "uniqueChoices": [
+        "work-example-0ae80e2d0613"
+      ],
+      "varies": false
+    },
+    {
+      "jobId": "f69261df-7751-4c3b-a27c-a2164dd7d2df",
+      "choices": [
+        "none",
+        "none",
+        "none",
+        "none"
+      ],
+      "uniqueChoices": [
+        "none"
+      ],
+      "varies": false
+    },
+    {
+      "jobId": "bd3447e4-2343-4127-8b1f-1e895db2cdc9",
+      "choices": [
+        "none",
+        "work-example-0ae80e2d0613",
+        "none",
+        "none"
+      ],
+      "uniqueChoices": [
+        "none",
+        "work-example-0ae80e2d0613"
+      ],
+      "varies": true
+    }
+  ],
+  "cells": [
+    {
+      "cellId": "minimal-direct:39b61911-7535-4a1f-864b-a0ddca52cecd",
+      "personaId": "minimal-direct",
+      "jobId": "39b61911-7535-4a1f-864b-a0ddca52cecd",
+      "message": "I've done this work at Airbnb already — Executive Producer on contract, coordinating across product, design, and engineering to ship on schedule. The role you're describing is the one I keep coming back to: bringing clarity out of chaos and keeping cross-functional teams moving without losing the people in the process.\n\nMost relevant proof: I ran the $14MM HTC retainer at Swift with a team of 4, and as Program Director at AKQA delivered for Nike and Trek while winning 4 new accounts in two years. Now I'm building operating systems for AI-assisted product work — structure first, then speed.\n\nHappy to talk about how I'd approach the roadmap planning role.",
+      "insertedExample": null,
+      "workExampleSelection": null,
+      "styleMetrics": {
+        "length": 661,
+        "words": 111,
+        "paragraphs": 3,
+        "sentences": 5,
+        "averageSentenceWords": 22.2,
+        "contractions": 4,
+        "questions": 0,
+        "exclamations": 0,
+        "links": 0,
+        "inventedNumber": 0,
+        "concessionOpener": 0,
+        "tellsWhatTheyWant": 0,
+        "q4BragTag": 0,
+        "targetCharacters": {
+          "min": 350,
+          "max": 550,
+          "pass": false
+        }
+      },
+      "contractViolations": []
+    },
+    {
+      "cellId": "minimal-direct:470a510f-8dea-4fde-8f19-07d13f29fa8d",
+      "personaId": "minimal-direct",
+      "jobId": "470a510f-8dea-4fde-8f19-07d13f29fa8d",
+      "message": "This role calls for Korean native fluency, which I don't have — so I want to be upfront if that's a hard line.\n\nIf it stays open on the fit side: I've led complex technical program delivery for years, most recently building an AI-assisted production operating system for a small team on a confidential app under an aggressive timeline. The point was structure first — planning, tasks, handoffs, QA — so AI tools actually connect the work instead of scattering it, with humans keeping control of scope and decisions. That's the operational-performance and delivery-standards work you're describing.\n\nHappy to talk if useful.",
+      "insertedExample": {
+        "oneHitter": "Project Hub for Retrieval, Execution, & Delivery",
+        "link": "https://lab26.randallfransen.com/phred"
+      },
+      "workExampleSelection": {
+        "key": "work-example-0ae80e2d0613",
+        "title": "P.H.R.E.D."
+      },
+      "styleMetrics": {
+        "length": 623,
+        "words": 102,
+        "paragraphs": 3,
+        "sentences": 5,
+        "averageSentenceWords": 20.4,
+        "contractions": 5,
+        "questions": 0,
+        "exclamations": 0,
+        "links": 0,
+        "inventedNumber": 0,
+        "concessionOpener": 1,
+        "tellsWhatTheyWant": 0,
+        "q4BragTag": 0,
+        "targetCharacters": {
+          "min": 350,
+          "max": 550,
+          "pass": false
+        }
+      },
+      "contractViolations": [
+        "selected_example_not_obvious"
+      ]
+    },
+    {
+      "cellId": "minimal-direct:1632c065-e9f9-4599-b06e-6f95af09a5d7",
+      "personaId": "minimal-direct",
+      "jobId": "1632c065-e9f9-4599-b06e-6f95af09a5d7",
+      "message": "I've worked inside Airbnb before as a contract Executive Producer, so the operating rhythm isn't new to me. This role maps to what I've done best: bringing structure to complex cross-functional work and keeping teams aligned across product, tools, and delivery without losing sight of scope and decisions that can't be undone.\n\nMost relevant recent example: I built an operating system to make AI-assisted work actually usable on a tight, small-team project — source-of-truth, handoffs, QA, and clear human control over scope. Good systems make the right action easier; they don't pretend every call can be automated.\n\nOne open question: comp. The posted range sits below where I'd start. Happy to talk if there's flexibility.\n\nRandall",
+      "insertedExample": {
+        "oneHitter": "Project Hub for Retrieval, Execution, & Delivery",
+        "link": "https://lab26.randallfransen.com/phred"
+      },
+      "workExampleSelection": {
+        "key": "work-example-0ae80e2d0613",
+        "title": "P.H.R.E.D."
+      },
+      "styleMetrics": {
+        "length": 735,
+        "words": 116,
+        "paragraphs": 4,
+        "sentences": 8,
+        "averageSentenceWords": 14.5,
+        "contractions": 7,
+        "questions": 0,
+        "exclamations": 0,
+        "links": 0,
+        "inventedNumber": 0,
+        "concessionOpener": 0,
+        "tellsWhatTheyWant": 0,
+        "q4BragTag": 0,
+        "targetCharacters": {
+          "min": 350,
+          "max": 550,
+          "pass": false
+        }
+      },
+      "contractViolations": [
+        "selected_example_not_obvious"
+      ]
+    },
+    {
+      "cellId": "minimal-direct:7ccf8feb-dc02-42ce-ae8d-c58954fa7cb4",
+      "personaId": "minimal-direct",
+      "jobId": "7ccf8feb-dc02-42ce-ae8d-c58954fa7cb4",
+      "message": "I've done a version of this at Airbnb before — I ran production as a contract Executive Producer there, so I know the cross-functional terrain your team works across.\n\nThe part of this role I'd own well: designing the operating system before accelerating the work. On a recent build, AI-assisted output was scattering across docs, tasks, and dead-end conversations. I built a source-of-truth structure and orchestration layer that kept the work connected and kept humans on the scope and privacy decisions that can't be undone.\n\nThat's the balance I'd bring — systems that make the right action easier without pretending every call can be automated. Open to a conversation.\n\nRandall",
+      "insertedExample": {
+        "oneHitter": "Project Hub for Retrieval, Execution, & Delivery",
+        "link": "https://lab26.randallfransen.com/phred"
+      },
+      "workExampleSelection": {
+        "key": "work-example-0ae80e2d0613",
+        "title": "P.H.R.E.D."
+      },
+      "styleMetrics": {
+        "length": 682,
+        "words": 110,
+        "paragraphs": 4,
+        "sentences": 7,
+        "averageSentenceWords": 15.7,
+        "contractions": 5,
+        "questions": 0,
+        "exclamations": 0,
+        "links": 0,
+        "inventedNumber": 0,
+        "concessionOpener": 0,
+        "tellsWhatTheyWant": 0,
+        "q4BragTag": 0,
+        "targetCharacters": {
+          "min": 350,
+          "max": 550,
+          "pass": false
+        }
+      },
+      "contractViolations": [
+        "selected_example_not_obvious"
+      ]
+    },
+    {
+      "cellId": "minimal-direct:f69261df-7751-4c3b-a27c-a2164dd7d2df",
+      "personaId": "minimal-direct",
+      "jobId": "f69261df-7751-4c3b-a27c-a2164dd7d2df",
+      "message": "I've worked inside Airbnb before as an Executive Producer, so the Luxe quality bar and cross-functional operating model aren't abstract to me. Two things map to this role. I managed a $14MM retainer and a team at Swift — pipeline rigor, budget discipline, and coaching under real targets. And as Program Director at AKQA, I won 4 new accounts over two years, which is prospecting, relationship-building with senior decision-makers, and closing at high value. One caveat, stated plainly: I bring structure and team leadership; deep LATAM luxury real estate networks would be new ground I'd build fast. Open to talking through where the gaps actually matter.",
+      "insertedExample": null,
+      "workExampleSelection": null,
+      "styleMetrics": {
+        "length": 656,
+        "words": 106,
+        "paragraphs": 1,
+        "sentences": 6,
+        "averageSentenceWords": 17.7,
+        "contractions": 3,
+        "questions": 0,
+        "exclamations": 0,
+        "links": 0,
+        "inventedNumber": 0,
+        "concessionOpener": 0,
+        "tellsWhatTheyWant": 0,
+        "q4BragTag": 0,
+        "targetCharacters": {
+          "min": 350,
+          "max": 550,
+          "pass": false
+        }
+      },
+      "contractViolations": []
+    },
+    {
+      "cellId": "minimal-direct:bd3447e4-2343-4127-8b1f-1e895db2cdc9",
+      "personaId": "minimal-direct",
+      "jobId": "bd3447e4-2343-4127-8b1f-1e895db2cdc9",
+      "message": "I've worked inside Airbnb before, as a contract Executive Producer, so I know the pace and the stakeholder load. This role is a different discipline, and I want to be straight about where I fit: my background is production and program leadership, not ML product ownership. Where I'm strong is exactly the part your day-to-day describes — driving cross-functional groups of engineers, designers, and ops toward alignment, owning roadmaps and prioritization, and making tradeoff calls under ambiguity. At AKQA I ran a $14MM retainer and a team of four through work like that. If the safety product needs someone to bring structure and keep people moving, that's my lane. Happy to talk.",
+      "insertedExample": null,
+      "workExampleSelection": null,
+      "styleMetrics": {
+        "length": 683,
+        "words": 112,
+        "paragraphs": 1,
+        "sentences": 6,
+        "averageSentenceWords": 18.7,
+        "contractions": 3,
+        "questions": 0,
+        "exclamations": 0,
+        "links": 0,
+        "inventedNumber": 0,
+        "concessionOpener": 0,
+        "tellsWhatTheyWant": 0,
+        "q4BragTag": 0,
+        "targetCharacters": {
+          "min": 350,
+          "max": 550,
+          "pass": false
+        }
+      },
+      "contractViolations": []
+    },
+    {
+      "cellId": "warm-peer:39b61911-7535-4a1f-864b-a0ddca52cecd",
+      "personaId": "warm-peer",
+      "jobId": "39b61911-7535-4a1f-864b-a0ddca52cecd",
+      "message": "Hi — the way this team is framed, sitting between strategy and execution to give leaders visibility into bi-annual releases, is exactly the seat I keep coming back to. I spent time at Airbnb as a contract Executive Producer, so the pace and the cross-functional pull are familiar to me.\n\nMost of my work has been bringing structure to complex programs without losing the people in them — a $14MM retainer for HTC, the Base launch at Coinbase, and program direction across design, product marketing, and engineering at AKQA on Nike and Trek. My read is that good systems make the right next step easier rather than automate away the hard calls.\n\nHappy to compare notes whenever it's useful.",
+      "insertedExample": null,
+      "workExampleSelection": null,
+      "styleMetrics": {
+        "length": 689,
+        "words": 119,
+        "paragraphs": 3,
+        "sentences": 5,
+        "averageSentenceWords": 23.8,
+        "contractions": 1,
+        "questions": 0,
+        "exclamations": 0,
+        "links": 0,
+        "inventedNumber": 0,
+        "concessionOpener": 0,
+        "tellsWhatTheyWant": 0,
+        "q4BragTag": 0,
+        "targetCharacters": {
+          "min": 500,
+          "max": 700,
+          "pass": true
+        }
+      },
+      "contractViolations": []
+    },
+    {
+      "cellId": "warm-peer:470a510f-8dea-4fde-8f19-07d13f29fa8d",
+      "personaId": "warm-peer",
+      "jobId": "470a510f-8dea-4fde-8f19-07d13f29fa8d",
+      "message": "Hi — the portfolio framing in this role caught my attention. Coordinating technical milestones and dependencies across concurrent engagements, while keeping junior TPMs growing, is the kind of work I've spent 15+ years doing as an executive producer, including leading Base at Coinbase and a $14MM program for HTC with a team of four.\n\nOne honest note: I'm not a Korean speaker, so the native-fluency requirement may rule me out for this posting. If a similar English-language or remote TPM opening ever opens up on your side, I'd be glad to talk. Either way, the program bar you've set here reads well.",
+      "insertedExample": null,
+      "workExampleSelection": null,
+      "styleMetrics": {
+        "length": 603,
+        "words": 102,
+        "paragraphs": 2,
+        "sentences": 5,
+        "averageSentenceWords": 20.4,
+        "contractions": 4,
+        "questions": 0,
+        "exclamations": 0,
+        "links": 0,
+        "inventedNumber": 0,
+        "concessionOpener": 0,
+        "tellsWhatTheyWant": 0,
+        "q4BragTag": 0,
+        "targetCharacters": {
+          "min": 500,
+          "max": 700,
+          "pass": true
+        }
+      },
+      "contractViolations": []
+    },
+    {
+      "cellId": "warm-peer:1632c065-e9f9-4599-b06e-6f95af09a5d7",
+      "personaId": "warm-peer",
+      "jobId": "1632c065-e9f9-4599-b06e-6f95af09a5d7",
+      "message": "Having worked at Airbnb as a contract EP, I know how much rigor the operations side runs on, so this PSO role caught my eye. My background is building the structure that keeps complex, cross-functional work moving: a $14MM retainer at Swift with a small team, and programs at AKQA across Nike and Trek where dependencies and stakeholders were the real challenge.\n\nMore recently I've been designing AI into production workflows deliberately, so it cuts waste without pretending every decision can be automated. Humans stay in control of scope and the calls that can't be undone. Happy to share how that's played out whenever it's useful.",
+      "insertedExample": null,
+      "workExampleSelection": null,
+      "styleMetrics": {
+        "length": 636,
+        "words": 106,
+        "paragraphs": 2,
+        "sentences": 5,
+        "averageSentenceWords": 21.2,
+        "contractions": 4,
+        "questions": 0,
+        "exclamations": 0,
+        "links": 0,
+        "inventedNumber": 0,
+        "concessionOpener": 0,
+        "tellsWhatTheyWant": 0,
+        "q4BragTag": 0,
+        "targetCharacters": {
+          "min": 500,
+          "max": 700,
+          "pass": true
+        }
+      },
+      "contractViolations": []
+    },
+    {
+      "cellId": "warm-peer:7ccf8feb-dc02-42ce-ae8d-c58954fa7cb4",
+      "personaId": "warm-peer",
+      "jobId": "7ccf8feb-dc02-42ce-ae8d-c58954fa7cb4",
+      "message": "I spent a contract stretch inside Airbnb as an Executive Producer, so the way Community Support balances people, process, and tooling isn't abstract to me. This BPI role reads like the discipline I care most about: building the operating system before accelerating the work.\n\nMost of my recent thinking has gone into exactly that — designing a source-of-truth structure and workflow patterns that keep AI-assisted work connected instead of scattered, while keeping humans in control of the decisions that can't be undone. It maps closely to engineering processes that are measurable from day one and automatable over time.\n\nHappy to compare notes whenever it's useful.",
+      "insertedExample": {
+        "oneHitter": "Project Hub for Retrieval, Execution, & Delivery",
+        "link": "https://lab26.randallfransen.com/phred"
+      },
+      "workExampleSelection": {
+        "key": "work-example-0ae80e2d0613",
+        "title": "P.H.R.E.D."
+      },
+      "styleMetrics": {
+        "length": 668,
+        "words": 105,
+        "paragraphs": 3,
+        "sentences": 5,
+        "averageSentenceWords": 21,
+        "contractions": 3,
+        "questions": 0,
+        "exclamations": 0,
+        "links": 0,
+        "inventedNumber": 0,
+        "concessionOpener": 0,
+        "tellsWhatTheyWant": 0,
+        "q4BragTag": 0,
+        "targetCharacters": {
+          "min": 500,
+          "max": 700,
+          "pass": true
+        }
+      },
+      "contractViolations": [
+        "selected_example_not_obvious"
+      ]
+    },
+    {
+      "cellId": "warm-peer:f69261df-7751-4c3b-a27c-a2164dd7d2df",
+      "personaId": "warm-peer",
+      "jobId": "f69261df-7751-4c3b-a27c-a2164dd7d2df",
+      "message": "Congratulations on standing up the Luxe supply team for NAMER and LATAM — building a regional portfolio around clear quality standards is hard, patient work, and it's a genuinely exciting one to grow into.\n\nI spent time inside Airbnb as an Executive Producer, so the mix of high standards and fast execution feels familiar. Most of my 15+ years has been leading multidisciplinary teams and managing high-value relationships — a $14MM retainer at Swift, four new accounts at AKQA — where I brought structure to complex work and coached producers without losing the people in the process.\n\nOne note on fit, offered plainly: my depth is in production and program leadership rather than luxury real estate acquisition. If that reads as a bridge worth exploring, I'd welcome a conversation whenever it's useful.",
+      "insertedExample": null,
+      "workExampleSelection": null,
+      "styleMetrics": {
+        "length": 806,
+        "words": 132,
+        "paragraphs": 3,
+        "sentences": 5,
+        "averageSentenceWords": 26.4,
+        "contractions": 3,
+        "questions": 0,
+        "exclamations": 0,
+        "links": 0,
+        "inventedNumber": 0,
+        "concessionOpener": 0,
+        "tellsWhatTheyWant": 0,
+        "q4BragTag": 0,
+        "targetCharacters": {
+          "min": 500,
+          "max": 700,
+          "pass": false
+        }
+      },
+      "contractViolations": [
+        "over_750_characters"
+      ]
+    },
+    {
+      "cellId": "warm-peer:bd3447e4-2343-4127-8b1f-1e895db2cdc9",
+      "personaId": "warm-peer",
+      "jobId": "bd3447e4-2343-4127-8b1f-1e895db2cdc9",
+      "message": "Hi — I've spent time inside Airbnb before as a contract Executive Producer, so the idea that trust is the fundamental currency there isn't abstract to me. This Trust & Safety role stands out because the hard part isn't the model output, it's keeping engineers, data scientists, policy, and ops pointed at the same decisions when the stakes are high and the tradeoffs aren't reversible.\n\nMost of my work has been exactly that: aligning cross-functional groups and holding a clear source of truth so the right call is the easy call. Recently I built an operating system for AI-assisted work that kept a small team's decisions connected instead of scattered across docs.\n\nHappy to compare notes whenever it's useful.",
+      "insertedExample": {
+        "oneHitter": "Project Hub for Retrieval, Execution, & Delivery",
+        "link": "https://lab26.randallfransen.com/phred"
+      },
+      "workExampleSelection": {
+        "key": "work-example-0ae80e2d0613",
+        "title": "P.H.R.E.D."
+      },
+      "styleMetrics": {
+        "length": 713,
+        "words": 119,
+        "paragraphs": 3,
+        "sentences": 5,
+        "averageSentenceWords": 23.8,
+        "contractions": 7,
+        "questions": 0,
+        "exclamations": 0,
+        "links": 0,
+        "inventedNumber": 0,
+        "concessionOpener": 0,
+        "tellsWhatTheyWant": 0,
+        "q4BragTag": 0,
+        "targetCharacters": {
+          "min": 500,
+          "max": 700,
+          "pass": false
+        }
+      },
+      "contractViolations": [
+        "selected_example_not_obvious"
+      ]
+    },
+    {
+      "cellId": "wry-casual:39b61911-7535-4a1f-864b-a0ddca52cecd",
+      "personaId": "wry-casual",
+      "jobId": "39b61911-7535-4a1f-864b-a0ddca52cecd",
+      "message": "Hi — I've done a version of this role at Airbnb before, as a contract Executive Producer, so the \"force multiplier\" framing lands with me. It's the part I like most: bringing clarity out of chaos without pretending every decision can be automated away.\n\nMost of my 15+ years has been exactly the cross-functional wrangling this team lives in — design, eng, product marketing, ops all pulling on the same roadmap. At AKQA I ran a $14MM retainer and kept a team of four moving without losing the people in the process.\n\nThe Bay Area basing is the one honest snag; I'm Boulder-based and remote-leaning. Happy to talk through it if the fit's there.",
+      "insertedExample": null,
+      "workExampleSelection": null,
+      "styleMetrics": {
+        "length": 644,
+        "words": 114,
+        "paragraphs": 3,
+        "sentences": 6,
+        "averageSentenceWords": 19,
+        "contractions": 4,
+        "questions": 0,
+        "exclamations": 0,
+        "links": 0,
+        "inventedNumber": 0,
+        "concessionOpener": 0,
+        "tellsWhatTheyWant": 0,
+        "q4BragTag": 0,
+        "targetCharacters": {
+          "min": 450,
+          "max": 650,
+          "pass": true
+        }
+      },
+      "contractViolations": []
+    },
+    {
+      "cellId": "wry-casual:470a510f-8dea-4fde-8f19-07d13f29fa8d",
+      "personaId": "wry-casual",
+      "jobId": "470a510f-8dea-4fde-8f19-07d13f29fa8d",
+      "message": "Hi — I'll be straight about one thing up front: I don't have native Korean fluency, and this role clearly needs it, so read this as more of a hello than a formal application.\n\nWhat caught my eye is the AI-in-program-management piece. I built an operating system for AI-assisted delivery on a small, confidential product build — the hard part wasn't output, it was that output scatters into ten docs that never talk to each other. So I built the source-of-truth structure first, then accelerated. Kept humans on the decisions that can't be undone.\n\nIf the Korean requirement ever flexes, I'd love to talk. Either way, good luck with the search.",
+      "insertedExample": {
+        "oneHitter": "Project Hub for Retrieval, Execution, & Delivery",
+        "link": "https://lab26.randallfransen.com/phred"
+      },
+      "workExampleSelection": {
+        "key": "work-example-0ae80e2d0613",
+        "title": "P.H.R.E.D."
+      },
+      "styleMetrics": {
+        "length": 643,
+        "words": 111,
+        "paragraphs": 3,
+        "sentences": 7,
+        "averageSentenceWords": 15.9,
+        "contractions": 5,
+        "questions": 0,
+        "exclamations": 0,
+        "links": 0,
+        "inventedNumber": 1,
+        "concessionOpener": 1,
+        "tellsWhatTheyWant": 0,
+        "q4BragTag": 0,
+        "targetCharacters": {
+          "min": 450,
+          "max": 650,
+          "pass": true
+        }
+      },
+      "contractViolations": [
+        "selected_example_not_obvious"
+      ]
+    },
+    {
+      "cellId": "wry-casual:1632c065-e9f9-4599-b06e-6f95af09a5d7",
+      "personaId": "wry-casual",
+      "jobId": "1632c065-e9f9-4599-b06e-6f95af09a5d7",
+      "message": "Hi — Randall here. I've worked inside Airbnb before as a contract Executive Producer, so the pace and the cross-functional maze are familiar territory. This PSO role reads like the work I actually like: end-to-end programs, competing stakeholders, and making the right process the easy one to follow.\n\nOn the AI-into-operations point, I built a project OS for a small team on a hard timeline — the trick wasn't more output, it was giving the tools enough structure to help while keeping humans on scope and the calls that can't be undone. Same instinct your team needs to protect trust at scale.\n\nHappy to talk specifics.",
+      "insertedExample": {
+        "oneHitter": "Project Hub for Retrieval, Execution, & Delivery",
+        "link": "https://lab26.randallfransen.com/phred"
+      },
+      "workExampleSelection": {
+        "key": "work-example-0ae80e2d0613",
+        "title": "P.H.R.E.D."
+      },
+      "styleMetrics": {
+        "length": 621,
+        "words": 106,
+        "paragraphs": 3,
+        "sentences": 6,
+        "averageSentenceWords": 17.7,
+        "contractions": 3,
+        "questions": 0,
+        "exclamations": 0,
+        "links": 0,
+        "inventedNumber": 0,
+        "concessionOpener": 0,
+        "tellsWhatTheyWant": 0,
+        "q4BragTag": 0,
+        "targetCharacters": {
+          "min": 450,
+          "max": 650,
+          "pass": true
+        }
+      },
+      "contractViolations": [
+        "selected_example_not_obvious"
+      ]
+    },
+    {
+      "cellId": "wry-casual:7ccf8feb-dc02-42ce-ae8d-c58954fa7cb4",
+      "personaId": "wry-casual",
+      "jobId": "7ccf8feb-dc02-42ce-ae8d-c58954fa7cb4",
+      "message": "Hi — I've spent 15+ years leading production and program teams, and I keep landing on the same principle: good systems make the right action easier without pretending every decision can be automated. That's exactly the line this role is drawing between process engineering and AI-readiness.\n\nRecently I built a project OS for an AI-assisted mobile app — small team, aggressive timeline. The output was never the problem; the scatter was. So I built the source-of-truth structure and handoff patterns first, kept humans on scope and privacy, then let AI accelerate the rest.\n\nI also had a contract EP stint at Airbnb, so the environment isn't new to me. Happy to talk specifics.\n\nRandall",
+      "insertedExample": {
+        "oneHitter": "Project Hub for Retrieval, Execution, & Delivery",
+        "link": "https://lab26.randallfransen.com/phred"
+      },
+      "workExampleSelection": {
+        "key": "work-example-0ae80e2d0613",
+        "title": "P.H.R.E.D."
+      },
+      "styleMetrics": {
+        "length": 686,
+        "words": 114,
+        "paragraphs": 4,
+        "sentences": 8,
+        "averageSentenceWords": 14.3,
+        "contractions": 3,
+        "questions": 0,
+        "exclamations": 0,
+        "links": 0,
+        "inventedNumber": 0,
+        "concessionOpener": 0,
+        "tellsWhatTheyWant": 0,
+        "q4BragTag": 0,
+        "targetCharacters": {
+          "min": 450,
+          "max": 650,
+          "pass": false
+        }
+      },
+      "contractViolations": [
+        "q4_quoted_verbatim",
+        "selected_example_not_obvious"
+      ]
+    },
+    {
+      "cellId": "wry-casual:f69261df-7751-4c3b-a27c-a2164dd7d2df",
+      "personaId": "wry-casual",
+      "jobId": "f69261df-7751-4c3b-a27c-a2164dd7d2df",
+      "message": "Hi — reaching out about the Manager, Luxe Supply role for NAMER and LATAM. I've spent 15+ years leading multidisciplinary teams, and I know the Airbnb world from the inside — I was Executive Producer at Airbnb on contract, so the brand bar and how things move there aren't abstract to me.\n\nMost of my career has been running teams and vendor relationships against real targets: a $14MM retainer for HTC, four new accounts in two years as Program Director at AKQA. The through-line is bringing structure to complex, cross-functional work without losing the people in the process — which is most of what coaching a field team through host negotiations comes down to.\n\nHappy to talk specifics if it's useful.\n\nRandall",
+      "insertedExample": null,
+      "workExampleSelection": null,
+      "styleMetrics": {
+        "length": 714,
+        "words": 122,
+        "paragraphs": 4,
+        "sentences": 6,
+        "averageSentenceWords": 20.3,
+        "contractions": 3,
+        "questions": 0,
+        "exclamations": 0,
+        "links": 0,
+        "inventedNumber": 0,
+        "concessionOpener": 0,
+        "tellsWhatTheyWant": 0,
+        "q4BragTag": 0,
+        "targetCharacters": {
+          "min": 450,
+          "max": 650,
+          "pass": false
+        }
+      },
+      "contractViolations": []
+    },
+    {
+      "cellId": "wry-casual:bd3447e4-2343-4127-8b1f-1e895db2cdc9",
+      "personaId": "wry-casual",
+      "jobId": "bd3447e4-2343-4127-8b1f-1e895db2cdc9",
+      "message": "Hi — I've spent time inside Airbnb, running production as a contract EP, so \"trust is the currency\" isn't an abstraction to me. I've built the connective tissue that keeps cross-functional groups aligned: as Program Director at AKQA I ran engineers, designers, and strategists through Nike and Trek work without losing the people in the process.\n\nWhere I lean hardest is turning ambiguity into a roadmap people can actually execute against, and making the right next move the easy one. Good systems help there; they don't replace the high-stakes judgment calls, which is where this Safety work really lives.\n\nWould love to talk.\n\n— Randall",
+      "insertedExample": null,
+      "workExampleSelection": null,
+      "styleMetrics": {
+        "length": 639,
+        "words": 105,
+        "paragraphs": 4,
+        "sentences": 6,
+        "averageSentenceWords": 17.5,
+        "contractions": 4,
+        "questions": 0,
+        "exclamations": 0,
+        "links": 0,
+        "inventedNumber": 0,
+        "concessionOpener": 0,
+        "tellsWhatTheyWant": 0,
+        "q4BragTag": 0,
+        "targetCharacters": {
+          "min": 450,
+          "max": 650,
+          "pass": true
+        }
+      },
+      "contractViolations": []
+    },
+    {
+      "cellId": "calm-polished:39b61911-7535-4a1f-864b-a0ddca52cecd",
+      "personaId": "calm-polished",
+      "jobId": "39b61911-7535-4a1f-864b-a0ddca52cecd",
+      "message": "Hi — I'm interested in the Product Program Manager role on the Roadmap Planning & Program Management team. I worked with Airbnb as a contract Executive Producer, so the pace and the cross-functional altitude shifts are familiar to me. Most of my career has been spent connecting design, product, engineering, and marketing on complex software programs — including a $14MM retainer at Swift and the Base launch at Coinbase, where the work was as much about dependency management and clear communication as it was about delivery. I'm comfortable in ambiguity and in the details, and I'd welcome a conversation about how the team is scaling this function. Thank you for considering it.",
+      "insertedExample": null,
+      "workExampleSelection": null,
+      "styleMetrics": {
+        "length": 682,
+        "words": 112,
+        "paragraphs": 1,
+        "sentences": 5,
+        "averageSentenceWords": 22.4,
+        "contractions": 3,
+        "questions": 0,
+        "exclamations": 0,
+        "links": 0,
+        "inventedNumber": 0,
+        "concessionOpener": 0,
+        "tellsWhatTheyWant": 0,
+        "q4BragTag": 0,
+        "targetCharacters": {
+          "min": 500,
+          "max": 700,
+          "pass": true
+        }
+      },
+      "contractViolations": []
+    },
+    {
+      "cellId": "calm-polished:470a510f-8dea-4fde-8f19-07d13f29fa8d",
+      "personaId": "calm-polished",
+      "jobId": "470a510f-8dea-4fde-8f19-07d13f29fa8d",
+      "message": "Hi — I'm writing about the Field Technical Program Manager role. Over the past 15+ years I've led complex, high-visibility technical delivery, from a $14MM retainer at Swift to production leadership on Coinbase's Base and executive producer work at Airbnb, and much of that meant coordinating milestones across concurrent engagements while managing producers and vendors.\n\nMore recently I built an AI-assisted operating methodology for a small team on a tight timeline, structuring planning, handoffs, and QA so tools actually helped delivery rather than scattering the work. That's directly relevant to the AI-in-workflow expectation here.\n\nI should note I don't hold PMP or a Databricks certification yet, and I'm not Korean-fluent, so I'd want to understand how firm those requirements are before we go further.",
+      "insertedExample": {
+        "oneHitter": "Project Hub for Retrieval, Execution, & Delivery",
+        "link": "https://lab26.randallfransen.com/phred"
+      },
+      "workExampleSelection": {
+        "key": "work-example-0ae80e2d0613",
+        "title": "P.H.R.E.D."
+      },
+      "styleMetrics": {
+        "length": 814,
+        "words": 124,
+        "paragraphs": 3,
+        "sentences": 5,
+        "averageSentenceWords": 24.8,
+        "contractions": 7,
+        "questions": 0,
+        "exclamations": 0,
+        "links": 0,
+        "inventedNumber": 0,
+        "concessionOpener": 0,
+        "tellsWhatTheyWant": 0,
+        "q4BragTag": 0,
+        "targetCharacters": {
+          "min": 500,
+          "max": 700,
+          "pass": false
+        }
+      },
+      "contractViolations": [
+        "over_750_characters",
+        "selected_example_not_obvious"
+      ]
+    },
+    {
+      "cellId": "calm-polished:1632c065-e9f9-4599-b06e-6f95af09a5d7",
+      "personaId": "calm-polished",
+      "jobId": "1632c065-e9f9-4599-b06e-6f95af09a5d7",
+      "message": "Hi — I'm writing about the Process Strategy and Optimization Lead role on the Fraud and Safety Operations team. I've spent 15+ years leading cross-functional programs where the recurring challenge was less about producing work and more about keeping decisions, tools, and stakeholders connected as scale increased. At AKQA I ran a $14MM retainer for HTC with a small team, and I worked as an Executive Producer at Airbnb, so the operating rhythm there is familiar to me.\n\nMore recently I built an operating system to make AI-assisted work usable rather than scattered — structure first, humans in control of scope and decisions that can't be undone. That maps closely to your goal of applying AI thoughtfully to minimize waste and drive consistency. Happy to walk through specifics if useful.\n\nRandall",
+      "insertedExample": {
+        "oneHitter": "Project Hub for Retrieval, Execution, & Delivery",
+        "link": "https://lab26.randallfransen.com/phred"
+      },
+      "workExampleSelection": {
+        "key": "work-example-0ae80e2d0613",
+        "title": "P.H.R.E.D."
+      },
+      "styleMetrics": {
+        "length": 801,
+        "words": 131,
+        "paragraphs": 3,
+        "sentences": 7,
+        "averageSentenceWords": 18.7,
+        "contractions": 3,
+        "questions": 0,
+        "exclamations": 0,
+        "links": 0,
+        "inventedNumber": 0,
+        "concessionOpener": 0,
+        "tellsWhatTheyWant": 0,
+        "q4BragTag": 0,
+        "targetCharacters": {
+          "min": 500,
+          "max": 700,
+          "pass": false
+        }
+      },
+      "contractViolations": [
+        "over_750_characters",
+        "selected_example_not_obvious"
+      ]
+    },
+    {
+      "cellId": "calm-polished:7ccf8feb-dc02-42ce-ae8d-c58954fa7cb4",
+      "personaId": "calm-polished",
+      "jobId": "7ccf8feb-dc02-42ce-ae8d-c58954fa7cb4",
+      "message": "I've spent fifteen years leading production and process for complex, cross-functional work, including a contract executive producer stint at Airbnb, so the Service Optimization team's mandate reads as familiar territory. The part I've focused on most recently is designing the operating system before accelerating the work: giving AI-assisted tools enough structure to help with planning, handoffs, and QA while keeping humans in control of the decisions that can't be undone. My view is that good systems make the right action easier without pretending every decision can be automated. I'd welcome a conversation about where BPI is heading and what remains open.",
+      "insertedExample": {
+        "oneHitter": "Project Hub for Retrieval, Execution, & Delivery",
+        "link": "https://lab26.randallfransen.com/phred"
+      },
+      "workExampleSelection": {
+        "key": "work-example-0ae80e2d0613",
+        "title": "P.H.R.E.D."
+      },
+      "styleMetrics": {
+        "length": 663,
+        "words": 101,
+        "paragraphs": 1,
+        "sentences": 4,
+        "averageSentenceWords": 25.3,
+        "contractions": 5,
+        "questions": 0,
+        "exclamations": 0,
+        "links": 0,
+        "inventedNumber": 0,
+        "concessionOpener": 0,
+        "tellsWhatTheyWant": 0,
+        "q4BragTag": 0,
+        "targetCharacters": {
+          "min": 500,
+          "max": 700,
+          "pass": true
+        }
+      },
+      "contractViolations": [
+        "q4_quoted_verbatim",
+        "selected_example_not_obvious"
+      ]
+    },
+    {
+      "cellId": "calm-polished:f69261df-7751-4c3b-a27c-a2164dd7d2df",
+      "personaId": "calm-polished",
+      "jobId": "f69261df-7751-4c3b-a27c-a2164dd7d2df",
+      "message": "I want to be straightforward about fit before anything else. My background is in leading multidisciplinary production and program teams, not luxury real estate supply, so I can't claim deep NAMER/LATAM luxe market expertise. What I can speak to is the leadership and cross-functional part of this role. As an Executive Producer on contract at Airbnb, I led teams through complex, high-stakes work while keeping partners, vendors, and internal stakeholders aligned. At AKQA I ran a $14MM retainer and helped win four new accounts over two years, which meant owning results through a team while coaching the people doing the work. If the supply-strategy piece can be learned on the job, I'd welcome a conversation. If it's a firm requirement, I understand.",
+      "insertedExample": null,
+      "workExampleSelection": null,
+      "styleMetrics": {
+        "length": 754,
+        "words": 122,
+        "paragraphs": 1,
+        "sentences": 7,
+        "averageSentenceWords": 17.4,
+        "contractions": 3,
+        "questions": 0,
+        "exclamations": 0,
+        "links": 0,
+        "inventedNumber": 0,
+        "concessionOpener": 0,
+        "tellsWhatTheyWant": 0,
+        "q4BragTag": 0,
+        "targetCharacters": {
+          "min": 500,
+          "max": 700,
+          "pass": false
+        }
+      },
+      "contractViolations": [
+        "over_750_characters"
+      ]
+    },
+    {
+      "cellId": "calm-polished:bd3447e4-2343-4127-8b1f-1e895db2cdc9",
+      "personaId": "calm-polished",
+      "jobId": "bd3447e4-2343-4127-8b1f-1e895db2cdc9",
+      "message": "Hi — I'm writing about the Senior Platform Manager role on Trust & Safety. I worked as an Executive Producer at Airbnb on contract, so I know something about how cross-functional groups there align around a shared standard, and I'd welcome the chance to bring that back in a product seat.\n\nMy background is running complex, high-stakes programs across engineering, design, operations, and policy — most recently as Production Lead for Base at Coinbase, where risk and compliance shaped nearly every decision. I care about building systems that make the right action easier without pretending every judgment can be automated, which feels central to safety work.\n\nHappy to talk further if the fit seems right.",
+      "insertedExample": null,
+      "workExampleSelection": null,
+      "styleMetrics": {
+        "length": 707,
+        "words": 115,
+        "paragraphs": 3,
+        "sentences": 5,
+        "averageSentenceWords": 23,
+        "contractions": 2,
+        "questions": 0,
+        "exclamations": 0,
+        "links": 0,
+        "inventedNumber": 0,
+        "concessionOpener": 0,
+        "tellsWhatTheyWant": 0,
+        "q4BragTag": 0,
+        "targetCharacters": {
+          "min": 500,
+          "max": 700,
+          "pass": false
+        }
+      },
+      "contractViolations": []
+    },
+    {
+      "cellId": "conflict-sentinel:470a510f-8dea-4fde-8f19-07d13f29fa8d",
+      "personaId": "conflict-sentinel",
+      "jobId": "470a510f-8dea-4fde-8f19-07d13f29fa8d",
+      "message": "Hi — the portfolio-scale program leadership in this role maps closely to work I've spent 15+ years doing, most recently leading Base delivery at Coinbase and running a $14MM retainer with a small team at Swift. I should be upfront on one hard requirement: I'm US-based and not a native Korean speaker, so if that's firm, I understand.\n\nWhere I think I'd add most is on the AI-in-workflow front. I built an operating methodology to keep AI-assisted delivery connected across planning, tasks, handoffs, and QA rather than scattered — humans still holding scope and the calls that can't be undone. Happy to share more if it's useful.",
+      "insertedExample": {
+        "oneHitter": "Project Hub for Retrieval, Execution, & Delivery",
+        "link": "https://lab26.randallfransen.com/phred"
+      },
+      "workExampleSelection": {
+        "key": "work-example-0ae80e2d0613",
+        "title": "P.H.R.E.D."
+      },
+      "styleMetrics": {
+        "length": 630,
+        "words": 107,
+        "paragraphs": 2,
+        "sentences": 5,
+        "averageSentenceWords": 21.4,
+        "contractions": 6,
+        "questions": 0,
+        "exclamations": 0,
+        "links": 0,
+        "inventedNumber": 0,
+        "concessionOpener": 0,
+        "tellsWhatTheyWant": 0,
+        "q4BragTag": 0,
+        "targetCharacters": {
+          "min": 450,
+          "max": 700,
+          "pass": true
+        }
+      },
+      "contractViolations": [
+        "selected_example_not_obvious"
+      ]
+    },
+    {
+      "cellId": "conflict-sentinel:bd3447e4-2343-4127-8b1f-1e895db2cdc9",
+      "personaId": "conflict-sentinel",
+      "jobId": "bd3447e4-2343-4127-8b1f-1e895db2cdc9",
+      "message": "Hi — I'm reaching out about the Senior Platform Manager, Trust & Safety role. I've spent time inside Airbnb already, as a contract Executive Producer, so the way trust threads through the guest and host journey isn't abstract to me.\n\nMy background is running cross-functional work through ambiguity and high-stakes tradeoffs. At Coinbase I was Production Lead for Base, coordinating engineers, design, and policy in an environment where compliance and risk weren't optional — including KYC and identity-verification work where the wrong call can't be undone.\n\nI'd welcome a short conversation about where the Safety roadmap needs a steadier hand on prioritization.\n\nBest,\nRandall",
+      "insertedExample": null,
+      "workExampleSelection": null,
+      "styleMetrics": {
+        "length": 679,
+        "words": 104,
+        "paragraphs": 4,
+        "sentences": 6,
+        "averageSentenceWords": 17.3,
+        "contractions": 6,
+        "questions": 0,
+        "exclamations": 0,
+        "links": 0,
+        "inventedNumber": 0,
+        "concessionOpener": 0,
+        "tellsWhatTheyWant": 0,
+        "q4BragTag": 0,
+        "targetCharacters": {
+          "min": 450,
+          "max": 700,
+          "pass": true
+        }
+      },
+      "contractViolations": []
+    },
+    {
+      "cellId": "minimum-input:470a510f-8dea-4fde-8f19-07d13f29fa8d",
+      "personaId": "minimum-input",
+      "jobId": "470a510f-8dea-4fde-8f19-07d13f29fa8d",
+      "message": "Hi — I'm reaching out about the Field Technical Program Manager role. My background is program leadership over complex technical delivery: Production Lead for Base at Coinbase, a $14MM retainer for HTC, and a Program Director stint at AKQA running multi-team engagements for Nike and Trek.\n\nOne caveat I'll be direct about: I don't have native Korean fluency, so if that requirement is firm, I understand. Where I think I'd add value is the AI-in-workflow piece — I built an operating system that keeps AI-assisted work connected to real tasks, handoffs, and QA rather than scattered across docs, with humans keeping control of scope and decisions.\n\nHappy to share how that maps to your PS delivery standards.\n\nRandall",
+      "insertedExample": {
+        "oneHitter": "Project Hub for Retrieval, Execution, & Delivery",
+        "link": "https://lab26.randallfransen.com/phred"
+      },
+      "workExampleSelection": {
+        "key": "work-example-0ae80e2d0613",
+        "title": "P.H.R.E.D."
+      },
+      "styleMetrics": {
+        "length": 718,
+        "words": 118,
+        "paragraphs": 4,
+        "sentences": 6,
+        "averageSentenceWords": 19.7,
+        "contractions": 4,
+        "questions": 0,
+        "exclamations": 0,
+        "links": 0,
+        "inventedNumber": 0,
+        "concessionOpener": 0,
+        "tellsWhatTheyWant": 0,
+        "q4BragTag": 0,
+        "targetCharacters": {
+          "min": 450,
+          "max": 700,
+          "pass": false
+        }
+      },
+      "contractViolations": [
+        "selected_example_not_obvious"
+      ]
+    },
+    {
+      "cellId": "minimum-input:bd3447e4-2343-4127-8b1f-1e895db2cdc9",
+      "personaId": "minimum-input",
+      "jobId": "bd3447e4-2343-4127-8b1f-1e895db2cdc9",
+      "message": "Hi — I'm reaching out about the Senior Platform Manager, Trust & Safety role. I worked at Airbnb as an Executive Producer, so the way trust functions as the actual currency between hosts and guests is familiar ground.\n\nMost of my 15 years has been bringing structure to cross-functional work: engineers, designers, ops, and policy people aligning on scope and tradeoffs without losing momentum. At Coinbase I led production for Base, and I've built defensible KYC and identity-verification flows on-chain, so the risk and fraud side isn't new.\n\nA few things I'd want to understand: where the safety roadmap sits today, and how you weigh detection versus deterrence in prioritization. Happy to share specifics on either.\n\nBest,\nRandall",
+      "insertedExample": null,
+      "workExampleSelection": null,
+      "styleMetrics": {
+        "length": 734,
+        "words": 118,
+        "paragraphs": 4,
+        "sentences": 7,
+        "averageSentenceWords": 16.9,
+        "contractions": 4,
+        "questions": 0,
+        "exclamations": 0,
+        "links": 0,
+        "inventedNumber": 0,
+        "concessionOpener": 0,
+        "tellsWhatTheyWant": 0,
+        "q4BragTag": 0,
+        "targetCharacters": {
+          "min": 450,
+          "max": 700,
+          "pass": false
+        }
+      },
+      "contractViolations": []
+    }
+  ]
+}

@@ -19,6 +19,19 @@ function readJson(path, fallback) {
   try { return JSON.parse(readFileSync(path, "utf8")); } catch { return fallback; }
 }
 
+// Cross-style matrix artifacts (read-only analysis views). style-matrix-<id>.json holds
+// the 6-persona × N-job invariance experiment; its -manifest sibling is skipped.
+function loadMatrices() {
+  const out = {};
+  for (const f of readdirSync(dataDir)) {
+    const m = f.match(/^style-matrix-(.+)\.json$/);
+    if (!m || f.endsWith("-manifest.json")) continue;
+    const data = readJson(resolve(dataDir, f), null);
+    if (data && Array.isArray(data.cells)) out[m[1]] = data;
+  }
+  return out;
+}
+
 function loadState() {
   const versions = readJson(resolve(dataDir, "versions.json"), []);
   const corpora = {};
@@ -27,7 +40,7 @@ function loadState() {
     corpora[v.id] = readJson(resolve(dataDir, `corpus-${v.id}.json`), { messages: [] });
     feedback[v.id] = readJson(resolve(dataDir, `feedback-${v.id}.json`), { versionId: v.id, items: {} });
   }
-  return { versions, corpora, feedback };
+  return { versions, corpora, feedback, matrices: loadMatrices() };
 }
 
 function saveFeedback(versionId, jobId, patch) {
@@ -166,6 +179,21 @@ const PAGE = /* html */ `<!doctype html><html lang="en"><head>
   .prior .pratings{font-size:11px;color:var(--ink-faint);margin-top:5px}
   .empty{padding:40px;text-align:center;color:var(--ink-faint)}
   @media (max-width:820px){ .card{grid-template-columns:1fr} .left{border-right:none;border-bottom:2px solid var(--ink)} }
+  /* cross-style matrix (read-only) */
+  .persona{border:2px solid var(--ink);border-radius:12px;margin-bottom:18px;overflow:hidden;background:var(--paper-deep)}
+  .persona > h3{margin:0;padding:10px 14px;font-size:13px;text-transform:uppercase;letter-spacing:.03em;
+    background:var(--ink);color:var(--paper)}
+  .persona .pmeta{font-size:11px;color:var(--paper);opacity:.85;font-weight:600;text-transform:none;letter-spacing:0}
+  .mcell{padding:12px 14px;border-top:1.5px solid var(--paper-edge)}
+  .mcell:first-of-type{border-top:none}
+  .mhead{font-size:12px;color:var(--ink-soft);display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:6px}
+  .mviol{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+  .vchip{font-size:10.5px;font-weight:800;padding:3px 8px;border-radius:16px;border:1.5px solid var(--ink)}
+  .vchip.bad{background:var(--tomato);color:var(--paper)}
+  .vchip.good{background:var(--teal);color:var(--paper)}
+  .len.over{color:var(--tomato);font-weight:800}
+  .stab{background:var(--paper-deep);border:2px solid var(--ink);border-radius:12px;padding:14px 16px;margin-bottom:18px}
+  .stab h2{margin:0 0 8px;font-size:13px;text-transform:uppercase;letter-spacing:.04em}
 </style></head><body>
 <header>
   <h1>Message Gen Refinement</h1>
@@ -199,7 +227,14 @@ let STATE=null, CUR=null;
 async function load(){
   STATE = await (await fetch("/api/state")).json();
   const sel = document.getElementById("ver");
-  sel.innerHTML = STATE.versions.map(v=>'<option value="'+v.id+'">'+esc(v.label)+'</option>').join("");
+  const matrixIds = Object.keys(STATE.matrices||{});
+  let opts = STATE.versions.map(v=>'<option value="'+v.id+'">'+esc(v.label)+'</option>').join("");
+  if(matrixIds.length){
+    opts += '<optgroup label="Cross-style matrix">'+
+      matrixIds.map(id=>'<option value="matrix:'+esc(id)+'">▦ Cross-style matrix ('+esc(id)+')</option>').join("")+
+      '</optgroup>';
+  }
+  sel.innerHTML = opts;
   sel.onchange = ()=>{ CUR=sel.value; render(); };
   CUR = STATE.versions.length ? STATE.versions[STATE.versions.length-1].id : null;
   sel.value = CUR;
@@ -229,6 +264,7 @@ function meterRow(key,label,kind,metrics){
 function render(){
   const app=document.getElementById("app");
   if(!CUR){ app.innerHTML='<div class="empty">No versions yet. Generate a corpus first.</div>'; return; }
+  if(CUR.startsWith("matrix:")){ renderMatrix(CUR.slice(7)); return; }
   const ver = STATE.versions.find(v=>v.id===CUR);
   const corpus = STATE.corpora[CUR] || {messages:[]};
   const fb = (STATE.feedback[CUR]||{items:{}}).items;
@@ -281,6 +317,72 @@ function render(){
         '<label class="fld">Your ratings</label>'+ratings+prio+prior+
       '</div></div>';
   }).join("");
+  app.innerHTML = html;
+}
+
+function renderMatrix(id){
+  const app=document.getElementById("app");
+  const mx = (STATE.matrices||{})[id];
+  if(!mx){ app.innerHTML='<div class="empty">Matrix '+esc(id)+' not found.</div>'; return; }
+  const jobById = {}; (mx.jobs||[]).forEach(j=>{ jobById[j.jobId]=j; });
+  const cells = mx.cells||[];
+  const clean = cells.filter(c=>(c.contractViolations||[]).length===0).length;
+  const lens = cells.map(c=>c.styleMetrics?.length||0);
+  const avgLen = Math.round(lens.reduce((a,b)=>a+b,0)/(lens.length||1));
+
+  // selection-stability rollup: how many jobs pick the same evidence across every voice
+  const stab = mx.selectionStability||[];
+  const invariant = stab.filter(s=>!s.varies).length;
+  const stabRows = stab.map(s=>{
+    const j = jobById[s.jobId];
+    const label = j ? esc(j.company)+' — '+esc(j.title) : esc(s.jobId).slice(0,8);
+    const choices = (s.uniqueChoices||[]).map(c=>c==="none"?"none":esc(String(c)).slice(0,22));
+    const cls = s.varies ? "vchip bad" : "vchip good";
+    return '<div style="font-size:12px;margin:4px 0"><span class="'+cls+'">'+(s.varies?"varies":"stable")+'</span> '+
+      label+' <span style="color:var(--ink-faint)">→ '+choices.join(" · ")+'</span></div>';
+  }).join("");
+
+  // aggregate violation tallies
+  const tally={};
+  for(const c of cells) for(const v of (c.contractViolations||[])) tally[v]=(tally[v]||0)+1;
+  const tallyChips = Object.entries(tally).sort((a,b)=>b[1]-a[1])
+    .map(([k,v])=>'<span class="chip">'+esc(k)+': '+v+'</span>').join("") || '<span class="chip">no violations</span>';
+
+  let html = '<div class="stab"><h2>Cross-style matrix · '+esc(id)+'</h2>'+
+    '<div class="scorecard">'+
+      '<span class="chip">'+cells.length+' cells</span>'+
+      '<span class="chip">clean: '+clean+'/'+cells.length+'</span>'+
+      '<span class="chip">avg length: '+avgLen+'</span>'+
+      '<span class="chip">selection stable: '+invariant+'/'+stab.length+' jobs</span>'+
+    '</div>'+
+    '<div style="margin-top:12px">'+tallyChips+'</div>'+
+    '<h2 style="margin-top:16px">Evidence selection across voices</h2>'+stabRows+
+  '</div>';
+
+  for(const p of (mx.personas||[])){
+    const pcells = cells.filter(c=>c.personaId===p.id);
+    if(!pcells.length) continue;
+    const tgt = (p.expectations&&p.expectations.targetCharacters)||[];
+    html += '<div class="persona"><h3>'+esc(p.label||p.id)+
+      ' <span class="pmeta">'+esc(p.kind||"")+(tgt.length?' · target '+tgt[0]+'–'+tgt[1]+' chars':'')+'</span></h3>'+
+      pcells.map(c=>{
+        const j = jobById[c.jobId]||{};
+        const len = c.styleMetrics?.length||0;
+        const overCap = c.styleMetrics?.targetCharacters && c.styleMetrics.targetCharacters.pass===false;
+        const viols = (c.contractViolations||[]);
+        const vchips = viols.length
+          ? '<div class="mviol">'+viols.map(v=>'<span class="vchip bad">'+esc(v)+'</span>').join("")+'</div>'
+          : '<div class="mviol"><span class="vchip good">clean</span></div>';
+        const sel = c.workExampleSelection ? esc(c.workExampleSelection.title||c.workExampleSelection.key) : "none";
+        return '<div class="mcell">'+
+          '<div class="mhead"><span class="co">'+esc(j.company||"")+'</span><span>·</span><span>'+esc(j.title||c.jobId)+'</span>'+
+            '<span>·</span><span class="len'+(overCap?" over":"")+'">'+len+' chars</span>'+
+            '<span>·</span><span>example: '+sel+'</span></div>'+
+          '<div class="message">'+esc(c.message)+'</div>'+vchips+
+        '</div>';
+      }).join("")+
+    '</div>';
+  }
   app.innerHTML = html;
 }
 

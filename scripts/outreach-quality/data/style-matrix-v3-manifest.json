@@ -1,0 +1,11 @@
+{
+  "experimentId": "voice-matrix-v3",
+  "generatedAt": "2026-07-13T23:20:57.737Z",
+  "files": {
+    "style-matrix-v3.json": "510a8c1f3253dd4cc103813a45bd3b7ce2cb85dd2a9204141745697addd44d22",
+    "inputs/style-matrix-v3-personas.json": "bad18403461fc7ecf20759c17840917aeca68234c3c826322a5e277f387da0f4",
+    "inputs/style-matrix-v3-jobs.json": "e093aebf8af19d4195d419211854c2b395839809bf178ccc865737ad88fa680f",
+    "prompts/style-matrix-v3.txt": "b161dd70978499f76e363944e60eb8f5e71c24157f9b8f6f21b9815d1d74dc4d",
+    "prompts/style-matrix-v3-fingerprint.txt": "900fdec62b7daa796c53edfa9ff21c018600d7e1718fe143adf0c742fbf23292"
+  }
+}

@@ -98,6 +98,10 @@ node scripts/outreach-quality/review-server.mjs   # prints a localhost URL
   auto-meters so we see the trend across versions.
 - **Historical context:** reviewing vN shows the prior version's comment + slider values
   for the same job inline, so we can tell whether a change addressed the note.
+- **Cross-style matrix view:** any `data/style-matrix-<id>.json` shows up in the version
+  switcher as "▦ Cross-style matrix (<id>)" — a read-only analysis view: clean/violation
+  tallies, per-job evidence-selection stability across voices, and every cell grouped by
+  persona with its length, selected Work Example, and contract violations.
 
 ## Versions so far
 
@@ -131,13 +135,58 @@ node scripts/outreach-quality/review-server.mjs   # prints a localhost URL
       rubric, production-renderer parity, pinned job inputs, fail-closed structural publication,
       sealed-artifact verification, review-visible quality violations, and offline tests. Spec:
       `docs/message-gen-cross-style-validation.md`.
-- [ ] Claude runs the 34-call style-matrix generation (`6 fingerprints + 28 messages`) because
-      Codex egress cannot transmit the private base profile. Then review invariant violations,
-      per-persona fidelity/sendability, and same-job evidence selection before any v4 work.
+- [x] Claude ran the 34-call style-matrix generation (`6 fingerprints + 28 messages`) on
+      2026-07-13 (Codex egress cannot transmit the private base profile — see "Network step:
+      Codex cannot run it" below). Complete matrix published: `data/style-matrix-v3.json` (+
+      human `style-matrix-v3.md`, sealed manifest verified). Result: 13/28 clean, avg length
+      689 (603–814). Violations: `selected_example_not_obvious` 13, `over_750_characters` 4
+      (all in calm-polished 3 + warm-peer 1), `q4_quoted_verbatim` 2 (wry-casual, calm-polished).
+      Surfaced + fixed a harness bug on the way: a single unparseable response hard-aborted the
+      whole run with no retry (Codex added bounded retry in 2e475e5). Reviewable in the console
+      via the "▦ Cross-style matrix (v3)" entry in the version switcher.
+- [ ] **v4 targets (measured by the matrix — author as a new harness variant only).**
+      1. **Voice-independent example selection.** `selected_example_not_obvious` fired on 13/28
+         cells and the selection-stability rollup shows several jobs flipping between the same
+         hero example and "none" *purely because the voice changed*. Evidence choice must depend
+         on the job, not the tone. This is the same P.H.R.E.D.-bias problem, now proven across
+         five voices — the v3 "consider every Work Example" instruction only half-landed.
+      2. **Length control that survives formal personas.** All 4 over-750 breaches come from the
+         two verbose personas (calm-polished 3/6, warm-peer 1/6); the four terser voices never
+         breach. The 750 cap holds for terse tones and leaks for formal ones — v4 must hold it
+         regardless of voice.
+      3. **Close the last Q4 leak.** 2 verbatim Q4 quotes survived v3's ban, both in the more
+         expressive voices (wry-casual, calm-polished).
 - [ ] Iterate vN until approved; then port the winning prompt to the production files and
       re-verify from the real prod code path.
 - [ ] Later: revise the fingerprint pre-pass itself (over-tuned; source of the tic + frag
       problems); widen the job sample (~18); tune the auto-metric detectors.
+
+## Network step: Codex cannot run it — hand it off (do not retry)
+
+Any script that calls Anthropic (`gen-baseline.mjs`, `gen-style-matrix.mjs`, any future
+generator) reads the private base profile + Work Examples off local disk and POSTs them to
+`api.anthropic.com`. **Codex's execution environment blocks this** — first the sandbox has no
+egress, and when elevated execution is requested the policy reviewer rejects it because the
+command transmits private workspace data to an external service. This is an execution-policy
+block, not a missing key, a bad command, or a broken workflow. The command and API are valid;
+retrying (even with explicit user authorization) will keep being denied. **Codex must not
+loop on this.**
+
+The workflow is NOT blocked, because generation is split from authoring:
+
+- **Codex authors offline** (no network): prompt variants, persona configs, metric detectors,
+  audit/parse logic, the console. All pure text editing.
+- **The network step runs where it's authorized to** — the Claude Code session (which reaches
+  Anthropic) or Randall in a plain terminal outside the sandbox. Codex commits its change,
+  then asks that runner to execute e.g.
+  `PROMPT_VARIANT=v4 node scripts/outreach-quality/gen-baseline.mjs` or
+  `node scripts/outreach-quality/gen-style-matrix.mjs`.
+- Artifacts land in `data/`; the console at :4137 shows them; Randall reviews.
+
+Codex can validate its own harness offline without any network via the preflight:
+`MATRIX_PREFLIGHT_ONLY=1 node scripts/outreach-quality/gen-style-matrix.mjs` (checks config,
+hashes, and cell count; prints `"ok": true`). Proven end-to-end on 2026-07-13: Codex authored
+the matrix + retry fix offline, Claude ran the 34 calls, the full 28-cell corpus published.
 
 ## Handoff → Codex (several sessions; weekly limit resets tonight 2026-07-13)
 
@@ -145,8 +194,8 @@ Codex can make progress on this track WITHOUT touching production. Stay inside t
 harness. Guardrails above still apply: **no prod prompt edits** (`outreach-generator.ts`,
 `voice-fingerprint.ts`, `profile-markdown.ts`) and **no commit/push** without Randall's
 explicit OK. Iterate by adding new `PROMPT_VARIANT` entries + `variantMeta` changelog in
-`gen-baseline.mjs`, regenerating, and reviewing in the console. Randall reviews in the
-console and rates/prioritizes; you turn that into the next variant.
+`gen-baseline.mjs`, regenerating (hand the network step off — see above), and reviewing in the
+console. Randall reviews in the console and rates/prioritizes; you turn that into the next variant.
 
 Safe-to-do this stretch (harness only):
 
