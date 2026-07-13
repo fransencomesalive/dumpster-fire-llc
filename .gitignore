@@ -11,3 +11,7 @@ Design System Resources/
 
 # Claude Code personal/local settings (machine-specific)
 .claude/settings.local.json
+
+# Resend/Supabase SMTP setup secrets (never commit)
+.resend-setup.local
+RESEND_SETUP.local.txt

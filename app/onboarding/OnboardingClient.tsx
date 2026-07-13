@@ -165,6 +165,12 @@ type ResumeScanState =
 
 const notLoadedReadinessLabel = "Not loaded";
 
+// Public tier names — never surface internal plan_name values (premium/tester/etc.) in UI copy.
+const PLAN_LABELS: Record<string, string> = { basic: "Good", pro: "Gooder", premium: "Goodest", tester: "Goodest" };
+function planLabel(plan: string | null | undefined): string {
+  return plan && PLAN_LABELS[plan] ? PLAN_LABELS[plan] : "Good";
+}
+
 // Card 1 save pipeline phases, shown in the scan-progress loader modal
 // (design-system/components/scan-progress.html, live in DashboardClient):
 // save the track, read the résumé + pull highlights, route them to the lane.
@@ -1094,7 +1100,7 @@ export default function OnboardingClient({
       );
       setInviteCode("");
       setPlanName(result.planName);
-      setMessage(`Access code accepted: ${result.planName} plan is active.`);
+      setMessage(`Access code accepted: the ${planLabel(result.planName)} plan is active.`);
     } catch (error) {
       const body = (error as { body?: { error?: string } }).body;
       setMessage(body?.error || "That code did not work.");
@@ -1812,7 +1818,7 @@ export default function OnboardingClient({
         </div>
         {accountPopup === "plan" ? (
           <div className={styles.popupBody}>
-            <p className={styles.popupNote}>{`You're on the ${planName || "Good"} plan. Plan changes are coming soon.`}</p>
+            <p className={styles.popupNote}>{`You're on the ${planLabel(planName)} plan. Plan changes are coming soon.`}</p>
           </div>
         ) : (
           <div className={styles.popupBody}>
