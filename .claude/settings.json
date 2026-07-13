@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Read|Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "f=$(jq -r '.tool_input.file_path // empty'); echo \"$f\" | grep -qE '/design-system/.*\\.html$' && printf '%s' \"{\\\"hookSpecificOutput\\\": {\\\"hookEventName\\\": \\\"PreToolUse\\\", \\\"additionalContext\\\": \\\"CLAUDE DESIGN GUARDRAIL: this is a LOCAL design-system HTML file. Per AGENTS.md Design Authority, design cards live in the Claude Design project and are created/edited via the DesignSync tool (get_file to ground on the project, then finalize_plan + write_files to build). Local design-system/ files are ONLY the post-approval parity mirror. If you are starting or doing design work, your FIRST move must be a DesignSync call against project 3af2f1ea-428c-49b3-8b02-c066ec0c7452 - never a local Read, never a chat plan of local file paths. If the design is not yet approved IN Claude Design, STOP and build it there first.\\\"}}\" || true",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

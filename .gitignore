@@ -8,3 +8,6 @@ local-artifacts
 Design System Resources/
 .DS_Store
 .env*
+
+# Claude Code personal/local settings (machine-specific)
+.claude/settings.local.json
