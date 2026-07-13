@@ -56,6 +56,35 @@ export async function syncPublicProfileSession(): Promise<string> {
   return token;
 }
 
+// Self-serve create-account. When Supabase email confirmation is on (it is once
+// Resend SMTP is configured), signUp returns a user but NO session — the caller
+// shows the "check your email" state. When confirmation is off (or later
+// disabled), a session comes back immediately and we mirror the token. The
+// confirmation link returns the user to `redirectPath` (the plan step).
+export async function signUpWithPasswordSession(
+  email: string,
+  password: string,
+  redirectPath = "/plan",
+): Promise<{ needsConfirmation: boolean; token: string }> {
+  const supabase = getSupabaseBrowserClient();
+  if (!supabase) {
+    throw new Error("Sign up is not configured. Add the public Supabase settings.");
+  }
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: { emailRedirectTo: `${window.location.origin}${redirectPath}` },
+  });
+  if (error) {
+    throw new Error(error.message || "Sign up failed.");
+  }
+  const token = data.session?.access_token ?? "";
+  if (token) {
+    writePublicProfileAccessToken(token);
+  }
+  return { needsConfirmation: !token, token };
+}
+
 export async function signInWithPasswordSession(email: string, password: string): Promise<string> {
   const supabase = getSupabaseBrowserClient();
   if (!supabase) {

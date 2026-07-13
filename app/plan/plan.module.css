@@ -1,0 +1,307 @@
+/* Plan & Billing step — implements the approved plan-billing-step DS card 1:1.
+   Tier chooser (Good/Gooder/Goodest, features from the live plan rules, no prices),
+   the access-code redeem strip, and coming-soon checkout stubs. */
+
+.wrap {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: clamp(24px, 5vw, 48px) 16px;
+  display: grid;
+  gap: 24px;
+}
+
+.stepHead {
+  text-align: center;
+  display: grid;
+  gap: 8px;
+}
+
+.stepHead h1 {
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: var(--tracking-display);
+  font-size: clamp(1.6rem, 4vw, 1.9rem);
+  line-height: 1.05;
+  color: var(--c-ink);
+  margin: 0;
+}
+
+.stepHead p {
+  font-family: var(--font-body);
+  color: var(--c-ink-soft);
+  margin: 0;
+}
+
+.tiers {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+@media (max-width: 780px) {
+  .tiers {
+    grid-template-columns: 1fr;
+  }
+}
+
+.tier {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  background-color: var(--c-paper-deep);
+  background-image: var(--fiber-img), var(--grain-img);
+  background-blend-mode: normal, soft-light;
+  background-size: 170px 170px, 46px 46px;
+  border: var(--line-reg) solid var(--c-ink);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  padding: 20px 20px 24px;
+}
+
+.tierFeatured {
+  border-width: var(--line-bold);
+}
+
+.tierTag {
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--font-subhead);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-subhead);
+  font-size: 0.7rem;
+  color: var(--c-paper);
+  background-color: var(--c-teal);
+  border: var(--line-reg) solid var(--c-ink);
+  border-radius: var(--radius-pill);
+  padding: 3px 12px;
+  box-shadow: var(--shadow-card);
+  white-space: nowrap;
+}
+
+.tierName {
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: var(--tracking-display);
+  font-size: 1.6rem;
+  line-height: 1;
+  color: var(--c-ink);
+}
+
+.tierPrice {
+  font-family: var(--font-body);
+  font-size: 0.92rem;
+  color: var(--c-ink-soft);
+  margin-top: 4px;
+}
+
+.tierFeatures {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+  flex: 1;
+}
+
+.tierFeatures li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  color: var(--c-ink);
+}
+
+.tierFeatures li svg {
+  width: 17px;
+  height: 17px;
+  flex: none;
+  margin-top: 2px;
+  color: var(--c-teal);
+}
+
+.tierBtn {
+  width: 100%;
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 1.02rem;
+  min-height: 46px;
+  cursor: pointer;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
+  border: var(--line-bold) solid var(--c-ink);
+}
+
+.tierBtnTeal {
+  color: var(--c-paper);
+  background-color: var(--c-teal);
+}
+
+.tierBtnTeal:hover {
+  background-color: var(--role-info);
+}
+
+.tierBtnGhost {
+  color: var(--c-ink);
+  background-color: var(--c-paper);
+}
+
+.tierBtnGhost:hover {
+  background-color: color-mix(in srgb, var(--c-teal) 16%, var(--c-paper));
+}
+
+.comingSoon {
+  font-family: var(--font-subhead);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-subhead);
+  font-size: 0.72rem;
+  color: var(--c-ink-faint);
+  text-align: center;
+  margin: 8px 0 0;
+}
+
+/* Access-code strip */
+.codeStrip {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  background-color: var(--c-paper-deep);
+  background-image: var(--fiber-img), var(--grain-img);
+  background-blend-mode: normal, soft-light;
+  background-size: 170px 170px, 46px 46px;
+  border: var(--line-reg) solid var(--c-ink);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
+  padding: 16px 20px;
+}
+
+.codeCopy {
+  min-width: 220px;
+  flex: 1;
+}
+
+.codeCopy .t {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  color: var(--c-ink);
+}
+
+.codeCopy .s {
+  display: block;
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  color: var(--c-ink-soft);
+  margin-top: 2px;
+}
+
+.codeForm {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.codeForm input {
+  min-height: 44px;
+  font-family: var(--font-ui);
+  font-size: 1rem;
+  color: var(--c-ink);
+  background-color: var(--c-paper);
+  border: var(--line-reg) solid var(--c-ink);
+  border-radius: var(--radius-md);
+  padding: 0 14px;
+  min-width: 200px;
+  letter-spacing: 0.04em;
+}
+
+.codeForm input:focus {
+  outline: none;
+  border-color: var(--c-teal);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--c-teal) 28%, transparent);
+}
+
+.btnRedeem {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 1rem;
+  color: var(--c-ink);
+  background-color: var(--c-paper);
+  border: var(--line-bold) solid var(--c-ink);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
+  padding: 0 20px;
+  min-height: 44px;
+  cursor: pointer;
+}
+
+.btnRedeem:hover {
+  background-color: color-mix(in srgb, var(--c-teal) 16%, var(--c-paper));
+}
+
+.btnRedeem:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+/* Applied state */
+.codeStripApplied {
+  background-color: color-mix(in srgb, var(--c-teal) 12%, var(--c-paper-deep));
+}
+
+.applyMark {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  color: var(--c-ink);
+}
+
+.applyMark svg {
+  width: 22px;
+  height: 22px;
+  flex: none;
+  color: var(--c-teal);
+}
+
+.btnContinue {
+  margin-left: auto;
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 1.05rem;
+  color: var(--c-paper);
+  background-color: var(--c-teal);
+  border: var(--line-bold) solid var(--c-ink);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
+  padding: 12px 20px;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btnContinue:hover {
+  background-color: var(--role-info);
+}
+
+.msg {
+  min-height: 1.2em;
+  margin: 0;
+  text-align: center;
+  font-family: var(--font-body);
+  font-size: 0.92rem;
+  color: var(--c-ink-soft);
+}
+
+.loading {
+  text-align: center;
+  padding: 64px 16px;
+  font-family: var(--font-body);
+  color: var(--c-ink-soft);
+}

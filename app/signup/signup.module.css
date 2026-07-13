@@ -1,0 +1,241 @@
+/* Sign Up — implements the approved onboarding-sign-up DS card 1:1.
+   Reuses the login-card primitive (see onboarding.module.css) plus the
+   create-account extras: password hint, alt sign-in line, and the
+   check-your-email confirmation state. */
+
+.loginShell {
+  display: flex;
+  justify-content: center;
+  padding: clamp(28px, 6vw, 64px) 16px;
+}
+
+.loginCard {
+  width: min(420px, 100%);
+  text-align: center;
+  border: var(--line-reg) solid var(--c-ink);
+  border-radius: var(--radius-lg);
+  background-color: var(--c-paper-deep);
+  background-image: var(--fiber-img), var(--grain-img);
+  background-blend-mode: normal, soft-light;
+  background-size: 170px 170px, 46px 46px;
+  box-shadow: var(--shadow-card);
+  padding: clamp(28px, 5vw, 44px) clamp(22px, 4vw, 36px);
+  box-sizing: border-box;
+}
+
+.mascot {
+  width: 112px;
+  height: auto;
+  margin: 0 auto 18px;
+  display: block;
+}
+
+.title {
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: var(--tracking-display);
+  font-size: 1.7rem;
+  line-height: 1.05;
+  color: var(--c-ink);
+  margin: 0;
+}
+
+.sub {
+  font-family: var(--font-body);
+  font-size: 0.98rem;
+  color: var(--c-ink-soft);
+  margin: 10px 0 24px;
+}
+
+.authStack {
+  display: grid;
+  gap: 12px;
+}
+
+.googleBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 1rem;
+  color: var(--c-ink);
+  background-color: var(--c-paper);
+  border: var(--line-reg) solid var(--c-ink);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
+  padding: 12px 16px;
+  cursor: pointer;
+}
+
+.googleBtn:hover {
+  box-shadow: var(--reg-box);
+}
+
+.googleBtn:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.googleBtn svg {
+  width: 20px;
+  height: 20px;
+  flex: none;
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 20px 0;
+}
+
+.divider::before,
+.divider::after {
+  content: "";
+  flex: 1;
+  height: var(--line-hair);
+  background: var(--c-ink-faint);
+}
+
+.divider span {
+  font-family: var(--font-subhead);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-subhead);
+  font-size: 0.82rem;
+  color: var(--c-ink-faint);
+}
+
+.field {
+  text-align: left;
+  margin-bottom: 16px;
+}
+
+.field label {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  color: var(--c-ink);
+  margin-bottom: 8px;
+}
+
+.field input {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 44px;
+  font-family: var(--font-ui);
+  font-size: 1rem;
+  color: var(--c-ink);
+  background-color: var(--c-paper);
+  border: var(--line-reg) solid var(--c-ink);
+  border-radius: var(--radius-md);
+  padding: 0 14px;
+}
+
+.field input:focus {
+  outline: none;
+  border-color: var(--c-teal);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--c-teal) 28%, transparent);
+}
+
+.fieldHint {
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  color: var(--c-ink-soft);
+  margin: -8px 0 0;
+  text-align: left;
+}
+
+.primary {
+  width: 100%;
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 1.05rem;
+  min-height: 46px;
+  margin-top: 8px;
+  color: var(--c-paper);
+  background-color: var(--c-teal);
+  border: var(--line-bold) solid var(--c-ink);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
+  cursor: pointer;
+}
+
+.primary:hover {
+  background-color: var(--role-info);
+}
+
+.primary:disabled {
+  cursor: not-allowed;
+  filter: grayscale(0.3);
+  opacity: 0.55;
+}
+
+.altLine {
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  color: var(--c-ink-soft);
+  margin: 20px 0 0;
+}
+
+.altLine a {
+  font-family: var(--font-display);
+  color: var(--c-ink);
+}
+
+.msg {
+  min-height: 1.2em;
+  margin: 12px 0 0;
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  color: var(--c-tomato);
+}
+
+/* Check-your-email confirmation state */
+.confirmIcon {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 18px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-pill);
+  background-color: color-mix(in srgb, var(--c-teal) 16%, var(--c-paper));
+  border: var(--line-reg) solid var(--c-ink);
+  color: var(--c-teal);
+}
+
+.confirmIcon svg {
+  width: 34px;
+  height: 34px;
+}
+
+.confirmEmail {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  color: var(--c-ink);
+}
+
+.confirmBody {
+  font-family: var(--font-body);
+  font-size: 0.98rem;
+  color: var(--c-ink-soft);
+  margin: 12px 0 20px;
+}
+
+.resend {
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  color: var(--c-ink);
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.resend:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}

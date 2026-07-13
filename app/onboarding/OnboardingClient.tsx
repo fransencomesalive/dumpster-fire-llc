@@ -965,9 +965,15 @@ export default function OnboardingClient({
     if (account) {
       setAccountEmail(account.email ?? "");
       setPlanName(account.planName);
+      // Plan gate: a signed-in user with no active plan hasn't completed the
+      // plan step yet — send them there (an access code unlocks onboarding).
+      if (!account.planName) {
+        router.replace("/plan");
+        return;
+      }
     }
     setMessage("Profile sections loaded.");
-  }, [applyProfileQuality]);
+  }, [applyProfileQuality, router]);
 
   useEffect(() => {
     let cancelled = false;
@@ -1071,7 +1077,7 @@ export default function OnboardingClient({
     setBusy(true);
     setMessage("Sending you to Google\u2026");
     try {
-      await signInWithGoogle("/onboarding");
+      await signInWithGoogle("/plan");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Google sign in failed.");
       setBusy(false);

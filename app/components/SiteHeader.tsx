@@ -43,7 +43,7 @@ export default function SiteHeader({
             <Link className={styles.publicLandingNavSignIn} href="/onboarding">
               Sign in
             </Link>
-            <Link className={styles.publicLandingNavCta} href="/onboarding">
+            <Link className={styles.publicLandingNavCta} href="/signup">
               Create profile
             </Link>
           </>

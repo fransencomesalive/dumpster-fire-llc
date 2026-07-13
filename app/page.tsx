@@ -319,7 +319,7 @@ export default function HomePage() {
       <section className={styles.publicLandingFinal} aria-label="Request Dumpster Fire access">
         <h2>When the market is noisy, the workflow has to be calmer.</h2>
         <p>Start with the profile. Every better pursuit needs a better source of truth.</p>
-        <Link className={styles.publicLandingPrimary} href="/onboarding">
+        <Link className={styles.publicLandingPrimary} href="/signup">
           Build my profile
         </Link>
       </section>
