@@ -11,6 +11,8 @@ import {
 import type { PublicProfileRepositoryRequest } from "../lib/public-profile/repository";
 import type { NormalizedConnectorJob } from "../lib/scan/sources/types";
 import { parseHtmlJobs } from "../lib/scan/sources/connectors";
+import { assertSafePublicUrl, isPublicIpAddress } from "../lib/scan/sources/url-safety";
+import { fetchNormalizedConnectorJobs } from "../lib/scan/sources/runner";
 
 const now = "2026-06-26T18:00:00.000Z";
 const userId = "user-1";
@@ -391,6 +393,43 @@ const request: PublicProfileRepositoryRequest = async <T>(
 };
 
 async function main() {
+  assert.equal(isPublicIpAddress("8.8.8.8"), true);
+  assert.equal(isPublicIpAddress("127.0.0.1"), false);
+  assert.equal(isPublicIpAddress("169.254.169.254"), false);
+  assert.equal(isPublicIpAddress("::1"), false);
+  assert.equal(isPublicIpAddress("fc00::1"), false);
+  assert.equal(isPublicIpAddress("2606:4700:4700::1111"), true);
+  await assert.doesNotReject(assertSafePublicUrl("https://careers.example.test/jobs/1", async () => [
+    { address: "203.0.114.10", family: 4 },
+  ]));
+  await assert.rejects(assertSafePublicUrl("https://careers.example.test/jobs/1", async () => [
+    { address: "10.0.0.5", family: 4 },
+  ]), /non-public network/);
+  await assert.rejects(assertSafePublicUrl("https://careers.example.test/jobs/1", async () => [
+    { address: "8.8.8.8", family: 4 },
+    { address: "192.168.1.5", family: 4 },
+  ]), /non-public network/);
+
+  let redirectFetchCount = 0;
+  await assert.rejects(fetchNormalizedConnectorJobs({
+    id: "redirect-fixture",
+    companyName: "Redirect Fixture",
+    websiteUrl: "https://public.example.test",
+    careersUrl: "https://public.example.test/careers",
+    atsProvider: "html",
+    atsBoardToken: "redirect-fixture",
+  }, {
+    resolveHostname: async (hostname) => [{
+      address: hostname === "internal.example.test" ? "10.0.0.5" : "203.0.114.10",
+      family: 4,
+    }],
+    fetchImpl: async () => {
+      redirectFetchCount += 1;
+      return new Response(null, { status: 302, headers: { Location: "http://internal.example.test/jobs" } });
+    },
+  }), /non-public network/);
+  assert.equal(redirectFetchCount, 1);
+
   // Real careers pages often wrap the title and location in nested elements. The generic HTML
   // path must keep common technical/marketing titles while the add-flow plausibility gate rejects
   // ordinary navigation links that happen to contain title-like words.

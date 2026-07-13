@@ -4,6 +4,7 @@
 // Himalayas pagination, and Adzuna credential injection.
 import { buildConnectorPlan, normalizeConnectorPayload, type NormalizedConnectorJob } from "./connectors";
 import type { JobSource } from "./types";
+import { assertSafePublicUrl, type HostnameResolver } from "./url-safety";
 
 export type FetchConnectorJobsOptions = {
   // Workday tenants only return the newest ~20 postings per request. Supplying title variants lets
@@ -11,6 +12,8 @@ export type FetchConnectorJobsOptions = {
   // empty, only the baseline query runs (still valid, just narrower for giant Workday boards).
   workdayVariants?: string[];
   env?: NodeJS.ProcessEnv;
+  resolveHostname?: HostnameResolver;
+  fetchImpl?: typeof fetch;
 };
 
 const HIMALAYAS_PAGE_SIZE = 20;
@@ -65,21 +68,43 @@ async function requestConnectorResponse(
   isHtmlResponse: boolean,
   workdaySearchText: string,
   env: NodeJS.ProcessEnv,
+  resolveHostname?: HostnameResolver,
+  fetchImpl: typeof fetch = fetch,
 ) {
-  return fetch(withRequestCredentials(endpointUrl, env), {
-    method: plan.provider === "workday" ? "POST" : "GET",
-    headers: {
+  let requestUrl = withRequestCredentials(endpointUrl, env);
+  let method = plan.provider === "workday" ? "POST" : "GET";
+  let body = method === "POST"
+    ? JSON.stringify({ appliedFacets: {}, limit: 20, offset: 0, searchText: workdaySearchText })
+    : undefined;
+  const headers = {
       "Accept": isHtmlResponse ? "text/html,application/xhtml+xml" : "application/json",
       "User-Agent": "The Job Market Is a Dumpster Fire job ingestion",
       ...(plan.provider === "workday" ? { "Content-Type": "application/json" } : {}),
-    },
-    body: plan.provider === "workday"
-      ? JSON.stringify({ appliedFacets: {}, limit: 20, offset: 0, searchText: workdaySearchText })
-      : undefined,
-    cache: "no-store",
-    // Cap any single source fetch so one slow/hanging board can't consume the whole ingestion budget.
-    signal: AbortSignal.timeout(12_000),
-  });
+  };
+
+  for (let redirectCount = 0; redirectCount <= 5; redirectCount += 1) {
+    await assertSafePublicUrl(requestUrl, resolveHostname);
+    const response = await fetchImpl(requestUrl, {
+      method,
+      headers,
+      body,
+      cache: "no-store",
+      redirect: "manual",
+      // Cap every request in the redirect chain so one slow board can't hang ingestion.
+      signal: AbortSignal.timeout(12_000),
+    });
+
+    if (response.status < 300 || response.status >= 400 || !response.headers.get("location")) return response;
+    if (redirectCount === 5) throw new Error("Source returned too many redirects.");
+
+    requestUrl = new URL(response.headers.get("location")!, requestUrl).toString();
+    if (response.status === 303 || ((response.status === 301 || response.status === 302) && method === "POST")) {
+      method = "GET";
+      body = undefined;
+    }
+  }
+
+  throw new Error("Unable to follow source redirect.");
 }
 
 async function fetchConnectorPayloadJobs(
@@ -89,6 +114,8 @@ async function fetchConnectorPayloadJobs(
   isHtmlResponse: boolean,
   workdaySearchText: string,
   env: NodeJS.ProcessEnv,
+  resolveHostname?: HostnameResolver,
+  fetchImpl?: typeof fetch,
 ) {
   const isWwrRss = isWeWorkRemotelyRssSource(company, endpointUrl);
   const attempts = isWwrRss ? 2 : 1;
@@ -97,7 +124,7 @@ async function fetchConnectorPayloadJobs(
 
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
     try {
-      response = await requestConnectorResponse(endpointUrl, plan, isHtmlResponse, workdaySearchText, env);
+      response = await requestConnectorResponse(endpointUrl, plan, isHtmlResponse, workdaySearchText, env, resolveHostname, fetchImpl);
       if (response.ok) break;
       fetchError = new Error(`Source returned ${response.status}.`);
     } catch (error) {
@@ -151,10 +178,10 @@ export async function fetchNormalizedConnectorJobs(
     // The baseline ("") query must succeed; if the tenant itself is unreachable the whole source
     // fails. The remaining title-variant queries are best-effort coverage, so a single variant
     // failure is tolerated instead of aborting the rest.
-    const baselineJobs = await fetchConnectorPayloadJobs(plan.endpointUrl, plan, company, isHtmlResponse, variants[0], env);
+    const baselineJobs = await fetchConnectorPayloadJobs(plan.endpointUrl, plan, company, isHtmlResponse, variants[0], env, options.resolveHostname, options.fetchImpl);
     const variantResults = await mapLimit(variants.slice(1), WORKDAY_VARIANT_CONCURRENCY, async (variant) => {
       try {
-        return await fetchConnectorPayloadJobs(plan.endpointUrl, plan, company, isHtmlResponse, variant, env);
+        return await fetchConnectorPayloadJobs(plan.endpointUrl, plan, company, isHtmlResponse, variant, env, options.resolveHostname, options.fetchImpl);
       } catch {
         return [] as NormalizedConnectorJob[];
       }
@@ -174,7 +201,7 @@ export async function fetchNormalizedConnectorJobs(
   }
 
   if (!isPaginatedHimalayasSearch) {
-    return fetchConnectorPayloadJobs(plan.endpointUrl, plan, company, isHtmlResponse, "", env);
+    return fetchConnectorPayloadJobs(plan.endpointUrl, plan, company, isHtmlResponse, "", env, options.resolveHostname, options.fetchImpl);
   }
 
   const mergedJobs: NormalizedConnectorJob[] = [];
@@ -184,7 +211,7 @@ export async function fetchNormalizedConnectorJobs(
     let pageJobs: NormalizedConnectorJob[];
 
     try {
-      pageJobs = await fetchConnectorPayloadJobs(himalayasPageUrl(plan.endpointUrl, page), plan, company, isHtmlResponse, "", env);
+      pageJobs = await fetchConnectorPayloadJobs(himalayasPageUrl(plan.endpointUrl, page), plan, company, isHtmlResponse, "", env, options.resolveHostname, options.fetchImpl);
     } catch (error) {
       if (page === 1) throw error;
       break;
