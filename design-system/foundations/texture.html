@@ -31,13 +31,6 @@
   .demo .cap small { display:block; font-family: var(--font-body); text-transform: none;
                      letter-spacing: 0; color: var(--role-text-muted); margin-top: 2px; }
 
-  /* Halftone ground · page background + select elements only */
-  .stage.halftone { background: var(--c-paper); }
-  .stage.halftone::before { content:""; position:absolute; inset:0;
-    background-image: radial-gradient(var(--halftone-color) var(--halftone-dot),
-                      transparent calc(var(--halftone-dot) + 0.5px));
-    background-size: var(--halftone-size) var(--halftone-size); }
-
   /* Gradient expressed as a halftone dot ramp · NOT for use behind body copy */
   .stage.ramp { background: var(--c-teal); }
   .stage.ramp::before { content:""; position:absolute; inset:0;
@@ -80,15 +73,11 @@
 <body>
 <div class="wrap">
   <h1 class="page">Texture</h1>
-  <p class="lede">Halftone lives on the page ground and select elements, never as the fill for
-  every surface. Gradients are expressed as halftone dot ramps. Registration offset is the
-  signature interaction: on hover the print slips, leaving one tomato plate misregistered.</p>
+  <p class="lede">The print aesthetic is grain over saturated solids, tonal dot ramps for gradients (never
+  behind body copy), and a single misregistered ink plate. Registration offset is the signature
+  interaction: on hover the print slips, leaving one tomato plate misregistered.</p>
 
   <div class="panels">
-    <div class="demo">
-      <div class="stage halftone"></div>
-      <div class="cap">Halftone ground<small>page background · 8px cell</small></div>
-    </div>
     <div class="demo">
       <div class="stage ramp"></div>
       <div class="cap">Gradient → halftone<small>tonal ramp · not behind body copy</small></div>

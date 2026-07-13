@@ -1816,6 +1816,18 @@
   opacity: 0.55;
 }
 
+.loginAlt {
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  color: var(--c-ink-soft);
+  margin: 20px 0 0;
+}
+
+.loginAlt a {
+  font-family: var(--font-display);
+  color: var(--c-ink);
+}
+
 .loginMsg {
   margin: 16px 0 0;
   color: var(--c-ink-soft);

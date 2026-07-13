@@ -95,9 +95,6 @@
      (home, dashboard, onboarding). Surfaces sit opaque on top of it; cards must
      never set their own body/page background. Halftone is NOT used as the app
      ground — the grain background owns that layer. */
-  --halftone-color: rgba(36, 31, 26, 0.10);
-  --halftone-size:  8px;     /* dot cell */
-  --halftone-dot:   2.1px;   /* dot radius */
   --grain-opacity:  0.10;
   /* Grain image · multiply-blend over saturated solid fills (buttons, badges,
      the number disc, the Motel sign, accent bands) for a printed-ink texture. */
@@ -132,14 +129,6 @@
   --dur-base:   200ms;
 }
 
-/* Reusable halftone ground (apply to a layer, not text) */
-.ds-halftone {
-  background-image: radial-gradient(
-    var(--halftone-color) var(--halftone-dot),
-    transparent calc(var(--halftone-dot) + 0.5px)
-  );
-  background-size: var(--halftone-size) var(--halftone-size);
-}
 
 *,
 *::before,

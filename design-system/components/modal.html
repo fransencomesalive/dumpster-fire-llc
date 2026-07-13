@@ -8,11 +8,7 @@
 <link rel="stylesheet" href="../tokens/tokens.css" />
 <link rel="stylesheet" href="../lib/base.css" />
 <style>
-  /* Page ground (the dashboard behind the modal) carries the halftone */
   body { margin: 0; background: var(--c-paper); }
-  body::before { content:""; position: fixed; inset: 0; z-index: -1;
-    background-image: radial-gradient(var(--halftone-color) var(--halftone-dot),
-      transparent calc(var(--halftone-dot) + 0.5px)); background-size: var(--halftone-size) var(--halftone-size); }
 
   /* ====== classes mirror DashboardClient.tsx so CSS ports back ====== */
 

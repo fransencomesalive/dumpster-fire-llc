@@ -92,6 +92,8 @@
     text-shadow: 1px 1px 0 rgba(36,31,26,0.35); }
   .btnSecondary { color: var(--c-ink); background-color: var(--c-paper); }
   .btnSecondary:hover { background-color: color-mix(in srgb, var(--c-teal) 16%, var(--c-paper)); }
+  .altLine { font-family: var(--font-body); font-size: 0.95rem; color: var(--role-text-muted); margin: var(--space-4) 0 0; }
+  .altLine a { font-family: var(--font-display); color: var(--c-ink); }
 </style>
 </head>
 <body>
@@ -101,7 +103,7 @@
     <p class="lede">The first of three Onboarding Auth states. Signed out, the page shows ONLY the
     login card — the editable form never renders, so there are no dead Save buttons and no
     stray "Profile Completion / Sign in" status card. Sign in is the teal (positive) primary;
-    Create account is the quiet secondary. The persistent site header rides along.</p>
+    a quiet link sends new users to Create profile (/signup). The persistent site header rides along.</p>
   </div>
 
   <div class="scroller"><div class="frame">
@@ -145,8 +147,8 @@
         </div>
         <div class="loginActions">
           <button type="submit" class="btnPrimary">Sign in</button>
-          <button type="button" class="btnSecondary">Create account</button>
         </div>
+        <p class="altLine">New here? <a href="/signup">Create profile</a></p>
       </div>
     </div>
   </div></div>

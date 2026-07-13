@@ -10,9 +10,6 @@
 <style>
   /* Halftone is on the page ground only; panels are solid and opaque */
   body { padding: var(--space-6); background: var(--c-paper); }
-  body::before { content:""; position: fixed; inset: 0; z-index: -1;
-    background-image: radial-gradient(var(--halftone-color) var(--halftone-dot),
-      transparent calc(var(--halftone-dot) + 0.5px)); background-size: var(--halftone-size) var(--halftone-size); }
   .wrap { max-width: 720px; margin: 0 auto; display: grid; gap: var(--space-6); }
   h1.page { font-size: var(--type-h1); margin-bottom: var(--space-2); }
   .lede { color: var(--role-text-muted); max-width: 60ch; font-family: var(--font-body); }
@@ -53,7 +50,7 @@
   <div>
     <h1 class="page">Panel</h1>
     <p class="lede">The foundational surface: a header row with a title and a status badge, body
-    below. Panels are solid and opaque; the page ground carries the halftone, never the panel.
+    below. Panels are solid and opaque, sitting on the plain paper ground.
     An accent variant adds a colored header band for emphasis sections.</p>
   </div>
 

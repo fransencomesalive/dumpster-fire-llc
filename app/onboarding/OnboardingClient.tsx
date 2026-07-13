@@ -1937,6 +1937,7 @@ export default function OnboardingClient({
         <div className={styles.loginActions}>
           <button type="button" className={styles.loginPrimary} disabled={busy || !email || !password} onClick={signIn}>Sign in</button>
         </div>
+        <p className={styles.loginAlt}>New here? <a href="/signup">Create profile</a></p>
         <p className={styles.loginMsg}>{message}</p>
       </div>
     </div>

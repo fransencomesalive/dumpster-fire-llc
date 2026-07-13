@@ -13,9 +13,6 @@
      a status pill, the run date, and the run's counts. Class names mirror
      DashboardClient.tsx (ScanCard) so the CSS ports straight back. */
   body { margin: 0; padding: var(--space-6); background: var(--c-paper); }
-  body::before { content:""; position: fixed; inset: 0; z-index: -1;
-    background-image: radial-gradient(var(--halftone-color) var(--halftone-dot),
-      transparent calc(var(--halftone-dot) + 0.5px)); background-size: var(--halftone-size) var(--halftone-size); }
 
   .section { width: min(760px, 100%); margin: 0 auto; }
 
