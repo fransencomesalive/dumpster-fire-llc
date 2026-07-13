@@ -174,6 +174,12 @@ Track A is implemented and committed on `main` (commit hash reported in the sess
   Production schema and migration-history verification passed.
 - Real-page connector checks on 2026-07-12 found plausible postings on TrainingPeaks (5), Airbnb
   careers (10 after navigation filtering), and Mozilla careers (30).
+- Follow-up hardening commits `b38a4e2`, `06464e1`, and `6fe9d4c` added ccTLD/subdomain company
+  naming, navigation/landing-page rejection, broader title/entity decoding, literal private-host
+  blocking, DNS-result validation, and manual redirect revalidation before every connector request.
+- Expanded regression verification passed after the network-safety change: scan-source fixtures,
+  source-scan orchestration, scan API, and live reads from Stripe/Greenhouse (510 roles),
+  OpenAI/Ashby (728), Spotify/Lever (109), and space150/Workable (5).
 
 Next immediate starting point: use an authenticated production session to verify one unreadable
 board add writes a submission row while returning the same 422, then add TrainingPeaks and run a
