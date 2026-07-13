@@ -546,7 +546,9 @@ function isPlausibleGenericBoardJob(job: { title: string; sourceUrl: string }) {
   if (/\b(?:careers?|jobs?|openings?|opportunities?)$/i.test(title)) return false;
   try {
     const url = new URL(job.sourceUrl);
-    return /\/(?:jobs?|careers?|positions?|openings?|vacancies?|opportunities?)(?:\/|$)/i.test(url.pathname);
+    const hasPostingPath = /\/(?:jobs?|careers?|positions?|openings?|vacancies?|opportunities?|job-search|job-detail)\/[^/]+/i.test(url.pathname);
+    const hasPostingQuery = [...url.searchParams.keys()].some((key) => /^(?:job|job_?id|gh_jid)$/i.test(key));
+    return hasPostingPath || hasPostingQuery;
   } catch {
     return false;
   }

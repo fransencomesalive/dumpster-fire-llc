@@ -461,7 +461,13 @@ function parseAnchorJobs(html: string, baseUrl = "") {
     const title = stripHtml(decodeHtmlEntities(match[2]));
     const normalizedTitle = title.replace(/\s+/g, " ").trim();
 
-    if (!href || normalizedTitle.length < 4 || normalizedTitle.length > 120 || !titleHints.test(normalizedTitle)) {
+    if (
+      !href ||
+      normalizedTitle.length < 4 ||
+      normalizedTitle.length > 120 ||
+      /^(?:skip to|view all|see all|browse all)\b/i.test(normalizedTitle) ||
+      !titleHints.test(normalizedTitle)
+    ) {
       return [];
     }
 

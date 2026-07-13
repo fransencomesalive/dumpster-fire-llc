@@ -38,18 +38,24 @@ function resolved(provider: SourceProvider, token: string, careersUrl: string, c
 }
 
 function genericCompanySlug(hostname: string) {
-  const host = hostname.replace(/^www\./, "");
-  const parts = host.split(".").filter(Boolean);
-  return parts.length > 1 ? parts.at(-2) ?? parts[0] : parts[0] ?? "";
+  const parts = hostname.replace(/^www\./, "").split(".").filter(Boolean);
+  if (/^(?:careers?|jobs?|work|apply)$/i.test(parts[0] ?? "") && parts.length >= 3) {
+    return parts[1] ?? "";
+  }
+  return parts[0] ?? "";
 }
 
 function isUnsafeGenericHost(hostname: string) {
   if (hostname === "localhost" || hostname.endsWith(".localhost")) return true;
+  if (hostname.endsWith(".local")) return true;
   if (hostname === "example.com" || hostname.endsWith(".example.com")) return true;
-  if (/^(?:127|10)\./.test(hostname)) return true;
+  if (/^(?:0|10|127|169\.254)\./.test(hostname)) return true;
   if (/^192\.168\./.test(hostname)) return true;
   const private172 = hostname.match(/^172\.(\d{1,3})\./);
-  return private172 ? Number(private172[1]) >= 16 && Number(private172[1]) <= 31 : false;
+  if (private172 && Number(private172[1]) >= 16 && Number(private172[1]) <= 31) return true;
+  const carrierGradeNat = hostname.match(/^100\.(\d{1,3})\./);
+  if (carrierGradeNat && Number(carrierGradeNat[1]) >= 64 && Number(carrierGradeNat[1]) <= 127) return true;
+  return /^\[(?:::1|f[cd][0-9a-f:]*|fe[89ab][0-9a-f:]*)\]$/i.test(hostname);
 }
 
 export function resolveBoardFromUrl(rawUrl: string): BoardResolution {

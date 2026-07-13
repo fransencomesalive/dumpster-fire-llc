@@ -48,7 +48,19 @@ assert.equal(generic.board.companySlug, "Trainingpeaks");
 assert.equal(generic.board.careersUrl, "https://www.trainingpeaks.com/careers/");
 assert.equal(generic.board.confidence, "guess");
 
+const careersSubdomain = resolveBoardFromUrl("https://careers.airbnb.com/positions/");
+assert.equal(careersSubdomain.status, "resolved");
+assert.equal(careersSubdomain.board.atsBoardToken, "airbnb");
+
+const countryCodeDomain = resolveBoardFromUrl("https://examplecompany.co.uk/careers/");
+assert.equal(countryCodeDomain.status, "resolved");
+assert.equal(countryCodeDomain.board.atsBoardToken, "examplecompany");
+
 assert.equal(resolveBoardFromUrl("https://example.com/about").status, "unrecognized");
+assert.equal(resolveBoardFromUrl("http://127.0.0.1/jobs").status, "unrecognized");
+assert.equal(resolveBoardFromUrl("http://169.254.169.254/latest/meta-data").status, "unrecognized");
+assert.equal(resolveBoardFromUrl("http://100.64.0.1/jobs").status, "unrecognized");
+assert.equal(resolveBoardFromUrl("http://[::1]/jobs").status, "unrecognized");
 assert.equal(resolveBoardFromUrl("not a url").status, "unrecognized");
 
 // WWR-style RSS items parse into normalized raw jobs with company/title split.

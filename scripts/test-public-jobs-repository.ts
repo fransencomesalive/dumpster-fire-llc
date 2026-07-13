@@ -10,6 +10,7 @@ import {
 } from "../lib/public-jobs/repository";
 import type { PublicProfileRepositoryRequest } from "../lib/public-profile/repository";
 import type { NormalizedConnectorJob } from "../lib/scan/sources/types";
+import { parseHtmlJobs } from "../lib/scan/sources/connectors";
 
 const now = "2026-06-26T18:00:00.000Z";
 const userId = "user-1";
@@ -390,6 +391,25 @@ const request: PublicProfileRepositoryRequest = async <T>(
 };
 
 async function main() {
+  // Real careers pages often wrap the title and location in nested elements. The generic HTML
+  // path must keep common technical/marketing titles while the add-flow plausibility gate rejects
+  // ordinary navigation links that happen to contain title-like words.
+  const careersFixtureJobs = parseHtmlJobs(`
+    <a href="https://jobs.example.test/jobs/1001"><div><p>Data Scientist</p><p>Denver, CO</p></div></a>
+    <a href="https://jobs.example.test/jobs/1002"><div><p>iOS Engineer</p><p>Remote</p></div></a>
+    <a href="/#content">Skip to content</a>
+  `, {
+    id: "fixture-company",
+    companyName: "Fixture Company",
+    websiteUrl: "https://example.test",
+    careersUrl: "https://example.test/careers/",
+    atsProvider: "html",
+    atsBoardToken: "fixture-company",
+  });
+  assert.equal(careersFixtureJobs.length, 2);
+  assert.equal((careersFixtureJobs[0] as { title: string }).title.includes("Data Scientist"), true);
+  assert.equal((careersFixtureJobs[1] as { title: string }).title.includes("iOS Engineer"), true);
+
   const emptyRead = await readPublicJobsForUser(request, userId, now);
   assert.equal("status" in emptyRead, false);
   if ("status" in emptyRead) throw new Error("Expected jobs response");
@@ -548,6 +568,18 @@ async function main() {
     }],
   });
   assert.deepEqual(genericFalsePositive, { status: "unrecognized_board" });
+  assert.equal(jobSources.length, 0);
+
+  const genericLandingFalsePositive = await addPublicJobBoardForUser(request, userId, "https://acme.test/careers", now, {
+    fetchSource: async () => [{
+      ...boardPosting,
+      sourceProvider: "html",
+      title: "Product Manager",
+      sourceUrl: "https://acme.test/careers/",
+      applyUrl: "https://acme.test/careers/",
+    }],
+  });
+  assert.deepEqual(genericLandingFalsePositive, { status: "unrecognized_board" });
   assert.equal(jobSources.length, 0);
 
   // Failure logging retains the raw pasted URL. Telemetry failure is swallowed so the API can
