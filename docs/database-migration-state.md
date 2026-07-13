@@ -116,17 +116,21 @@ https://supabase.com/dashboard/account/tokens if missing.
 
 ## NOT yet applied to production
 
-- `20260712000100_unrecognized_board_submissions.sql` — unreadable company-board URL logging.
-  Pending production apply by Randall. Validated locally on throwaway PostgreSQL 16.14 with a
-  stubbed `auth.users` schema: clean apply, idempotent re-apply, UUID/timestamp defaults, reason
-  CHECK, user FK, RLS, and index all verified. Version `20260712000100` was recorded and read back
-  from the throwaway `supabase_migrations.schema_migrations` table only; production history was not
-  touched.
+- None outstanding.
 
 (Open, separate decision — NOT a migration: the `job_sources`
   clean-slate reset Randall wants alongside the private-boards feature. Scope TBD;
   deleting `jobs` rows cascades to saved_jobs/job_scan_results/pursuits — needs his
   explicit scope call before any delete runs.)
+
+## Applied 2026-07-12 (confirmed + recorded in schema_migrations)
+
+- `20260712000100_unrecognized_board_submissions.sql` — creates the admin-owned unreadable-board
+  submission log with reason validation, user FK, created-at index, and RLS. Validated first on
+  throwaway PostgreSQL 16.14, then applied to production via the Supabase Management API with
+  Randall's explicit authorization. Production verification confirmed five columns, RLS enabled,
+  one CHECK, one FK, the created-at index, PostgREST 200, and migration-history version
+  `20260712000100` recorded as `unrecognized_board_submissions`.
 
 ## How the app connects (context)
 

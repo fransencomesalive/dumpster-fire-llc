@@ -170,12 +170,11 @@ Track A is implemented and committed on `main` (commit hash reported in the sess
   change the existing 422 response.
 - The approved dashboard failure sentence is installed without layout or CSS changes.
 - Migration `20260712000100_unrecognized_board_submissions.sql` passed local PostgreSQL 16.14
-  validation and is recorded as pending in `docs/database-migration-state.md`.
+  validation, then was applied to production with Randall's explicit authorization on 2026-07-12.
+  Production schema and migration-history verification passed.
 - Real-page connector checks on 2026-07-12 found plausible postings on TrainingPeaks (5), Airbnb
   careers (10 after navigation filtering), and Mozilla careers (30).
 
-Next immediate starting point: Randall must apply
-`supabase/migrations/20260712000100_unrecognized_board_submissions.sql` to production and record its
-production migration-history row. After the migration and code deploy, verify one unreadable board
-add writes a submission row while returning the same 422, then add TrainingPeaks and run a scan to
-confirm its postings appear for the authenticated user. Codex did not apply or alter production.
+Next immediate starting point: use an authenticated production session to verify one unreadable
+board add writes a submission row while returning the same 422, then add TrainingPeaks and run a
+scan to confirm its postings appear for that user.
