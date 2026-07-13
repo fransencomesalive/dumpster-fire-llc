@@ -170,6 +170,14 @@
     {
       "path": "components/onboarding-skills.html",
       "group": "Onboarding"
+    },
+    {
+      "path": "components/onboarding-sign-up.html",
+      "group": "Onboarding"
+    },
+    {
+      "path": "components/plan-billing-step.html",
+      "group": "Onboarding"
     }
   ],
   "templates": [],

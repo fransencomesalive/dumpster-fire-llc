@@ -1,0 +1,142 @@
+<!-- @dsCard group="Onboarding" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Onboarding · Sign Up</title>
+<link rel="stylesheet" href="../tokens/tokens.css" />
+<link rel="stylesheet" href="../lib/base.css" />
+<style>
+  /* No halftone ground — rejected in all new work (Randall, 2026-07-04). Plain paper. */
+  body { margin: 0; color: var(--c-ink); font-family: var(--font-body); background: var(--c-paper); }
+
+  .wrap { max-width: 1080px; margin: 0 auto; padding: var(--space-6) var(--space-5); display: grid; gap: var(--space-6); }
+  h1.page { font-family: var(--font-display); font-size: var(--type-h1); margin: 0 0 var(--space-2); }
+  .lede { font-family: var(--font-body); color: var(--role-text-muted); max-width: 70ch; margin: 0; }
+  .stateLabel { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: var(--tracking-subhead);
+    font-size: 0.82rem; color: var(--c-tomato); margin: 0 0 var(--space-3); }
+  .states { display: grid; gap: var(--space-6); grid-template-columns: 1fr 1fr; }
+  @media (max-width: 860px) { .states { grid-template-columns: 1fr; } }
+
+  /* ======================= SIGN-UP CARD (maps to the login-card primitive) ======================= */
+  .loginShell { display: grid; place-items: center; padding: var(--space-6) var(--space-3); }
+  .loginCard { width: 100%; max-width: 420px; text-align: center;
+    background-color: var(--c-paper-deep); background-image: var(--fiber-img), var(--grain-img);
+    background-blend-mode: normal, soft-light; background-size: 170px 170px, 46px 46px;
+    border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-card); padding: var(--space-7) var(--space-6); box-sizing: border-box; }
+  .loginCard img.mascot { width: 112px; height: auto; margin: 0 auto var(--space-4); display: block; }
+  .loginCard h2 { font-family: var(--font-display); font-size: 1.7rem; line-height: 1.05; color: var(--c-ink); margin: 0; }
+  .loginSub { font-family: var(--font-body); font-size: 0.98rem; color: var(--role-text-muted);
+    margin: var(--space-2) 0 var(--space-6); }
+  .authStack { display: grid; gap: var(--space-3); }
+  .authBtn { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%;
+    font-family: var(--font-display); font-size: 1rem; color: var(--c-ink);
+    background-color: var(--c-paper); border: var(--line-reg) solid var(--c-ink);
+    border-radius: var(--radius-md); box-shadow: var(--shadow-card);
+    padding: var(--space-3) var(--space-4); cursor: pointer;
+    transition: box-shadow var(--dur-fast) var(--ease-snap); }
+  .authBtn:hover { box-shadow: var(--reg-box); }
+  .authBtn svg { width: 20px; height: 20px; flex: none; }
+  .divider { display: flex; align-items: center; gap: var(--space-3); margin: var(--space-5) 0; }
+  .divider::before, .divider::after { content: ""; flex: 1; height: var(--line-hair); background: var(--c-paper-edge); }
+  .divider span { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.05em;
+    font-size: 0.82rem; color: var(--role-text-faint); }
+  .field { text-align: left; margin-bottom: var(--space-4); }
+  .field label { display: block; font-family: var(--font-display); font-size: 1.05rem;
+    color: var(--c-ink); margin-bottom: var(--space-2); }
+  .field input { width: 100%; box-sizing: border-box; font-family: var(--font-body);
+    font-size: 1rem; color: var(--c-ink); background-color: var(--c-paper);
+    border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-md);
+    padding: var(--space-3) var(--space-4); }
+  .field input:focus { outline: none; border-color: var(--c-teal);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--c-teal) 28%, transparent); }
+  .fieldHint { font-family: var(--font-body); font-size: 0.82rem; color: var(--role-text-muted);
+    margin: calc(-1 * var(--space-2)) 0 0; text-align: left; }
+
+  /* Create account = teal primary (positive). Full-width — this is the single commit action. */
+  .btnPrimary { width: 100%; font-family: var(--font-display); font-size: 1.05rem;
+    color: var(--c-paper); background-color: var(--c-teal);
+    border: var(--line-bold) solid var(--c-ink); border-radius: var(--radius-md);
+    box-shadow: var(--shadow-card); padding: var(--space-3); cursor: pointer; margin-top: var(--space-2);
+    transition: background-color var(--dur-fast) var(--ease-snap), box-shadow var(--dur-fast) var(--ease-snap); }
+  .btnPrimary:hover { background-color: var(--role-info); box-shadow: var(--reg-box);
+    text-shadow: 1px 1px 0 rgba(36,31,26,0.35); }
+
+  .altLine { font-family: var(--font-body); font-size: 0.95rem; color: var(--role-text-muted);
+    margin: var(--space-5) 0 0; }
+  .altLine a { font-family: var(--font-display); color: var(--c-ink); }
+
+  /* Confirmation state — a mailbox check, same card shell. */
+  .confirmIcon { width: 64px; height: 64px; margin: 0 auto var(--space-4); display: grid; place-items: center;
+    border-radius: var(--radius-pill); background-color: color-mix(in srgb, var(--c-teal) 16%, var(--c-paper));
+    border: var(--line-reg) solid var(--c-ink); color: var(--c-teal); }
+  .confirmIcon svg { width: 34px; height: 34px; }
+  .confirmEmail { font-family: var(--font-display); font-size: 1.05rem; color: var(--c-ink); }
+  .confirmBody { font-family: var(--font-body); font-size: 0.98rem; color: var(--role-text-muted);
+    margin: var(--space-3) 0 var(--space-5); }
+  .resend { font-family: var(--font-display); font-size: 0.95rem; color: var(--c-ink); background: none;
+    border: none; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div>
+    <h1 class="page">Onboarding · Sign Up</h1>
+    <p class="lede">Self-serve create-account, distinct from the sign-in card. Same login-card
+    primitive. Google is the one-tap path; email sign-up sets a password, then the card swaps to a
+    <strong>check-your-email</strong> confirmation (a Resend link finishes the account). A quiet line
+    routes people who already have an account to <strong>Sign in</strong>. No Apple — live auth is
+    Google + email only.</p>
+  </div>
+
+  <div class="states">
+    <!-- State A · the sign-up form -->
+    <div>
+      <p class="stateLabel">State A · Create account</p>
+      <div class="loginShell">
+        <div class="loginCard">
+          <img class="mascot" src="../dumpsterfireguy.png" alt="Dumpster fire mascot" />
+          <h2>Create your profile</h2>
+          <p class="loginSub">Your profile is what makes the outreach sound like you.</p>
+          <div class="authStack">
+            <button type="button" class="authBtn">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#EA4335" d="M12 10.2v3.9h5.5c-.24 1.4-1 2.6-2.1 3.4l3.4 2.6c2-1.84 3.1-4.55 3.1-7.75 0-.74-.07-1.45-.2-2.15z"/><path fill="#34A853" d="M6.6 14.3l-.77.6-2.7 2.1C4.8 20 8.1 22 12 22c2.7 0 5-.9 6.65-2.4l-3.4-2.6c-.9.6-2.05.96-3.25.96-2.5 0-4.6-1.7-5.36-3.96z"/><path fill="#4285F4" d="M3.13 7c-.7 1.4-1.1 3-1.1 4.7s.4 3.3 1.1 4.7l3.47-2.7c-.2-.6-.32-1.3-.32-2s.12-1.4.32-2z"/><path fill="#FBBC05" d="M12 6.04c1.47 0 2.78.5 3.82 1.5l2.85-2.85C16.96 3.06 14.7 2 12 2 8.1 2 4.8 4 3.13 7l3.47 2.7C7.4 7.74 9.5 6.04 12 6.04z"/></svg>
+              Continue with Google
+            </button>
+          </div>
+          <div class="divider"><span>or sign up with email</span></div>
+          <div class="field">
+            <label for="su-email">Email</label>
+            <input id="su-email" type="email" placeholder="you@example.com" />
+          </div>
+          <div class="field">
+            <label for="su-pass">Password</label>
+            <input id="su-pass" type="password" placeholder="Create a password" />
+          </div>
+          <p class="fieldHint">At least 8 characters.</p>
+          <button type="submit" class="btnPrimary">Create account</button>
+          <p class="altLine">Already have an account? <a href="#">Sign in</a></p>
+        </div>
+      </div>
+    </div>
+
+    <!-- State B · check your email -->
+    <div>
+      <p class="stateLabel">State B · Check your email</p>
+      <div class="loginShell">
+        <div class="loginCard">
+          <span class="confirmIcon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><polyline points="3 7 12 13 21 7"/></svg>
+          </span>
+          <h2>Check your email</h2>
+          <p class="confirmBody">We sent a confirmation link to<br><span class="confirmEmail">you@example.com</span><br>Click it to finish setting up your account.</p>
+          <p class="altLine">Didn&rsquo;t get it? <button type="button" class="resend">Resend link</button></p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

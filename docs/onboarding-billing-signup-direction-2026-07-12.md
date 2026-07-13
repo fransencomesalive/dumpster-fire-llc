@@ -38,11 +38,29 @@ Onboarding (build profile) → Dashboard`
 - Paid checkout (Stripe or chosen provider) is designed now but can be **built after** testing starts —
   the tester path must not depend on it.
 
-## Open decisions before/within the design
+## Open decisions before/within the design — RESOLVED (Randall, 2026-07-12)
 
-- **Billing provider** (Stripe assumed; confirm) and what the paid checkout step actually collects.
-- **Email sign-up** specifics: confirmation email vs magic link; Resend as SMTP; the sign-up form IA.
-- Whether the plan/billing step is skippable/among sign-up vs a distinct screen.
+1. **Plan/billing step placement:** a **distinct screen after sign-up** (`Sign up → Plan/billing
+   screen → Onboarding`). Not folded into sign-up, not skippable. Access-code holders satisfy it
+   and move on.
+2. **Email sign-up mechanism:** **password + confirmation email** (user sets a password at sign-up,
+   then clicks a Resend-delivered confirmation link). Matches the existing email/password sign-in in
+   code. Not magic link.
+3. **Billing provider / checkout:** **placeholder only for now** — design the tier chooser + the
+   access-code bypass; checkout is a "coming soon" stub with **no provider committed** yet. Testers
+   never touch it. Provider (Stripe assumed) and card collection get designed/built later.
+
+### Card inventory / IA to build in Claude Design
+
+1. **Sign-up card** (new) — Google + email sign-up (create-account; distinct from the existing
+   sign-in card). Password field + confirmation-email step. Maps to the login-card primitive.
+2. **Plan/billing step card** (new) — Good/Gooder/Goodest chooser + "Have an access code?" bypass
+   (access code folds to the existing Billing-popup pattern) + a "coming soon" checkout stub.
+3. **Onboarding** — exists, no redesign.
+4. **Dashboard** — exists, no redesign.
+
+Note: homepage Good/Gooder/Goodest feature matrix exists but **prices are empty strings** — pricing
+numbers are still a content decision, not yet set.
 
 ## Grounding for the design (existing DS cards / code to map to, not rebuild)
 
