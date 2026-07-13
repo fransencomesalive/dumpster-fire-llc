@@ -1,0 +1,322 @@
+{
+  "versionId": "v3",
+  "generatedAt": "2026-07-13T19:35:21.391Z",
+  "model": "claude-opus-4-8",
+  "workExampleInventory": {
+    "checkedAt": "2026-07-13T16:30:55.501Z",
+    "profileUpdatedAt": "2026-07-13T04:32:57.323+00:00",
+    "markdownGeneratedAt": "2026-07-13T04:32:57.323+00:00",
+    "ok": true,
+    "count": 4,
+    "compiledCount": 4,
+    "issues": [],
+    "entries": [
+      {
+        "key": "work-example-0ae80e2d0613",
+        "title": "P.H.R.E.D.",
+        "fingerprint": "0ae80e2d0613c2b223edd94a8e57c149b9e8b9826e89b6b507b767edda700663",
+        "fields": {
+          "title": true,
+          "oneHitter": true,
+          "link": true,
+          "context": true
+        }
+      },
+      {
+        "key": "work-example-21e1cc5b27f2",
+        "title": "Billionaire Blast-off | Mozilla",
+        "fingerprint": "21e1cc5b27f203e4fea04fe20c7a9725cc848619ac614184130e65a1e9ea2497",
+        "fields": {
+          "title": true,
+          "oneHitter": true,
+          "link": true,
+          "context": true
+        }
+      },
+      {
+        "key": "work-example-f9155962c042",
+        "title": "BORED APE YACHT CLUB | Website Redesign",
+        "fingerprint": "f9155962c0428427f1ebb946b9d4017cb8e5068afcadb4bd2ab91a7021f8af74",
+        "fields": {
+          "title": true,
+          "oneHitter": true,
+          "link": true,
+          "context": true
+        }
+      },
+      {
+        "key": "work-example-e4cbe178b6d3",
+        "title": "Bot Busters",
+        "fingerprint": "e4cbe178b6d320b048b2f812e4cca9270858c3b7060db99d342e3f225655f2dd",
+        "fields": {
+          "title": true,
+          "oneHitter": true,
+          "link": true,
+          "context": true
+        }
+      }
+    ]
+  },
+  "messages": [
+    {
+      "jobId": "39b61911-7535-4a1f-864b-a0ddca52cecd",
+      "company": "Airbnb",
+      "title": "Product Program Manager, Roadmap Planning & Program Management",
+      "sourceUrl": "https://careers.airbnb.com/positions/6557174?gh_jid=6557174",
+      "location": "San Francisco, United States",
+      "remoteType": "unclear",
+      "fit": "good",
+      "contactRole": "Head of Product Program Management",
+      "contactSeniority": "Director",
+      "message": "Force multiplier who works quietly in the background while the roadmap stays on the rails — that's the seat I like. I've done a contract run as an Executive Producer at Airbnb, so the pace and the cross-functional scramble aren't news to me.\n\nMost of my 15+ years has been standing between strategy and execution: Program Director at AKQA on Nike and Trek, Production Lead for Base at Coinbase, a $14MM retainer with a team of four. Bringing clarity out of chaos across design, eng, and marketing is the whole reason people call me mid-project.\n\nRemote-first is my preference, so worth flagging the Bay Area requirement up front. Happy to talk if there's flexibility.",
+      "insertedExample": null,
+      "workExampleSelection": null,
+      "metrics": {
+        "nauticalTic": 0,
+        "heroPresent": 0,
+        "inventedNumber": 0,
+        "concessionOpener": 0,
+        "tellsWhatTheyWant": 0,
+        "q4BragTag": 0,
+        "length": 667
+      }
+    },
+    {
+      "jobId": "470a510f-8dea-4fde-8f19-07d13f29fa8d",
+      "company": "Databricks",
+      "title": "Field Technical Program Manager",
+      "sourceUrl": "https://databricks.com/company/careers/open-positions/job?gh_jid=8598531002",
+      "location": "Seoul, South Korea",
+      "remoteType": "hybrid",
+      "fit": "good",
+      "contactRole": "Director, Technical Program Management",
+      "contactSeniority": "Director",
+      "message": "Straight up: this one's based in Korea and needs native Korean fluency — I've got the program chops but not the language, so I won't pretend otherwise.\n\nWhere I'd actually earn my keep is the AI-into-workflow piece. Most teams bolt AI on and the output scatters everywhere — product decisions in one doc, tasks with no context, conversations that go nowhere. I built an operating system for that on a small, confidential, aggressive-timeline app: source-of-truth structure and an orchestration agent that keeps AI-assisted work connected instead of shredded across ten tabs.\n\nIf the Korea requirement ever flexes remote, I'd love to talk.",
+      "insertedExample": {
+        "oneHitter": "Project Hub for Retrieval, Execution, & Delivery",
+        "link": "https://lab26.randallfransen.com/phred"
+      },
+      "workExampleSelection": {
+        "key": "work-example-0ae80e2d0613",
+        "title": "P.H.R.E.D."
+      },
+      "metrics": {
+        "nauticalTic": 0,
+        "heroPresent": 0,
+        "inventedNumber": 0,
+        "concessionOpener": 1,
+        "tellsWhatTheyWant": 0,
+        "q4BragTag": 0,
+        "length": 638
+      }
+    },
+    {
+      "jobId": "1632c065-e9f9-4599-b06e-6f95af09a5d7",
+      "company": "Airbnb",
+      "title": "Process Strategy and Optimization Lead",
+      "sourceUrl": "https://careers.airbnb.com/positions/8042076?gh_jid=8042076",
+      "location": "United States",
+      "remoteType": "remote",
+      "fit": "good",
+      "contactRole": "Director of Operations",
+      "contactSeniority": "Director",
+      "message": "I've been on the inside at Airbnb before — Executive Producer on contract — so I know how much competing gravity a matrixed op like Fraud & Safety carries. The part of this role I'd own from day one: end-to-end process where the output goes everywhere. Product decisions in one doc, tasks with no context, AI conversations that lead nowhere. I built an operating system to fix exactly that on a small, high-stakes team — structure first, then acceleration, humans still in control of scope. Same instinct scales to hundreds of ops specialists. I'm good at making solutions stick, not just launch.",
+      "insertedExample": {
+        "oneHitter": "Project Hub for Retrieval, Execution, & Delivery",
+        "link": "https://lab26.randallfransen.com/phred"
+      },
+      "workExampleSelection": {
+        "key": "work-example-0ae80e2d0613",
+        "title": "P.H.R.E.D."
+      },
+      "metrics": {
+        "nauticalTic": 0,
+        "heroPresent": 0,
+        "inventedNumber": 0,
+        "concessionOpener": 0,
+        "tellsWhatTheyWant": 0,
+        "q4BragTag": 0,
+        "length": 596
+      }
+    },
+    {
+      "jobId": "7ccf8feb-dc02-42ce-ae8d-c58954fa7cb4",
+      "company": "Airbnb",
+      "title": "Manager Business Process Improvement",
+      "sourceUrl": "https://careers.airbnb.com/positions/7973847?gh_jid=7973847",
+      "location": "United States",
+      "remoteType": "remote",
+      "fit": "medium",
+      "contactRole": "VP, Business Operations",
+      "contactSeniority": "VP",
+      "message": "The part of this that grabs me: engineering processes that are reliable, measurable, and can hand off to AI as capabilities evolve — not just optimizing what already exists. That's the exact problem I keep landing on. The output isn't the hard part; keeping it connected and self-correcting is.\n\nI've built inside Airbnb before as an Executive Producer, and led production for Base at Coinbase — small teams, aggressive timelines, systems that had to hold up under scale. Most recently I built an operating methodology to keep AI-assisted work from scattering across a dozen docs, with humans owning the decisions that can't be undone.\n\nHappy to walk through where I'd start.",
+      "insertedExample": {
+        "oneHitter": "Project Hub for Retrieval, Execution, & Delivery",
+        "link": "https://lab26.randallfransen.com/phred"
+      },
+      "workExampleSelection": {
+        "key": "work-example-0ae80e2d0613",
+        "title": "P.H.R.E.D."
+      },
+      "metrics": {
+        "nauticalTic": 0,
+        "heroPresent": 0,
+        "inventedNumber": 0,
+        "concessionOpener": 0,
+        "tellsWhatTheyWant": 0,
+        "q4BragTag": 0,
+        "length": 675
+      }
+    },
+    {
+      "jobId": "f69261df-7751-4c3b-a27c-a2164dd7d2df",
+      "company": "Airbnb",
+      "title": "Manager, Luxe Supply",
+      "sourceUrl": "https://careers.airbnb.com/positions/7895517?gh_jid=7895517",
+      "location": "Canada",
+      "remoteType": "remote",
+      "fit": "medium",
+      "contactRole": "Head of Luxe Supply",
+      "contactSeniority": "Director",
+      "message": "I've been inside the Airbnb machine before — Executive Producer on contract — so the pace and the cross-functional scramble aren't a surprise to me. What I do best is take a team, a mess of moving markets, and no obvious source of truth, and give it structure people actually follow. At AKQA I ran the Nike and Trek programs; at Swift I managed a $14MM HTC retainer with a team of four, hitting acquisition and quality targets without letting either slip.\n\nLuxe supply across NAMER and LATAM is a lot of plates spinning at once. Coaching the market managers, owning the numbers, keeping quality sacred — that's the seat I'm built for. Happy to talk specifics.",
+      "insertedExample": null,
+      "workExampleSelection": null,
+      "metrics": {
+        "nauticalTic": 0,
+        "heroPresent": 0,
+        "inventedNumber": 0,
+        "concessionOpener": 0,
+        "tellsWhatTheyWant": 0,
+        "q4BragTag": 0,
+        "length": 659
+      }
+    },
+    {
+      "jobId": "bd3447e4-2343-4127-8b1f-1e895db2cdc9",
+      "company": "Airbnb",
+      "title": "Senior Platform Manager, Trust and Safety",
+      "sourceUrl": "https://careers.airbnb.com/positions/8029984?gh_jid=8029984",
+      "location": "United States",
+      "remoteType": "remote",
+      "fit": "medium",
+      "contactRole": "Director, Trust & Safety",
+      "contactSeniority": "Director",
+      "message": "I've done a lap through the Airbnb building already — Executive Producer on contract — so \"trust is the currency\" isn't a slogan I have to warm up to. Here's the honest read: my home turf is production and program leadership, not a T&S product roadmap. But the day-to-day of this role is exactly what I do — herding engineers, data scientists, designers, and policy folks toward a launch without letting the priorities scatter. I ran a $14MM retainer at Swift and won 4 new accounts as Program Director at AKQA by keeping cross-functional teams aligned when the stakes and the tradeoffs got ugly. If you want someone who can quietly hold that working group together, I'm worth a call.",
+      "insertedExample": null,
+      "workExampleSelection": null,
+      "metrics": {
+        "nauticalTic": 0,
+        "heroPresent": 0,
+        "inventedNumber": 0,
+        "concessionOpener": 0,
+        "tellsWhatTheyWant": 0,
+        "q4BragTag": 0,
+        "length": 684
+      }
+    },
+    {
+      "jobId": "668b574a-5959-4bf8-9373-66ea1ef56f2f",
+      "company": "Coinbase",
+      "title": "Group Product Manager, Core Infrastructure & Reliability",
+      "sourceUrl": "https://www.coinbase.com/careers/positions/7997785?gh_jid=7997785",
+      "location": "Remote - USA",
+      "remoteType": "remote",
+      "fit": "stretch",
+      "contactRole": "VP Product, Infrastructure",
+      "contactSeniority": "VP",
+      "message": "I have to be straight with you here: I'm a production and program leader, not a 10-year infrastructure PM. I'm not going to pretend I've been defining platform SLOs and multi-cloud strategy.\n\nWhat I do know is Coinbase from the inside — I was Production Lead for Base. I know the intensity, the surges, the regulated-and-fast tension. I keep multidisciplinary teams pointed at the right thing without drama, and I've run AI-assisted workflows where the real problem was never output, it was orchestration — decisions and context scattering everywhere until nothing connects.\n\nIf there's a producer or program shape on the Platform side where that's useful, I'd love to talk. If this seat needs deep infra PM depth, no hard feelings.",
+      "insertedExample": null,
+      "workExampleSelection": null,
+      "metrics": {
+        "nauticalTic": 0,
+        "heroPresent": 0,
+        "inventedNumber": 0,
+        "concessionOpener": 0,
+        "tellsWhatTheyWant": 0,
+        "q4BragTag": 0,
+        "length": 732
+      }
+    },
+    {
+      "jobId": "1fe11542-42a1-4207-97af-47675c3dd3dc",
+      "company": "Anthropic",
+      "title": "Art Director, Claude",
+      "sourceUrl": "https://job-boards.greenhouse.io/anthropic/jobs/5258579008",
+      "location": "San Francisco, CA | New York City, NY",
+      "remoteType": "hybrid",
+      "fit": "stretch",
+      "contactRole": "Creative Director",
+      "contactSeniority": "Director",
+      "message": "Straight up: this Art Director role leans harder into hands-on visual craft than the producer/director hat I usually wear, so I won't pretend I'm the one sketching the concept on the whiteboard. What I am is the creative through-line between your team and outside agencies. At AKQA I ran Program Director on Nike and Trek, and I led both internal teams and the external studio Make Me Pulse on the Bored Ape Yacht Club redesign — brand context in, work stays yours, nothing gets lost between rooms. If you're shipping some campaigns in-house and steering others through partners, that seam is where I live. Worth a chat?",
+      "insertedExample": {
+        "oneHitter": "Yuga’s property Bored Ape Yacht Club was still rocking it’s original design and functionality in 2023.",
+        "link": "https://www.randallfransen.com/work/bored-ape-yacht-club-website-redesign"
+      },
+      "workExampleSelection": {
+        "key": "work-example-f9155962c042",
+        "title": "BORED APE YACHT CLUB | Website Redesign"
+      },
+      "metrics": {
+        "nauticalTic": 1,
+        "heroPresent": 0,
+        "inventedNumber": 0,
+        "concessionOpener": 1,
+        "tellsWhatTheyWant": 0,
+        "q4BragTag": 0,
+        "length": 620
+      }
+    },
+    {
+      "jobId": "11c3be0c-171a-4494-87a0-0c772d1eac9c",
+      "company": "Stripe",
+      "title": "Account Executive, Enterprise Hunter (French fluency)",
+      "sourceUrl": "https://stripe.com/jobs/search?gh_jid=7458833",
+      "location": "Paris",
+      "remoteType": "unclear",
+      "fit": "poor",
+      "contactRole": "Sales Director, Enterprise",
+      "contactSeniority": "Director",
+      "message": "This one isn't a match, and I'd rather say so than waste your time. My 15+ years are in digital production and program leadership — running teams at AKQA, Coinbase, and Airbnb, managing a $14MM retainer, keeping multi-party projects from capsizing. Adjacent to enterprise sales, but not the same seat. I've sat across the table from C-suite stakeholders and led commercial negotiations on the delivery side, not carried a named-account quota with a French-fluency requirement. If a production or program lead ever opens up, I'd love to talk. Otherwise, best of luck filling this one.",
+      "insertedExample": null,
+      "workExampleSelection": null,
+      "metrics": {
+        "nauticalTic": 1,
+        "heroPresent": 0,
+        "inventedNumber": 0,
+        "concessionOpener": 0,
+        "tellsWhatTheyWant": 0,
+        "q4BragTag": 0,
+        "length": 583
+      }
+    },
+    {
+      "jobId": "cff997cb-e2a3-4210-850c-8b241780334e",
+      "company": "Coinbase",
+      "title": "Software Engineer",
+      "sourceUrl": "https://www.coinbase.com/careers/positions/8003605?gh_jid=8003605",
+      "location": "Charlotte, NC",
+      "remoteType": "remote",
+      "fit": "poor",
+      "contactRole": "Engineering Manager",
+      "contactSeniority": "Manager",
+      "message": "I'll be straight with you: I'm not shipping Golang PRs on your compliance platform. I ran production for Base at Coinbase, so I know the surge cadence and how the compliance side works. Where I earn my keep is the layer around the code — AI-first workflows that stay connected instead of scattered across a dozen docs. I built P.H.R.E.D. exactly for that: a source-of-truth system and an orchestration agent keeping AI-assisted work coherent while humans hold scope and privacy. If your CXAE team wants that structure alongside the engineers, that's my seat. If it's purely full-stack delivery, I'm probably the wrong boat.",
+      "insertedExample": {
+        "oneHitter": "Project Hub for Retrieval, Execution, & Delivery",
+        "link": "https://lab26.randallfransen.com/phred"
+      },
+      "workExampleSelection": {
+        "key": "work-example-0ae80e2d0613",
+        "title": "P.H.R.E.D."
+      },
+      "metrics": {
+        "nauticalTic": 1,
+        "heroPresent": 1,
+        "inventedNumber": 0,
+        "concessionOpener": 1,
+        "tellsWhatTheyWant": 0,
+        "q4BragTag": 0,
+        "length": 623
+      }
+    }
+  ]
+}

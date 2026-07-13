@@ -5,3 +5,9 @@
 /scan-jobs.json
 /outreach-messages.json
 /baseline-*.md
+/style-matrix-*.md
+/work-example-audit.json
+/work-examples.json
+/evidence-manifest.json
+/*.next
+/data/**/*.next

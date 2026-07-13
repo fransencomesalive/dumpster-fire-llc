@@ -3,9 +3,11 @@
 // 2. Recent outreach_messages (esp. Coinbase) with their pursuit -> job context
 // 3. A listing of current scanned jobs to pick the baseline-corpus sample from
 // Secrets are read from .env.local and never printed.
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync, renameSync } from "node:fs";
+import { createHash } from "node:crypto";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { assertWorkExampleParity } from "./work-example-audit.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repo = "/Users/randallfransen/Sites/dumpster-fire-llc";
@@ -38,17 +40,34 @@ async function q(table, query) {
 // 1. Profiles
 const profiles = await q(
   "candidate_profiles",
-  "select=id,user_id,full_name,generated_markdown,updated_at&order=updated_at.desc&limit=5",
+  "select=id,user_id,full_name,generated_markdown,markdown_generated_at,updated_at&order=updated_at.desc&limit=5",
 );
-console.log(`profiles: ${profiles.length}`);
-for (const p of profiles) {
-  console.log(`- ${p.id} | ${p.full_name} | md ${p.generated_markdown?.length ?? 0} chars | updated ${p.updated_at}`);
+const matchingProfiles = profiles.filter((profile) => /^randall fransen$/i.test((profile.full_name || "").trim()));
+if (matchingProfiles.length !== 1) {
+  throw new Error(`Expected exactly one Randall Fransen profile; found ${matchingProfiles.length}.`);
 }
-const randall = profiles.find((p) => /randall|fransen/i.test(p.full_name || "")) ?? profiles[0];
-if (randall?.generated_markdown) {
-  writeFileSync(resolve(here, "profile.md"), randall.generated_markdown);
-  console.log(`wrote profile.md for ${randall.full_name} (${randall.generated_markdown.length} chars)`);
+const randall = matchingProfiles[0];
+if (!randall?.generated_markdown) {
+  throw new Error("The selected candidate profile has no compiled profile markdown.");
 }
+
+const profileUpdatedAt = Date.parse(randall.updated_at);
+const markdownGeneratedAt = Date.parse(randall.markdown_generated_at);
+if (!Number.isFinite(profileUpdatedAt) || !Number.isFinite(markdownGeneratedAt) || profileUpdatedAt > markdownGeneratedAt) {
+  throw new Error("The selected candidate profile markdown is stale. Regenerate it before pulling outreach evidence.");
+}
+
+const structuredWorkExamples = await q(
+  "work_examples",
+  `select=id,title,one_hitter,link,context,created_at&profile_id=eq.${randall.id}&order=created_at.asc,id.asc`,
+);
+const workExampleAudit = assertWorkExampleParity(structuredWorkExamples, randall.generated_markdown);
+const auditArtifact = {
+  checkedAt: new Date().toISOString(),
+  profileUpdatedAt: randall.updated_at,
+  markdownGeneratedAt: randall.markdown_generated_at,
+  ...workExampleAudit,
+};
 
 // 2. Outreach messages with pursuit/job context
 const messages = await q(
@@ -72,18 +91,34 @@ const annotated = messages.map((m) => {
   const job = pursuit ? jobById[pursuit.job_id] : undefined;
   return { ...m, job_title: job?.title, company: job?.company_name, outreach_angle: pursuit?.outreach_angle };
 });
-writeFileSync(resolve(here, "outreach-messages.json"), JSON.stringify(annotated, null, 2));
-for (const m of annotated) {
-  console.log(`- ${m.created_at} | ${m.company ?? "?"} | ${m.job_title ?? "?"} | ${m.status} | ${m.message.length} chars`);
-}
 
 // 3. Current scanned jobs (for baseline sample selection)
 const jobs = await q(
   "jobs",
   "select=id,source_url,title,company_name,location,remote_type,description,posted_at,scraped_at&order=scraped_at.desc&limit=200",
 );
-writeFileSync(
-  resolve(here, "scan-jobs.json"),
-  JSON.stringify(jobs.map((j) => ({ ...j, description_chars: j.description?.length ?? 0 })), null, 2),
-);
-console.log(`\nscanned jobs: ${jobs.length} (saved to scan-jobs.json)`);
+const scanJobs = jobs.map((job) => ({ ...job, description_chars: job.description?.length ?? 0 }));
+
+// Write the scratch set only after every remote read and parity check succeeds. Each file is
+// staged beside its destination first so a partial write cannot masquerade as fresh evidence.
+const scratchFiles = [
+  ["profile.md", randall.generated_markdown],
+  ["work-examples.json", JSON.stringify(structuredWorkExamples, null, 2)],
+  ["work-example-audit.json", JSON.stringify(auditArtifact, null, 2)],
+  ["outreach-messages.json", JSON.stringify(annotated, null, 2)],
+  ["scan-jobs.json", JSON.stringify(scanJobs, null, 2)],
+];
+for (const [name, contents] of scratchFiles) writeFileSync(resolve(here, `${name}.next`), contents);
+for (const [name] of scratchFiles) renameSync(resolve(here, `${name}.next`), resolve(here, name));
+const evidenceManifest = {
+  createdAt: new Date().toISOString(),
+  files: Object.fromEntries(scratchFiles.map(([name, contents]) => [
+    name,
+    createHash("sha256").update(contents).digest("hex"),
+  ])),
+};
+writeFileSync(resolve(here, "evidence-manifest.json.next"), JSON.stringify(evidenceManifest, null, 2));
+renameSync(resolve(here, "evidence-manifest.json.next"), resolve(here, "evidence-manifest.json"));
+
+console.log(`Work Example parity: ${workExampleAudit.count}/${workExampleAudit.compiledCount} structured examples present in profile.md`);
+console.log(`Evidence pull complete: ${annotated.length} outreach message(s), ${scanJobs.length} scanned jobs.`);

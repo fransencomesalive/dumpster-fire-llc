@@ -1,0 +1,86 @@
+{
+  "versionId": "v3",
+  "items": {
+    "39b61911-7535-4a1f-864b-a0ddca52cecd": {
+      "ratings": {
+        "soundsLikeMe": 6,
+        "humility": 6,
+        "fitHonesty": 7,
+        "wouldSend": 2
+      },
+      "updatedAt": "2026-07-13T19:55:18.288Z",
+      "priority": 7
+    },
+    "470a510f-8dea-4fde-8f19-07d13f29fa8d": {
+      "ratings": {
+        "soundsLikeMe": 7,
+        "humility": 7,
+        "fitHonesty": 7,
+        "wouldSend": 7
+      },
+      "updatedAt": "2026-07-13T19:56:20.802Z",
+      "priority": 7
+    },
+    "1632c065-e9f9-4599-b06e-6f95af09a5d7": {
+      "ratings": {
+        "wouldSend": 1,
+        "fitHonesty": 1,
+        "humility": 1,
+        "soundsLikeMe": 1
+      },
+      "updatedAt": "2026-07-13T19:59:24.320Z"
+    },
+    "7ccf8feb-dc02-42ce-ae8d-c58954fa7cb4": {
+      "ratings": {
+        "soundsLikeMe": 9,
+        "humility": 9,
+        "fitHonesty": 9,
+        "wouldSend": 9
+      },
+      "updatedAt": "2026-07-13T19:59:51.367Z",
+      "comment": "big improvement."
+    },
+    "f69261df-7751-4c3b-a27c-a2164dd7d2df": {
+      "ratings": {
+        "soundsLikeMe": 8,
+        "humility": 8,
+        "fitHonesty": 8,
+        "wouldSend": 8
+      },
+      "updatedAt": "2026-07-13T20:01:14.805Z"
+    },
+    "bd3447e4-2343-4127-8b1f-1e895db2cdc9": {
+      "ratings": {
+        "soundsLikeMe": 8,
+        "humility": 8,
+        "fitHonesty": 8,
+        "wouldSend": 8
+      },
+      "updatedAt": "2026-07-13T20:01:36.525Z"
+    },
+    "668b574a-5959-4bf8-9373-66ea1ef56f2f": {
+      "comment": "I do'nt like these gen's when the fit is off. we need to work harder to make my experience relevant instead of waving a red flag at the hiring manager.\n\nthe other 2 paragraphs are good.",
+      "ratings": {},
+      "updatedAt": "2026-07-13T20:02:33.806Z"
+    },
+    "1fe11542-42a1-4207-97af-47675c3dd3dc": {
+      "ratings": {
+        "soundsLikeMe": 8,
+        "humility": 8,
+        "fitHonesty": 8,
+        "wouldSend": 8
+      },
+      "updatedAt": "2026-07-13T20:05:02.514Z"
+    },
+    "11c3be0c-171a-4494-87a0-0c772d1eac9c": {
+      "comment": "french fluency is a non-match",
+      "ratings": {},
+      "updatedAt": "2026-07-13T20:05:53.693Z"
+    },
+    "cff997cb-e2a3-4210-850c-8b241780334e": {
+      "comment": "remove this posting. it's too far off to be relevant to this.",
+      "ratings": {},
+      "updatedAt": "2026-07-13T20:06:09.753Z"
+    }
+  }
+}

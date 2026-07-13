@@ -1,0 +1,179 @@
+{
+  "matrixId": "voice-matrix-v3",
+  "promptVariant": "v3",
+  "shared": {
+    "approvedV3PromptHash": "b161dd70978499f76e363944e60eb8f5e71c24157f9b8f6f21b9815d1d74dc4d",
+    "q1Value": "I bring structure to complex cross-functional work and keep teams moving without losing the people in the process.",
+    "q4Opinion": "Good systems make the right action easier without pretending every decision can be automated.",
+    "fullJobIds": [
+      "39b61911-7535-4a1f-864b-a0ddca52cecd",
+      "470a510f-8dea-4fde-8f19-07d13f29fa8d",
+      "1632c065-e9f9-4599-b06e-6f95af09a5d7",
+      "7ccf8feb-dc02-42ce-ae8d-c58954fa7cb4",
+      "f69261df-7751-4c3b-a27c-a2164dd7d2df",
+      "bd3447e4-2343-4127-8b1f-1e895db2cdc9"
+    ],
+    "sentinelJobIds": [
+      "470a510f-8dea-4fde-8f19-07d13f29fa8d",
+      "bd3447e4-2343-4127-8b1f-1e895db2cdc9"
+    ],
+    "jobInputHashes": {
+      "39b61911-7535-4a1f-864b-a0ddca52cecd": "b6e234a5dcd8c368b5477451a93a450c76c9bfb0dad8f50312f2f03786f2db32",
+      "470a510f-8dea-4fde-8f19-07d13f29fa8d": "a81c3fea67db4f6e5869d30318f2a5fa3ac1fa37d96849ac5ec3f538d0b65904",
+      "1632c065-e9f9-4599-b06e-6f95af09a5d7": "28f91760dd3f73361f466a04f83c5d67fa6b1c4b2059e65e63d3ec443d019112",
+      "7ccf8feb-dc02-42ce-ae8d-c58954fa7cb4": "8df10f1ced3abd6738dac8f5c6224e7472aa60b2ce82aef2c7a541339fce7c1b",
+      "f69261df-7751-4c3b-a27c-a2164dd7d2df": "a564ff3b74019fa946802ae1bfcc9b8a66f7e32547ee3faa1391456502df9786",
+      "bd3447e4-2343-4127-8b1f-1e895db2cdc9": "a793c413e255cfb84b1fbbbe27380a80e260b44406a09ea662f4c0206e8a749f"
+    },
+    "precedence": [
+      "universal_policy",
+      "hard_negatives",
+      "sounds_like_me",
+      "want_to_sound",
+      "tone_tags"
+    ],
+    "hardCharacterMax": 750
+  },
+  "personas": [
+    {
+      "id": "minimal-direct",
+      "label": "Minimal / direct",
+      "kind": "full",
+      "toneTags": ["punchy", "no-fluff", "blunt", "brief"],
+      "avoidTags": ["corporate jargon", "biz-formal"],
+      "avoidNote": "No throat-clearing, hype, jokes, or decorative metaphors.",
+      "soundsLikeSamples": [
+        "Quick update: the draft is ready. Two questions remain. I marked both and included the decisions needed."
+      ],
+      "wantToSoundSamples": [],
+      "neverSoundSamples": [
+        "I am absolutely thrilled to leverage my dynamic background and unlock transformative synergies."
+      ],
+      "expectations": {
+        "targetCharacters": [350, 550],
+        "warmth": "low",
+        "directness": "high",
+        "humor": "none",
+        "formality": "low"
+      }
+    },
+    {
+      "id": "warm-peer",
+      "label": "Warm peer",
+      "kind": "full",
+      "toneTags": ["warm", "specific", "casual"],
+      "avoidTags": ["corporate jargon", "cold", "snarky"],
+      "avoidNote": "Be generous and clear without sounding overeager or familiar too quickly.",
+      "soundsLikeSamples": [
+        "Thanks for sending this over. I read it this morning and added a few questions where more context would help. Happy to compare notes whenever it is useful.",
+        "I appreciate the care that went into this. The main idea is clear, and I left a couple of specific suggestions that may make the next pass easier."
+      ],
+      "wantToSoundSamples": [],
+      "neverSoundSamples": [
+        "Your team clearly needs someone who can finally fix the way this work has been handled."
+      ],
+      "expectations": {
+        "targetCharacters": [500, 700],
+        "warmth": "high",
+        "directness": "medium",
+        "humor": "none",
+        "formality": "medium-low"
+      }
+    },
+    {
+      "id": "wry-casual",
+      "label": "Wry / casual",
+      "kind": "full",
+      "toneTags": ["funny", "punchy", "casual", "specific"],
+      "avoidTags": ["biz-formal", "LinkedIn malarky"],
+      "avoidNote": "One dry observation is enough. Never turn the message into a comedy bit.",
+      "soundsLikeSamples": [
+        "The calendar and the actual schedule have apparently stopped speaking. I highlighted the two dates that need to become friends again.",
+        "The draft is in good shape, with one small plot twist. Page four answers a slightly different question than the rest of the document."
+      ],
+      "wantToSoundSamples": [
+        "Clear first, lightly funny second. The joke should make the point easier to remember, not become the point."
+      ],
+      "neverSoundSamples": [
+        "Buckle up, rockstars. I am the chaos wizard your dumpster fire has been waiting for."
+      ],
+      "expectations": {
+        "targetCharacters": [450, 650],
+        "warmth": "medium",
+        "directness": "high",
+        "humor": "one_flourish_max",
+        "formality": "low"
+      }
+    },
+    {
+      "id": "calm-polished",
+      "label": "Calm / polished",
+      "kind": "full",
+      "toneTags": ["measured", "thoughtful", "plainspoken"],
+      "avoidTags": ["LinkedIn malarky", "slang", "hype"],
+      "avoidNote": "Use composed complete sentences. Avoid slang, forced intimacy, and promotional language.",
+      "soundsLikeSamples": [
+        "I reviewed the material and noted the decisions that still require clarification. The overall direction is sound, and the remaining questions are specific and manageable."
+      ],
+      "wantToSoundSamples": [
+        "Thoughtful, precise, and measured. The evidence should carry the message without exaggerated confidence."
+      ],
+      "neverSoundSamples": [
+        "I could not be more excited to bring my visionary leadership and unparalleled passion to this incredible opportunity."
+      ],
+      "expectations": {
+        "targetCharacters": [500, 700],
+        "warmth": "medium",
+        "directness": "medium",
+        "humor": "none",
+        "formality": "medium-high"
+      }
+    },
+    {
+      "id": "conflict-sentinel",
+      "label": "Conflict sentinel",
+      "kind": "diagnostic",
+      "toneTags": ["funny", "blunt"],
+      "avoidTags": ["snarky", "cold"],
+      "avoidNote": "Understatement and respect override any request for a joke or hard edge.",
+      "soundsLikeSamples": [
+        "Thank you for the context. I have one direct question and a few smaller notes, but the overall direction makes sense to me."
+      ],
+      "wantToSoundSamples": [
+        "A little more direct, but still calm and considerate."
+      ],
+      "neverSoundSamples": [
+        "Let me be blunt: your process is broken, and it is almost funny nobody has fixed it yet."
+      ],
+      "expectations": {
+        "targetCharacters": [450, 700],
+        "warmth": "high",
+        "directness": "medium",
+        "humor": "none_if_snarky",
+        "formality": "medium"
+      }
+    },
+    {
+      "id": "minimum-input",
+      "label": "Minimum input",
+      "kind": "diagnostic",
+      "toneTags": ["specific"],
+      "avoidTags": [],
+      "avoidNote": "",
+      "soundsLikeSamples": [
+        "The proposal is attached. I marked the open questions and listed the next decisions in order."
+      ],
+      "wantToSoundSamples": [],
+      "neverSoundSamples": [
+        "I am a results-driven visionary with a proven track record of excellence."
+      ],
+      "expectations": {
+        "targetCharacters": [450, 700],
+        "warmth": "unspecified",
+        "directness": "unspecified",
+        "humor": "unspecified",
+        "formality": "unspecified"
+      }
+    }
+  ]
+}

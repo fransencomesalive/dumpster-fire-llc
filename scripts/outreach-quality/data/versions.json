@@ -19,5 +19,19 @@
       "Nautical exemplars demoted to at-most-once flavor, not a required opener.",
       "Ban invented specifics (fabricated counts, presumed insider vibes)."
     ]
+  },
+  {
+    "id": "v3",
+    "label": "v3 — complete evidence, respectful fit",
+    "createdAt": "2026-07-13T19:35:21.391Z",
+    "changeNotes": [
+      "Requires verified parity between structured Work Examples and the frozen generation profile before any model call.",
+      "Silently considers every Work Example and selects by job relevance instead of defaulting to P.H.R.E.D.",
+      "Checks résumé, skill, Role Track, and Work Example evidence before conceding a capability gap.",
+      "Turns prior-employer familiarity into respectful credibility, never criticism.",
+      "Translates Q4 into first-person evidence only; no judgments about the reader, company, or other people.",
+      "Reserves concession openers for unsupported hard requirements and strengthens anti-authority language.",
+      "Uses exact inserted-example metadata for auditability and reins messages to 750 characters maximum."
+    ]
   }
 ]

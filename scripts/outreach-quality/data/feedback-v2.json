@@ -1,4 +1,83 @@
 {
   "versionId": "v2",
-  "items": {}
+  "items": {
+    "39b61911-7535-4a1f-864b-a0ddca52cecd": {
+      "ratings": {
+        "soundsLikeMe": 6,
+        "humility": 3,
+        "fitHonesty": 7,
+        "wouldSend": 3
+      },
+      "updatedAt": "2026-07-13T15:25:54.653Z"
+    },
+    "470a510f-8dea-4fde-8f19-07d13f29fa8d": {
+      "ratings": {
+        "soundsLikeMe": 8,
+        "humility": 8,
+        "fitHonesty": 8,
+        "wouldSend": 8
+      },
+      "updatedAt": "2026-07-13T15:26:32.319Z",
+      "priority": 2
+    },
+    "1632c065-e9f9-4599-b06e-6f95af09a5d7": {
+      "ratings": {
+        "soundsLikeMe": 7,
+        "humility": 4,
+        "fitHonesty": 4,
+        "wouldSend": 1
+      },
+      "updatedAt": "2026-07-13T15:28:48.192Z",
+      "comment": "navigated the choppy stuff inside your walls - this insider information is ok but criticizing it to the hiring manager is a mistake. this needs softening and to be complimentary. this will get me rejected immediately.\n\nMy \"take I will defend\" was written as prompted. it's very brash but outputting that tone to a hiring manager is not the right move. the \"take i will defend\" needs a big strategy consideration to leverage but not insult or come off as arrogant."
+    },
+    "7ccf8feb-dc02-42ce-ae8d-c58954fa7cb4": {
+      "ratings": {
+        "soundsLikeMe": 8,
+        "humility": 7,
+        "fitHonesty": 7,
+        "wouldSend": 5
+      },
+      "updatedAt": "2026-07-13T15:30:38.620Z",
+      "priority": 7
+    },
+    "f69261df-7751-4c3b-a27c-a2164dd7d2df": {
+      "ratings": {
+        "wouldSend": 1,
+        "fitHonesty": 4,
+        "humility": 6,
+        "soundsLikeMe": 7
+      },
+      "updatedAt": "2026-07-13T15:32:22.922Z"
+    },
+    "bd3447e4-2343-4127-8b1f-1e895db2cdc9": {
+      "ratings": {
+        "soundsLikeMe": 7,
+        "humility": 3,
+        "fitHonesty": 2,
+        "wouldSend": 1
+      },
+      "updatedAt": "2026-07-13T15:33:31.092Z",
+      "comment": "Another opener that will defeat me immediately. really not a great way to introduce myself. I do own ML roadmaps and i can be a product manager, it says so right in my resume for Mission Squad. this is overconfident. "
+    },
+    "668b574a-5959-4bf8-9373-66ea1ef56f2f": {
+      "comment": "this role is a bad match. ignore.",
+      "ratings": {},
+      "updatedAt": "2026-07-13T15:33:42.619Z"
+    },
+    "1fe11542-42a1-4207-97af-47675c3dd3dc": {
+      "comment": "bad match. ignore.",
+      "ratings": {},
+      "updatedAt": "2026-07-13T15:33:48.083Z"
+    },
+    "11c3be0c-171a-4494-87a0-0c772d1eac9c": {
+      "comment": "bad match, ignore",
+      "ratings": {},
+      "updatedAt": "2026-07-13T15:33:57.785Z"
+    },
+    "cff997cb-e2a3-4210-850c-8b241780334e": {
+      "comment": "bad match ignore.",
+      "ratings": {},
+      "updatedAt": "2026-07-13T15:34:03.826Z"
+    }
+  }
 }
