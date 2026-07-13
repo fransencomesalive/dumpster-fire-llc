@@ -1,0 +1,7 @@
+# Scratch working pulls at THIS dir's root — regenerable, and profile.md holds
+# personal data. Leading "/" anchors each pattern here so it can't reach into data/
+# (the durable version history under data/ IS committed).
+/profile.md
+/scan-jobs.json
+/outreach-messages.json
+/baseline-*.md

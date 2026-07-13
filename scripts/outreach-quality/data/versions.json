@@ -1,0 +1,23 @@
+[
+  {
+    "id": "baseline",
+    "label": "Baseline — production prompt",
+    "createdAt": "2026-07-13T15:10:36.603Z",
+    "changeNotes": [
+      "Exact current production system prompt, verbatim. Reference point — no changes."
+    ]
+  },
+  {
+    "id": "v2",
+    "label": "v2 — six levers",
+    "createdAt": "2026-07-13T15:12:11.898Z",
+    "changeNotes": [
+      "Q4 opinion reframed as a thinking-signal, never quoted or used as a mic-drop; label stripped.",
+      "Anti-authority stance: don't redefine the reader's field or declare 'the whole game'.",
+      "Fragment rule: complete sentences; no dropped-subject cold opens.",
+      "Hero-example cap: don't force P.H.R.E.D. into every job.",
+      "Nautical exemplars demoted to at-most-once flavor, not a required opener.",
+      "Ban invented specifics (fabricated counts, presumed insider vibes)."
+    ]
+  }
+]
