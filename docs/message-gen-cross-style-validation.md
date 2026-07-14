@@ -1,7 +1,7 @@
 # Message Generation Cross-Style Validation
 
 Date: 2026-07-13
-Status: offline harness implemented and preflight verified; network corpus not yet generated
+Status: 28-cell corpus generated and sealed; blind review complete; labeled review pending
 Parent track: `docs/message-gen-refinement-track.md`
 
 ## Purpose
@@ -81,6 +81,11 @@ Total: 28 messages per prompt variant.
 The exact approved v3 prompt SHA-256 and each controlled job input SHA-256 are pinned in
 `voice-matrix-personas-v3.json`. Preflight stops if any frozen input changes.
 
+The v3 matrix was generated on 2026-07-13. Its five frozen files pass manifest verification.
+Randall completed the eight-message blind voice check on 2026-07-14 with 4/8 correct. Calm/polished
+was identified in both jobs; warm peer and minimal/direct were each identified once; wry/casual was
+not identified correctly. The labeled 28-cell ratings and prescriptive comments are still pending.
+
 ## Measurements
 
 Automated per message:
@@ -103,8 +108,9 @@ Human review per message, 0–10:
 4. Respect and fit handling.
 5. Sendability and naturalness.
 
-Also perform a blinded same-job persona-identification check. Reviewers should be able to tell the
-intended voices apart without seeing the configuration.
+Also perform the console's eight-message blinded same-job persona-identification check before the
+labeled review. Reviewers should be able to tell the intended voices apart without seeing the
+configuration.
 
 ## Publication and review gates
 
@@ -116,6 +122,11 @@ of that seal.
 
 Quality and contract findings do not abort publication. They remain attached to their cells so a
 bad result cannot disappear from the review sample.
+
+The console separates hard contract failures from heuristic review flags. In particular,
+`selected_example_not_obvious` means the selected example's exact one-hitter or link does not appear
+in the body; exact selection metadata may still be valid. Reviewers decide whether the paraphrased
+evidence is relevant and recognizable.
 
 Before v4:
 
@@ -132,7 +143,7 @@ reviewed and the universal/style boundary is accepted.
 
 ## Execution boundary
 
-Codex owns the offline harness, preflight, verification, and review preparation. Claude runs the
+Codex owns the offline harness, preflight, verification, and review preparation. Claude ran the
 network generation step: six production fingerprint calls plus 28 outreach calls. The matrix stays
 outside `versions.json` and the normal baseline/v2/v3 review history because it is an invariance
 experiment, not a new prompt version.

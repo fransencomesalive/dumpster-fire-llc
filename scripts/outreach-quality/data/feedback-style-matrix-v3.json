@@ -1,4 +1,45 @@
 {
   "experimentId": "voice-matrix-v3",
-  "items": {}
+  "items": {
+    "wry-casual:470a510f-8dea-4fde-8f19-07d13f29fa8d": {
+      "blindGuess": "minimal-direct",
+      "ratings": {},
+      "updatedAt": "2026-07-14T17:25:13.542Z"
+    },
+    "minimal-direct:470a510f-8dea-4fde-8f19-07d13f29fa8d": {
+      "blindGuess": "warm-peer",
+      "ratings": {},
+      "updatedAt": "2026-07-14T17:25:28.091Z"
+    },
+    "calm-polished:470a510f-8dea-4fde-8f19-07d13f29fa8d": {
+      "blindGuess": "calm-polished",
+      "ratings": {},
+      "updatedAt": "2026-07-14T17:25:44.102Z"
+    },
+    "warm-peer:470a510f-8dea-4fde-8f19-07d13f29fa8d": {
+      "blindGuess": "warm-peer",
+      "ratings": {},
+      "updatedAt": "2026-07-14T17:25:59.178Z"
+    },
+    "warm-peer:bd3447e4-2343-4127-8b1f-1e895db2cdc9": {
+      "blindGuess": "calm-polished",
+      "ratings": {},
+      "updatedAt": "2026-07-14T17:26:45.960Z"
+    },
+    "calm-polished:bd3447e4-2343-4127-8b1f-1e895db2cdc9": {
+      "blindGuess": "calm-polished",
+      "ratings": {},
+      "updatedAt": "2026-07-14T17:26:55.981Z"
+    },
+    "minimal-direct:bd3447e4-2343-4127-8b1f-1e895db2cdc9": {
+      "blindGuess": "minimal-direct",
+      "ratings": {},
+      "updatedAt": "2026-07-14T17:27:07.965Z"
+    },
+    "wry-casual:bd3447e4-2343-4127-8b1f-1e895db2cdc9": {
+      "blindGuess": "minimal-direct",
+      "ratings": {},
+      "updatedAt": "2026-07-14T17:27:17.178Z"
+    }
+  }
 }

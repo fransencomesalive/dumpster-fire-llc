@@ -98,10 +98,12 @@ node scripts/outreach-quality/review-server.mjs   # prints a localhost URL
   auto-meters so we see the trend across versions.
 - **Historical context:** reviewing vN shows the prior version's comment + slider values
   for the same job inline, so we can tell whether a change addressed the note.
-- **Cross-style matrix view:** any `data/style-matrix-<id>.json` shows up in the version
-  switcher as "▦ Cross-style matrix (<id>)" — a read-only analysis view: clean/violation
-  tallies, per-job evidence-selection stability across voices, and every cell grouped by
-  persona with its length, selected Work Example, and contract violations.
+- **Cross-style matrix view:** any manifest-verified `data/style-matrix-<id>.json` shows up in
+  the version switcher as "▦ Cross-style matrix (<id>)". The view separates hard failures from
+  heuristic review flags, surfaces persona-target and invention/concession signals, groups every
+  cell by persona, and persists the five cross-style ratings plus optional prescriptive comments.
+  A separate blind-first view records eight same-job voice-identification guesses before revealing
+  the actual personas.
 
 ## Versions so far
 
@@ -138,24 +140,33 @@ node scripts/outreach-quality/review-server.mjs   # prints a localhost URL
 - [x] Claude ran the 34-call style-matrix generation (`6 fingerprints + 28 messages`) on
       2026-07-13 (Codex egress cannot transmit the private base profile — see "Network step:
       Codex cannot run it" below). Complete matrix published: `data/style-matrix-v3.json` (+
-      human `style-matrix-v3.md`, sealed manifest verified). Result: 13/28 clean, avg length
-      689 (603–814). Violations: `selected_example_not_obvious` 13, `over_750_characters` 4
-      (all in calm-polished 3 + warm-peer 1), `q4_quoted_verbatim` 2 (wry-casual, calm-polished).
+      human `style-matrix-v3.md`, sealed manifest verified). Result: 22/28 have no hard contract
+      failure, avg length 689 (603–814). Hard failures: `over_750_characters` 4 and
+      `q4_quoted_verbatim` 2. Heuristic review flag: `selected_example_not_obvious` 13. Persona
+      length target passed 12/28; one invented-number signal and two concession-opener signals
+      also require review.
       Surfaced + fixed a harness bug on the way: a single unparseable response hard-aborted the
       whole run with no retry (Codex added bounded retry in 2e475e5). Reviewable in the console
       via the "▦ Cross-style matrix (v3)" entry in the version switcher.
-- [ ] **v4 targets (measured by the matrix — author as a new harness variant only).**
-      1. **Voice-independent example selection.** `selected_example_not_obvious` fired on 13/28
-         cells and the selection-stability rollup shows several jobs flipping between the same
-         hero example and "none" *purely because the voice changed*. Evidence choice must depend
-         on the job, not the tone. This is the same P.H.R.E.D.-bias problem, now proven across
-         five voices — the v3 "consider every Work Example" instruction only half-landed.
-      2. **Length control that survives formal personas.** All 4 over-750 breaches come from the
-         two verbose personas (calm-polished 3/6, warm-peer 1/6); the four terser voices never
-         breach. The 750 cap holds for terse tones and leaks for formal ones — v4 must hold it
-         regardless of voice.
-      3. **Close the last Q4 leak.** 2 verbatim Q4 quotes survived v3's ban, both in the more
-         expressive voices (wry-casual, calm-polished).
+- [x] Make the matrix reviewable end to end: manifest-verified console loading, hard-failure versus
+      heuristic-flag separation, persona-target and invention/concession summaries, persisted
+      five-category ratings/comments, blind-first voice identification, safe partial autosave
+      merging, and responsive verification at 320/375/390/1280/1440. Randall completed the blind
+      check on 2026-07-14: 4/8 correct. Labeled review remains 0/28.
+- [ ] **Complete the human matrix review before authoring v4.** Automated findings identify
+      candidate targets, not final prompt requirements:
+      1. **Evidence selection independent of expression.** P.H.R.E.D. was the only selected Work
+         Example (13 cells); the other 15 used none. Three of six full-matrix jobs varied between
+         P.H.R.E.D. and none. Because this is one nondeterministic sample per persona, human review
+         must determine relevance before attributing the variation to voice.
+      2. **Voice-aware length inside a universal ceiling.** Four messages exceeded 750, but the
+         broader portability failure is 16/28 persona-target misses. Minimal/direct missed its
+         350–550 target in all six cells, showing the fixed v3 length instruction can override the
+         onboarding voice.
+      3. **Close the last Q4 leak.** Two verbatim Q4 quotes survived v3's ban, both on the Business
+         Process Improvement job under wry/casual and calm/polished.
+      4. **Recheck invention.** The wry/casual Databricks cell triggered the invented-number
+         detector with "ten docs" and must be evaluated against the frozen evidence.
 - [ ] Iterate vN until approved; then port the winning prompt to the production files and
       re-verify from the real prod code path.
 - [ ] Later: revise the fingerprint pre-pass itself (over-tuned; source of the tic + frag
@@ -199,11 +210,13 @@ console. Randall reviews in the console and rates/prioritizes; you turn that int
 
 Safe-to-do this stretch (harness only):
 
-1. **Generate and review the pre-v4 cross-style matrix.** Offline preflight passes at 6 personas,
-   6 jobs, and 28 cells using the exact frozen v3 prompt/profile. Claude runs
-   `node scripts/outreach-quality/gen-style-matrix.mjs`; no artifacts publish unless all six
-   fingerprints and all 28 structurally valid messages succeed. Review the matrix against
-   `docs/message-gen-cross-style-validation.md` before authoring v4.
+1. **Complete the pre-v4 cross-style review.** The 28-cell matrix is generated, sealed, and
+   available in the console. The blind check is complete at 4/8. Start immediately in the
+   **Labeled matrix review (v3)** view, record all five ratings for every cell, and add prescriptive
+   comments wherever a message needs to change. When the console reaches `reviewed: 28/28`,
+   aggregate the saved feedback against
+   `docs/message-gen-cross-style-validation.md` before
+   authoring v4.
 
 2. **Work-examples selection bias (Randall flagged 2026-07-13).** All **4** work examples
    ARE compiled into profile.md — this is NOT a data-pull gap. The generator over-selects
