@@ -28,6 +28,10 @@ compare across versions and walk back a path that isn't working.
   stale, or changed inventory fails the round before version artifacts are written.
 - **No commit/push without Randall's explicit OK.**
 - **Never print secret values** from `.env.local`; scripts only read them.
+- **No em dashes in any generated message (Randall, 2026-07-14).** A platform-wide rule, not a
+  variant experiment: no outreach message may ever contain an em dash; use commas, parentheses,
+  semicolons, colons, or restructure. Enforced in prompts from `v3-nodash` on, measured by the
+  `emDash` meter, and recorded in `AGENTS.md`. Ports to production with the winning variant.
 
 ## Sync + git treatment
 
@@ -84,7 +88,12 @@ PROMPT_VARIANT=baseline node scripts/outreach-quality/gen-baseline.mjs
 PROMPT_VARIANT=v2       node scripts/outreach-quality/gen-baseline.mjs
 PROMPT_VARIANT=v3       node scripts/outreach-quality/gen-baseline.mjs
 PROMPT_VARIANT=v3-link  node scripts/outreach-quality/gen-baseline.mjs
+PROMPT_VARIANT=v3-nodash node scripts/outreach-quality/gen-baseline.mjs
+PROMPT_VARIANT=v3-nodash-b2 node scripts/outreach-quality/gen-baseline.mjs   # job batch 2
 # ...add v4+ as new entries in the systemByVariant map + versions changelog
+# If every call fails with "Connection error." while curl reaches api.anthropic.com fine,
+# the machine's IPv6 route is broken and Node isn't falling back to IPv4. Preload an
+# IPv4-pinning dns.lookup shim: NODE_OPTIONS="--require <shim>.cjs" (see 2026-07-14 note).
 
 # 3. review
 node scripts/outreach-quality/review-server.mjs   # prints a localhost URL
@@ -105,6 +114,20 @@ node scripts/outreach-quality/review-server.mjs   # prints a localhost URL
   cell by persona, and persists the five cross-style ratings plus optional prescriptive comments.
   A separate blind-first view records eight same-job voice-identification guesses before revealing
   the actual personas.
+
+## Job batches (corpus sampling rules)
+
+- **Batch 1** (2026-07-13, retired): 10 jobs picked by index from a flat recency-200 pull —
+  ended up 6× Airbnb plus language-gated non-starters (French-fluency AE, Korea-based TPM)
+  and poor-fit padding. Randall 2026-07-14: too much repeated review effort; a batch like
+  this is much less useful.
+- **Batch 2 rules (standing, Randall 2026-07-14):** the evidence pull is company-balanced
+  (full board per company — a flat recency pull let four big boards crowd out the rest);
+  picks are keyed by **stable job id**, spread across companies (batch 2: 12 jobs, 9
+  companies, max 2 per company); **exclude any job gated on a language fluency Randall
+  doesn't have**; **no poor-fit padding** he'd never apply to (stretch fits cover concession
+  behavior); fit spread stays mixed (batch 2: 4 good / 5 medium / 3 stretch). Frozen batch-1
+  corpora stay judged against their own inputs.
 
 ## Versions so far
 
@@ -133,6 +156,42 @@ node scripts/outreach-quality/review-server.mjs   # prints a localhost URL
   known v4 target), and the invented doc-count tic reappeared in 2 messages ("forty disconnected
   docs", "ten docs" — profile mentions no doc counts; v4 invention lever). Kept isolated on
   purpose; full v4 still waits on the 28-cell matrix review.
+- `v3-nodash` — v3-link + the standing no-em-dash rule (Randall, 2026-07-14; see Guardrails +
+  `AGENTS.md`). Before: 10/10 v3-link messages contained em dashes (20 total, ~2 each) while the
+  profile has almost none — model habit, not voice. The prompt now bans them outright with
+  restructuring guidance (commas, parentheses, semicolons, colons, new sentence); new exact
+  `emDash` count metric in the harness + console. Generated 2026-07-14: 10/10 valid, **0 em
+  dashes**, no en-dash or double-hyphen substitution (0 of each; 1 semicolon, 4 parentheticals),
+  6/6 example-bearing bodies keep their exact link, 0 over 750 (avg 640), 0 invented numbers,
+  1 nautical, 0 Q4 brag tags. Selection spread still lopsided (P.H.R.E.D. 5, Bored Ape 1,
+  no-example 4) — unchanged v4 target.
+- `v3-nodash-b2` — same prompt as v3-nodash, regenerated on **job batch 2** (see Job batches
+  above). Generated 2026-07-14: 12/12 valid, 0 em dashes (no en-dash substitution), 9/9
+  example-bearing bodies carry their exact link, avg 659 chars. Watch-list: one length
+  violation (Anthropic Head of Copy, 785 > 750); the invented **doc-count tic hit 3/12**
+  ("fifteen docs", "forty docs", "twelve docs" — none in the profile), nondeterministic but
+  persistent across rounds → firm v4 lever; selection still hero-heavy (P.H.R.E.D. 7,
+  Mozilla 1, Bored Ape 1, Bot Busters 0, none 3) though Figma Brand Producer → Bored Ape and
+  Ramp Viral Creative Producer → Mozilla show relevance-based selection CAN happen.
+- `v4` — Randall's b2 review notes implemented + generalized for any career (this is the
+  production-port candidate; full rationale in
+  `docs/message-gen-generalization-audit-2026-07-14.md`). Levers: first-person hedge on
+  opinions/generalizations (never declared fact, never as the opener); opening line must be a
+  complete standalone sentence; no coined jargon absent from posting/profile; résumé-highlight
+  variety (≤2 per message, don't repeat marquee names); NUMBERS hard rule (a number may appear
+  only if the profile states it, incl. rhetorical counts); exemplars demonstrate register not
+  vocabulary; DE-PERSONALIZED (v3's "nautical" line generalized). Also introduces the
+  **hard-rule validation + bounded retry layer** in the harness: length ≤750, no em dash,
+  example link in body, ungrounded-numbers-vs-profile — violating cells regenerate (max 3
+  attempts), final violations stay visible (`generationAttempts` + `hardRuleViolations` per
+  message; `ungroundedNumber` meter in the console). Prompt-only enforcement measurably leaked
+  across three rounds; this layer is profile-independent and is what production should adopt.
+  Final corpus 2026-07-14: 12/12 valid, 4 cells needed retries, 2 unresolved violations kept
+  visible (one 768-char cell, two idiomatic "dozen" uses), 0 em dashes, 9/9 links, avg 688.
+  Review watch-list: OpenAI cell says "Growth creative" (posting-derived?) and renames
+  P.H.R.E.D. to "Project OS" (invented product naming — no rule covers referring to Work
+  Examples by their actual titles yet); flourish-per-message habit persists (8/12 one each) —
+  structural fix is the fingerprint pre-pass revision.
 
 ## Next steps
 
@@ -174,6 +233,16 @@ node scripts/outreach-quality/review-server.mjs   # prints a localhost URL
       `v3-link` variant + exact `exampleLinkMissing` metric (console meter + scorecard, `n/a` on
       older corpora): 7/7 example-bearing bodies now contain the exact link. Needs Randall's
       console review (link placement quality) before the lever is folded into v4/production.
+- [x] **Enforce the no-em-dash rule (standing platform rule, Randall 2026-07-14).** Fixed as
+      `v3-nodash` (v3-link + outright ban with restructuring guidance) + exact `emDash` metric:
+      0 em dashes across 10/10, no substitute punctuation tics, link compliance intact. Rule
+      recorded durably in `AGENTS.md` and this doc's Guardrails; ports to production with the
+      winning variant. Needs Randall's console review for how the restructured sentences read.
+- [x] **New job batch with real variety (Randall 2026-07-14).** Balanced the evidence pull
+      per company (the flat pull was 85% four boards; Notion/Linear/GitLab/Runway never
+      surfaced), replaced index picks with 12 id-keyed jobs across 9 companies, excluded
+      language-gated and never-apply jobs, and regenerated the current prompt as
+      `v3-nodash-b2`. Sampling rules recorded under "Job batches" above.
 - [ ] **Complete the human matrix review before authoring v4.** Automated findings identify
       candidate targets, not final prompt requirements:
       1. **Evidence selection independent of expression.** P.H.R.E.D. was the only selected Work

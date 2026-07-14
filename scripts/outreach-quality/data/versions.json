@@ -45,5 +45,43 @@
       "One-link cap kept; the used example's link takes the slot; never link outside the profile.",
       "New auto-metric exampleLinkMissing: flags any message whose used example has a link the body omits (checked against the matched compiled example, not just returned metadata)."
     ]
+  },
+  {
+    "id": "v3-nodash",
+    "label": "v3-nodash — em dashes banned platform-wide",
+    "createdAt": "2026-07-14T18:06:25.182Z",
+    "changeNotes": [
+      "Single lever on top of v3-link. Standing platform rule (Randall, 2026-07-14): no generated message may ever contain an em dash.",
+      "Prompt now bans the em dash outright, even where profile or voice examples contain them; restructure or use commas, parentheses, semicolons, colons, or a new sentence.",
+      "Before this variant: 10/10 v3-link messages contained em dashes (~2 each) while the profile itself has almost none — model habit, not voice.",
+      "New auto-metric emDash: exact count of em dashes per message body."
+    ]
+  },
+  {
+    "id": "v3-nodash-b2",
+    "label": "v3-nodash · job batch 2 — fresh variety",
+    "createdAt": "2026-07-14T19:13:30.054Z",
+    "changeNotes": [
+      "Same prompt as v3-nodash; regenerated on a NEW 12-job batch (Randall, 2026-07-14: batch 1 was Airbnb-heavy with language-gated non-starters, wasting review effort).",
+      "Batch-2 sampling rules: 9 companies with max 2 per company; no jobs gated on a language fluency Randall doesn't have; no poor-fit padding he'd never apply to; fit spread 4 good / 5 medium / 3 stretch.",
+      "Evidence pull is now company-balanced (full board per company) instead of a flat recency-200 that four big boards crowded; picks are keyed by stable job id.",
+      "New jobs have no prior-version history in the console; judge them fresh."
+    ]
+  },
+  {
+    "id": "v4",
+    "label": "v4 — feedback implemented, generalized for any career",
+    "createdAt": "2026-07-14T20:25:01.718Z",
+    "changeNotes": [
+      "Implements Randall's b2 review notes: opinions/generalizations hedged as first-person experience, never declared fact (Coinbase Knowledge Systems note).",
+      "Opening line must be a complete standalone sentence; fragments allowed later, never first; no coined jargon absent from the posting/profile (OpenAI 'Growth creative' note).",
+      "Résumé-highlight variety: consider the full highlight set, don't repeat the same marquee names/sentence every message (Airbnb note).",
+      "Invented-quantity ban tightened: numbers only if the profile states them, including rhetorical counts (doc-count tic hit 3/12 in b2).",
+      "750 is now an explicit HARD cap with cut-don't-exceed guidance (one 785 leak in b2).",
+      "Work Example spread: prefer the domain match over the most familiar example when relevance ties.",
+      "DE-PERSONALIZED for production: no references to any specific user's tics, projects, or credentials (v3's 'nautical' line generalized). This is the production-port candidate.",
+      "Pre-review revision (same day): first draft leaked 3 invented counts, kept a declared-fact opener, and echoed the fingerprint's imagery in 8/12 messages once the user-specific ban was generalized. Sharpened: exemplars demonstrate register not vocabulary (most messages need no flourish); NUMBERS promoted to a standalone hard rule (every number must appear in the profile); never open by declaring what a problem/discipline 'is/isn't'; at most two résumé highlights per message."
+    ],
+    "regeneratedAt": "2026-07-14T20:40:36.500Z"
   }
 ]

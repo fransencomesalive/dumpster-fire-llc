@@ -1,0 +1,107 @@
+{
+  "versionId": "v3-nodash-b2",
+  "items": {
+    "b8eb2807-feb5-409b-9656-4af069ccd18e": {
+      "ratings": {
+        "humility": 3,
+        "fitHonesty": 7
+      },
+      "updatedAt": "2026-07-14T20:05:44.358Z",
+      "comment": "pretty good. the humility in the confidence when saying \"the real headache with AI-assisted work isn't the output...\" is slightly too direct. it's probably better to add \"IMHO, In my opinion, in my experience, sometimes\""
+    },
+    "d7dd72e8-a446-40c8-b85d-14f24d0c1dcc": {
+      "ratings": {
+        "soundsLikeMe": 8,
+        "humility": 8,
+        "fitHonesty": 8,
+        "wouldSend": 8
+      },
+      "updatedAt": "2026-07-14T20:05:47.139Z"
+    },
+    "d4191b2b-1445-48cb-bed2-6c9e6935c69e": {
+      "ratings": {
+        "soundsLikeMe": 8,
+        "humility": 8,
+        "fitHonesty": 8,
+        "wouldSend": 8
+      },
+      "updatedAt": "2026-07-14T20:06:32.138Z"
+    },
+    "692f2659-5c5a-46bb-b01a-3fa10e6af8c0": {
+      "ratings": {
+        "soundsLikeMe": 8,
+        "humility": 8
+      },
+      "updatedAt": "2026-07-14T20:08:12.315Z",
+      "comment": "I think we are still weighting the same highlights from my resume in a way that makes them show as a loose match. I would like to see better variety in resume title matches and mentions. the typical Nike/AKQA/Swift sentence does work but i think users will expect better variety in presenting their experience. "
+    },
+    "3f012bc3-2cc3-4e69-bce6-64155faa6740": {
+      "ratings": {
+        "soundsLikeMe": 7,
+        "humility": 7,
+        "fitHonesty": 7,
+        "wouldSend": 7
+      },
+      "updatedAt": "2026-07-14T20:08:41.639Z"
+    },
+    "979c2330-d8e2-4845-8f4d-eea81446cf13": {
+      "comment": "The opening sentence is awkward. \"Growth creative\" isn't really a thing. opening sentences must be full and complete sentences/thoughts. fragments or broken up sentences can happen later in the message but never in the opening line.",
+      "ratings": {},
+      "updatedAt": "2026-07-14T20:09:44.486Z"
+    },
+    "a01690f2-7ecd-4314-befa-fe7487e4d636": {
+      "ratings": {
+        "soundsLikeMe": 7,
+        "humility": 7,
+        "fitHonesty": 7,
+        "wouldSend": 7
+      },
+      "updatedAt": "2026-07-14T20:10:12.222Z"
+    },
+    "cd5ba679-04b1-427d-9610-eadbc024c045": {
+      "ratings": {
+        "fitHonesty": 8,
+        "humility": 8,
+        "soundsLikeMe": 8,
+        "wouldSend": 8
+      },
+      "updatedAt": "2026-07-14T20:10:31.384Z"
+    },
+    "eb3447c7-405d-4faa-92cb-4248fdab2198": {
+      "ratings": {
+        "soundsLikeMe": 8,
+        "humility": 8,
+        "fitHonesty": 8,
+        "wouldSend": 8
+      },
+      "updatedAt": "2026-07-14T20:10:54.883Z"
+    },
+    "546f97cc-a0fa-4dbb-ae23-0c1b62c3f739": {
+      "ratings": {
+        "wouldSend": 8,
+        "fitHonesty": 8,
+        "humility": 8,
+        "soundsLikeMe": 8
+      },
+      "updatedAt": "2026-07-14T20:11:54.981Z"
+    },
+    "e4c50ff6-661f-4dcd-a13c-30821b842df1": {
+      "ratings": {
+        "soundsLikeMe": 8,
+        "humility": 8,
+        "fitHonesty": 8,
+        "wouldSend": 8
+      },
+      "updatedAt": "2026-07-14T20:12:08.697Z"
+    },
+    "7328fb15-4c42-4f6a-b419-daa7470140a8": {
+      "ratings": {
+        "soundsLikeMe": 8,
+        "humility": 8,
+        "fitHonesty": 8,
+        "wouldSend": 8
+      },
+      "updatedAt": "2026-07-14T20:12:30.163Z"
+    }
+  }
+}

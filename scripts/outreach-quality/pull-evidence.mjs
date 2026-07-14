@@ -92,11 +92,24 @@ const annotated = messages.map((m) => {
   return { ...m, job_title: job?.title, company: job?.company_name, outreach_angle: pursuit?.outreach_angle };
 });
 
-// 3. Current scanned jobs (for baseline sample selection)
-const jobs = await q(
-  "jobs",
-  "select=id,source_url,title,company_name,location,remote_type,description,posted_at,scraped_at&order=scraped_at.desc&limit=200",
-);
+// 3. Current scanned jobs (for corpus sample selection) — balanced per company so the big
+// boards (Airbnb/Anthropic/Databricks) can't crowd smaller sources out of the pool. Randall
+// 2026-07-14: review batches need real company variety; a flat recency-200 pull was 85%
+// four companies while Notion/Linear/GitLab/Runway never surfaced.
+// 250 ≈ the full current board per company (rescans update scraped_at in place, so recency
+// ordering inside one company is same-timestamp ties in board order — a small limit would
+// alphabetically bias the slice and hide Program/Producer/TPM titles).
+const JOBS_PER_COMPANY = 250;
+const sourceRows = await q("job_sources", "select=company_name&status=eq.active&order=company_name.asc");
+const companies = [...new Set(sourceRows.map((row) => row.company_name))];
+const jobs = [];
+for (const company of companies) {
+  const rows = await q(
+    "jobs",
+    `select=id,source_url,title,company_name,location,remote_type,description,posted_at,scraped_at&company_name=eq.${encodeURIComponent(company)}&order=scraped_at.desc&limit=${JOBS_PER_COMPANY}`,
+  );
+  jobs.push(...rows);
+}
 const scanJobs = jobs.map((job) => ({ ...job, description_chars: job.description?.length ?? 0 }));
 
 // Write the scratch set only after every remote read and parity check succeeds. Each file is

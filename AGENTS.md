@@ -99,6 +99,7 @@ These are standing copy rules for all user-facing surfaces (Randall, 2026-06-26)
 - **No "proof" vocabulary.** Never use the word "proof" (proof, Proof Library, proof object, proof selection, "what this proves", etc.) in user-facing copy. The user-facing concept is **work examples / portfolio** — text-only examples used as context for outreach-message generation.
 - **No "improve the profile / improve matching" framing.** Matches are rated by the system to provide better matching; the user maintains/keeps their profile current, they do not "improve matching."
 - **Brand voice: anti-corporate-speak.** Dumpster Fire is not a tool for corporate-speak lovers. The positioning is about bringing the user's personality to the table when pursuing a job. Copy should sound human and specific, never generic corporate boilerplate.
+- **No em dashes in generated messages (Randall, 2026-07-14).** No message generated on Dumpster Fire's platform may ever contain an em dash. Use alternate punctuation or sentence structure instead: commas, parentheses, semicolons, colons, or a new sentence. This is a hard generation rule (prompt-enforced, measured by the outreach-quality harness `emDash` meter), extending the no-em-dash rule already applied to static product copy.
 
 ### Input Conventions — List-Like Fields (Randall, 2026-07-10)
 

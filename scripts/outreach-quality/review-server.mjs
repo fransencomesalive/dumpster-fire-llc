@@ -289,6 +289,8 @@ const METERS = [
   ["tellsWhatTheyWant","Tells-them-what","flag"],
   ["q4BragTag","Q4 brag tag","flag"],
   ["exampleLinkMissing","Example link missing","flag"],
+  ["emDash","Em dash","count"],
+  ["ungroundedNumber","Ungrounded number","count"],
   ["length","Length","len"],
 ];
 let STATE=null, CUR=null;

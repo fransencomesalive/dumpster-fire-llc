@@ -1,10 +1,11 @@
-// Baseline outreach corpus. Reproduces the EXACT production prompt from
-// lib/public-profile/outreach-generator.ts (systemPrompt + buildOutreachPromptParts)
-// so the corpus reflects what ships today. Self-contained: reads profile.md +
-// scan-jobs.json from this dir, calls Anthropic directly, writes baseline.md.
+// Outreach corpus generator. `baseline` reproduces the ORIGINAL production prompt
+// (pre-refinement); production ported `v4` + the hard-rule contract on 2026-07-14, so
+// prod now matches the v4 entry here (data/prompts/v4.txt is the frozen source of
+// truth — keep outreach-generator.ts identical to it). Self-contained: reads
+// profile.md + scan-jobs.json from this dir, calls Anthropic directly.
 //
 // A `PROMPT_VARIANT` env selects which system prompt to use ("baseline" | "v2" | "v3"
-// | "v3-link") so later A/B runs reuse the same harness without editing prod code.
+// | "v3-link" | "v3-nodash") so later A/B runs reuse the same harness without editing prod code.
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -194,7 +195,130 @@ if (!v3LinkSystem.includes("MUST contain that exact link") || !v3LinkSystem.incl
   throw new Error("v3-link lever failed to apply — v3 anchor text changed");
 }
 
-const systemByVariant = { baseline: baselineSystem, v2: v2System, v3: v3System, "v3-link": v3LinkSystem };
+// ---- v3-nodash: v3-link + a platform-wide punctuation rule (Randall, 2026-07-14): no
+// generated message may EVER contain an em dash. Measured before this variant: 10/10 v3-link
+// messages had them (~2 each) while the profile itself barely uses them — model habit, not
+// voice. Use alternate punctuation or restructure instead.
+const v3NoDashSystem = v3LinkSystem.replace(
+  "- This is a single first touch: no promised follow-ups or references to earlier messages.",
+  [
+    "- This is a single first touch: no promised follow-ups or references to earlier messages.",
+    "- Never use an em dash (—) anywhere in the message, even if the profile or voice examples",
+    "  contain them. Restructure the sentence or reach for other punctuation instead: commas,",
+    "  parentheses, semicolons, colons, or a new sentence.",
+  ].join("\n"),
+);
+if (!v3NoDashSystem.includes("Never use an em dash")) {
+  throw new Error("v3-nodash lever failed to apply — v3-link anchor text changed");
+}
+
+// ---- v4: Randall's b2 review notes (2026-07-14) + the queued levers, written as a complete
+// prompt and DE-PERSONALIZED — this is the production-port candidate, so nothing in it may
+// reference one user's tics, projects, or credentials (the v3 line about "nautical" language
+// was Randall-specific and is generalized here). New in v4:
+//   1. Opinions/generalizations get a first-person hedge, stated as experience not fact
+//      (b2 note: "the real headache with AI-assisted work isn't..." read too direct).
+//   2. Opening line must be a complete standalone sentence; no coined jargon the job posting
+//      doesn't use (b2 note: "Growth creative" isn't a thing; fragments never open).
+//   3. Résumé-highlight variety: consider the FULL highlight set, don't lean on the same
+//      marquee names every message (b2 note: same Nike/AKQA/Swift sentence recurring).
+//   4. Invented-quantity ban tightened: numbers only if the profile states them, including
+//      rhetorical counts (the "scattering across forty docs" tic hit 3/12 in b2).
+//   5. 750 becomes an explicit HARD cap with cut-don't-exceed guidance (one 785 leak in b2).
+//   6. Work Example spread: when two are comparably relevant, prefer the domain match over
+//      the most familiar one (P.H.R.E.D. took 7 of 9 selections in b2 — stated generically).
+const v4System = [
+  "You write a single outreach message AS the person described in the profile below — a real",
+  "first-touch note to one hiring contact about one job.",
+  "",
+  "VOICE",
+  "The profile begins with a Voice Profile. Match its tone and rhythm, but voice is HOW you say",
+  "things, not a script. Its exemplar lines demonstrate register, not vocabulary to reuse: do NOT",
+  "borrow their specific imagery, metaphor domains, or signature phrases. Most messages need no",
+  "colorful flourish at all; use at most one, only when it lands naturally, and make it fresh",
+  "rather than an echo of an exemplar. Never use a pattern marked never-sound-like-this.",
+  "",
+  "The opinion the person will defend is private reasoning input, not message copy. Never quote or",
+  "announce it. Never turn it into a judgment about the reader, their company, or what other people",
+  "understand. If relevant, translate the principle into first-person evidence: what this person did,",
+  "noticed, changed, or learned. Otherwise leave it out.",
+  "",
+  "FIT AND RESPECT",
+  "Confident, accurate, and respectful. The reader knows their company and field better than you do.",
+  "- Never criticize a former or target employer to establish insider credibility. Prior experience",
+  "  there should read as familiarity, respect, and useful context.",
+  "- Do not tell the reader what their job is really about, or reduce their discipline to yours. Ban",
+  "  constructions like 'the whole game,' 'the whole job description,' and 'an X problem dressed as",
+  "  a Y problem.'",
+  "- State opinions and generalizations about how work goes as first-person experience ('in my",
+  "  experience,' 'I've found,' 'for me'), never as declared fact about the reader's world. One",
+  "  light hedge where it's needed; don't make hedging a tic either.",
+  "- Never open the message by declaring what a problem, a discipline, or a kind of work 'is' or",
+  "  'isn't.' If that observation matters, it comes later and it is framed as this person's own",
+  "  experience, not a truth the reader needs explained.",
+  "- Before conceding a gap, check the full profile: Role Tracks, résumé highlights, skills, and Work",
+  "  Examples. Never say the person lacks experience that the profile supports. A different current",
+  "  title is not proof they lack the capability.",
+  "- Open with a concession only when a concrete hard requirement is genuinely unsupported. For a",
+  "  good overlap, open on specific evidence. Keep any necessary caveat brief and factual.",
+  "",
+  "WORK EXAMPLE INVENTORY",
+  "The Work Examples section is a complete candidate inventory. Silently consider EVERY Work Example",
+  "against this specific job before choosing substance. Do not default to the most familiar example:",
+  "when two examples are comparably relevant, pick the one whose domain most closely matches this",
+  "job's domain. It is fine to use no Work Example when résumé or skill evidence is stronger. Never",
+  "bend an example to fit. If you use one, insertedExample must copy that example's one-hitter and",
+  "optional link EXACTLY from the profile so selection can be audited. When the example you use has",
+  "a link, the message body MUST contain that exact link — the reader has to be able to click",
+  "through to the work. Place it where it naturally backs the evidence, mid-thought, not dangling",
+  "as a bare footer.",
+  "",
+  "SUBSTANCE",
+  "Use one or two concrete points. Prefer verified first-person facts over positioning claims.",
+  "Consider the FULL set of résumé highlights and skills, not just the most famous credentials:",
+  "pick what is most relevant to THIS job, use at most two résumé highlights per message, and do",
+  "not lean on the same marquee names or the same highlight sentence in every message. Never",
+  "invent facts, responsibilities, insider details, or embellished precision. Avoid residual brag",
+  "tags such as 'I do,' 'I'm dangerous in this seat,' or claims that others do not understand the",
+  "work.",
+  "",
+  "NUMBERS — hard rule",
+  "Every number in the message, written as digits or as words, must appear in the profile. No",
+  "exceptions for color or rhythm: if you are tempted to quantify an illustration ('a dozen tools,'",
+  "'scattered across fifteen docs'), describe it without the count instead. When in doubt, no",
+  "number.",
+  "",
+  "FORM",
+  "- Aim for 550–700 characters. 750 characters is a HARD cap: if a draft runs long, cut evidence",
+  "  or trim sentences. Never exceed it.",
+  "- The opening line must be a complete, standalone sentence — never a fragment, never a",
+  "  dropped-subject construction. Fragments may appear later in the message, never first.",
+  "- Use the reader's own vocabulary: never coin role-family jargon or industry terms that are not",
+  "  in the job posting or the profile.",
+  "- Short, specific, human, and complete. No corporate boilerplate or mass-template feel.",
+  "- Never use an em dash (—) anywhere in the message, even if the profile or voice examples",
+  "  contain them. Restructure the sentence or reach for other punctuation instead: commas,",
+  "  parentheses, semicolons, colons, or a new sentence.",
+  "- At most one link total. If you used a Work Example that has a link, that is the link — include",
+  "  it verbatim in the body. Never link to anything that is not in the profile.",
+  "- This is a single first touch: no promised follow-ups or references to earlier messages.",
+  "",
+  "Output ONLY a JSON object, no prose, no markdown fences:",
+  '{"message": string, "insertedExample": {"oneHitter": string, "link"?: string} | null}.',
+  "insertedExample is the exact Work Example used, or null if none was used.",
+].join("\n");
+
+const systemByVariant = {
+  baseline: baselineSystem,
+  v2: v2System,
+  v3: v3System,
+  "v3-link": v3LinkSystem,
+  "v3-nodash": v3NoDashSystem,
+  // Same prompt as v3-nodash, regenerated on job batch 2 — a distinct corpus id keeps the
+  // judged batch-1 corpus frozen instead of overwriting it.
+  "v3-nodash-b2": v3NoDashSystem,
+  v4: v4System,
+};
 const variant = process.env.PROMPT_VARIANT || "baseline";
 const system = systemByVariant[variant];
 if (!system) { console.error(`unknown PROMPT_VARIANT ${variant}`); process.exit(1); }
@@ -214,21 +338,30 @@ function buildParts({ job, contact }) {
   return { cachePrefix, tail };
 }
 
-// The sampled jobs (indices into scan-jobs.json, chosen for fit-level variety) plus a
-// synthesized contact for each (production supplies a discovered contact; here we use a
-// plausible hiring-manager role so the message has a recipient). `fit` is my sampled
-// assessment of how well Randall actually matches — it frames the review, not the prompt.
+// The sampled jobs plus a synthesized contact for each (production supplies a discovered
+// contact; here we use a plausible hiring-manager role so the message has a recipient).
+// `fit` is my sampled assessment of how well Randall actually matches — it frames the
+// review, not the prompt.
+//
+// Batch 2 (Randall, 2026-07-14). Batch 1 (10 jobs picked by INDEX into the 2026-07-13
+// evidence pull) generated baseline/v2/v3/v3-link/v3-nodash — those corpora are frozen in
+// data/ and stay judged against their own inputs. Randall's batch-2 sampling rules:
+// real company variety (9 companies, max 2 per company), NO jobs gated on a language
+// fluency he doesn't have, no jobs he'd never apply to (poor-fit padding dropped), and
+// picks are keyed by stable job id so an evidence repull can't silently shift them.
 const picks = [
-  { i: 34, fit: "good",    contact: { role: "Head of Product Program Management", seniority: "Director" } },
-  { i: 15, fit: "good",    contact: { role: "Director, Technical Program Management", seniority: "Director" } },
-  { i: 53, fit: "good",    contact: { role: "Director of Operations", seniority: "Director" } },
-  { i: 44, fit: "medium",  contact: { role: "VP, Business Operations", seniority: "VP" } },
-  { i: 7,  fit: "medium",  contact: { role: "Head of Luxe Supply", seniority: "Director" } },
-  { i: 59, fit: "medium",  contact: { role: "Director, Trust & Safety", seniority: "Director" } },
-  { i: 50, fit: "stretch", contact: { role: "VP Product, Infrastructure", seniority: "VP" } },
-  { i: 36, fit: "stretch", contact: { role: "Creative Director", seniority: "Director" } },
-  { i: 12, fit: "poor",    contact: { role: "Sales Director, Enterprise", seniority: "Director" } },
-  { i: 2,  fit: "poor",    contact: { role: "Engineering Manager", seniority: "Manager" } },
+  { id: "b8eb2807-feb5-409b-9656-4af069ccd18e", fit: "good",    contact: { role: "Director, Technical Program Management", seniority: "Director" } }, // Coinbase — TPM, Knowledge Systems
+  { id: "d7dd72e8-a446-40c8-b85d-14f24d0c1dcc", fit: "good",    contact: { role: "VP, Customer Experience", seniority: "VP" } },                      // Coinbase — Staff TPM, CX Agent Experience
+  { id: "d4191b2b-1445-48cb-bed2-6c9e6935c69e", fit: "good",    contact: { role: "Executive Creative Director", seniority: "Director" } },            // Figma — Brand Producer
+  { id: "692f2659-5c5a-46bb-b01a-3fa10e6af8c0", fit: "good",    contact: { role: "Director, Business Operations", seniority: "Director" } },          // Airbnb — Sr Programs & BizOps Lead, Airbnb Services
+  { id: "3f012bc3-2cc3-4e69-bce6-64155faa6740", fit: "medium",  contact: { role: "Head of Product Operations", seniority: "Director" } },             // Notion — Product Operations Manager
+  { id: "979c2330-d8e2-4845-8f4d-eea81446cf13", fit: "medium",  contact: { role: "VP, Marketing", seniority: "VP" } },                                // OpenAI — Creative Director, Growth
+  { id: "a01690f2-7ecd-4314-befa-fe7487e4d636", fit: "medium",  contact: { role: "Head of Events Marketing", seniority: "Director" } },               // Anthropic — Marketing Events Producer
+  { id: "cd5ba679-04b1-427d-9610-eadbc024c045", fit: "medium",  contact: { role: "Director, Strategy & Operations", seniority: "Director" } },        // Discord — Strategy & Ops Mgr, Consumer Revenue
+  { id: "eb3447c7-405d-4faa-92cb-4248fdab2198", fit: "medium",  contact: { role: "Director, Professional Services", seniority: "Director" } },        // GitLab — Professional Services Program Manager
+  { id: "546f97cc-a0fa-4dbb-ae23-0c1b62c3f739", fit: "stretch", contact: { role: "Head of Brand", seniority: "Director" } },                          // Ramp — Viral Creative Producer
+  { id: "e4c50ff6-661f-4dcd-a13c-30821b842df1", fit: "stretch", contact: { role: "Executive Creative Director", seniority: "Director" } },            // Anthropic — Head of Copy, Creative Studio
+  { id: "7328fb15-4c42-4f6a-b419-daa7470140a8", fit: "stretch", contact: { role: "Chief Product Officer", seniority: "C-level" } },                   // Databricks — Chief of Staff, to the CPO
 ];
 
 // Per-version metadata: human label + changelog notes. Keep in step with systemByVariant.
@@ -269,7 +402,76 @@ const variantMeta = {
       "New auto-metric exampleLinkMissing: flags any message whose used example has a link the body omits (checked against the matched compiled example, not just returned metadata).",
     ],
   },
+  "v3-nodash": {
+    label: "v3-nodash — em dashes banned platform-wide",
+    changeNotes: [
+      "Single lever on top of v3-link. Standing platform rule (Randall, 2026-07-14): no generated message may ever contain an em dash.",
+      "Prompt now bans the em dash outright, even where profile or voice examples contain them; restructure or use commas, parentheses, semicolons, colons, or a new sentence.",
+      "Before this variant: 10/10 v3-link messages contained em dashes (~2 each) while the profile itself has almost none — model habit, not voice.",
+      "New auto-metric emDash: exact count of em dashes per message body.",
+    ],
+  },
+  "v3-nodash-b2": {
+    label: "v3-nodash · job batch 2 — fresh variety",
+    changeNotes: [
+      "Same prompt as v3-nodash; regenerated on a NEW 12-job batch (Randall, 2026-07-14: batch 1 was Airbnb-heavy with language-gated non-starters, wasting review effort).",
+      "Batch-2 sampling rules: 9 companies with max 2 per company; no jobs gated on a language fluency Randall doesn't have; no poor-fit padding he'd never apply to; fit spread 4 good / 5 medium / 3 stretch.",
+      "Evidence pull is now company-balanced (full board per company) instead of a flat recency-200 that four big boards crowded; picks are keyed by stable job id.",
+      "New jobs have no prior-version history in the console; judge them fresh.",
+    ],
+  },
+  v4: {
+    label: "v4 — feedback implemented, generalized for any career",
+    changeNotes: [
+      "Implements Randall's b2 review notes: opinions/generalizations hedged as first-person experience, never declared fact (Coinbase Knowledge Systems note).",
+      "Opening line must be a complete standalone sentence; fragments allowed later, never first; no coined jargon absent from the posting/profile (OpenAI 'Growth creative' note).",
+      "Résumé-highlight variety: consider the full highlight set, don't repeat the same marquee names/sentence every message (Airbnb note).",
+      "Invented-quantity ban tightened: numbers only if the profile states them, including rhetorical counts (doc-count tic hit 3/12 in b2).",
+      "750 is now an explicit HARD cap with cut-don't-exceed guidance (one 785 leak in b2).",
+      "Work Example spread: prefer the domain match over the most familiar example when relevance ties.",
+      "DE-PERSONALIZED for production: no references to any specific user's tics, projects, or credentials (v3's 'nautical' line generalized). This is the production-port candidate.",
+      "Pre-review revision (same day): first draft leaked 3 invented counts, kept a declared-fact opener, and echoed the fingerprint's imagery in 8/12 messages once the user-specific ban was generalized. Sharpened: exemplars demonstrate register not vocabulary (most messages need no flourish); NUMBERS promoted to a standalone hard rule (every number must appear in the profile); never open by declaring what a problem/discipline 'is/isn't'; at most two résumé highlights per message.",
+    ],
+  },
 };
+
+// ---- Hard-rule contract (2026-07-14). Prompt-only enforcement proved unreliable (750-cap
+// leaks and invented counts recurred across rounds), so hard rules are validated after each
+// generation and violating cells are regenerated up to MAX_GEN_ATTEMPTS. These checks are
+// deliberately PROFILE-INDEPENDENT — they must hold for any user's career, not just this
+// profile — which is the enforcement production will need. Final violations are kept
+// visible (not hidden) so the console still shows how often the prompt needed rescuing.
+const NUMBER_WORDS = [
+  "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve",
+  "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen",
+  "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety",
+  "hundred", "thousand", "dozen",
+];
+// Numbers must come from the profile. Digits ground digits; number-words ground only as
+// words ("15+" in the profile does not license "fifteen docs" — describe without the count).
+// "one"/"two" are skipped as overwhelmingly rhetorical.
+function ungroundedNumbers(message, profile) {
+  const prof = profile.toLowerCase();
+  const found = [];
+  for (const m of message.matchAll(/\d[\d,.]*/g)) {
+    const tok = m[0].replace(/[.,]+$/, "");
+    if (tok && !prof.includes(tok.toLowerCase())) found.push(tok);
+  }
+  for (const m of message.toLowerCase().matchAll(new RegExp(`\\b(${NUMBER_WORDS.join("|")})\\b`, "g"))) {
+    if (!prof.includes(m[1])) found.push(m[1]);
+  }
+  return [...new Set(found)];
+}
+
+function hardRuleViolations(message, exampleLink) {
+  const violations = [];
+  if (message.length > 750) violations.push(`over_750_characters(${message.length})`);
+  if ((message.match(/—/g) || []).length > 0) violations.push("em_dash_present");
+  if (exampleLink && !message.includes(exampleLink)) violations.push("example_link_missing_from_body");
+  const numbers = ungroundedNumbers(message, profileMarkdown);
+  if (numbers.length) violations.push(`ungrounded_numbers(${numbers.join("/")})`);
+  return violations;
+}
 
 // ---- Auto-metric detectors. Heuristic/regex — a trend signal for the review console,
 // not ground truth. Tunable later. Each returns a small number or 0/1.
@@ -289,6 +491,8 @@ function computeMetrics(message, exampleLink) {
     tellsWhatTheyWant: /^\W*you'?re (?:looking|hunting|after|chasing)|^\W*you want|^\W*you need/i.test(head) ? 1 : 0,
     q4BragTag: /\bI do\.|I'?m not one of them|don'?t (?:quite )?(?:understand|know what)/i.test(tail) ? 1 : 0,
     exampleLinkMissing: exampleLink ? (m.includes(exampleLink) ? 0 : 1) : 0,
+    emDash: (m.match(/—/g) || []).length,
+    ungroundedNumber: ungroundedNumbers(m, profileMarkdown).length,
     length: m.length,
   };
 }
@@ -311,7 +515,8 @@ let generationFailures = 0;
 let selectionAuditFailures = 0;
 
 for (const pick of picks) {
-  const j = allJobs[pick.i];
+  const j = allJobs.find((job) => job.id === pick.id);
+  if (!j) throw new Error(`Picked job ${pick.id} is not in scan-jobs.json — rerun pull-evidence.mjs or fix the pick.`);
   const job = { title: j.title, company: j.company_name, description: j.description };
   const { cachePrefix, tail } = buildParts({ job, contact: pick.contact });
   const content = [
@@ -319,21 +524,45 @@ for (const pick of picks) {
     { type: "text", text: tail },
   ];
   process.stdout.write(`generating: ${job.company} — ${job.title} ... `);
+  const MAX_GEN_ATTEMPTS = 3;
   let msg = "(FAILED)";
   let inserted = null;
-  try {
-    const resp = await client.messages.create({ model: "claude-opus-4-8", max_tokens: 1024, system, messages: [{ role: "user", content }] });
-    const textBlock = resp.content.find((b) => b.type === "text");
-    const parsed = textBlock ? extractJson(textBlock.text) : null;
-    if (typeof parsed?.message !== "string" || !parsed.message.trim()) {
-      throw new Error("model returned no parseable message");
+  let attempts = 0;
+  let violations = [];
+  let failed = true;
+  for (let attempt = 1; attempt <= MAX_GEN_ATTEMPTS; attempt += 1) {
+    attempts = attempt;
+    try {
+      const resp = await client.messages.create({ model: "claude-opus-4-8", max_tokens: 1024, system, messages: [{ role: "user", content }] });
+      const textBlock = resp.content.find((b) => b.type === "text");
+      const parsed = textBlock ? extractJson(textBlock.text) : null;
+      if (typeof parsed?.message !== "string" || !parsed.message.trim()) {
+        throw new Error("model returned no parseable message");
+      }
+      msg = parsed.message.trim();
+      inserted = parsed.insertedExample ?? null;
+      failed = false;
+      const candidateSelected = matchInsertedWorkExample(inserted, compiledWorkExamples);
+      violations = hardRuleViolations(msg, candidateSelected?.link || inserted?.link || null);
+      if (violations.length === 0) {
+        console.log(`ok (${msg.length} chars${attempt > 1 ? `, attempt ${attempt}` : ""})`);
+        break;
+      }
+      if (attempt < MAX_GEN_ATTEMPTS) {
+        process.stdout.write(`retry [${violations.join(", ")}] ... `);
+      } else {
+        console.log(`ok WITH VIOLATIONS [${violations.join(", ")}] (${msg.length} chars, ${attempt} attempts)`);
+      }
+    } catch (e) {
+      if (attempt < MAX_GEN_ATTEMPTS) {
+        process.stdout.write(`retry [${e.message}] ... `);
+      } else if (failed) {
+        generationFailures += 1;
+        console.log(`ERROR ${e.message}`);
+      } else {
+        console.log(`ok WITH VIOLATIONS [${violations.join(", ")}] (kept attempt ${attempts - 1} result; final attempt: ${e.message})`);
+      }
     }
-    msg = parsed.message.trim();
-    inserted = parsed.insertedExample ?? null;
-    console.log(`ok (${msg.length} chars)`);
-  } catch (e) {
-    generationFailures += 1;
-    console.log(`ERROR ${e.message}`);
   }
 
   const selectedWorkExample = matchInsertedWorkExample(inserted, compiledWorkExamples);
@@ -357,6 +586,8 @@ for (const pick of picks) {
     message: msg,
     insertedExample: inserted,
     workExampleSelection,
+    generationAttempts: attempts,
+    hardRuleViolations: violations,
     metrics: computeMetrics(msg, selectedWorkExample?.link || inserted?.link || null),
   });
 
@@ -425,4 +656,10 @@ console.log(`- no Work Example: ${messages.filter((message) => !message.inserted
 if (unmatchedSelections > 0) console.log(`- unmatched insertedExample: ${unmatchedSelections}`);
 const linkMisses = messages.filter((message) => message.metrics.exampleLinkMissing === 1).length;
 console.log(`- example link missing from body: ${linkMisses}/${messages.filter((message) => message.insertedExample).length} example-bearing messages`);
+const emDashTotal = messages.reduce((a, message) => a + message.metrics.emDash, 0);
+console.log(`- em dashes: ${emDashTotal} total in ${messages.filter((message) => message.metrics.emDash > 0).length} messages`);
+const retried = messages.filter((message) => message.generationAttempts > 1).length;
+const unresolved = messages.filter((message) => message.hardRuleViolations.length > 0);
+console.log(`- hard-rule retries: ${retried} message(s) needed regeneration`);
+console.log(`- unresolved hard-rule violations: ${unresolved.length}${unresolved.length ? " — " + unresolved.map((message) => `${message.company} [${message.hardRuleViolations.join(", ")}]`).join("; ") : ""}`);
 console.log(`\nwrote data/corpus-${variant}.json + froze prompt/profile/Work Example audit + updated versions.json`);

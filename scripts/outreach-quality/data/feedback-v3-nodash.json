@@ -1,0 +1,20 @@
+{
+  "versionId": "v3-nodash",
+  "items": {
+    "39b61911-7535-4a1f-864b-a0ddca52cecd": {
+      "ratings": {
+        "soundsLikeMe": 8,
+        "humility": 8,
+        "fitHonesty": 8,
+        "wouldSend": 7
+      },
+      "updatedAt": "2026-07-14T18:29:47.953Z",
+      "priority": 2
+    },
+    "470a510f-8dea-4fde-8f19-07d13f29fa8d": {
+      "comment": "i don't want to continue testing  a job posting i will never apply to. remove this from the samples",
+      "ratings": {},
+      "updatedAt": "2026-07-14T18:30:19.285Z"
+    }
+  }
+}

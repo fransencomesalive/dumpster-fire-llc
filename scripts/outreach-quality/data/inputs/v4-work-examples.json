@@ -1,0 +1,55 @@
+{
+  "checkedAt": "2026-07-14T19:03:58.609Z",
+  "profileUpdatedAt": "2026-07-13T04:32:57.323+00:00",
+  "markdownGeneratedAt": "2026-07-13T04:32:57.323+00:00",
+  "ok": true,
+  "count": 4,
+  "compiledCount": 4,
+  "issues": [],
+  "entries": [
+    {
+      "key": "work-example-0ae80e2d0613",
+      "title": "P.H.R.E.D.",
+      "fingerprint": "0ae80e2d0613c2b223edd94a8e57c149b9e8b9826e89b6b507b767edda700663",
+      "fields": {
+        "title": true,
+        "oneHitter": true,
+        "link": true,
+        "context": true
+      }
+    },
+    {
+      "key": "work-example-21e1cc5b27f2",
+      "title": "Billionaire Blast-off | Mozilla",
+      "fingerprint": "21e1cc5b27f203e4fea04fe20c7a9725cc848619ac614184130e65a1e9ea2497",
+      "fields": {
+        "title": true,
+        "oneHitter": true,
+        "link": true,
+        "context": true
+      }
+    },
+    {
+      "key": "work-example-f9155962c042",
+      "title": "BORED APE YACHT CLUB | Website Redesign",
+      "fingerprint": "f9155962c0428427f1ebb946b9d4017cb8e5068afcadb4bd2ab91a7021f8af74",
+      "fields": {
+        "title": true,
+        "oneHitter": true,
+        "link": true,
+        "context": true
+      }
+    },
+    {
+      "key": "work-example-e4cbe178b6d3",
+      "title": "Bot Busters",
+      "fingerprint": "e4cbe178b6d320b048b2f812e4cca9270858c3b7060db99d342e3f225655f2dd",
+      "fields": {
+        "title": true,
+        "oneHitter": true,
+        "link": true,
+        "context": true
+      }
+    }
+  ]
+}
