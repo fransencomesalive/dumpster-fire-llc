@@ -288,6 +288,7 @@ const METERS = [
   ["concessionOpener","Concession opener","flag"],
   ["tellsWhatTheyWant","Tells-them-what","flag"],
   ["q4BragTag","Q4 brag tag","flag"],
+  ["exampleLinkMissing","Example link missing","flag"],
   ["length","Length","len"],
 ];
 let STATE=null, CUR=null;
@@ -315,6 +316,11 @@ function esc(s){return (s==null?"":String(s)).replace(/[&<>"]/g,c=>({"&":"&amp;"
 function prevVersionId(id){ const i=STATE.versions.findIndex(v=>v.id===id); return i>0?STATE.versions[i-1].id:null; }
 
 function meterRow(key,label,kind,metrics){
+  if(!(key in metrics)){
+    // corpus generated before this metric existed — don't fake a "clear"
+    return '<div class="meter"><span class="name">'+label+'</span>'+
+      '<span style="color:var(--ink-faint)">n/a</span></div>';
+  }
   const v = metrics[key] ?? 0;
   if(kind==="flag"){
     const hit = v>0;
@@ -345,13 +351,17 @@ function render(){
 
   // corpus scorecard: roll up flag meters
   const roll = {};
-  for(const [k,,kind] of METERS){ if(kind!=="len"){ roll[k]=corpus.messages.reduce((a,m)=>a+((m.metrics?.[k]||0)>0?1:0),0); } }
+  for(const [k,,kind] of METERS){
+    if(kind==="len") continue;
+    const known = corpus.messages.filter(m=>m.metrics && k in m.metrics);
+    roll[k] = known.length ? {hits: known.reduce((a,m)=>a+((m.metrics[k]||0)>0?1:0),0), known: known.length} : null;
+  }
   const avgLen = Math.round(corpus.messages.reduce((a,m)=>a+(m.metrics?.length||0),0)/(corpus.messages.length||1));
 
   let html = '<div class="changelog"><h2>Changelog · '+esc(ver.label)+'</h2><ul>'+
     (ver.changeNotes||[]).map(n=>'<li>'+esc(n)+'</li>').join("")+'</ul>'+
     '<div class="scorecard">'+
-      METERS.filter(m=>m[2]!=="len").map(([k,label])=>'<span class="chip">'+label+': '+(roll[k]||0)+'/'+corpus.messages.length+'</span>').join("")+
+      METERS.filter(m=>m[2]!=="len").map(([k,label])=>'<span class="chip">'+label+': '+(roll[k]?roll[k].hits+'/'+roll[k].known:'n/a')+'</span>').join("")+
       '<span class="chip">avg length: '+avgLen+'</span>'+
     '</div></div>';
 

@@ -83,6 +83,7 @@ node scripts/outreach-quality/pull-evidence.mjs
 PROMPT_VARIANT=baseline node scripts/outreach-quality/gen-baseline.mjs
 PROMPT_VARIANT=v2       node scripts/outreach-quality/gen-baseline.mjs
 PROMPT_VARIANT=v3       node scripts/outreach-quality/gen-baseline.mjs
+PROMPT_VARIANT=v3-link  node scripts/outreach-quality/gen-baseline.mjs
 # ...add v4+ as new entries in the systemByVariant map + versions changelog
 
 # 3. review
@@ -120,6 +121,18 @@ node scripts/outreach-quality/review-server.mjs   # prints a localhost URL
   Bored Ape 1, Mozilla 0, Bot Busters 0, no Work Example 5. Reviewed by Randall: four strong
   structural outcomes, two material failures among the good/medium set, and two non-actionable
   matches excluded from prompt-tuning signal. Do not port before cross-style validation.
+- `v3-link` — single lever on v3 fixing Randall's #1 issue (2026-07-14): the model copied each
+  used example's link into `insertedExample` metadata but never wrote it into the message body,
+  so the reader could never click through to the work (v3: 0/5 example-bearing bodies had the
+  link; production has the same permissive "at most one link" wording). v3-link makes the body
+  link a hard requirement whenever a Work Example is used, keeps the one-link cap, and adds the
+  exact (non-heuristic) `exampleLinkMissing` auto-metric checked against the matched compiled
+  example. Generated 2026-07-14: 10/10 valid, **7/7 example-bearing bodies contain the exact
+  link**, 0 over 750 (avg 630), 0 Q4 brag tags, 3 nautical, 3 concession openers. Watch-outs
+  for review: example usage rose 5→7 and P.H.R.E.D. took 6 of 7 (selection bias unchanged —
+  known v4 target), and the invented doc-count tic reappeared in 2 messages ("forty disconnected
+  docs", "ten docs" — profile mentions no doc counts; v4 invention lever). Kept isolated on
+  purpose; full v4 still waits on the 28-cell matrix review.
 
 ## Next steps
 
@@ -153,6 +166,14 @@ node scripts/outreach-quality/review-server.mjs   # prints a localhost URL
       five-category ratings/comments, blind-first voice identification, safe partial autosave
       merging, and responsive verification at 320/375/390/1280/1440. Randall completed the blind
       check on 2026-07-14: 4/8 correct. Labeled review remains 0/28.
+- [x] **Fix the #1 issue — Work Example links never reached the message body.** Diagnosed
+      2026-07-14: the data path was intact end to end (all 4 examples carry `link: true` in the
+      frozen audit; `insertedExample.link` present on every example-bearing v3 message) but 0/5
+      bodies contained a URL — the prompt's permissive "at most one link" line never required it,
+      and production `outreach-generator.ts` has the identical gap. Fixed as the isolated
+      `v3-link` variant + exact `exampleLinkMissing` metric (console meter + scorecard, `n/a` on
+      older corpora): 7/7 example-bearing bodies now contain the exact link. Needs Randall's
+      console review (link placement quality) before the lever is folded into v4/production.
 - [ ] **Complete the human matrix review before authoring v4.** Automated findings identify
       candidate targets, not final prompt requirements:
       1. **Evidence selection independent of expression.** P.H.R.E.D. was the only selected Work

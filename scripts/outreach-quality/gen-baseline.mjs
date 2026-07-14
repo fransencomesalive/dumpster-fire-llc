@@ -3,8 +3,8 @@
 // so the corpus reflects what ships today. Self-contained: reads profile.md +
 // scan-jobs.json from this dir, calls Anthropic directly, writes baseline.md.
 //
-// A `PROMPT_VARIANT` env selects which system prompt to use ("baseline" | "v2" | "v3")
-// so later A/B runs reuse the same harness without editing prod code.
+// A `PROMPT_VARIANT` env selects which system prompt to use ("baseline" | "v2" | "v3"
+// | "v3-link") so later A/B runs reuse the same harness without editing prod code.
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -172,7 +172,29 @@ const v3System = [
   "insertedExample is the exact Work Example used, or null if none was used.",
 ].join("\n");
 
-const systemByVariant = { baseline: baselineSystem, v2: v2System, v3: v3System };
+// ---- v3-link: v3 + ONE lever — the #1 issue from Randall's v3/matrix review (2026-07-14).
+// The model copied each used example's link into insertedExample metadata (as told) but never
+// wrote it into the message body, so the reader could never click through to the work. This
+// variant makes the body link a hard requirement whenever a Work Example is used. Isolated on
+// purpose: the full v4 (selection bias, persona length, Q4 leak) waits on the matrix review.
+const v3LinkSystem = v3System
+  .replace(
+    "from the profile so selection can be audited.",
+    [
+      "from the profile so selection can be audited. When the example you use has a link, the message",
+      "body MUST contain that exact link — the reader has to be able to click through to the work.",
+      "Place it where it naturally backs the evidence, mid-thought, not dangling as a bare footer.",
+    ].join("\n"),
+  )
+  .replace(
+    "- Include at most one link, only when it directly supports the selected evidence.",
+    "- At most one link total. If you used a Work Example that has a link, that is the link — include\n  it verbatim in the body. Never link to anything that is not in the profile.",
+  );
+if (!v3LinkSystem.includes("MUST contain that exact link") || !v3LinkSystem.includes("that is the link")) {
+  throw new Error("v3-link lever failed to apply — v3 anchor text changed");
+}
+
+const systemByVariant = { baseline: baselineSystem, v2: v2System, v3: v3System, "v3-link": v3LinkSystem };
 const variant = process.env.PROMPT_VARIANT || "baseline";
 const system = systemByVariant[variant];
 if (!system) { console.error(`unknown PROMPT_VARIANT ${variant}`); process.exit(1); }
@@ -237,12 +259,24 @@ const variantMeta = {
       "Reserves concession openers for unsupported hard requirements and strengthens anti-authority language.",
       "Uses exact inserted-example metadata for auditability and reins messages to 750 characters maximum.",
     ],
+  },  "v3-link": {
+    label: "v3-link — example link must reach the body",
+    changeNotes: [
+      "Single lever on top of v3 (kept isolated; full v4 waits on the 28-cell matrix review).",
+      "When a Work Example is used and has a link, the message body MUST contain that exact link so the reader can click through to the work.",
+      "Link placement guidance: mid-thought where it backs the evidence, never a bare footer.",
+      "One-link cap kept; the used example's link takes the slot; never link outside the profile.",
+      "New auto-metric exampleLinkMissing: flags any message whose used example has a link the body omits (checked against the matched compiled example, not just returned metadata).",
+    ],
   },
 };
 
 // ---- Auto-metric detectors. Heuristic/regex — a trend signal for the review console,
 // not ground truth. Tunable later. Each returns a small number or 0/1.
-function computeMetrics(message) {
+// exampleLinkMissing is exact, not heuristic: 1 when the used Work Example has a link the
+// body omits. Checked against the matched compiled example (falls back to returned
+// metadata) so a model that drops the link from insertedExample can't dodge the flag.
+function computeMetrics(message, exampleLink) {
   const m = message || "";
   const head = m.slice(0, 90);
   const tail = m.slice(-140);
@@ -254,6 +288,7 @@ function computeMetrics(message) {
     concessionOpener: /straight up|i'?ll be straight|i'?ll be honest|let me be honest|up ?front|to be honest|not going to pretend/i.test(head) ? 1 : 0,
     tellsWhatTheyWant: /^\W*you'?re (?:looking|hunting|after|chasing)|^\W*you want|^\W*you need/i.test(head) ? 1 : 0,
     q4BragTag: /\bI do\.|I'?m not one of them|don'?t (?:quite )?(?:understand|know what)/i.test(tail) ? 1 : 0,
+    exampleLinkMissing: exampleLink ? (m.includes(exampleLink) ? 0 : 1) : 0,
     length: m.length,
   };
 }
@@ -322,7 +357,7 @@ for (const pick of picks) {
     message: msg,
     insertedExample: inserted,
     workExampleSelection,
-    metrics: computeMetrics(msg),
+    metrics: computeMetrics(msg, selectedWorkExample?.link || inserted?.link || null),
   });
 
   out.push(
@@ -388,4 +423,6 @@ console.log("\nWork Example selection spread:");
 Array.from(selectionCounts.entries()).forEach(([key, value], index) => console.log(`- example ${index + 1} (${key}): ${value.count}`));
 console.log(`- no Work Example: ${messages.filter((message) => !message.insertedExample).length}`);
 if (unmatchedSelections > 0) console.log(`- unmatched insertedExample: ${unmatchedSelections}`);
+const linkMisses = messages.filter((message) => message.metrics.exampleLinkMissing === 1).length;
+console.log(`- example link missing from body: ${linkMisses}/${messages.filter((message) => message.insertedExample).length} example-bearing messages`);
 console.log(`\nwrote data/corpus-${variant}.json + froze prompt/profile/Work Example audit + updated versions.json`);

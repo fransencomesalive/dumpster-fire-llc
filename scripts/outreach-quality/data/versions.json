@@ -33,5 +33,17 @@
       "Reserves concession openers for unsupported hard requirements and strengthens anti-authority language.",
       "Uses exact inserted-example metadata for auditability and reins messages to 750 characters maximum."
     ]
+  },
+  {
+    "id": "v3-link",
+    "label": "v3-link — example link must reach the body",
+    "createdAt": "2026-07-14T17:46:45.042Z",
+    "changeNotes": [
+      "Single lever on top of v3 (kept isolated; full v4 waits on the 28-cell matrix review).",
+      "When a Work Example is used and has a link, the message body MUST contain that exact link so the reader can click through to the work.",
+      "Link placement guidance: mid-thought where it backs the evidence, never a bare footer.",
+      "One-link cap kept; the used example's link takes the slot; never link outside the profile.",
+      "New auto-metric exampleLinkMissing: flags any message whose used example has a link the body omits (checked against the matched compiled example, not just returned metadata)."
+    ]
   }
 ]
