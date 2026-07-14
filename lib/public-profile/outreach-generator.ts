@@ -49,30 +49,135 @@ export type OutreachGeneratorDependencies = {
   callModel?: OutreachModelCall;
 };
 
+// v4 prompt, ported 2026-07-14 from the message-gen-refinement harness after Randall's
+// approval (frozen source of truth: scripts/outreach-quality/data/prompts/v4.txt — keep
+// them identical). Deliberately user-agnostic: nothing here may reference one user's
+// tics, projects, or credentials. Iterate in the harness first, never here directly
+// (docs/message-gen-refinement-track.md).
 const systemPrompt = [
-  "You write outreach messages AS the person described in the profile below.",
-  "The profile is a markdown document that begins with a Voice Profile — a",
-  '"write like this" fingerprint. Obey it: match their tone, do/don\'t lists,',
-  "and never use any pattern marked as never-sound-like-this.",
+  "You write a single outreach message AS the person described in the profile below — a real",
+  "first-touch note to one hiring contact about one job.",
   "",
-  // House rules replace the retired per-user Outreach Rules section: every
-  // message follows these defaults instead of user-configured rule lists.
-  "House rules for every message:",
-  "- Keep it short, specific, and human — never corporate boilerplate, never a mass-template feel.",
-  "- Include at most one link, and only when it directly backs up the point being made.",
-  "- This is a single first touch: no promised follow-ups, no references to earlier messages.",
+  "VOICE",
+  "The profile begins with a Voice Profile. Match its tone and rhythm, but voice is HOW you say",
+  "things, not a script. Its exemplar lines demonstrate register, not vocabulary to reuse: do NOT",
+  "borrow their specific imagery, metaphor domains, or signature phrases. Most messages need no",
+  "colorful flourish at all; use at most one, only when it lands naturally, and make it fresh",
+  "rather than an echo of an exemplar. Never use a pattern marked never-sound-like-this.",
   "",
-  "Write ONE short outreach message to the given contact about the given job.",
-  "Lead with the strongest matching substance. Draw concrete proof from the",
-  "profile — any of: a Work Example (weave in its one-hitter, and its link if",
-  "present), a Skill with its evidence, or a Resume highlight (a specific stat or",
-  "company). Use only genuinely relevant proof — one or two points is usually",
-  "plenty. Do not invent facts not in the profile.",
+  "The opinion the person will defend is private reasoning input, not message copy. Never quote or",
+  "announce it. Never turn it into a judgment about the reader, their company, or what other people",
+  "understand. If relevant, translate the principle into first-person evidence: what this person did,",
+  "noticed, changed, or learned. Otherwise leave it out.",
+  "",
+  "FIT AND RESPECT",
+  "Confident, accurate, and respectful. The reader knows their company and field better than you do.",
+  "- Never criticize a former or target employer to establish insider credibility. Prior experience",
+  "  there should read as familiarity, respect, and useful context.",
+  "- Do not tell the reader what their job is really about, or reduce their discipline to yours. Ban",
+  "  constructions like 'the whole game,' 'the whole job description,' and 'an X problem dressed as",
+  "  a Y problem.'",
+  "- State opinions and generalizations about how work goes as first-person experience ('in my",
+  "  experience,' 'I've found,' 'for me'), never as declared fact about the reader's world. One",
+  "  light hedge where it's needed; don't make hedging a tic either.",
+  "- Never open the message by declaring what a problem, a discipline, or a kind of work 'is' or",
+  "  'isn't.' If that observation matters, it comes later and it is framed as this person's own",
+  "  experience, not a truth the reader needs explained.",
+  "- Before conceding a gap, check the full profile: Role Tracks, résumé highlights, skills, and Work",
+  "  Examples. Never say the person lacks experience that the profile supports. A different current",
+  "  title is not proof they lack the capability.",
+  "- Open with a concession only when a concrete hard requirement is genuinely unsupported. For a",
+  "  good overlap, open on specific evidence. Keep any necessary caveat brief and factual.",
+  "",
+  "WORK EXAMPLE INVENTORY",
+  "The Work Examples section is a complete candidate inventory. Silently consider EVERY Work Example",
+  "against this specific job before choosing substance. Do not default to the most familiar example:",
+  "when two examples are comparably relevant, pick the one whose domain most closely matches this",
+  "job's domain. It is fine to use no Work Example when résumé or skill evidence is stronger. Never",
+  "bend an example to fit. If you use one, insertedExample must copy that example's one-hitter and",
+  "optional link EXACTLY from the profile so selection can be audited. When the example you use has",
+  "a link, the message body MUST contain that exact link — the reader has to be able to click",
+  "through to the work. Place it where it naturally backs the evidence, mid-thought, not dangling",
+  "as a bare footer.",
+  "",
+  "SUBSTANCE",
+  "Use one or two concrete points. Prefer verified first-person facts over positioning claims.",
+  "Consider the FULL set of résumé highlights and skills, not just the most famous credentials:",
+  "pick what is most relevant to THIS job, use at most two résumé highlights per message, and do",
+  "not lean on the same marquee names or the same highlight sentence in every message. Never",
+  "invent facts, responsibilities, insider details, or embellished precision. Avoid residual brag",
+  "tags such as 'I do,' 'I'm dangerous in this seat,' or claims that others do not understand the",
+  "work.",
+  "",
+  "NUMBERS — hard rule",
+  "Every number in the message, written as digits or as words, must appear in the profile. No",
+  "exceptions for color or rhythm: if you are tempted to quantify an illustration ('a dozen tools,'",
+  "'scattered across fifteen docs'), describe it without the count instead. When in doubt, no",
+  "number.",
+  "",
+  "FORM",
+  "- Aim for 550–700 characters. 750 characters is a HARD cap: if a draft runs long, cut evidence",
+  "  or trim sentences. Never exceed it.",
+  "- The opening line must be a complete, standalone sentence — never a fragment, never a",
+  "  dropped-subject construction. Fragments may appear later in the message, never first.",
+  "- Use the reader's own vocabulary: never coin role-family jargon or industry terms that are not",
+  "  in the job posting or the profile.",
+  "- Short, specific, human, and complete. No corporate boilerplate or mass-template feel.",
+  "- Never use an em dash (—) anywhere in the message, even if the profile or voice examples",
+  "  contain them. Restructure the sentence or reach for other punctuation instead: commas,",
+  "  parentheses, semicolons, colons, or a new sentence.",
+  "- At most one link total. If you used a Work Example that has a link, that is the link — include",
+  "  it verbatim in the body. Never link to anything that is not in the profile.",
+  "- This is a single first touch: no promised follow-ups or references to earlier messages.",
   "",
   "Output ONLY a JSON object, no prose, no markdown fences:",
   '{"message": string, "insertedExample": {"oneHitter": string, "link"?: string} | null}.',
-  "insertedExample is the Work Example you used, or null if you used none.",
+  "insertedExample is the exact Work Example used, or null if none was used.",
 ].join("\n");
+
+// ---- Hard-rule contract (message-gen-refinement, 2026-07-14). Prompt-only enforcement
+// measurably leaked in the harness (750-cap and invented-count violations recurred across
+// rounds), so every generated message is validated and regenerated when it breaks a hard
+// rule. All checks are PROFILE-INDEPENDENT — they hold for any user's career. A message
+// still violating after MAX_GENERATION_ATTEMPTS is returned anyway (the user can edit a
+// near-miss; a hard failure helps no one) and the violations are logged.
+const MAX_GENERATION_ATTEMPTS = 3;
+const MESSAGE_HARD_CAP = 750;
+const NUMBER_WORDS = [
+  "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve",
+  "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen",
+  "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety",
+  "hundred", "thousand", "dozen",
+];
+const NUMBER_WORD_PATTERN = new RegExp(`\\b(${NUMBER_WORDS.join("|")})\\b`, "g");
+
+// Numbers must come from the profile. Digits ground digits; number-words ground only as
+// words ("15+" in the profile does not license "fifteen docs" — describe without the
+// count). "one"/"two" are skipped as overwhelmingly rhetorical.
+function ungroundedNumbers(message: string, profileMarkdown: string): string[] {
+  const profile = profileMarkdown.toLowerCase();
+  const found: string[] = [];
+  for (const match of message.matchAll(/\d[\d,.]*/g)) {
+    const token = match[0].replace(/[.,]+$/, "");
+    if (token && !profile.includes(token.toLowerCase())) found.push(token);
+  }
+  for (const match of message.toLowerCase().matchAll(NUMBER_WORD_PATTERN)) {
+    if (!profile.includes(match[1])) found.push(match[1]);
+  }
+  return [...new Set(found)];
+}
+
+export function outreachHardRuleViolations(outreach: OutreachMessage, profileMarkdown: string): string[] {
+  const violations: string[] = [];
+  const body = outreach.message;
+  if (body.length > MESSAGE_HARD_CAP) violations.push(`over_${MESSAGE_HARD_CAP}_characters(${body.length})`);
+  if (body.includes("—")) violations.push("em_dash_present");
+  const link = outreach.insertedExample?.link;
+  if (link && !body.includes(link)) violations.push("example_link_missing_from_body");
+  const numbers = ungroundedNumbers(body, profileMarkdown);
+  if (numbers.length > 0) violations.push(`ungrounded_numbers(${numbers.join("/")})`);
+  return violations;
+}
 
 // Split the outreach prompt into the per-user-stable profile.md (cacheable across every
 // message the user generates) and the per-message job + contact tail. Keeping them apart
@@ -157,14 +262,7 @@ const defaultCallModel: OutreachModelCall = async ({ system, user, cachePrefix }
   }
 };
 
-export async function generateOutreachMessage(
-  input: OutreachGeneratorInput,
-  dependencies: OutreachGeneratorDependencies = {},
-): Promise<OutreachMessage | undefined> {
-  const callModel = dependencies.callModel ?? defaultCallModel;
-  const { cachePrefix, tail } = buildOutreachPromptParts(input);
-  const raw = await callModel({ system: systemPrompt, user: tail, cachePrefix });
-  if (!raw) return undefined;
+function parseOutreachModelResponse(raw: string): OutreachMessage | undefined {
   const jsonText = extractJsonObject(raw);
   if (!jsonText) return undefined;
   try {
@@ -177,6 +275,32 @@ export async function generateOutreachMessage(
   } catch {
     return undefined;
   }
+}
+
+export async function generateOutreachMessage(
+  input: OutreachGeneratorInput,
+  dependencies: OutreachGeneratorDependencies = {},
+): Promise<OutreachMessage | undefined> {
+  const callModel = dependencies.callModel ?? defaultCallModel;
+  const { cachePrefix, tail } = buildOutreachPromptParts(input);
+
+  // Validate-and-retry loop over the hard-rule contract. Unparseable responses retry too;
+  // a missing response (no key / call failed after the SDK's own retries) does not.
+  let best: { outreach: OutreachMessage; violations: string[] } | undefined;
+  for (let attempt = 1; attempt <= MAX_GENERATION_ATTEMPTS; attempt += 1) {
+    const raw = await callModel({ system: systemPrompt, user: tail, cachePrefix });
+    if (!raw) break;
+    const outreach = parseOutreachModelResponse(raw);
+    if (!outreach) continue;
+    const violations = outreachHardRuleViolations(outreach, input.profileMarkdown);
+    if (violations.length === 0) return outreach;
+    if (!best || violations.length < best.violations.length) best = { outreach, violations };
+  }
+  if (best) {
+    console.warn("[llm:outreach] hard-rule violations unresolved after retries", { violations: best.violations });
+    return best.outreach;
+  }
+  return undefined;
 }
 
 export type OutreachRequestIssue = { field: string; message: string };

@@ -3,6 +3,7 @@ import {
   buildOutreachUserPrompt,
   generateOutreachMessage,
   generateOutreachMessageForUser,
+  outreachHardRuleViolations,
   parseOutreachRequest,
 } from "../lib/public-profile/outreach-generator.ts";
 import { completeCandidateProfileAggregate } from "./fixtures/public-profile.ts";
@@ -12,8 +13,10 @@ const now = "2026-06-27T00:00:00.000Z";
 const job = { title: "Program Director", company: "Useful Studio", description: "Lead ambiguous cross-functional delivery." };
 const contact = { name: "Dana", role: "Hiring Manager", seniority: "Director" };
 
+// Hard-rule-compliant fixture: no em dash, no numbers absent from the profile, and the
+// inserted example's link appears in the body (the v4 contract).
 const modelJson = JSON.stringify({
-  message: "Hi Dana — I cut workflow turnaround 40% in two quarters; would love to talk about the Program Director role.",
+  message: "Hi Dana, systems before acceleration is how I run delivery; the write-up lives at https://example.com/phred. Would love to talk about the Program Director role.",
   insertedExample: { oneHitter: "Cut workflow turnaround 40% in two quarters.", link: "https://example.com/phred" },
 });
 
@@ -58,6 +61,44 @@ assert.equal(noExample.insertedExample, null);
 // 4. Graceful degradation: no model output / malformed -> undefined.
 assert.equal(await generateOutreachMessage({ profileMarkdown: "x", job, contact }, { callModel: async () => undefined }), undefined);
 assert.equal(await generateOutreachMessage({ profileMarkdown: "x", job, contact }, { callModel: async () => "not json" }), undefined);
+
+// 4b. Hard-rule contract: violating responses are regenerated; a compliant retry wins.
+const emDashJson = JSON.stringify({ message: "Hi Dana — direct note about the role.", insertedExample: null });
+const cleanJson = JSON.stringify({ message: "Hi Dana, direct note about the role.", insertedExample: null });
+{
+  const responses = [emDashJson, cleanJson];
+  let calls = 0;
+  const retried = await generateOutreachMessage(
+    { profileMarkdown: "x", job, contact },
+    { callModel: async () => { calls += 1; return responses.shift(); } },
+  );
+  assert.equal(calls, 2, "violating first attempt must trigger a retry");
+  assert.ok(retried);
+  assert.equal(retried.message.includes("—"), false);
+}
+
+// 4c. Hard-rule contract: after exhausting attempts, the best near-miss is returned.
+{
+  let calls = 0;
+  const stubborn = await generateOutreachMessage(
+    { profileMarkdown: "x", job, contact },
+    { callModel: async () => { calls += 1; return emDashJson; } },
+  );
+  assert.equal(calls, 3, "retries are bounded");
+  assert.ok(stubborn, "a near-miss beats returning nothing");
+  assert.match(stubborn.message, /direct note/);
+}
+
+// 4d. Violation detection: cap, em dash, missing example link, ungrounded numbers.
+const profileWithNumbers = "## Résumé\n- Cut workflow turnaround 40% in two quarters (15+ years).";
+assert.deepEqual(outreachHardRuleViolations({ message: "Hi Dana, I cut turnaround 40% and the write-up is at https://x.co/a. Worth a chat?", insertedExample: { oneHitter: "x", link: "https://x.co/a" } }, profileWithNumbers), []);
+assert.ok(outreachHardRuleViolations({ message: "x".repeat(751), insertedExample: null }, profileWithNumbers)[0].startsWith("over_750_characters"));
+assert.deepEqual(outreachHardRuleViolations({ message: "Hi — there.", insertedExample: null }, profileWithNumbers), ["em_dash_present"]);
+assert.deepEqual(outreachHardRuleViolations({ message: "No link here.", insertedExample: { oneHitter: "x", link: "https://x.co/a" } }, profileWithNumbers), ["example_link_missing_from_body"]);
+assert.deepEqual(outreachHardRuleViolations({ message: "I wrangled forty docs.", insertedExample: null }, profileWithNumbers), ["ungrounded_numbers(forty)"]);
+// "15+" in the profile grounds the digits 15, but not the word "fifteen".
+assert.deepEqual(outreachHardRuleViolations({ message: "Spent 15 years doing this.", insertedExample: null }, profileWithNumbers), []);
+assert.deepEqual(outreachHardRuleViolations({ message: "Spent fifteen years doing this.", insertedExample: null }, profileWithNumbers), ["ungrounded_numbers(fifteen)"]);
 
 // 5. Request validation.
 const badRequest = parseOutreachRequest({ job: { title: "" }, contact: {} });
