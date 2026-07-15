@@ -128,6 +128,25 @@ https://supabase.com/dashboard/account/tokens if missing.
   commits that pair code + migration, apply the migration immediately after (or before)
   the push, not at next-session pickup.
 
+## Applied 2026-07-15, second batch (confirmed + recorded in schema_migrations)
+
+Private pasted jobs (Randall's decision 2026-07-15: "a pasted job is exclusive to that
+user"), applied as a two-phase pair around deploy `d74eec3`:
+
+- `20260715000100_jobs_owner_user.sql` — adds `jobs.owner_user_id uuid` (FK auth.users,
+  on delete cascade; null = shared pool), unique index `jobs_source_url_owner_key`
+  `(source, source_url, owner_user_id) nulls not distinct`, and owner-scopes the
+  `jobs_read_authenticated` RLS policy. Validated on throwaway local PG 16 (clean +
+  idempotent reapply, uniqueness/cascade semantics), applied via Management API BEFORE
+  the deploy (old code unaffected; old 2-col key retained as its conflict target).
+- `20260715000200_jobs_drop_global_source_url_key.sql` — drops the global
+  `jobs_source_source_url_key` AFTER deploy `d74eec3` was verified live (new dashboard
+  chunk + corrected OG confirmed serving), enabling per-user private copies of the same
+  pasted URL. Post-checks: old constraint gone, new index present, history rows
+  `jobs_owner_user` + `jobs_drop_global_source_url_key` recorded.
+- Cleanup with the pair: the orphaned 07-15 QA `user_link` row (Reddit posting, owner
+  account deleted) was removed; `user_link` rows in prod = 0 at that point.
+
 ## NOT yet applied to production
 
 - None outstanding.

@@ -1,5 +1,34 @@
 # Current State
 
+## 2026-07-15 (later) - Private pasted jobs + pursue-a-link entry + OG overprint fix SHIPPED (Claude)
+
+Commit `d74eec3`, deployed and verified live; migrations `20260715000100`/`20260715000200`
+applied around the deploy (see `docs/database-migration-state.md`).
+
+1. **Pasted jobs are private to the pasting user** (Randall's call). `jobs.owner_user_id`
+   (null = shared pool): owner-scoped from-link dedupe, scan candidates, and RLS read
+   policy; pursuit create + match return 404 for another user's job (indistinguishable
+   from nonexistent); `/api/jobs/save` was already safe via scan-results gating. Verified
+   on prod with two temp QA users (created then deleted): B cannot read/pursue/match/scan
+   A's pasted job; B pasting the same URL gets an own private copy; A still dedupes to
+   A's copy; shared-pool upsert works against the new 3-col conflict target.
+2. **Pursue-a-link entry SHIPPED** — the approved Dashboard Jobs card block ("Found a job
+   somewhere else?") at the top of the results column, wired to `POST /api/jobs/from-link`
+   and straight into the Human Path wizard. This closes the missing front door to the
+   external-job-link feature. Breakpoints verified 320-1440; orphan fix (nbsp) applied in
+   card + implementation.
+3. **Duplicate pursuit fixed end to end** — backend returns 409 `already_pursuing` with
+   the existing pursuit (was an empty 500 from the unique-key collision), and the wizard
+   resumes that pursuit (reads contacts/messages, recomputes match).
+4. **OG share image corrected** (Randall-approved OG Share revision): wordmark now uses
+   the hero-matchbook overprint (tomato slip on top, multiply blend) so the overlap
+   darkens exactly like the homepage. Render source `design-system/components/
+   og-share-compose.html` (1200×630); `public/og-share.png` regenerated and verified
+   serving on prod.
+5. **Design-flow correction (standing)**: the 07-14 Codex UI shipped without Claude
+   Design approval; the gate applies to the change regardless of implementer. Proposed
+   AGENTS.md rule pending Randall's decision (see conversation 2026-07-15).
+
 ## 2026-07-15 - Codex handoff closed out: regen migration live, both features prod-verified, DS cards registered (Claude)
 
 Completed all three open items from `docs/codex-handoff-external-job-link-2026-07-14.md`:
