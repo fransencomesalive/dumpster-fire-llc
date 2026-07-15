@@ -2171,6 +2171,7 @@ export default function OnboardingClient({
                       <div className={styles.dropMain}>
                         <span className={styles.dropTitle}>Drop a PDF here, or choose a file</span>
                         <span className={styles.dropHint}>PDF only · read once to pull quotable highlights · not stored</span>
+                        <span className={styles.dropHint}>We pull straight from your résumé. The output is as good as the input so make sure it&apos;s been vetted, improved, and properly&nbsp;formatted.</span>
                       </div>
                     )}
                     <button
@@ -2382,7 +2383,7 @@ export default function OnboardingClient({
           {/* --- Work Examples --- */}
           <article className={styles.formCard} id="career-profile-workExamples">
             {perTrackHeader("Work Examples", () => { setDraftWorkExample(emptyWorkExample()); setOpenWorkExampleId(null); }, "Add work example")}
-            {cardIntro("Add examples of your work that are worth mentioning to hiring managers. The one-hitter is the punchy line that can drop straight into a message.")}
+            {cardIntro("Add examples of your work that are worth mentioning to hiring managers. The one-hitter is the punchy line that can drop straight into a message. We pull examples that are relevant to jobs you pursue. Be specific in context so it matches right.")}
             {workExamples.length === 0 && !draftWorkExample ? (
               <p className={styles.emptyState}>No work examples yet. Hit + and add a few with a punchy one-hitter and the context behind it.</p>
             ) : (
