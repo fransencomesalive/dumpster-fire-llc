@@ -83,5 +83,73 @@
       "Pre-review revision (same day): first draft leaked 3 invented counts, kept a declared-fact opener, and echoed the fingerprint's imagery in 8/12 messages once the user-specific ban was generalized. Sharpened: exemplars demonstrate register not vocabulary (most messages need no flourish); NUMBERS promoted to a standalone hard rule (every number must appear in the profile); never open by declaring what a problem/discipline 'is/isn't'; at most two résumé highlights per message."
     ],
     "regeneratedAt": "2026-07-14T20:40:36.500Z"
+  },
+  {
+    "id": "v5",
+    "label": "v5 — blocker fixes: register-only fingerprint + no-admission default",
+    "createdAt": "2026-07-14T22:46:51.658Z",
+    "changeNotes": [
+      "Runs against the REVISED voice-fingerprint pre-pass (register-only: describes HOW the person writes, never their imagery/phrases; neutral-subject exemplars). Randall blocker: one user's quirks must never template their messages.",
+      "Register rule broadened from exemplar lines to ALL writing samples in the profile (the raw samples still carry signature imagery).",
+      "No-admission default (Randall blocker): never apologize for, acknowledge, or disclaim thin/missing experience; thin evidence means a shorter, plainer message, not a confession. Only a stated concrete hard requirement (location/license/clearance/fluency) gets one brief factual flag, never as the opener.",
+      "Work Examples must be referred to by their actual profile titles (v4 invented 'Project OS' for P.H.R.E.D.)."
+    ],
+    "regeneratedAt": "2026-07-14T22:57:07.434Z"
+  },
+  {
+    "id": "v6",
+    "label": "v6 — v5 review notes: first-person opener (hard), no logistics talk (hard)",
+    "createdAt": "2026-07-14T23:47:17.647Z",
+    "changeNotes": [
+      "Opening sentence must be first-person-anchored — now a HARD rule with auto-retry (the declarative 'The problem with X is...' opener survived three prompt-wording attempts on the same Coinbase cell; humility rated 1).",
+      "Never open on the job title as a bare label or any fragment (Figma cell opened 'Brand Producer for the Brand Studio team, and...').",
+      "STANDING RULE (Randall): never discuss, volunteer, or claim logistics — location, remote, hybrid, in-office, relocation, availability. Location removed from the hard-requirement exception; new hard-rule detector (the Anthropic events cell fabricated 'can be in-office as needed').",
+      "Example selection matches format as well as domain: an events job wants the physical-event example (Mozilla tradeshow), not digital launches (AirCover/ZKP).",
+      "The closing line's intent must be unambiguous: an ask reads as a direct question, a statement as a statement (Randall clarified: the Ramp cell was a grammar/clarity defect that left the goal unclear, not a make-everything-a-question rule).",
+      "Closers must be specific to the job or the evidence ('Worth a conversation?' converged on 11/12 messages in the first v6 roll). Randall: these are NOT banned terms — the defect is the near-identical repetition across messages, which users would read as lazy output or poor LLM guidance; specificity is the fix because a job-specific ask can't repeat.",
+      "Not rule-addressed: the 'lean on people' diction miss in the Figma cell — one-off word choice, flagged for review only."
+    ],
+    "regeneratedAt": "2026-07-15T00:03:40.800Z"
+  },
+  {
+    "id": "v7",
+    "label": "v7 — regression fix: rules outrank voice, prose-quality bar, no fabricated domains",
+    "createdAt": "2026-07-15T01:47:58.937Z",
+    "changeNotes": [
+      "Responds to the v6 regression (avg 5.09, four cells rated 1s). Root causes found: the register-only fingerprint PRESCRIBED devices ('use fragments,' 'easy confidence,' 'open cold') that beat the prompt's rules every roll, and quality-blind retries (10/12) selected sloppy-but-compliant rolls.",
+      "Fingerprint pre-pass revised a second time: describes voice QUALITIES only, never grammatical/rhetorical devices; Randall's profile regenerated with it.",
+      "Rules outrank the Voice Profile — stated explicitly, including that hedging beats voice confidence ('in my experience' markers required on opinions; skipped twice before because the old fingerprint said to state opinions with easy confidence).",
+      "Fragment cap: at most ONE deliberate fragment per message regardless of voice guidance; everything else complete and correctly punctuated (fragments were 'way too over indexed').",
+      "Prose-quality bar: no sentence-final prepositions, no close word repetition, no same-shape sentence stacks ('I did X. I did Y.'), no invented shorthand ('a rep').",
+      "Never manufacture domain experience — no skills, duties, or scenes the profile doesn't contain (the events cell invented show-calling/live-event claims); thin domain = shorter honest message.",
+      "Never characterize the reader's company or the job negatively (the Airbnb cell called the work a 'grind' and implied lack of authority). Direct is not negative.",
+      "Prior employment phrased respectfully ('Having worked at X, Y is familiar ground'), never dismissively ('I already did that there'). Company-familiarity openers preferred over cold posting-line references.",
+      "Length target now 500–650 (750 stays the hard cap) and 'a dozen' named in NUMBERS — both to cut the retry pressure that was trading prose quality for compliance."
+    ],
+    "regeneratedAt": "2026-07-15T01:54:22.685Z"
+  },
+  {
+    "id": "v7-b3",
+    "label": "v7 · job batch 3 — new companies, wider variation",
+    "createdAt": "2026-07-15T02:12:30.706Z",
+    "changeNotes": [
+      "Same v7 prompt, generated on a NEW 12-job batch (Randall: keep growing sample size and variation).",
+      "Four companies batch 2 never touched: Spotify (Producer, The Journal; Editorial Product PM), Stripe (GTM Ops Process Architect; Corporate Events Manager), Dropbox (Sr GRC Program Manager), Robinhood (Crypto Partnerships; ACD Copy) — plus fresh roles at Anthropic, Figma, OpenAI, Airbnb, Discord.",
+      "Standing sampling rules held: id-keyed picks, max 2 per company, no language gates, no never-apply padding; fit spread 4 good / 5 medium / 3 stretch.",
+      "The Stripe Corporate Events cell deliberately re-tests the events axis (fabricate-vs-confess) on a fresh job.",
+      "New jobs have no prior-version history in the console; judge fresh."
+    ],
+    "regeneratedAt": "2026-07-15T02:21:08.089Z"
+  },
+  {
+    "id": "v8",
+    "label": "v8 — b3 notes: specific-referent closers, same-shape stacking now a hard rule",
+    "createdAt": "2026-07-15T02:40:53.961Z",
+    "changeNotes": [
+      "Runs on job batch 3 so the console shows before/after against the v7-b3 cells Randall just rated (avg 6.81, 10/12 at 7–8).",
+      "Closers carry their job-specific referent in the same sentence — a bare 'Can we talk?' reads desperate (Spotify Editorial cell). Conditional shape offered: 'If you're looking for X, we should chat.'",
+      "Same-shape sentence stacking ('I did this. I did that.') promoted to a HARD rule with auto-retry — the Discord cell rated 3s was a 5-attempt retry survivor; prose advice can't guard retry survivors, detectors can.",
+      "Prose bar now leads with a read-aloud test (Figma cell's 'because most of what I do is exactly this' was rated awkward)."
+    ]
   }
 ]

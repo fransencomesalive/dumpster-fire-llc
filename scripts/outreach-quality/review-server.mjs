@@ -291,6 +291,10 @@ const METERS = [
   ["exampleLinkMissing","Example link missing","flag"],
   ["emDash","Em dash","count"],
   ["ungroundedNumber","Ungrounded number","count"],
+  ["openerNoFirstPerson","Opener not first-person","flag"],
+  ["logisticsMention","Logistics mention","flag"],
+  ["admissionPresent","Admission/disclaimer","flag"],
+  ["sameShapeStack","Same-shape stack","flag"],
   ["length","Length","len"],
 ];
 let STATE=null, CUR=null;

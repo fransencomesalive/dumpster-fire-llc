@@ -308,6 +308,281 @@ const v4System = [
   "insertedExample is the exact Work Example used, or null if none was used.",
 ].join("\n");
 
+// ---- v5: the two blocker levers (Randall, 2026-07-14) + example-title fidelity, meant to
+// run against the REVISED register-only fingerprint (voice-fingerprint.ts, same day):
+//   1. Register rule broadened from exemplar lines to ALL writing samples in the profile —
+//      the raw samples below the fingerprint still carry the user's signature imagery.
+//   2. No-admission default (Blocker 2): never apologize for / acknowledge / disclaim thin
+//      or missing experience; thin evidence = shorter plainer message, not a confession.
+//      Only a concrete stated hard requirement gets one brief factual flag, never as the
+//      opener. Replaces v4's "open with a concession when unsupported" allowance.
+//   3. Work Examples must be referred to by their actual profile titles (v4's OpenAI cell
+//      invented the name "Project OS" for P.H.R.E.D.).
+const v5System = v4System
+  .replace(
+    "Its exemplar lines demonstrate register, not vocabulary to reuse: do NOT\nborrow their specific imagery, metaphor domains, or signature phrases.",
+    "Its exemplar lines and ANY writing samples elsewhere in the profile demonstrate register,\nnot vocabulary to reuse: do NOT borrow their specific imagery, metaphor domains, signature\nphrases, or subject matter.",
+  )
+  .replace(
+    [
+      "- Before conceding a gap, check the full profile: Role Tracks, résumé highlights, skills, and Work",
+      "  Examples. Never say the person lacks experience that the profile supports. A different current",
+      "  title is not proof they lack the capability.",
+      "- Open with a concession only when a concrete hard requirement is genuinely unsupported. For a",
+      "  good overlap, open on specific evidence. Keep any necessary caveat brief and factual.",
+    ].join("\n"),
+    [
+      "- Default to NO admission. Never apologize for, acknowledge, or disclaim missing or thin",
+      "  experience, and never manufacture a caveat to seem balanced. If the evidence for this job is",
+      "  limited, write a shorter, plainer message built on the single strongest point instead of",
+      "  confessing what is absent. Never say the person lacks experience the profile supports; a",
+      "  different current title is not proof they lack the capability.",
+      "- The ONLY exception: the job states a concrete hard requirement (location, license or",
+      "  credential, clearance, language fluency) the profile clearly cannot meet. Flag it in one",
+      "  brief, factual sentence, never as an apology and never in the opening line.",
+    ].join("\n"),
+  )
+  .replace(
+    "bend an example to fit. If you use one, insertedExample must copy that example's one-hitter and",
+    "bend an example to fit. Refer to the example by its actual title from the profile; never rename\nor rebrand it. If you use one, insertedExample must copy that example's one-hitter and",
+  );
+for (const marker of ["ANY writing samples elsewhere", "Default to NO admission", "never rename"]) {
+  if (!v5System.includes(marker)) throw new Error(`v5 lever failed to apply (missing: ${marker}) — v4 anchor text changed`);
+}
+
+// ---- v6: Randall's v5 review notes (2026-07-14 evening).
+//   1. The declarative opener survived THREE prompt attempts (v4 draft, v4, v5 all opened the
+//      Coinbase cell with "The problem with AI-assisted work is/isn't...") → promoted to a
+//      hard rule: the opening sentence must be anchored in the first person; plus stronger
+//      prompt wording and an explicit ban on opening with the job title as a bare label
+//      (the Figma fragment opener).
+//   2. NEW STANDING RULE: never discuss, volunteer, or claim logistics (location, remote,
+//      hybrid, in-office, relocation, availability) in outreach. Location removed from the
+//      hard-requirement exception; the Anthropic events cell fabricated "can be in-office as
+//      needed". Hard-rule detector added.
+//   3. Example format matching: an events job wants the physical-event example (Mozilla
+//      tradeshow), not AirCover/ZKP digital launches.
+//   4. The closing line's intent must be unambiguous (Ramp cell: "I'd like to help pull them
+//      off." hovered between statement and ask, leaving the reader to guess the goal). This
+//      is a clarity rule, NOT "every close must be a question" — statements and questions
+//      are both fine when they read cleanly as what they are.
+const v6System = v5System
+  .replace(
+    [
+      "- Never open the message by declaring what a problem, a discipline, or a kind of work 'is' or",
+      "  'isn't.' If that observation matters, it comes later and it is framed as this person's own",
+      "  experience, not a truth the reader needs explained.",
+    ].join("\n"),
+    [
+      "- Anchor the opening sentence in the first person: it must contain I, I've, I'm, I'd, my, or",
+      "  me. Never open by declaring what a problem, a discipline, or a kind of work 'is' or 'isn't'",
+      "  — even when the job description itself names the problem, frame it through this person's",
+      "  own experience ('I've spent years fixing exactly this'), never as a truth the reader needs",
+      "  explained.",
+      "- Never open on the job title as a bare label, or any other fragment. The opening line is a",
+      "  complete sentence with a subject and a verb.",
+    ].join("\n"),
+  )
+  .replace(
+    [
+      "- The ONLY exception: the job states a concrete hard requirement (location, license or",
+      "  credential, clearance, language fluency) the profile clearly cannot meet. Flag it in one",
+      "  brief, factual sentence, never as an apology and never in the opening line.",
+    ].join("\n"),
+    [
+      "- The ONLY exception: the job states a concrete hard requirement (license or credential,",
+      "  clearance, language fluency) the profile clearly cannot meet. Flag it in one brief,",
+      "  factual sentence, never as an apology and never in the opening line.",
+      "- Never discuss, volunteer, or make claims about logistics: location, remote, hybrid,",
+      "  in-office, relocation, time zones, or availability. Outreach sells the fit; logistics",
+      "  belong to later conversations and are never yours to concede or promise.",
+    ].join("\n"),
+  )
+  .replace(
+    "when two examples are comparably relevant, pick the one whose domain most closely matches this\njob's domain.",
+    "when two examples are comparably relevant, pick the one whose domain AND format most closely\nmatch this job: an events role wants the physical-event example over a digital launch; a\nwebsite role wants the website example.",
+  )
+  .replace(
+    "- This is a single first touch: no promised follow-ups or references to earlier messages.",
+    [
+      "- The closing line's intent must be unambiguous. An ask reads and is punctuated as a direct",
+      "  question; a statement reads cleanly as a statement. Never end on a line that hovers between",
+      "  the two and leaves the reader guessing what you want. Make the ask specific to this job or",
+      "  the evidence you led with — never a generic stock closer ('Worth a conversation?', 'Happy",
+      "  to talk.', 'Worth a chat?').",
+      "- This is a single first touch: no promised follow-ups or references to earlier messages.",
+    ].join("\n"),
+  );
+for (const marker of ["Anchor the opening sentence", "Never discuss, volunteer, or make claims about logistics", "domain AND format", "intent must be unambiguous"]) {
+  if (!v6System.includes(marker)) throw new Error(`v6 lever failed to apply (missing: ${marker.slice(0, 40)}) — v5 anchor text changed`);
+}
+
+// ---- v7: full-text rewrite responding to the v6 regression (avg 5.09; four cells rated 1s).
+// Runs against the SECOND fingerprint revision (qualities-not-devices — v6's regression traced
+// to the fingerprint prescribing "use fragments"/"easy confidence"/"open cold", which beat the
+// prompt's rules every roll). New here: rules outrank voice; fragment cap (one per message);
+// company-familiarity openers preferred over cold posting-line references; prose-quality bar
+// (no sentence-final prepositions, no close word repetition, no same-shape sentence stacks);
+// domain anti-fabrication (the events cell invented show-calling experience); negativity ban
+// (the Airbnb cell called the job a "grind"); respectful prior-employment phrasing; 500–650
+// target + "a dozen" named in NUMBERS to cut retry pressure (quality-blind retries were
+// selecting sloppy-but-compliant rolls).
+const v7System = [
+  "You write a single outreach message AS the person described in the profile below — a real",
+  "first-touch note to one hiring contact about one job.",
+  "",
+  "VOICE",
+  "The profile begins with a Voice Profile. Match how it FEELS — its rhythm, warmth, humor, and",
+  "confidence — but these rules outrank it: if voice guidance ever conflicts with a rule below",
+  "(confidence vs. hedging, device habits vs. grammar), the rule wins. Exemplar lines and any",
+  "writing samples elsewhere in the profile demonstrate register, not vocabulary to reuse: do",
+  "NOT borrow their specific imagery, metaphor domains, signature phrases, or subject matter.",
+  "Most messages need no colorful flourish at all; use at most one, only when it lands",
+  "naturally, and make it fresh rather than an echo of an exemplar. Never use a pattern marked",
+  "never-sound-like-this.",
+  "",
+  "The opinion the person will defend is private reasoning input, not message copy. Never quote or",
+  "announce it. Never turn it into a judgment about the reader, their company, or what other people",
+  "understand. If relevant, translate the principle into first-person evidence: what this person did,",
+  "noticed, changed, or learned. Otherwise leave it out.",
+  "",
+  "FIT AND RESPECT",
+  "Confident, accurate, and respectful. The reader knows their company and field better than you do.",
+  "- Never criticize a former or target employer to establish insider credibility. Prior experience",
+  "  there should read as familiarity, respect, and useful context — 'Having worked at X, Y is",
+  "  familiar ground,' never 'I already did that there' or any phrasing that shrugs the company off.",
+  "- Never characterize the reader's company, team, or the job itself negatively: no 'grind,' no",
+  "  implying dysfunction, confusion, or lack of authority. Direct is not negative.",
+  "- Do not tell the reader what their job is really about, or reduce their discipline to yours. Ban",
+  "  constructions like 'the whole game,' 'the whole job description,' and 'an X problem dressed as",
+  "  a Y problem.'",
+  "- State every opinion and generalization about how work goes as first-person experience — attach",
+  "  a marker like 'in my experience,' 'I've found,' or 'for me' — never as declared fact about the",
+  "  reader's world. This rule outranks the Voice Profile's confidence. One light hedge where",
+  "  needed; don't make hedging a tic either.",
+  "- Default to NO admission. Never apologize for, acknowledge, or disclaim missing or thin",
+  "  experience, and never manufacture a caveat to seem balanced. If the evidence for this job is",
+  "  limited, write a shorter, plainer message built on the single strongest point instead of",
+  "  confessing what is absent. Never say the person lacks experience the profile supports.",
+  "- When the role's core craft is not this person's, do not contrast them against the title ('I'm",
+  "  a producer, not a copywriter') and do not confess the distance ('I'll be straight...'). Pitch",
+  "  the adjacent seat they would actually fill: name the real capability the role needs that they",
+  "  DO bring, and let the reader map the fit.",
+  "- The ONLY exception: the job states a concrete hard requirement (license or credential,",
+  "  clearance, language fluency) the profile clearly cannot meet. Flag it in one brief,",
+  "  factual sentence, never as an apology and never in the opening line.",
+  "- Never discuss, volunteer, or make claims about logistics: location, remote, hybrid,",
+  "  in-office, relocation, time zones, or availability. Outreach sells the fit; logistics",
+  "  belong to later conversations and are never yours to concede or promise.",
+  "",
+  "WORK EXAMPLE INVENTORY",
+  "The Work Examples section is a complete candidate inventory. Silently consider EVERY Work Example",
+  "against this specific job before choosing substance. Do not default to the most familiar example:",
+  "when two examples are comparably relevant, pick the one whose domain AND format most closely",
+  "match this job (an events role wants the physical-event example over a digital launch; a website",
+  "role wants the website example). It is fine to use no Work Example when résumé or skill evidence",
+  "is stronger. Never bend an example to fit. Refer to the example by its actual title from the",
+  "profile; never rename or rebrand it. If you use one, insertedExample must copy that example's",
+  "one-hitter and optional link EXACTLY from the profile so selection can be audited. When the",
+  "example you use has a link, the message body MUST contain that exact link — the reader has to",
+  "be able to click through to the work. Place it where it naturally backs the evidence,",
+  "mid-thought, not dangling as a bare footer.",
+  "",
+  "SUBSTANCE",
+  "Use one or two concrete points. Prefer verified first-person facts over positioning claims.",
+  "Consider the FULL set of résumé highlights and skills, not just the most famous credentials:",
+  "pick what is most relevant to THIS job, use at most two résumé highlights per message, and do",
+  "not lean on the same marquee names or the same highlight sentence in every message. Never",
+  "invent facts, responsibilities, insider details, or embellished precision — and never",
+  "manufacture domain experience: no skills, duties, or scenes the profile does not contain.",
+  "Evidence keeps its actual format: never re-describe a digital launch as a live event, stage",
+  "work, or any other medium the profile does not state, and never claim craft vocabulary",
+  "(run-of-show, show-calling, cue sheets) for work the profile does not describe that way. If",
+  "the job's core domain is not evidenced in the profile, do not fake it; build the shorter,",
+  "honest message on what is real. Avoid residual brag tags such as 'I do,' 'I'm dangerous in",
+  "this seat,' or claims that others do not understand the work.",
+  "",
+  "NUMBERS — hard rule",
+  "Every number in the message, written as digits or as words, must appear in the profile. No",
+  "exceptions for color or rhythm — no 'a dozen tools,' no 'scattered across fifteen docs,' no",
+  "quantified illustrations of any kind unless the profile states that number. When in doubt,",
+  "no number.",
+  "",
+  "FORM",
+  "- Aim for 500–650 characters. 750 characters is a HARD cap: if a draft runs long, cut evidence",
+  "  or trim sentences. Never exceed it.",
+  "- The opening line is a complete sentence, anchored in the first person (it contains I, I've,",
+  "  I'm, I'd, my, or me). When the person has direct experience with this company, prefer opening",
+  "  there ('I did a contract tour at Airbnb, so the Services org is familiar ground'). Never open",
+  "  by declaring what a problem or discipline 'is' or 'isn't,' never on the job title as a bare",
+  "  label, and never by cold-referencing a deep line from the posting as if the reader has it",
+  "  memorized.",
+  "- At most ONE deliberate sentence fragment in the whole message, used only for emphasis that",
+  "  genuinely lands. This cap holds regardless of what the Voice Profile encourages. Every other",
+  "  sentence is complete, correctly punctuated, and grammatical.",
+  "- Prose quality bar: never end a sentence with a preposition; never repeat a distinctive word",
+  "  in close succession; vary sentence shape — never stack same-pattern sentences ('I did X. I",
+  "  did Y. I also did Z.'); no invented shorthand or slang the reader may not parse.",
+  "- Use the reader's own vocabulary: never coin role-family jargon or industry terms that are not",
+  "  in the job posting or the profile.",
+  "- Short, specific, human. No corporate boilerplate or mass-template feel.",
+  "- Never use an em dash (—) anywhere in the message, even if the profile or voice examples",
+  "  contain them. Restructure the sentence or reach for other punctuation instead: commas,",
+  "  parentheses, semicolons, colons, or a new sentence.",
+  "- At most one link total. If you used a Work Example that has a link, that is the link — include",
+  "  it verbatim in the body. Never link to anything that is not in the profile.",
+  "- The closing line's intent must be unambiguous: an ask reads and is punctuated as a direct",
+  "  question; a statement reads cleanly as a statement. Make the ask specific to this job or the",
+  "  evidence you led with, so no two messages close alike.",
+  "- This is a single first touch: no promised follow-ups or references to earlier messages.",
+  "",
+  "Output ONLY a JSON object, no prose, no markdown fences:",
+  '{"message": string, "insertedExample": {"oneHitter": string, "link"?: string} | null}.',
+  "insertedExample is the exact Work Example used, or null if none was used.",
+].join("\n");
+
+// ---- v8: Randall's b3 notes (avg 6.81, 10/12 at 7–8 — recovered from v6). Three fixes:
+//   1. Bare ultra-short asks read desperate ("Can we talk?"); the ask carries its
+//      job-specific referent in the SAME sentence, and the conditional close shape is
+//      offered ("If you're looking for X, we should chat.").
+//   2. Same-shape stacking is now a HARD rule (3+ consecutive sentences opening with "I
+//      <verb>" auto-retry) — the Discord cell rated 3s was a 5-attempt retry survivor;
+//      prose advice alone can't guard retry survivors, detectors can.
+//   3. Awkward-phrasing note (Figma "because most of what I do is exactly this"): covered
+//      by the stack detector + a read-aloud line; one-off phrasing stays review territory.
+const v8System = v7System
+  .replace(
+    [
+      "- The closing line's intent must be unambiguous: an ask reads and is punctuated as a direct",
+      "  question; a statement reads cleanly as a statement. Make the ask specific to this job or the",
+      "  evidence you led with, so no two messages close alike.",
+    ].join("\n"),
+    [
+      "- The closing line's intent must be unambiguous: an ask reads and is punctuated as a direct",
+      "  question; a statement reads cleanly as a statement. The ask names this job or the evidence",
+      "  you led with IN THE SAME SENTENCE — a bare 'Can we talk?' reads desperate. A conditional",
+      "  close also works: 'If you're looking for <the specific thing>, we should chat.'",
+    ].join("\n"),
+  )
+  .replace(
+    "- Prose quality bar: never end a sentence with a preposition; never repeat a distinctive word",
+    "- Read the draft as the hiring manager would; rewrite any phrase that lands awkwardly out loud",
+    // (second .replace argument continues below via chained replace)
+  )
+  .replace(
+    "- Read the draft as the hiring manager would; rewrite any phrase that lands awkwardly out loud",
+    [
+      "- Never stack sentences of the same shape: three or more consecutive sentences opening with",
+      "  'I <verb>' reads like a list, not a person. Vary openings and fold facts into subordinate",
+      "  clauses.",
+      "- Prose quality bar: read each phrase as the hiring manager would and rewrite anything that",
+      "  lands awkwardly out loud; never end a sentence with a preposition; never repeat a distinctive word",
+    ].join("\n"),
+  );
+for (const marker of ["reads desperate", "we should chat", "three or more consecutive sentences opening with"]) {
+  if (!v8System.includes(marker)) throw new Error(`v8 lever failed to apply (missing: ${marker.slice(0, 30)})`);
+}
+
 const systemByVariant = {
   baseline: baselineSystem,
   v2: v2System,
@@ -318,6 +593,13 @@ const systemByVariant = {
   // judged batch-1 corpus frozen instead of overwriting it.
   "v3-nodash-b2": v3NoDashSystem,
   v4: v4System,
+  v5: v5System,
+  v6: v6System,
+  v7: v7System,
+  // Same prompt as v7, generated on job batch 3 — distinct corpus id keeps the judged
+  // batch-2 v7 frozen (see picksByBatch).
+  "v7-b3": v7System,
+  v8: v8System,
 };
 const variant = process.env.PROMPT_VARIANT || "baseline";
 const system = systemByVariant[variant];
@@ -349,20 +631,65 @@ function buildParts({ job, contact }) {
 // real company variety (9 companies, max 2 per company), NO jobs gated on a language
 // fluency he doesn't have, no jobs he'd never apply to (poor-fit padding dropped), and
 // picks are keyed by stable job id so an evidence repull can't silently shift them.
-const picks = [
-  { id: "b8eb2807-feb5-409b-9656-4af069ccd18e", fit: "good",    contact: { role: "Director, Technical Program Management", seniority: "Director" } }, // Coinbase — TPM, Knowledge Systems
-  { id: "d7dd72e8-a446-40c8-b85d-14f24d0c1dcc", fit: "good",    contact: { role: "VP, Customer Experience", seniority: "VP" } },                      // Coinbase — Staff TPM, CX Agent Experience
-  { id: "d4191b2b-1445-48cb-bed2-6c9e6935c69e", fit: "good",    contact: { role: "Executive Creative Director", seniority: "Director" } },            // Figma — Brand Producer
-  { id: "692f2659-5c5a-46bb-b01a-3fa10e6af8c0", fit: "good",    contact: { role: "Director, Business Operations", seniority: "Director" } },          // Airbnb — Sr Programs & BizOps Lead, Airbnb Services
-  { id: "3f012bc3-2cc3-4e69-bce6-64155faa6740", fit: "medium",  contact: { role: "Head of Product Operations", seniority: "Director" } },             // Notion — Product Operations Manager
-  { id: "979c2330-d8e2-4845-8f4d-eea81446cf13", fit: "medium",  contact: { role: "VP, Marketing", seniority: "VP" } },                                // OpenAI — Creative Director, Growth
-  { id: "a01690f2-7ecd-4314-befa-fe7487e4d636", fit: "medium",  contact: { role: "Head of Events Marketing", seniority: "Director" } },               // Anthropic — Marketing Events Producer
-  { id: "cd5ba679-04b1-427d-9610-eadbc024c045", fit: "medium",  contact: { role: "Director, Strategy & Operations", seniority: "Director" } },        // Discord — Strategy & Ops Mgr, Consumer Revenue
-  { id: "eb3447c7-405d-4faa-92cb-4248fdab2198", fit: "medium",  contact: { role: "Director, Professional Services", seniority: "Director" } },        // GitLab — Professional Services Program Manager
-  { id: "546f97cc-a0fa-4dbb-ae23-0c1b62c3f739", fit: "stretch", contact: { role: "Head of Brand", seniority: "Director" } },                          // Ramp — Viral Creative Producer
-  { id: "e4c50ff6-661f-4dcd-a13c-30821b842df1", fit: "stretch", contact: { role: "Executive Creative Director", seniority: "Director" } },            // Anthropic — Head of Copy, Creative Studio
-  { id: "7328fb15-4c42-4f6a-b419-daa7470140a8", fit: "stretch", contact: { role: "Chief Product Officer", seniority: "C-level" } },                   // Databricks — Chief of Staff, to the CPO
-];
+const picksByBatch = {
+  b2: [
+    { id: "b8eb2807-feb5-409b-9656-4af069ccd18e", fit: "good",    contact: { role: "Director, Technical Program Management", seniority: "Director" } }, // Coinbase — TPM, Knowledge Systems
+    { id: "d7dd72e8-a446-40c8-b85d-14f24d0c1dcc", fit: "good",    contact: { role: "VP, Customer Experience", seniority: "VP" } },                      // Coinbase — Staff TPM, CX Agent Experience
+    { id: "d4191b2b-1445-48cb-bed2-6c9e6935c69e", fit: "good",    contact: { role: "Executive Creative Director", seniority: "Director" } },            // Figma — Brand Producer
+    { id: "692f2659-5c5a-46bb-b01a-3fa10e6af8c0", fit: "good",    contact: { role: "Director, Business Operations", seniority: "Director" } },          // Airbnb — Sr Programs & BizOps Lead, Airbnb Services
+    { id: "3f012bc3-2cc3-4e69-bce6-64155faa6740", fit: "medium",  contact: { role: "Head of Product Operations", seniority: "Director" } },             // Notion — Product Operations Manager
+    { id: "979c2330-d8e2-4845-8f4d-eea81446cf13", fit: "medium",  contact: { role: "VP, Marketing", seniority: "VP" } },                                // OpenAI — Creative Director, Growth
+    { id: "a01690f2-7ecd-4314-befa-fe7487e4d636", fit: "medium",  contact: { role: "Head of Events Marketing", seniority: "Director" } },               // Anthropic — Marketing Events Producer
+    { id: "cd5ba679-04b1-427d-9610-eadbc024c045", fit: "medium",  contact: { role: "Director, Strategy & Operations", seniority: "Director" } },        // Discord — Strategy & Ops Mgr, Consumer Revenue
+    { id: "eb3447c7-405d-4faa-92cb-4248fdab2198", fit: "medium",  contact: { role: "Director, Professional Services", seniority: "Director" } },        // GitLab — Professional Services Program Manager
+    { id: "546f97cc-a0fa-4dbb-ae23-0c1b62c3f739", fit: "stretch", contact: { role: "Head of Brand", seniority: "Director" } },                          // Ramp — Viral Creative Producer
+    { id: "e4c50ff6-661f-4dcd-a13c-30821b842df1", fit: "stretch", contact: { role: "Executive Creative Director", seniority: "Director" } },            // Anthropic — Head of Copy, Creative Studio
+    { id: "7328fb15-4c42-4f6a-b419-daa7470140a8", fit: "stretch", contact: { role: "Chief Product Officer", seniority: "C-level" } },                   // Databricks — Chief of Staff, to the CPO
+  ],
+  // Batch 3 (Randall, 2026-07-14: keep growing sample size + variation). Four companies
+  // batch 2 never touched (Spotify, Stripe, Dropbox, Robinhood), fresh roles elsewhere;
+  // same standing sampling rules: id-keyed, ≤2 per company, no language gates, no
+  // never-apply padding. The Stripe events role deliberately re-tests the events axis
+  // (fabricate↔confess) on a fresh cell.
+  b3: [
+    { id: "79702602-2e0d-40b8-b5e0-5bc571a4173a", fit: "good",    contact: { role: "Executive Producer, Studios", seniority: "Director" } },            // Spotify — Producer, The Journal
+    { id: "1ea6c478-b7e0-4c78-b22a-769761a4bbb0", fit: "good",    contact: { role: "Head of GTM Operations", seniority: "Director" } },                 // Stripe — GTM Operations Process Architect
+    { id: "d557cef6-4162-4c9e-88e8-9a03ce1892cc", fit: "good",    contact: { role: "Head of Internal Communications", seniority: "Director" } },        // Anthropic — Internal Content Producer
+    { id: "1b142fad-a25f-4648-b65e-835a4631874c", fit: "good",    contact: { role: "Director, Process Strategy", seniority: "Director" } },             // Airbnb — Process Strategy & Optimization Manager
+    { id: "9f701545-298c-49a3-a3c1-7d53fb7a2f1f", fit: "medium",  contact: { role: "Director, Editorial Product", seniority: "Director" } },            // Spotify — PM, Editorial Product Integration
+    { id: "230b1490-d5ee-47b5-b8f7-98a38a718647", fit: "medium",  contact: { role: "Director, Customer Experience", seniority: "Director" } },          // Figma — Voice of the Customer Program Manager
+    { id: "c8c5ca0d-d1b0-4bac-9ab1-e72f357d46bb", fit: "medium",  contact: { role: "Head of Human Data Operations", seniority: "Director" } },          // OpenAI — Program Manager, Human Data
+    { id: "e0282190-d318-406d-ba6c-300be02d58d8", fit: "medium",  contact: { role: "VP, Business Development", seniority: "VP" } },                     // Robinhood — Sr Partnerships Manager, Crypto
+    { id: "d67f53b5-2025-4bf7-8636-9a2d917d5c2a", fit: "medium",  contact: { role: "Director, Governance Risk & Compliance", seniority: "Director" } }, // Dropbox — Sr GRC Program Manager
+    { id: "419f08b4-5bdf-4867-8eaa-314ed5912e9e", fit: "stretch", contact: { role: "Head of Global Events", seniority: "Director" } },                  // Stripe — Corporate Events Manager, Expo
+    { id: "b5b1d15c-8bdb-4d92-9e37-4a899547cccc", fit: "stretch", contact: { role: "Executive Creative Director", seniority: "Director" } },            // Robinhood — Associate Creative Director, Copy
+    { id: "0787f091-0007-4aee-89ae-52adc49bf06c", fit: "stretch", contact: { role: "Director, Legal Operations", seniority: "Director" } },             // Discord — Legal Vendor Program Manager
+  ],
+};
+const batchByVariant = { "v7-b3": "b3", v8: "b3" };
+const picks = picksByBatch[batchByVariant[process.env.PROMPT_VARIANT] || "b2"];
+
+// Freshness guard (2026-07-14): the platform scan upserts live postings but never removes
+// delisted ones (~17% of the pool was dead when discovered, served as HTTP 200 by the
+// boards). Warn loudly when a picked job was not seen by the most recent scan. Warning,
+// not abort: existing frozen batches contain rows that have since gone stale, and a dead
+// job is still a valid prompt-quality fixture — but new batches must be picked fresh.
+{
+  // Compare each pick against its OWN company's newest scrape so a lagging board doesn't
+  // false-positive every job on it.
+  const newestByCompany = {};
+  for (const job of allJobs) {
+    if (!newestByCompany[job.company_name] || job.scraped_at > newestByCompany[job.company_name]) {
+      newestByCompany[job.company_name] = job.scraped_at;
+    }
+  }
+  for (const pick of picks) {
+    const job = allJobs.find((candidate) => candidate.id === pick.id);
+    if (job && job.scraped_at.slice(0, 10) < (newestByCompany[job.company_name] || "").slice(0, 10)) {
+      console.warn(`WARNING: picked job ${job.company_name} — ${job.title} last seen by the scan on ${job.scraped_at.slice(0, 10)} (board scanned ${newestByCompany[job.company_name].slice(0, 10)}); likely delisted.`);
+    }
+  }
+}
 
 // Per-version metadata: human label + changelog notes. Keep in step with systemByVariant.
 const variantMeta = {
@@ -433,6 +760,60 @@ const variantMeta = {
       "Pre-review revision (same day): first draft leaked 3 invented counts, kept a declared-fact opener, and echoed the fingerprint's imagery in 8/12 messages once the user-specific ban was generalized. Sharpened: exemplars demonstrate register not vocabulary (most messages need no flourish); NUMBERS promoted to a standalone hard rule (every number must appear in the profile); never open by declaring what a problem/discipline 'is/isn't'; at most two résumé highlights per message.",
     ],
   },
+  v5: {
+    label: "v5 — blocker fixes: register-only fingerprint + no-admission default",
+    changeNotes: [
+      "Runs against the REVISED voice-fingerprint pre-pass (register-only: describes HOW the person writes, never their imagery/phrases; neutral-subject exemplars). Randall blocker: one user's quirks must never template their messages.",
+      "Register rule broadened from exemplar lines to ALL writing samples in the profile (the raw samples still carry signature imagery).",
+      "No-admission default (Randall blocker): never apologize for, acknowledge, or disclaim thin/missing experience; thin evidence means a shorter, plainer message, not a confession. Only a stated concrete hard requirement (location/license/clearance/fluency) gets one brief factual flag, never as the opener.",
+      "Work Examples must be referred to by their actual profile titles (v4 invented 'Project OS' for P.H.R.E.D.).",
+    ],
+  },
+  v6: {
+    label: "v6 — v5 review notes: first-person opener (hard), no logistics talk (hard)",
+    changeNotes: [
+      "Opening sentence must be first-person-anchored — now a HARD rule with auto-retry (the declarative 'The problem with X is...' opener survived three prompt-wording attempts on the same Coinbase cell; humility rated 1).",
+      "Never open on the job title as a bare label or any fragment (Figma cell opened 'Brand Producer for the Brand Studio team, and...').",
+      "STANDING RULE (Randall): never discuss, volunteer, or claim logistics — location, remote, hybrid, in-office, relocation, availability. Location removed from the hard-requirement exception; new hard-rule detector (the Anthropic events cell fabricated 'can be in-office as needed').",
+      "Example selection matches format as well as domain: an events job wants the physical-event example (Mozilla tradeshow), not digital launches (AirCover/ZKP).",
+      "The closing line's intent must be unambiguous: an ask reads as a direct question, a statement as a statement (Randall clarified: the Ramp cell was a grammar/clarity defect that left the goal unclear, not a make-everything-a-question rule).",
+      "Closers must be specific to the job or the evidence ('Worth a conversation?' converged on 11/12 messages in the first v6 roll). Randall: these are NOT banned terms — the defect is the near-identical repetition across messages, which users would read as lazy output or poor LLM guidance; specificity is the fix because a job-specific ask can't repeat.",
+      "Not rule-addressed: the 'lean on people' diction miss in the Figma cell — one-off word choice, flagged for review only.",
+    ],
+  },
+  v7: {
+    label: "v7 — regression fix: rules outrank voice, prose-quality bar, no fabricated domains",
+    changeNotes: [
+      "Responds to the v6 regression (avg 5.09, four cells rated 1s). Root causes found: the register-only fingerprint PRESCRIBED devices ('use fragments,' 'easy confidence,' 'open cold') that beat the prompt's rules every roll, and quality-blind retries (10/12) selected sloppy-but-compliant rolls.",
+      "Fingerprint pre-pass revised a second time: describes voice QUALITIES only, never grammatical/rhetorical devices; Randall's profile regenerated with it.",
+      "Rules outrank the Voice Profile — stated explicitly, including that hedging beats voice confidence ('in my experience' markers required on opinions; skipped twice before because the old fingerprint said to state opinions with easy confidence).",
+      "Fragment cap: at most ONE deliberate fragment per message regardless of voice guidance; everything else complete and correctly punctuated (fragments were 'way too over indexed').",
+      "Prose-quality bar: no sentence-final prepositions, no close word repetition, no same-shape sentence stacks ('I did X. I did Y.'), no invented shorthand ('a rep').",
+      "Never manufacture domain experience — no skills, duties, or scenes the profile doesn't contain (the events cell invented show-calling/live-event claims); thin domain = shorter honest message.",
+      "Never characterize the reader's company or the job negatively (the Airbnb cell called the work a 'grind' and implied lack of authority). Direct is not negative.",
+      "Prior employment phrased respectfully ('Having worked at X, Y is familiar ground'), never dismissively ('I already did that there'). Company-familiarity openers preferred over cold posting-line references.",
+      "Length target now 500–650 (750 stays the hard cap) and 'a dozen' named in NUMBERS — both to cut the retry pressure that was trading prose quality for compliance.",
+    ],
+  },
+  "v7-b3": {
+    label: "v7 · job batch 3 — new companies, wider variation",
+    changeNotes: [
+      "Same v7 prompt, generated on a NEW 12-job batch (Randall: keep growing sample size and variation).",
+      "Four companies batch 2 never touched: Spotify (Producer, The Journal; Editorial Product PM), Stripe (GTM Ops Process Architect; Corporate Events Manager), Dropbox (Sr GRC Program Manager), Robinhood (Crypto Partnerships; ACD Copy) — plus fresh roles at Anthropic, Figma, OpenAI, Airbnb, Discord.",
+      "Standing sampling rules held: id-keyed picks, max 2 per company, no language gates, no never-apply padding; fit spread 4 good / 5 medium / 3 stretch.",
+      "The Stripe Corporate Events cell deliberately re-tests the events axis (fabricate-vs-confess) on a fresh job.",
+      "New jobs have no prior-version history in the console; judge fresh.",
+    ],
+  },
+  v8: {
+    label: "v8 — b3 notes: specific-referent closers, same-shape stacking now a hard rule",
+    changeNotes: [
+      "Runs on job batch 3 so the console shows before/after against the v7-b3 cells Randall just rated (avg 6.81, 10/12 at 7–8).",
+      "Closers carry their job-specific referent in the same sentence — a bare 'Can we talk?' reads desperate (Spotify Editorial cell). Conditional shape offered: 'If you're looking for X, we should chat.'",
+      "Same-shape sentence stacking ('I did this. I did that.') promoted to a HARD rule with auto-retry — the Discord cell rated 3s was a 5-attempt retry survivor; prose advice can't guard retry survivors, detectors can.",
+      "Prose bar now leads with a read-aloud test (Figma cell's 'because most of what I do is exactly this' was rated awkward).",
+    ],
+  },
 };
 
 // ---- Hard-rule contract (2026-07-14). Prompt-only enforcement proved unreliable (750-cap
@@ -458,9 +839,44 @@ function ungroundedNumbers(message, profile) {
     if (tok && !prof.includes(tok.toLowerCase())) found.push(tok);
   }
   for (const m of message.toLowerCase().matchAll(new RegExp(`\\b(${NUMBER_WORDS.join("|")})\\b`, "g"))) {
-    if (!prof.includes(m[1])) found.push(m[1]);
+    // Word-boundary check on the profile side too — a bare includes() let "often"
+    // ground "ten" and "fourth" ground "four" (caught 2026-07-14: "ten disconnected
+    // docs" passed while a legitimate "four" flagged).
+    if (!new RegExp(`\\b${m[1]}\\b`).test(prof)) found.push(m[1]);
   }
   return [...new Set(found)];
+}
+
+// The opening sentence must be first-person-anchored (v6; declarative openers survived
+// three prompt-wording attempts). Logistics talk is banned outright (Randall, 2026-07-14:
+// never discuss or volunteer in-office/remote requirements in outreach).
+function openingSentence(message) {
+  const trimmed = message.trim();
+  const end = trimmed.search(/[.!?]/);
+  return end === -1 ? trimmed : trimmed.slice(0, end + 1);
+}
+const FIRST_PERSON_PATTERN = /\b(i|i've|i'm|i'd|i'll|my|me|mine)\b/i;
+const LOGISTICS_PATTERN = /\bremote\b|\bhybrid\b|on-?site\b|in-?office\b|in the office\b|relocat|time ?zones?\b|anchor days\b|based in\b/i;
+// No-admission is a standing rule (Randall): apology/disclaimer framings are hard
+// violations, not style notes — v7's first roll reopened two messages with
+// "I'll be straight: ... not my lane."
+const ADMISSION_PATTERN = /i'?ll be (straight|honest)|be straight about|to be (perfectly |fully )?honest|i('?ll| will)? ?admit|i won'?t pretend|not going to pretend|full disclosure|(isn'?t|is not|not) (really )?my lane|outside my lane|a step outside|i'?m an? \w+, not an? \w+|i'?d bring less|rather.{0,20}than oversell|less of on paper/i;
+
+// Three or more consecutive sentences opening "I <word>" — the "I did this. I did that."
+// list-shape Randall rated 3s (v8). Retry survivors dodge prose advice; they can't dodge
+// a detector.
+function sameShapeStack(message) {
+  const sentences = message.trim().split(/(?<=[.!?])\s+/);
+  let run = 0;
+  for (const sentence of sentences) {
+    if (/^I('\w+)? \w/.test(sentence.trim())) {
+      run += 1;
+      if (run >= 3) return true;
+    } else {
+      run = 0;
+    }
+  }
+  return false;
 }
 
 function hardRuleViolations(message, exampleLink) {
@@ -468,6 +884,12 @@ function hardRuleViolations(message, exampleLink) {
   if (message.length > 750) violations.push(`over_750_characters(${message.length})`);
   if ((message.match(/—/g) || []).length > 0) violations.push("em_dash_present");
   if (exampleLink && !message.includes(exampleLink)) violations.push("example_link_missing_from_body");
+  if (!FIRST_PERSON_PATTERN.test(openingSentence(message))) violations.push("opening_missing_first_person");
+  const logistics = message.match(LOGISTICS_PATTERN);
+  if (logistics) violations.push(`logistics_mentioned(${logistics[0].trim()})`);
+  const admission = message.match(ADMISSION_PATTERN);
+  if (admission) violations.push(`admission_present(${admission[0].trim().slice(0, 30)})`);
+  if (sameShapeStack(message)) violations.push("same_shape_sentence_stack");
   const numbers = ungroundedNumbers(message, profileMarkdown);
   if (numbers.length) violations.push(`ungrounded_numbers(${numbers.join("/")})`);
   return violations;
@@ -493,6 +915,10 @@ function computeMetrics(message, exampleLink) {
     exampleLinkMissing: exampleLink ? (m.includes(exampleLink) ? 0 : 1) : 0,
     emDash: (m.match(/—/g) || []).length,
     ungroundedNumber: ungroundedNumbers(m, profileMarkdown).length,
+    openerNoFirstPerson: FIRST_PERSON_PATTERN.test(openingSentence(m)) ? 0 : 1,
+    logisticsMention: LOGISTICS_PATTERN.test(m) ? 1 : 0,
+    admissionPresent: ADMISSION_PATTERN.test(m) ? 1 : 0,
+    sameShapeStack: sameShapeStack(m) ? 1 : 0,
     length: m.length,
   };
 }
@@ -524,7 +950,7 @@ for (const pick of picks) {
     { type: "text", text: tail },
   ];
   process.stdout.write(`generating: ${job.company} — ${job.title} ... `);
-  const MAX_GEN_ATTEMPTS = 3;
+  const MAX_GEN_ATTEMPTS = Number(process.env.MAX_GEN_ATTEMPTS || 3);
   let msg = "(FAILED)";
   let inserted = null;
   let attempts = 0;

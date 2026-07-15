@@ -22,17 +22,26 @@ export type ResumeHighlightsDependencies = {
   callModel?: ResumeHighlightsModelCall;
 };
 
-const MAX_HIGHLIGHTS = 6;
+// Cap raised 6 → 12 and fame-bias removed (2026-07-14). The old prompt asked for
+// "notable titles or companies" with a famous-brand example, so the model ranked by
+// brand recognizability + recency and a 20-year career collapsed to the same six
+// marquee names — the outreach generator then had nothing to vary across messages.
+// "Quotable" means concrete, not famous.
+const MAX_HIGHLIGHTS = 12;
 
 const systemPrompt = [
   "You pull quotable proof points out of a résumé so an outreach generator can",
   "cite them. Return the concrete, specific lines a candidate could drop into a",
   "message to a hiring contact: metrics and outcomes (\"cut deploy time 40%\"),",
-  "scope (\"managed a team of 8\"), and notable titles or companies (\"Director of",
-  "Engineering at Stripe\"). Keep each highlight to one short phrase; do not copy",
-  "whole sentences or responsibilities. Use ONLY facts present in the résumé text",
-  "— never invent numbers, companies, or titles. If the text is too sparse,",
-  "garbled, or unstructured to yield real proof points, return an empty list.",
+  "scope (\"managed a team of 8\", \"$4MM in production budgets\"), and titles with",
+  "their companies. Judge each highlight by how CONCRETE and quotable it is, never",
+  "by how famous the employer is — a specific metric at an unknown company beats a",
+  "bare title at a household name. Cover the whole career arc: include early- and",
+  "mid-career proof points alongside recent roles instead of clustering on the",
+  "latest jobs. Keep each highlight to one short phrase; do not copy whole",
+  "sentences or responsibilities. Use ONLY facts present in the résumé text —",
+  "never invent numbers, companies, or titles. If the text is too sparse, garbled,",
+  "or unstructured to yield real proof points, return an empty list.",
   `Return AT MOST ${MAX_HIGHLIGHTS} highlights, strongest first. Output ONLY a`,
   'JSON object: {"highlights": string[]}. No prose, no markdown fences.',
 ].join(" ");

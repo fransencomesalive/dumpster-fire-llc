@@ -1,0 +1,109 @@
+{
+  "versionId": "v5",
+  "items": {
+    "b8eb2807-feb5-409b-9656-4af069ccd18e": {
+      "ratings": {
+        "humility": 1,
+        "soundsLikeMe": 6,
+        "fitHonesty": 7,
+        "wouldSend": 2
+      },
+      "updatedAt": "2026-07-14T23:31:28.004Z",
+      "comment": "This goes back to too forceful, declarative. something i addressed in a previous version. it's missing the suggested, \"IMHO, in my opinion, in my experience, etc.\""
+    },
+    "d7dd72e8-a446-40c8-b85d-14f24d0c1dcc": {
+      "ratings": {
+        "soundsLikeMe": 7,
+        "humility": 6,
+        "fitHonesty": 7
+      },
+      "updatedAt": "2026-07-14T23:31:49.820Z"
+    },
+    "d4191b2b-1445-48cb-bed2-6c9e6935c69e": {
+      "ratings": {
+        "humility": 6,
+        "fitHonesty": 6
+      },
+      "updatedAt": "2026-07-14T23:33:10.228Z",
+      "comment": "fragmented sentence open - this is a broken rule.\n\"lean on people\" is the wrong meaning here. it's not a bad suggestion but it should be \"trust people\" instead. this sounds like i'm relying on people to do work for me."
+    },
+    "692f2659-5c5a-46bb-b01a-3fa10e6af8c0": {
+      "ratings": {
+        "soundsLikeMe": 7,
+        "humility": 7,
+        "fitHonesty": 7,
+        "wouldSend": 7
+      },
+      "updatedAt": "2026-07-14T23:33:26.012Z"
+    },
+    "3f012bc3-2cc3-4e69-bce6-64155faa6740": {
+      "ratings": {
+        "soundsLikeMe": 7,
+        "humility": 7,
+        "fitHonesty": 7,
+        "wouldSend": 7
+      },
+      "updatedAt": "2026-07-14T23:33:46.716Z"
+    },
+    "979c2330-d8e2-4845-8f4d-eea81446cf13": {
+      "ratings": {
+        "soundsLikeMe": 7,
+        "humility": 7,
+        "fitHonesty": 7,
+        "wouldSend": 7
+      },
+      "updatedAt": "2026-07-14T23:34:09.738Z"
+    },
+    "cd5ba679-04b1-427d-9610-eadbc024c045": {
+      "ratings": {
+        "soundsLikeMe": 7,
+        "humility": 7,
+        "fitHonesty": 7,
+        "wouldSend": 7
+      },
+      "updatedAt": "2026-07-14T23:36:19.349Z"
+    },
+    "a01690f2-7ecd-4314-befa-fe7487e4d636": {
+      "comment": "these examples are not as relevant as the mozilla example. this is a live events job and the mozilla was a tradeshow. aircover, ZKP, are irrelevant.\nCan be in office as needed is not true. my current setting is \"remote preferred\" so we should not discuss or volunteer in-office or remote requirements in outreach messages.",
+      "ratings": {},
+      "updatedAt": "2026-07-14T23:36:15.556Z"
+    },
+    "eb3447c7-405d-4faa-92cb-4248fdab2198": {
+      "ratings": {
+        "soundsLikeMe": 8,
+        "humility": 8,
+        "fitHonesty": 8,
+        "wouldSend": 8
+      },
+      "updatedAt": "2026-07-14T23:36:34.247Z"
+    },
+    "546f97cc-a0fa-4dbb-ae23-0c1b62c3f739": {
+      "ratings": {
+        "soundsLikeMe": 7,
+        "humility": 7,
+        "fitHonesty": 7,
+        "wouldSend": 7
+      },
+      "updatedAt": "2026-07-14T23:37:06.535Z",
+      "comment": "the last sentence reads like it should have a question mark."
+    },
+    "e4c50ff6-661f-4dcd-a13c-30821b842df1": {
+      "ratings": {
+        "soundsLikeMe": 7,
+        "humility": 7,
+        "fitHonesty": 7,
+        "wouldSend": 7
+      },
+      "updatedAt": "2026-07-14T23:37:18.905Z"
+    },
+    "7328fb15-4c42-4f6a-b419-daa7470140a8": {
+      "ratings": {
+        "soundsLikeMe": 8,
+        "humility": 7,
+        "fitHonesty": 7,
+        "wouldSend": 7
+      },
+      "updatedAt": "2026-07-14T23:37:31.487Z"
+    }
+  }
+}

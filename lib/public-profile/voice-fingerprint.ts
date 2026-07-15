@@ -32,16 +32,41 @@ export type VoiceFingerprintDependencies = {
   callModel?: VoiceFingerprintModelCall;
 };
 
+// Register-only extraction (revised 2026-07-14). The original pre-pass lifted exemplar
+// lines straight from the user's samples — the generator then mined those quotes for
+// vocabulary, so one user's pet imagery ("nautical") became a per-message template. The
+// fingerprint must capture HOW a person writes (rhythm, formality, humor register,
+// confidence), never WHAT they write about (imagery, metaphor domains, pet phrases) —
+// that boundary is what keeps any single user's quirks from templating their messages.
 const systemPrompt = [
-  "You distill a person's writing voice into a compact directive an outreach",
-  "generator will obey when writing as them. You are given their answers, tone",
-  "tags, and short writing samples. Output ONLY a JSON object with these keys:",
-  '"toneDescription" (2-3 sentences describing how they sound),',
-  '"doList" (array of short do-this directives),',
-  '"dontList" (array of short avoid-this directives),',
-  '"exemplarLines" (1-2 short lines lifted or closely modeled on their',
-  '"sounds like me" samples). No prose outside the JSON. No markdown fences.',
-].join(" ");
+  "You distill how a person WRITES — their register — into a compact directive an outreach",
+  "generator will obey when writing as them. You are given their answers, tone tags, and short",
+  "writing samples.",
+  "",
+  "Extract the HOW, never the WHAT. Describe rhythm, sentence shape, formality, directness,",
+  "humor register, and confidence level. Do NOT catalogue or prescribe their subject matter,",
+  "imagery, metaphor domains, running jokes, or pet phrases: those are content, and repeating",
+  "them would turn this person's writing into a template. If the samples lean on one vivid",
+  "metaphor family (say, sports or seafaring), you may note the appetite ('comfortable reaching",
+  "for a playful metaphor') without naming or reusing the family.",
+  "",
+  "Describe QUALITIES, never prescribe devices. A directive like 'use fragments,' 'use",
+  "asides,' 'open cold,' or 'state opinions with confidence' becomes a per-message quota the",
+  "generator over-applies — turning one person's occasional habit into every message's",
+  "template, and licensing over-confident or choppy writing. Say what the voice is like",
+  "('direct,' 'warm,' 'economical,' 'lightly self-deprecating'), not which grammatical or",
+  "rhetorical moves to make.",
+  "",
+  "Output ONLY a JSON object with these keys:",
+  '"toneDescription" (2-3 sentences on how they sound: rhythm, formality, humor register,',
+  "confidence — no imagery, topics, or phrases from the samples),",
+  '"doList" (array of short QUALITY directives — how the voice should feel, never which',
+  "devices to deploy),",
+  '"dontList" (array of short avoid-directives, including any anti-patterns they flagged),',
+  '"exemplarLines" (1-2 short lines that demonstrate the RHYTHM and register using neutral,',
+  "generic subject matter — never their signature imagery, phrases, or topics).",
+  "No prose outside the JSON. No markdown fences.",
+].join("\n");
 
 function bulletize(label: string, values: string[]) {
   const cleaned = values.map((value) => value.trim()).filter(Boolean);
@@ -159,7 +184,7 @@ export function renderVoiceFingerprint(fingerprint: VoiceFingerprint): string {
     lines.push("", "Don't:", ...fingerprint.dontList.map((item) => `- ${item}`));
   }
   if (fingerprint.exemplarLines.length > 0) {
-    lines.push("", "Exemplar lines:", ...fingerprint.exemplarLines.map((item) => `> ${item}`));
+    lines.push("", "Exemplar lines (rhythm and register reference only — not vocabulary to reuse):", ...fingerprint.exemplarLines.map((item) => `> ${item}`));
   }
   return lines.join("\n");
 }

@@ -1,0 +1,115 @@
+{
+  "versionId": "v7-b3",
+  "items": {
+    "79702602-2e0d-40b8-b5e0-5bc571a4173a": {
+      "ratings": {
+        "soundsLikeMe": 7,
+        "humility": 7,
+        "fitHonesty": 7,
+        "wouldSend": 7
+      },
+      "updatedAt": "2026-07-15T02:24:40.526Z"
+    },
+    "1ea6c478-b7e0-4c78-b22a-769761a4bbb0": {
+      "ratings": {
+        "soundsLikeMe": 7,
+        "humility": 7,
+        "fitHonesty": 7,
+        "wouldSend": 7
+      },
+      "updatedAt": "2026-07-15T02:25:09.360Z"
+    },
+    "d557cef6-4162-4c9e-88e8-9a03ce1892cc": {
+      "ratings": {
+        "soundsLikeMe": 8,
+        "humility": 8,
+        "fitHonesty": 8,
+        "wouldSend": 8
+      },
+      "updatedAt": "2026-07-15T02:26:55.612Z"
+    },
+    "1b142fad-a25f-4648-b65e-835a4631874c": {
+      "ratings": {
+        "soundsLikeMe": 8,
+        "humility": 8,
+        "fitHonesty": 8,
+        "wouldSend": 8
+      },
+      "updatedAt": "2026-07-15T02:27:15.511Z"
+    },
+    "9f701545-298c-49a3-a3c1-7d53fb7a2f1f": {
+      "ratings": {
+        "soundsLikeMe": 8,
+        "humility": 8,
+        "fitHonesty": 8,
+        "wouldSend": 6
+      },
+      "updatedAt": "2026-07-15T02:28:24.710Z",
+      "comment": "\"Can we talk?\" feels desperate. if the closer starts with something like this, \"if you're looking for...\" it can end with \"we should chat.\""
+    },
+    "230b1490-d5ee-47b5-b8f7-98a38a718647": {
+      "comment": "\"because most of what I do is exactly this\" - super awkward phrasing.\n\"That same instinct, one source of truth feeding fast, actionable\" - also awkward",
+      "ratings": {
+        "soundsLikeMe": 6,
+        "humility": 6,
+        "fitHonesty": 6
+      },
+      "updatedAt": "2026-07-15T02:29:38.311Z"
+    },
+    "c8c5ca0d-d1b0-4bac-9ab1-e72f357d46bb": {
+      "ratings": {
+        "soundsLikeMe": 7,
+        "humility": 7,
+        "fitHonesty": 7,
+        "wouldSend": 7
+      },
+      "updatedAt": "2026-07-15T02:29:55.960Z"
+    },
+    "e0282190-d318-406d-ba6c-300be02d58d8": {
+      "ratings": {
+        "soundsLikeMe": 7,
+        "humility": 7,
+        "fitHonesty": 7,
+        "wouldSend": 7
+      },
+      "updatedAt": "2026-07-15T02:30:50.762Z"
+    },
+    "d67f53b5-2025-4bf7-8636-9a2d917d5c2a": {
+      "ratings": {
+        "soundsLikeMe": 7,
+        "humility": 7,
+        "fitHonesty": 7,
+        "wouldSend": 7
+      },
+      "updatedAt": "2026-07-15T02:31:16.462Z"
+    },
+    "419f08b4-5bdf-4867-8eaa-314ed5912e9e": {
+      "ratings": {
+        "soundsLikeMe": 7,
+        "humility": 7,
+        "fitHonesty": 7,
+        "wouldSend": 7
+      },
+      "updatedAt": "2026-07-15T02:31:32.745Z"
+    },
+    "b5b1d15c-8bdb-4d92-9e37-4a899547cccc": {
+      "ratings": {
+        "soundsLikeMe": 7,
+        "humility": 7,
+        "fitHonesty": 7,
+        "wouldSend": 7
+      },
+      "updatedAt": "2026-07-15T02:31:49.212Z"
+    },
+    "0787f091-0007-4aee-89ae-52adc49bf06c": {
+      "ratings": {
+        "soundsLikeMe": 3,
+        "humility": 3,
+        "fitHonesty": 3,
+        "wouldSend": 3
+      },
+      "updatedAt": "2026-07-15T02:32:15.980Z",
+      "comment": "repeating I did this I did that. I did this also. "
+    }
+  }
+}

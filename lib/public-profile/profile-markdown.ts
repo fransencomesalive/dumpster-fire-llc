@@ -28,6 +28,15 @@ function line(label: string, value: string | number | undefined) {
   return `- ${label}: ${cleaned || "Not captured"}`;
 }
 
+// Optional user-authored lists render only when filled. An empty "Strengths: - None
+// captured" block pads every résumé with noise and reads to the outreach generator
+// as a thinness signal to concede (2026-07-14).
+function optionalListBlock(label: string, values: string[] | undefined) {
+  const cleaned = (values ?? []).map(clean).filter(Boolean);
+  if (cleaned.length === 0) return [];
+  return ["", `${label}:`, ...cleaned.map((value) => `- ${value}`)];
+}
+
 function renderRoleTrack(track: RoleTrack, resumes: Resume[]) {
   // Route each attached résumé's quotable highlights into this lane so an outreach
   // message matched to the Role Track can cite résumé proof relevant to it.
@@ -156,18 +165,10 @@ export function generateCandidateProfileMarkdown(
         line("Parsing quality", resume.parsingQuality),
         "Highlights (stats / companies you can quote):",
         list(resume.highlights),
-        "",
-        "Strengths:",
-        list(resume.strengths),
-        "",
-        "Gaps:",
-        list(resume.gaps),
-        "",
-        "Use when:",
-        list(resume.useWhen),
-        "",
-        "Avoid when:",
-        list(resume.avoidWhen),
+        ...optionalListBlock("Strengths", resume.strengths),
+        ...optionalListBlock("Gaps", resume.gaps),
+        ...optionalListBlock("Use when", resume.useWhen),
+        ...optionalListBlock("Avoid when", resume.avoidWhen),
       ].join("\n")).join("\n\n"),
     "",
     "## Skills",

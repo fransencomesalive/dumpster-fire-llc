@@ -100,6 +100,7 @@ These are standing copy rules for all user-facing surfaces (Randall, 2026-06-26)
 - **No "improve the profile / improve matching" framing.** Matches are rated by the system to provide better matching; the user maintains/keeps their profile current, they do not "improve matching."
 - **Brand voice: anti-corporate-speak.** Dumpster Fire is not a tool for corporate-speak lovers. The positioning is about bringing the user's personality to the table when pursuing a job. Copy should sound human and specific, never generic corporate boilerplate.
 - **No em dashes in generated messages (Randall, 2026-07-14).** No message generated on Dumpster Fire's platform may ever contain an em dash. Use alternate punctuation or sentence structure instead: commas, parentheses, semicolons, colons, or a new sentence. This is a hard generation rule (prompt-enforced, measured by the outreach-quality harness `emDash` meter), extending the no-em-dash rule already applied to static product copy.
+- **No logistics talk in generated outreach (Randall, 2026-07-14).** Outreach messages never discuss, volunteer, or make claims about location, remote, hybrid, in-office, relocation, time zones, or availability — regardless of the user's remote-preference setting or the job's stated location. Outreach sells the fit; logistics belong to later conversations. Hard generation rule (prompt-enforced + `logisticsMention` detector).
 
 ### Input Conventions — List-Like Fields (Randall, 2026-07-10)
 

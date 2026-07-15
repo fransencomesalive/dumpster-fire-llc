@@ -32,6 +32,11 @@ compare across versions and walk back a path that isn't working.
   variant experiment: no outreach message may ever contain an em dash; use commas, parentheses,
   semicolons, colons, or restructure. Enforced in prompts from `v3-nodash` on, measured by the
   `emDash` meter, and recorded in `AGENTS.md`. Ports to production with the winning variant.
+- **No logistics talk in any generated outreach (Randall, 2026-07-14).** Never discuss,
+  volunteer, or claim location, remote, hybrid, in-office, relocation, or availability in an
+  outreach message, regardless of the user's remote-preference setting or the job's stated
+  location. Enforced from `v6` on (prompt + `logisticsMention` hard-rule detector with
+  auto-retry); recorded in `AGENTS.md`.
 
 ## Sync + git treatment
 
@@ -121,6 +126,14 @@ node scripts/outreach-quality/review-server.mjs   # prints a localhost URL
   ended up 6× Airbnb plus language-gated non-starters (French-fluency AE, Korea-based TPM)
   and poor-fit padding. Randall 2026-07-14: too much repeated review effort; a batch like
   this is much less useful.
+- **Freshness rule (standing, found 2026-07-14):** picks must come from rows seen by the
+  MOST RECENT scan (`scraped_at` within the latest scan window). The scan upserts live
+  postings but never removes delisted ones, so dead jobs sit in the table looking live —
+  ~17% of the pool (440/2522) when discovered, incl. a batch-3 pick delisted 4 days prior.
+  Greenhouse serves its "no longer available" page with HTTP 200, so scan-absence is the
+  only reliable death signal; a link check cannot catch it.
+  **PRODUCT DECISION (Randall, 2026-07-14): stale posts are NOT being addressed.** The
+  harness freshness guard stays; no product-level staleness handling. Do not re-raise.
 - **Batch 2 rules (standing, Randall 2026-07-14):** the evidence pull is company-balanced
   (full board per company — a flat recency pull let four big boards crowd out the rest);
   picks are keyed by **stable job id**, spread across companies (batch 2: 12 jobs, 9
@@ -192,6 +205,102 @@ node scripts/outreach-quality/review-server.mjs   # prints a localhost URL
   P.H.R.E.D. to "Project OS" (invented product naming — no rule covers referring to Work
   Examples by their actual titles yet); flourish-per-message habit persists (8/12 one each) —
   structural fix is the fingerprint pre-pass revision.
+
+- `v5` — the three blockers (Randall, 2026-07-14: "these are blockers... resolved before I
+  share"). (1) **Register-only fingerprint**: `voice-fingerprint.ts` pre-pass rewritten to
+  extract HOW someone writes, never their imagery/phrases (the old pass synthesized a
+  maximum-density tic line as an exemplar; that is the carry-over mechanism for ANY user);
+  Randall's profile regenerated — imagery echo went 8/12 → 0 real hits (2 detector false
+  positives: the job's own "anchor days", generic "steering"). (2) **No-admission default**:
+  never apologize for / acknowledge / disclaim thin or missing experience; thin evidence =
+  shorter plainer message; only a stated hard requirement gets one brief factual flag, never
+  the opener — 0 admission phrases in 12/12. (3) **Résumé extraction fixed**: NOT a parsing
+  defect (parsed_text was complete) — the highlights pass capped at 6 and its prompt said
+  "notable... ('Director of Engineering at Stripe')", i.e. fame bias; now 12 highlights,
+  concrete-over-famous, whole career arc (CP+B $4MM+, One Show Golden Pencil, Greenstone,
+  ALEO, Yuga/BAYC now present); empty user-authored Strengths/Gaps/Use-when/Avoid-when
+  blocks no longer render as "None captured" noise. Credential spread across the corpus:
+  Swift 8, HTC 5, Base 4, AKQA 3, BAYC 3, CP+B 2, Golden Pencil 1 (Nike/Trek crutch → 0).
+  Watch-list: drafts run longer with richer material (avg 738; retries 10/12, 4 visible
+  near-misses — mostly the "dozen" idiom and length); possible v6 lever: aim 500–650.
+  Also new: strict number-word grounding can flag benign paraphrase ("team of four" vs
+  profile's "team of 4") — visible, not fatal; tune later.
+
+- `v6` — Randall's v5 review notes (12/12 reviewed; mostly 7–8s; five notes). First-person
+  opening anchor is now a HARD rule with auto-retry (the declarative opener survived three
+  prompt attempts; v6 Coinbase now opens through experience and humility should recover from
+  its 1). Fragment/label openers banned explicitly (Figma). **No-logistics standing rule**
+  (see Guardrails + AGENTS.md) enforced as prompt + hard-rule detector: 0 logistics mentions
+  in 12/12 (the v5 events cell had fabricated "can be in-office as needed"). Closing lines
+  must have unambiguous intent — an ask reads as a direct question, a statement as a
+  statement (Randall clarified the Ramp note was a grammar/clarity defect that made him
+  question the goal, NOT a rule that every close is a question). Example format-matching
+  sharpened —
+  partial win on the events cell: ZKP dropped, but it chose résumé points (incl. AirCover)
+  over the Mozilla tradeshow example Randall pointed at; still the weakest selection cell.
+  The closing-clarity rule alone converged 11/12 messages on a stock "Worth a conversation?"
+  — Randall: not banned terms, but near-identical closers across messages read as lazy output
+  or poor LLM guidance to users; the fix is closers SPECIFIC to the job or evidence (a
+  job-specific ask can't repeat) — final roll has 12 varied, direct-question asks. Final corpus 2026-07-14 (later): 12/12, 0 em dashes,
+  9/9 links, 0 opener/logistics flags, 10 retried, 6 visible near-misses (4 length 762–846 +
+  "dozen" ×4). Length + the "dozen" idiom are now clearly THE systemic residuals →
+  recommended v7 lever: target 500–650 and name "a dozen" in the numbers rule.
+  Not rule-addressed: "lean on people" diction (one-off).
+
+- `v7` — regression response (v6 averaged 5.09 with four 1-rated cells; Randall: "very
+  discouraging"). Root causes were mechanical, not drift: (1) the register-only fingerprint
+  PRESCRIBED devices ("use fragments," "easy confidence," "open cold") that beat the prompt's
+  rules on every roll — pre-pass revised a second time (qualities only, never devices) and the
+  profile regenerated; (2) quality-blind retries (10/12 that roll) selected sloppy-but-compliant
+  prose — length target moved to 500–650 and "a dozen" named, cutting retries to 2/12 before the
+  new rules, 8/12 after. v7 is a full-text prompt rewrite: rules outrank voice (hedging beats
+  voice confidence — the missing "in my experience" markers trace to the old fingerprint);
+  fragment cap of ONE per message; prose-quality bar (no sentence-final prepositions, no close
+  word repetition, no same-shape sentence stacks, no invented shorthand); domain anti-fabrication
+  incl. evidence keeps its actual format (no re-describing digital launches as live events);
+  negativity ban ("grind"); respectful prior-employment phrasing + company-familiarity openers.
+  Admission/disclaimer framing promoted to a HARD rule (`admissionPresent` detector) after the
+  first v7 roll reopened two messages with "I'll be straight: ... not my lane." Also fixed a real
+  detector bug: substring grounding let "often" ground "ten" ("ten disconnected docs" had passed);
+  number-words now word-boundary checked. Final roll: 12/12, 0 admission/opener/logistics/em-dash
+  flags, 9/12 hedged with explicit first-person markers, closers all distinct and specific.
+  KNOWN WEAK SPOTS for review: the events cell still self-flags its live-show gap ("show-calling
+  craft I'd bring less of on paper" — pattern widened for future rolls; the structural issue is
+  the profile has no live-event evidence, so the model oscillates fabricate↔confess on this job
+  type); 7/12 messages open "I've spent 15+ years..." (the next cross-message sameness axis);
+  GitLab 772 + Databricks 769 kept as visible length near-misses.
+
+- `v7-b3` — same v7 prompt on **job batch 3** (Randall: keep growing sample size and
+  variation): 12 new id-keyed jobs, four companies batch 2 never touched (Spotify, Stripe,
+  Dropbox, Robinhood) plus fresh roles at Anthropic/Figma/OpenAI/Airbnb/Discord; standing
+  sampling rules held (≤2 per company, no language gates, no never-apply padding; 4/5/3 fit
+  spread). Two prompt additions shipped with it after QA reads: the **adjacent-seat rule**
+  (when the role's core craft isn't this person's, pitch the seat they'd actually fill —
+  never contrast against the title, never confess distance; born from the ACD Copy cell
+  reaching "I'll be straight" through three rolls) and `MAX_GEN_ATTEMPTS` env override
+  (stretch cells needed 5). ADMISSION_PATTERN extended ("I'll admit", "I won't pretend").
+  Final roll: 12/12, 0 admissions/logistics/opener/em-dash flags, 0 length overruns, 2
+  visible word-grounding near-misses. QA flags for review: Discord says "legal-specific
+  tooling would be new ground for me" (mild gap-acknowledgment below the pattern's radar);
+  4/12 closers drifted back generic ("Worth a call?"); "ten disconnected docs" passes the
+  numbers rule only because a writing sample contains "ten months" — semantic grounding
+  (number + what it counts) is future work; opener family still leans "I've spent…".
+
+- `v8` — Randall's b3 notes (b3 averaged 6.81, 10/12 at 7–8 — recovered from v6). Closers
+  carry their job-specific referent in the same sentence (bare "Can we talk?" read
+  desperate) with the conditional shape offered ("If you're looking for X, we should
+  chat."); **same-shape sentence stacking is now a HARD rule** (3+ consecutive "I <verb>"
+  openings auto-retry — the Discord cell rated 3s was a 5-attempt retry survivor, and
+  detectors guard retry survivors where prose advice can't); prose bar leads with a
+  read-aloud test. Generated on batch 3 for direct before/after against the rated v7-b3
+  cells. Run 2026-07-14 (night): 12/12 (MAX_GEN_ATTEMPTS=5), **Bot Busters selected for the
+  first time ever** (all four Work Examples have now appeared), Discord cell fixed by the
+  new detector on-camera (stack flagged at attempt 2, clean by 5), conditional closes
+  landed. 3 visible near-misses: "a dozen" ×2 and one logistics false-positive ("onsite
+  delivery" on the events job is the event's own vocabulary, not work-location talk —
+  detector nuance noted, message reads clean). Also standing: **batch freshness rule** —
+  picks must be seen by the most recent scan (3 of batch 3's picks turned out delisted;
+  per-company freshness guard added to gen-baseline; PRODUCT GAP flagged under Job batches).
 
 ## Next steps
 
@@ -326,3 +435,25 @@ Safe-to-do this stretch (harness only):
 
 Report findings + proposed variants back here (update Versions + Next steps). Do not port
 anything to production or commit without Randall.
+
+## Deferred to a later session (Randall, 2026-07-14 — recorded, do not build yet)
+
+1. **Message generation UX change (design-gated).** Eliminate the current "Generate new
+   message" affordance in favor of ONE backup "re-gen": a single regeneration pass that
+   produces a much different but still tone-true message. At step 3 of the pursuit flow
+   (currently grayed out until drafts generate): on arrival the card itself shows the
+   standard loading animation (inside the card, not a popup), then shows the generated
+   message. Done — the user can copy the text and that's it.
+2. **Saved-pursuits review track (design-gated).** Reviewing saved pursuits and whether
+   they were followed up / messaged is the last main built-but-unplanned feature. First
+   step: a "Saved Pursuits" button next to "Dashboard" in the top profile card, with a
+   hover tooltip "Coming Soon".
+3. **External-job link input → apply wizard (Randall, 2026-07-14, design-gated).** A user
+   who finds a job OUTSIDE the job scan needs a way to pursue it. Copy direction:
+   "Find a job that's not in your scan? drop the job link here:" + link input +
+   **[PURSUE]** button. Pressing Pursue cues the exact same pursuit workflow any scanned
+   job gets. Per the list-input conventions this is a single-value action input (input +
+   button, Enter also commits, no comma handling). Needs: URL fetch/parse of an arbitrary
+   posting into a job record, then hand-off to the existing pursue flow.
+   → **BACKEND handed to Codex 2026-07-14** (priority item):
+   `docs/codex-tasks-external-job-link-2026-07-14.md`. UI remains design-gated.

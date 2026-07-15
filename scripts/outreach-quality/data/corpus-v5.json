@@ -1,0 +1,462 @@
+{
+  "versionId": "v5",
+  "generatedAt": "2026-07-14T22:57:07.434Z",
+  "model": "claude-opus-4-8",
+  "workExampleInventory": {
+    "checkedAt": "2026-07-14T22:53:10.655Z",
+    "profileUpdatedAt": "2026-07-14T22:51:42.16+00:00",
+    "markdownGeneratedAt": "2026-07-14T22:51:42.16+00:00",
+    "ok": true,
+    "count": 4,
+    "compiledCount": 4,
+    "issues": [],
+    "entries": [
+      {
+        "key": "work-example-0ae80e2d0613",
+        "title": "P.H.R.E.D.",
+        "fingerprint": "0ae80e2d0613c2b223edd94a8e57c149b9e8b9826e89b6b507b767edda700663",
+        "fields": {
+          "title": true,
+          "oneHitter": true,
+          "link": true,
+          "context": true
+        }
+      },
+      {
+        "key": "work-example-21e1cc5b27f2",
+        "title": "Billionaire Blast-off | Mozilla",
+        "fingerprint": "21e1cc5b27f203e4fea04fe20c7a9725cc848619ac614184130e65a1e9ea2497",
+        "fields": {
+          "title": true,
+          "oneHitter": true,
+          "link": true,
+          "context": true
+        }
+      },
+      {
+        "key": "work-example-f9155962c042",
+        "title": "BORED APE YACHT CLUB | Website Redesign",
+        "fingerprint": "f9155962c0428427f1ebb946b9d4017cb8e5068afcadb4bd2ab91a7021f8af74",
+        "fields": {
+          "title": true,
+          "oneHitter": true,
+          "link": true,
+          "context": true
+        }
+      },
+      {
+        "key": "work-example-e4cbe178b6d3",
+        "title": "Bot Busters",
+        "fingerprint": "e4cbe178b6d320b048b2f812e4cca9270858c3b7060db99d342e3f225655f2dd",
+        "fields": {
+          "title": true,
+          "oneHitter": true,
+          "link": true,
+          "context": true
+        }
+      }
+    ]
+  },
+  "messages": [
+    {
+      "jobId": "b8eb2807-feb5-409b-9656-4af069ccd18e",
+      "company": "Coinbase",
+      "title": "Technical Program Manager, Knowledge Systems",
+      "sourceUrl": "https://www.coinbase.com/careers/positions/8013892?gh_jid=8013892",
+      "location": "Remote - USA",
+      "remoteType": "remote",
+      "fit": "good",
+      "contactRole": "Director, Technical Program Management",
+      "contactSeniority": "Director",
+      "message": "The problem with AI-assisted work isn't the output, it's that the output scatters. Product decisions in one doc, tasks created without context, AI conversations that go nowhere and connect to nothing. I built P.H.R.E.D. to fix exactly that: an operating system with a source-of-truth structure and an orchestration agent that keeps AI-assisted work connected instead of loose. https://lab26.randallfransen.com/phred\n\nThat's the same muscle your Knowledge Systems role needs: taking unstructured stuff and making it machine-readable, governed, and ready ahead of launch. I already know the building too. I was Production Lead for Base at Coinbase. Happy to talk.",
+      "insertedExample": {
+        "oneHitter": "Project Hub for Retrieval, Execution, & Delivery",
+        "link": "https://lab26.randallfransen.com/phred"
+      },
+      "workExampleSelection": {
+        "key": "work-example-0ae80e2d0613",
+        "title": "P.H.R.E.D."
+      },
+      "generationAttempts": 1,
+      "hardRuleViolations": [],
+      "metrics": {
+        "nauticalTic": 0,
+        "heroPresent": 1,
+        "inventedNumber": 0,
+        "concessionOpener": 0,
+        "tellsWhatTheyWant": 0,
+        "q4BragTag": 0,
+        "exampleLinkMissing": 0,
+        "emDash": 0,
+        "ungroundedNumber": 0,
+        "length": 661
+      }
+    },
+    {
+      "jobId": "d7dd72e8-a446-40c8-b85d-14f24d0c1dcc",
+      "company": "Coinbase",
+      "title": "Staff Technical Program Manager, CX Agent Experience",
+      "sourceUrl": "https://www.coinbase.com/careers/positions/8047657?gh_jid=8047657",
+      "location": "Remote - USA",
+      "remoteType": "remote",
+      "fit": "good",
+      "contactRole": "VP, Customer Experience",
+      "contactSeniority": "VP",
+      "message": "I've done a tour inside Coinbase already, as Production Lead for Base, so the surge cadence and the compliance-heavy internal-tools world aren't abstract to me. Agent Cockpit is exactly the kind of platform I like owning: many stakeholders, real dependencies, and no room for output that goes everywhere and connects nowhere.\n\nThat last part is a thing I've been building against directly. On a confidential mobile app with a tiny team and a brutal timeline, I built P.H.R.E.D., a source-of-truth system that keeps AI-assisted work structured instead of scattered while humans stay in control of scope and decisions: https://lab26.randallfransen.com/phred\n\nHappy to talk through how I'd run intake and launch readiness for the Cockpit team.",
+      "insertedExample": {
+        "oneHitter": "Project Hub for Retrieval, Execution, & Delivery",
+        "link": "https://lab26.randallfransen.com/phred"
+      },
+      "workExampleSelection": {
+        "key": "work-example-0ae80e2d0613",
+        "title": "P.H.R.E.D."
+      },
+      "generationAttempts": 3,
+      "hardRuleViolations": [],
+      "metrics": {
+        "nauticalTic": 0,
+        "heroPresent": 1,
+        "inventedNumber": 0,
+        "concessionOpener": 0,
+        "tellsWhatTheyWant": 0,
+        "q4BragTag": 0,
+        "exampleLinkMissing": 0,
+        "emDash": 0,
+        "ungroundedNumber": 0,
+        "length": 740
+      }
+    },
+    {
+      "jobId": "d4191b2b-1445-48cb-bed2-6c9e6935c69e",
+      "company": "Figma",
+      "title": "Brand Producer",
+      "sourceUrl": "https://boards.greenhouse.io/figma/jobs/6000002004?gh_jid=6000002004",
+      "location": "San Francisco, CA • New York, NY • United States",
+      "remoteType": "remote",
+      "fit": "good",
+      "contactRole": "Executive Creative Director",
+      "contactSeniority": "Director",
+      "message": "Brand Producer for the Brand Studio team, and I've spent 15+ years being the person who brings structure so creatives can stay focused on the work. I ran a $14MM HTC retainer with a small team at Swift, oversaw $4MM+ in production budgets at Crispin Porter + Bogusky (walked out with a One Show Golden Pencil), and led the BAYC.com redesign at Yuga Labs, including partnering with an outside studio to get it shipped: https://www.randallfransen.com/work/bored-ape-yacht-club-website-redesign\n\nFast-moving, ambiguous, lean on people. That's the seat I like. Onboarding agencies and freelancers, building the timeline, keeping the whole thing on track without stepping on the creative. Happy to talk.",
+      "insertedExample": {
+        "oneHitter": "Yuga’s property Bored Ape Yacht Club was still rocking it’s original design and functionality in 2023.",
+        "link": "https://www.randallfransen.com/work/bored-ape-yacht-club-website-redesign"
+      },
+      "workExampleSelection": {
+        "key": "work-example-f9155962c042",
+        "title": "BORED APE YACHT CLUB | Website Redesign"
+      },
+      "generationAttempts": 1,
+      "hardRuleViolations": [],
+      "metrics": {
+        "nauticalTic": 0,
+        "heroPresent": 0,
+        "inventedNumber": 0,
+        "concessionOpener": 0,
+        "tellsWhatTheyWant": 0,
+        "q4BragTag": 0,
+        "exampleLinkMissing": 0,
+        "emDash": 0,
+        "ungroundedNumber": 0,
+        "length": 698
+      }
+    },
+    {
+      "jobId": "692f2659-5c5a-46bb-b01a-3fa10e6af8c0",
+      "company": "Airbnb",
+      "title": "Senior Programs & Business Operations Lead, Airbnb Services",
+      "sourceUrl": "https://careers.airbnb.com/positions/7822781?gh_jid=7822781",
+      "location": "United States",
+      "remoteType": "remote",
+      "fit": "good",
+      "contactRole": "Director, Business Operations",
+      "contactSeniority": "Director",
+      "message": "I've stood up new-business programs from concept to launch before, and I already know the Airbnb machine from the inside. I ran the global AirCover for Hosts launch as EP, which meant driving engineering, design, marketing, and legal toward one date without owning any of them directly. That connective-leader-without-authority thing you describe is most of what I actually do.\n\nBefore that I managed a $14MM retainer with a team at Swift and won 4 new accounts over two years running programs at AKQA. I like the messy early phase: figure out where things are quietly on fire, build the process, keep people moving.\n\nWorth a conversation?",
+      "insertedExample": null,
+      "workExampleSelection": null,
+      "generationAttempts": 2,
+      "hardRuleViolations": [],
+      "metrics": {
+        "nauticalTic": 0,
+        "heroPresent": 0,
+        "inventedNumber": 0,
+        "concessionOpener": 0,
+        "tellsWhatTheyWant": 0,
+        "q4BragTag": 0,
+        "exampleLinkMissing": 0,
+        "emDash": 0,
+        "ungroundedNumber": 0,
+        "length": 639
+      }
+    },
+    {
+      "jobId": "3f012bc3-2cc3-4e69-bce6-64155faa6740",
+      "company": "Notion",
+      "title": "Product Operations Manager",
+      "sourceUrl": "https://jobs.ashbyhq.com/notion/8b82e596-e828-45db-94d5-b76acc89e749",
+      "location": "San Francisco, California",
+      "remoteType": "onsite",
+      "fit": "medium",
+      "contactRole": "Head of Product Operations",
+      "contactSeniority": "Director",
+      "message": "The line about launch output going everywhere hit home. That's exactly the mess I kept running into on AI-assisted work: product decisions in one doc, tasks with no context, conversations that led nowhere.\n\nSo I built the operating system before accelerating anything. P.H.R.E.D. (Project Hub for Retrieval, Execution, & Delivery) is my source-of-truth stack plus an orchestration agent that keeps AI work connected instead of scattered: https://lab26.randallfransen.com/phred\n\nBefore that I spent 15+ years as an EP running launch ops across cross-functional teams, from a $14MM HTC retainer at Swift to AirBnB's global AirCover launch. I'm good at being the calm liaison between product, engineering, and go-to-market when timelines get aggressive.\n\nNoting the SF/NYC anchor days: I'm Boulder-based and remote-leaning, worth a quick conversation if that's flexible.",
+      "insertedExample": {
+        "oneHitter": "Project Hub for Retrieval, Execution, & Delivery",
+        "link": "https://lab26.randallfransen.com/phred"
+      },
+      "workExampleSelection": {
+        "key": "work-example-0ae80e2d0613",
+        "title": "P.H.R.E.D."
+      },
+      "generationAttempts": 3,
+      "hardRuleViolations": [
+        "over_750_characters(867)"
+      ],
+      "metrics": {
+        "nauticalTic": 1,
+        "heroPresent": 1,
+        "inventedNumber": 0,
+        "concessionOpener": 0,
+        "tellsWhatTheyWant": 0,
+        "q4BragTag": 0,
+        "exampleLinkMissing": 0,
+        "emDash": 0,
+        "ungroundedNumber": 0,
+        "length": 867
+      }
+    },
+    {
+      "jobId": "979c2330-d8e2-4845-8f4d-eea81446cf13",
+      "company": "OpenAI",
+      "title": "Creative Director, Growth",
+      "sourceUrl": "https://jobs.ashbyhq.com/openai/2f2b5980-71c3-49dd-829d-d7d39563741a",
+      "location": "New York City",
+      "remoteType": "unclear",
+      "fit": "medium",
+      "contactRole": "VP, Marketing",
+      "contactSeniority": "VP",
+      "message": "Randall here, digital EP for 15+ years. I've spent the last stretch producing at the frontier you're describing: Base at Coinbase, the BAYC.com redesign at Yuga Labs, a zero-knowledge-proof launch at Aleo. New tech, skeptical audiences, and the job of making it land as something human.\n\nThe Growth CD role reads like the work I already do: steering agencies, shaping briefs with marketing, holding a high craft bar while everything moves fast. I ran Mozilla's Billionaire Blast-off, a Gen Z-coded activation punching up at Big Tech: https://www.randallfransen.com/work/billionaire-blast-off-mozilla\n\nHeads up, I'm Boulder-based and see NYC is required. Happy to talk about how that works if the fit's there.",
+      "insertedExample": {
+        "oneHitter": "Create a Gen Z-coded moment to amplify Open What You Want.",
+        "link": "https://www.randallfransen.com/work/billionaire-blast-off-mozilla"
+      },
+      "workExampleSelection": {
+        "key": "work-example-21e1cc5b27f2",
+        "title": "Billionaire Blast-off | Mozilla"
+      },
+      "generationAttempts": 2,
+      "hardRuleViolations": [],
+      "metrics": {
+        "nauticalTic": 1,
+        "heroPresent": 0,
+        "inventedNumber": 0,
+        "concessionOpener": 0,
+        "tellsWhatTheyWant": 0,
+        "q4BragTag": 0,
+        "exampleLinkMissing": 0,
+        "emDash": 0,
+        "ungroundedNumber": 0,
+        "length": 708
+      }
+    },
+    {
+      "jobId": "a01690f2-7ecd-4314-befa-fe7487e4d636",
+      "company": "Anthropic",
+      "title": "Marketing Events Producer",
+      "sourceUrl": "https://job-boards.greenhouse.io/anthropic/jobs/5251832008",
+      "location": "San Francisco, CA | New York City, NY",
+      "remoteType": "hybrid",
+      "fit": "medium",
+      "contactRole": "Head of Events Marketing",
+      "contactSeniority": "Director",
+      "message": "Show-calling is where I've spent a lot of my career: run-of-show, cue sheets, rehearsals, and being the calm voice when something goes sideways ten minutes before doors. I've produced launches that had to land on the day, including AirBnB's global AirCover for Hosts and a Zero Knowledge Proof launch at ALEO, both high-stakes and tightly timelined.\n\nI'm good at the vendor and budget side too. Ran a $14MM retainer with a team at Swift, and $4MM+ in production budgets at Crispin Porter + Bogusky. AV, staging, negotiating scope, tracking against targets, all familiar ground.\n\nI'm in Boulder and can be in-office as needed. If you want to talk about how your events show up on stage, I'm around.",
+      "insertedExample": null,
+      "workExampleSelection": null,
+      "generationAttempts": 2,
+      "hardRuleViolations": [],
+      "metrics": {
+        "nauticalTic": 0,
+        "heroPresent": 0,
+        "inventedNumber": 0,
+        "concessionOpener": 0,
+        "tellsWhatTheyWant": 0,
+        "q4BragTag": 0,
+        "exampleLinkMissing": 0,
+        "emDash": 0,
+        "ungroundedNumber": 0,
+        "length": 697
+      }
+    },
+    {
+      "jobId": "cd5ba679-04b1-427d-9610-eadbc024c045",
+      "company": "Discord",
+      "title": "Strategy & Operations Manager, Consumer Revenue",
+      "sourceUrl": "https://job-boards.greenhouse.io/discord/jobs/8507387002",
+      "location": "San Francisco Bay Area",
+      "remoteType": "unclear",
+      "fit": "medium",
+      "contactRole": "Director, Strategy & Operations",
+      "contactSeniority": "Director",
+      "message": "I've spent most of my career as the person who stands up process where there wasn't any. At Swift I ran a $14MM HTC retainer with a small team, at Coinbase I was Production Lead for Base, and the through-line is always the same: take an ambiguous, cross-functional mess and give it structure, guardrails, and a source of truth people actually use.\n\nThe deal desk part of this role is what caught me. Defining red lines, approval frameworks, keeping deals moving from signed to recognized. That's the connective-tissue work I like most, sitting between BD, product, and finance and getting everyone pointed the same way without owning any of them outright.\n\nGaming and a subscription business are both in my wheelhouse. Happy to talk.",
+      "insertedExample": null,
+      "workExampleSelection": null,
+      "generationAttempts": 2,
+      "hardRuleViolations": [],
+      "metrics": {
+        "nauticalTic": 0,
+        "heroPresent": 0,
+        "inventedNumber": 0,
+        "concessionOpener": 0,
+        "tellsWhatTheyWant": 0,
+        "q4BragTag": 0,
+        "exampleLinkMissing": 0,
+        "emDash": 0,
+        "ungroundedNumber": 0,
+        "length": 733
+      }
+    },
+    {
+      "jobId": "eb3447c7-405d-4faa-92cb-4248fdab2198",
+      "company": "GitLab",
+      "title": "Professional Services Program Manager",
+      "sourceUrl": "https://job-boards.greenhouse.io/gitlab/jobs/8617252002",
+      "location": "Remote, US",
+      "remoteType": "remote",
+      "fit": "medium",
+      "contactRole": "Director, Professional Services",
+      "contactSeniority": "Director",
+      "message": "Multi-workstream program delivery for big, strategic clients is where I've spent most of the last 15 years. At Swift I ran a $14MM retainer for HTC with a team of four, keeping roadmaps, dependencies, and milestones honest across a lot of moving parts. As Program Director at AKQA I managed programs of 3-4 clients with senior direct reports and won 4 new accounts over two years, which meant living inside the RACI charts, escalation paths, and stakeholder expectations you're describing.\n\nOn the AI-as-productivity-multiplier note: I built an operating methodology to keep AI-assisted work connected instead of scattered across docs. https://lab26.randallfransen.com/phred\n\nRemote-native, comfortable driving progress async. Happy to talk.",
+      "insertedExample": {
+        "oneHitter": "Project Hub for Retrieval, Execution, & Delivery",
+        "link": "https://lab26.randallfransen.com/phred"
+      },
+      "workExampleSelection": {
+        "key": "work-example-0ae80e2d0613",
+        "title": "P.H.R.E.D."
+      },
+      "generationAttempts": 3,
+      "hardRuleViolations": [
+        "ungrounded_numbers(four)"
+      ],
+      "metrics": {
+        "nauticalTic": 0,
+        "heroPresent": 1,
+        "inventedNumber": 0,
+        "concessionOpener": 0,
+        "tellsWhatTheyWant": 0,
+        "q4BragTag": 0,
+        "exampleLinkMissing": 0,
+        "emDash": 0,
+        "ungroundedNumber": 1,
+        "length": 741
+      }
+    },
+    {
+      "jobId": "546f97cc-a0fa-4dbb-ae23-0c1b62c3f739",
+      "company": "Ramp",
+      "title": "Viral Creative Producer",
+      "sourceUrl": "https://jobs.ashbyhq.com/ramp/c48fddbc-6063-4cae-8bfc-cf17642f11ae",
+      "location": "New York, NY (HQ)",
+      "remoteType": "onsite",
+      "fit": "stretch",
+      "contactRole": "Head of Brand",
+      "contactSeniority": "Director",
+      "message": "The Brian Baumgartner glass box was the kind of thing that makes you both jealous and delighted, so I'll skip pretending I'm cool about it. I'm a digital EP, 15+ years, and I do exactly the unglamorous half of stunts that makes the fun half possible: talent, vendors, permits, budgets, capture, the whole delivery chain that turns a good idea into a thing people actually see.\n\nI ran the AirCover for Hosts global launch at Airbnb and a Gen Z activation for Mozilla built to punch up at Big Tech and get shared, not scrolled past (https://www.randallfransen.com/work/billionaire-blast-off-mozilla). I know how to hold scope steady while a concept gets weirder.\n\nGot bigger swings queued up. I'd like to help pull them off.",
+      "insertedExample": {
+        "oneHitter": "Create a Gen Z-coded moment to amplify Open What You Want.",
+        "link": "https://www.randallfransen.com/work/billionaire-blast-off-mozilla"
+      },
+      "workExampleSelection": {
+        "key": "work-example-21e1cc5b27f2",
+        "title": "Billionaire Blast-off | Mozilla"
+      },
+      "generationAttempts": 2,
+      "hardRuleViolations": [],
+      "metrics": {
+        "nauticalTic": 0,
+        "heroPresent": 0,
+        "inventedNumber": 0,
+        "concessionOpener": 0,
+        "tellsWhatTheyWant": 0,
+        "q4BragTag": 0,
+        "exampleLinkMissing": 0,
+        "emDash": 0,
+        "ungroundedNumber": 0,
+        "length": 722
+      }
+    },
+    {
+      "jobId": "e4c50ff6-661f-4dcd-a13c-30821b842df1",
+      "company": "Anthropic",
+      "title": "Head of Copy, Creative Studio",
+      "sourceUrl": "https://job-boards.greenhouse.io/anthropic/jobs/5118172008",
+      "location": "New York City, NY; San Francisco, CA",
+      "remoteType": "hybrid",
+      "fit": "stretch",
+      "contactRole": "Executive Creative Director",
+      "contactSeniority": "Director",
+      "message": "The line in this that jumped out at me isn't the copy craft, it's the part about being connective tissue between human creative vision and AI execution infrastructure. That's the seam I've been living in. Fair warning up front: I run production and creative programs, I don't own voice as a copy lead, so I'll be direct about where I fit.\n\nI built P.H.R.E.D., an operating methodology that keeps AI-assisted work connected instead of scattered across a dozen docs, on a confidential product with a tiny team and an aggressive timeline: https://lab26.randallfransen.com/phred. Before that, Creative Producer on the BAYC.com redesign at Yuga and EP on Aleo's zero-knowledge launch, plus a $14MM retainer with a team of 4 at Swift.\n\nIf you need someone to build the process and quality bars that let writers move fast without the AI output going everywhere, that's my seat. Worth a talk?",
+      "insertedExample": {
+        "oneHitter": "Project Hub for Retrieval, Execution, & Delivery",
+        "link": "https://lab26.randallfransen.com/phred"
+      },
+      "workExampleSelection": {
+        "key": "work-example-0ae80e2d0613",
+        "title": "P.H.R.E.D."
+      },
+      "generationAttempts": 3,
+      "hardRuleViolations": [
+        "over_750_characters(884)",
+        "ungrounded_numbers(dozen)"
+      ],
+      "metrics": {
+        "nauticalTic": 0,
+        "heroPresent": 1,
+        "inventedNumber": 0,
+        "concessionOpener": 0,
+        "tellsWhatTheyWant": 0,
+        "q4BragTag": 0,
+        "exampleLinkMissing": 0,
+        "emDash": 0,
+        "ungroundedNumber": 1,
+        "length": 884
+      }
+    },
+    {
+      "jobId": "7328fb15-4c42-4f6a-b419-daa7470140a8",
+      "company": "Databricks",
+      "title": "Chief of Staff, to the CPO",
+      "sourceUrl": "https://databricks.com/company/careers/open-positions/job?gh_jid=8479022002",
+      "location": "San Francisco, California",
+      "remoteType": "unclear",
+      "fit": "stretch",
+      "contactRole": "Chief Product Officer",
+      "contactSeniority": "C-level",
+      "message": "Chief of Staff to the CPO caught my eye because the connective-tissue part is what I've actually spent years doing: linking strategy to execution, running the operating cadence, and keeping senior leaders pointed at the priorities that matter. I ran a $14MM HTC retainer at Swift with a small senior team, and won 4 new accounts over two years as Program Director at AKQA managing programs of multiple clients and senior direct reports.\n\nThe AI-first piece is the part I'd geek out on. I built P.H.R.E.D., an operating system that keeps AI-assisted work connected instead of scattered across a dozen docs: https://lab26.randallfransen.com/phred. Making a People org faster with AI without losing the human judgment part is a real problem, and I'd love to talk it through.",
+      "insertedExample": {
+        "oneHitter": "Project Hub for Retrieval, Execution, & Delivery",
+        "link": "https://lab26.randallfransen.com/phred"
+      },
+      "workExampleSelection": {
+        "key": "work-example-0ae80e2d0613",
+        "title": "P.H.R.E.D."
+      },
+      "generationAttempts": 3,
+      "hardRuleViolations": [
+        "over_750_characters(771)",
+        "ungrounded_numbers(dozen)"
+      ],
+      "metrics": {
+        "nauticalTic": 0,
+        "heroPresent": 1,
+        "inventedNumber": 0,
+        "concessionOpener": 0,
+        "tellsWhatTheyWant": 0,
+        "q4BragTag": 0,
+        "exampleLinkMissing": 0,
+        "emDash": 0,
+        "ungroundedNumber": 1,
+        "length": 771
+      }
+    }
+  ]
+}

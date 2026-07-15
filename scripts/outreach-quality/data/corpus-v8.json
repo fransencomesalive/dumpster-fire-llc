@@ -1,0 +1,507 @@
+{
+  "versionId": "v8",
+  "generatedAt": "2026-07-15T02:40:53.961Z",
+  "model": "claude-opus-4-8",
+  "workExampleInventory": {
+    "checkedAt": "2026-07-15T01:37:05.457Z",
+    "profileUpdatedAt": "2026-07-15T01:36:56.358+00:00",
+    "markdownGeneratedAt": "2026-07-15T01:36:56.358+00:00",
+    "ok": true,
+    "count": 4,
+    "compiledCount": 4,
+    "issues": [],
+    "entries": [
+      {
+        "key": "work-example-0ae80e2d0613",
+        "title": "P.H.R.E.D.",
+        "fingerprint": "0ae80e2d0613c2b223edd94a8e57c149b9e8b9826e89b6b507b767edda700663",
+        "fields": {
+          "title": true,
+          "oneHitter": true,
+          "link": true,
+          "context": true
+        }
+      },
+      {
+        "key": "work-example-21e1cc5b27f2",
+        "title": "Billionaire Blast-off | Mozilla",
+        "fingerprint": "21e1cc5b27f203e4fea04fe20c7a9725cc848619ac614184130e65a1e9ea2497",
+        "fields": {
+          "title": true,
+          "oneHitter": true,
+          "link": true,
+          "context": true
+        }
+      },
+      {
+        "key": "work-example-f9155962c042",
+        "title": "BORED APE YACHT CLUB | Website Redesign",
+        "fingerprint": "f9155962c0428427f1ebb946b9d4017cb8e5068afcadb4bd2ab91a7021f8af74",
+        "fields": {
+          "title": true,
+          "oneHitter": true,
+          "link": true,
+          "context": true
+        }
+      },
+      {
+        "key": "work-example-e4cbe178b6d3",
+        "title": "Bot Busters",
+        "fingerprint": "e4cbe178b6d320b048b2f812e4cca9270858c3b7060db99d342e3f225655f2dd",
+        "fields": {
+          "title": true,
+          "oneHitter": true,
+          "link": true,
+          "context": true
+        }
+      }
+    ]
+  },
+  "messages": [
+    {
+      "jobId": "79702602-2e0d-40b8-b5e0-5bc571a4173a",
+      "company": "Spotify",
+      "title": "Producer - The Journal",
+      "sourceUrl": "https://jobs.lever.co/spotify/a6134bc1-0627-4f0b-8c0b-ed81cba2d655",
+      "location": "New York, NY",
+      "remoteType": "unclear",
+      "fit": "good",
+      "contactRole": "Executive Producer, Studios",
+      "contactSeniority": "Director",
+      "message": "I've spent 15+ years producing digital and content work, and the seat I keep landing in is the one that brings order to fast-moving teams without slowing them down. On the AirBnB AirCover launch I ran the global rollout end to end, and on the BAYC.com redesign I led both internal teams and an outside studio to a hard deadline. Daily cadence, tight windows, high-stakes stories: that's the kind of production I like most. If The Journal needs a producer who can keep a small team on task and on time while the news moves, I'd love to talk.",
+      "insertedExample": null,
+      "workExampleSelection": null,
+      "generationAttempts": 1,
+      "hardRuleViolations": [],
+      "metrics": {
+        "nauticalTic": 0,
+        "heroPresent": 0,
+        "inventedNumber": 0,
+        "concessionOpener": 0,
+        "tellsWhatTheyWant": 0,
+        "q4BragTag": 0,
+        "exampleLinkMissing": 0,
+        "emDash": 0,
+        "ungroundedNumber": 0,
+        "openerNoFirstPerson": 0,
+        "logisticsMention": 0,
+        "admissionPresent": 0,
+        "sameShapeStack": 0,
+        "length": 540
+      }
+    },
+    {
+      "jobId": "1ea6c478-b7e0-4c78-b22a-769761a4bbb0",
+      "company": "Stripe",
+      "title": "GTM Operations Process Architect",
+      "sourceUrl": "https://stripe.com/jobs/search?gh_jid=7993610",
+      "location": "US Remote National",
+      "remoteType": "remote",
+      "fit": "good",
+      "contactRole": "Head of GTM Operations",
+      "contactSeniority": "Director",
+      "message": "The line in this posting about redesigning a process before automating it, versus automating a broken one, is exactly the fight I keep having. My most recent work was building an operating system before accelerating AI-assisted work: a source-of-truth structure with documentation, handoffs, QA, and an orchestration agent so output connects instead of scattering. That's P.H.R.E.D.: https://lab26.randallfransen.com/phred. Before that I managed a $14MM retainer at Swift and $4MM+ in production budgets at Crispin Porter + Bogusky, mostly cross-functional work where nobody reported to me directly. If you want someone to own the process and tooling roadmap for Central Ops, I'd like to talk.",
+      "insertedExample": {
+        "oneHitter": "Project Hub for Retrieval, Execution, & Delivery",
+        "link": "https://lab26.randallfransen.com/phred"
+      },
+      "workExampleSelection": {
+        "key": "work-example-0ae80e2d0613",
+        "title": "P.H.R.E.D."
+      },
+      "generationAttempts": 3,
+      "hardRuleViolations": [],
+      "metrics": {
+        "nauticalTic": 0,
+        "heroPresent": 1,
+        "inventedNumber": 0,
+        "concessionOpener": 0,
+        "tellsWhatTheyWant": 0,
+        "q4BragTag": 0,
+        "exampleLinkMissing": 0,
+        "emDash": 0,
+        "ungroundedNumber": 0,
+        "openerNoFirstPerson": 0,
+        "logisticsMention": 0,
+        "admissionPresent": 0,
+        "sameShapeStack": 0,
+        "length": 693
+      }
+    },
+    {
+      "jobId": "d557cef6-4162-4c9e-88e8-9a03ce1892cc",
+      "company": "Anthropic",
+      "title": "Internal Content Producer",
+      "sourceUrl": "https://job-boards.greenhouse.io/anthropic/jobs/5147352008",
+      "location": "San Francisco, CA",
+      "remoteType": "hybrid",
+      "fit": "good",
+      "contactRole": "Head of Internal Communications",
+      "contactSeniority": "Director",
+      "message": "I've spent 15+ years producing content across formats that don't sit still: video, interactive, physical activations, and everything in between. Mozilla is a good example. They wanted a Gen Z-coded Q4 moment that lived digitally and IRL, so we built one (create a Gen Z-coded moment to amplify Open What You Want: https://www.randallfransen.com/work/billionaire-blast-off-mozilla). Fast turnarounds and \"a little rough around the edges\" are where I'm most at home. I also live in AI workflow design, which feels relevant to telling Anthropic's story from the inside. If you want a producer who can chase a story and ship it in whatever format fits, let's talk about the Internal Content Producer role.",
+      "insertedExample": {
+        "oneHitter": "Create a Gen Z-coded moment to amplify Open What You Want.",
+        "link": "https://www.randallfransen.com/work/billionaire-blast-off-mozilla"
+      },
+      "workExampleSelection": {
+        "key": "work-example-21e1cc5b27f2",
+        "title": "Billionaire Blast-off | Mozilla"
+      },
+      "generationAttempts": 1,
+      "hardRuleViolations": [],
+      "metrics": {
+        "nauticalTic": 0,
+        "heroPresent": 0,
+        "inventedNumber": 0,
+        "concessionOpener": 0,
+        "tellsWhatTheyWant": 0,
+        "q4BragTag": 0,
+        "exampleLinkMissing": 0,
+        "emDash": 0,
+        "ungroundedNumber": 0,
+        "openerNoFirstPerson": 0,
+        "logisticsMention": 0,
+        "admissionPresent": 0,
+        "sameShapeStack": 0,
+        "length": 701
+      }
+    },
+    {
+      "jobId": "1b142fad-a25f-4648-b65e-835a4631874c",
+      "company": "Airbnb",
+      "title": "Process Strategy and Optimization Manager",
+      "sourceUrl": "https://careers.airbnb.com/positions/7550345?gh_jid=7550345",
+      "location": "United States",
+      "remoteType": "remote",
+      "fit": "good",
+      "contactRole": "Director, Process Strategy",
+      "contactSeniority": "Director",
+      "message": "I ran the AirCover for Hosts global launch as EP at Airbnb, so the operations-at-scale side of the house is familiar ground. The core of this role, in my experience, is getting cross-functional stakeholders with competing objectives to actually align and then making the solution stick. That's most of what I've done for 15+ years: a $14MM HTC retainer with a lean team at Swift, programs of 3-4 clients with senior direct reports at AKQA. Lately I've been building structured AI workflows so accelerated work stays connected instead of scattered, which reads relevant to the AI-into-operations piece here. If you're staffing someone to drive those end-to-end programs, I'd like to talk.",
+      "insertedExample": null,
+      "workExampleSelection": null,
+      "generationAttempts": 3,
+      "hardRuleViolations": [],
+      "metrics": {
+        "nauticalTic": 0,
+        "heroPresent": 0,
+        "inventedNumber": 0,
+        "concessionOpener": 0,
+        "tellsWhatTheyWant": 0,
+        "q4BragTag": 0,
+        "exampleLinkMissing": 0,
+        "emDash": 0,
+        "ungroundedNumber": 0,
+        "openerNoFirstPerson": 0,
+        "logisticsMention": 0,
+        "admissionPresent": 0,
+        "sameShapeStack": 0,
+        "length": 687
+      }
+    },
+    {
+      "jobId": "9f701545-298c-49a3-a3c1-7d53fb7a2f1f",
+      "company": "Spotify",
+      "title": "Project Manager, Editorial Product Integration & Partnerships",
+      "sourceUrl": "https://jobs.lever.co/spotify/22fedc8b-caf2-416a-9e2d-37f9a04f9973",
+      "location": "New York, NY",
+      "remoteType": "unclear",
+      "fit": "medium",
+      "contactRole": "Director, Editorial Product",
+      "contactSeniority": "Director",
+      "message": "I've spent 15+ years producing digital work that lives at the seam of product, creative, and partnerships, which is exactly where this role sits. On the BAYC.com redesign at Yuga, I led internal teams alongside an external studio, Make Me Pulse, and folded in cross-functional needs so the launch actually held together: https://www.randallfransen.com/work/bored-ape-yacht-club-website-redesign. Before that I ran a $14MM retainer with a team of 4 at Swift and the global AirCover launch at Airbnb, so coordinating product surfaces and partner activations against a real timeline is familiar ground. If you're after a producer to bring structure to those editorial-product programs, worth a chat?",
+      "insertedExample": {
+        "oneHitter": "Yuga’s property Bored Ape Yacht Club was still rocking it’s original design and functionality in 2023.",
+        "link": "https://www.randallfransen.com/work/bored-ape-yacht-club-website-redesign"
+      },
+      "workExampleSelection": {
+        "key": "work-example-f9155962c042",
+        "title": "BORED APE YACHT CLUB | Website Redesign"
+      },
+      "generationAttempts": 2,
+      "hardRuleViolations": [],
+      "metrics": {
+        "nauticalTic": 0,
+        "heroPresent": 0,
+        "inventedNumber": 0,
+        "concessionOpener": 0,
+        "tellsWhatTheyWant": 0,
+        "q4BragTag": 0,
+        "exampleLinkMissing": 0,
+        "emDash": 0,
+        "ungroundedNumber": 0,
+        "openerNoFirstPerson": 0,
+        "logisticsMention": 0,
+        "admissionPresent": 0,
+        "sameShapeStack": 0,
+        "length": 696
+      }
+    },
+    {
+      "jobId": "230b1490-d5ee-47b5-b8f7-98a38a718647",
+      "company": "Figma",
+      "title": "Voice of the Customer Program Manager",
+      "sourceUrl": "https://boards.greenhouse.io/figma/jobs/6008343004?gh_jid=6008343004",
+      "location": "San Francisco, CA • New York, NY • United States",
+      "remoteType": "remote",
+      "fit": "medium",
+      "contactRole": "Director, Customer Experience",
+      "contactSeniority": "Director",
+      "message": "The core of this VOC role, pulling scattered signals into one narrative that actually moves Product and Engineering, is territory I've lived in as a producer. I've spent 15+ years building the source-of-truth systems that keep insights connected instead of stranded across a dozen docs. Most recently I built P.H.R.E.D., a Project Hub that keeps AI-assisted work orchestrated rather than scattered (https://lab26.randallfransen.com/phred). In my experience the hard part isn't the data, it's the plumbing and the cross-functional buy-in, and I've done plenty of both across teams at AKQA, Coinbase, and Airbnb. If you're looking for someone to build the insight loop and keep it running, I'd like to talk.",
+      "insertedExample": {
+        "oneHitter": "Project Hub for Retrieval, Execution, & Delivery",
+        "link": "https://lab26.randallfransen.com/phred"
+      },
+      "workExampleSelection": {
+        "key": "work-example-0ae80e2d0613",
+        "title": "P.H.R.E.D."
+      },
+      "generationAttempts": 5,
+      "hardRuleViolations": [
+        "ungrounded_numbers(dozen)"
+      ],
+      "metrics": {
+        "nauticalTic": 0,
+        "heroPresent": 1,
+        "inventedNumber": 0,
+        "concessionOpener": 0,
+        "tellsWhatTheyWant": 0,
+        "q4BragTag": 0,
+        "exampleLinkMissing": 0,
+        "emDash": 0,
+        "ungroundedNumber": 1,
+        "openerNoFirstPerson": 0,
+        "logisticsMention": 0,
+        "admissionPresent": 0,
+        "sameShapeStack": 0,
+        "length": 705
+      }
+    },
+    {
+      "jobId": "c8c5ca0d-d1b0-4bac-9ab1-e72f357d46bb",
+      "company": "OpenAI",
+      "title": "Program Manager, Human Data",
+      "sourceUrl": "https://jobs.ashbyhq.com/openai/932c9cc1-c542-4f67-8d0d-443de87b8213",
+      "location": "San Francisco",
+      "remoteType": "unclear",
+      "fit": "medium",
+      "contactRole": "Head of Human Data Operations",
+      "contactSeniority": "Director",
+      "message": "The Human Data team lives right at the intersection I've been camped out at lately: production rigor meeting AI-assisted work that tends to scatter the second you turn your back on it. I built P.H.R.E.D. (https://lab26.randallfransen.com/phred) to solve exactly that, a source-of-truth system and orchestration layer that keeps AI output connected instead of spread across a dozen docs, with humans firmly in control of scope and decisions. Before that I ran $4MM+ in production budgets at Crispin Porter + Bogusky and a $14MM retainer with a team at Swift, so gathering requirements, writing clear instructions, and defining success criteria under a fast clock is familiar ground. If you're looking for someone to bring structure to vendor-and-trainer data campaigns without slowing them down, I'd like to talk.",
+      "insertedExample": {
+        "oneHitter": "Project Hub for Retrieval, Execution, & Delivery",
+        "link": "https://lab26.randallfransen.com/phred"
+      },
+      "workExampleSelection": {
+        "key": "work-example-0ae80e2d0613",
+        "title": "P.H.R.E.D."
+      },
+      "generationAttempts": 5,
+      "hardRuleViolations": [
+        "over_750_characters(812)",
+        "ungrounded_numbers(dozen)"
+      ],
+      "metrics": {
+        "nauticalTic": 0,
+        "heroPresent": 1,
+        "inventedNumber": 0,
+        "concessionOpener": 0,
+        "tellsWhatTheyWant": 0,
+        "q4BragTag": 0,
+        "exampleLinkMissing": 0,
+        "emDash": 0,
+        "ungroundedNumber": 1,
+        "openerNoFirstPerson": 0,
+        "logisticsMention": 0,
+        "admissionPresent": 0,
+        "sameShapeStack": 0,
+        "length": 812
+      }
+    },
+    {
+      "jobId": "e0282190-d318-406d-ba6c-300be02d58d8",
+      "company": "Robinhood",
+      "title": "Senior Partnerships Manager, Crypto",
+      "sourceUrl": "https://boards.greenhouse.io/robinhood/jobs/7816451?t=gh_src=&gh_jid=7816451",
+      "location": "New York, NY",
+      "remoteType": "unclear",
+      "fit": "medium",
+      "contactRole": "VP, Business Development",
+      "contactSeniority": "VP",
+      "message": "I've spent the last few years deep in crypto production, and the partner-facing side is where I tend to live. At Yuga Labs I ran the BAYC.com redesign, which meant leading internal teams alongside an external studio, Make Me Pulse, and wiring in wallet functionality plus a stack of cross-functional initiatives without any of it collapsing (https://www.randallfransen.com/work/bored-ape-yacht-club-website-redesign). At Aleo I launched their Zero Knowledge Proof product and got to know KYC and compliance guardrails up close, which I gather matters plenty at Robinhood. Managing exchange, custodian, and protocol relationships is squarely in my lane. If you're staffing someone to own crypto partnerships end to end, I'd like to talk.",
+      "insertedExample": {
+        "oneHitter": "Yuga’s property Bored Ape Yacht Club was still rocking it’s original design and functionality in 2023.",
+        "link": "https://www.randallfransen.com/work/bored-ape-yacht-club-website-redesign"
+      },
+      "workExampleSelection": {
+        "key": "work-example-f9155962c042",
+        "title": "BORED APE YACHT CLUB | Website Redesign"
+      },
+      "generationAttempts": 1,
+      "hardRuleViolations": [],
+      "metrics": {
+        "nauticalTic": 0,
+        "heroPresent": 0,
+        "inventedNumber": 0,
+        "concessionOpener": 0,
+        "tellsWhatTheyWant": 0,
+        "q4BragTag": 0,
+        "exampleLinkMissing": 0,
+        "emDash": 0,
+        "ungroundedNumber": 0,
+        "openerNoFirstPerson": 0,
+        "logisticsMention": 0,
+        "admissionPresent": 0,
+        "sameShapeStack": 0,
+        "length": 736
+      }
+    },
+    {
+      "jobId": "d67f53b5-2025-4bf7-8636-9a2d917d5c2a",
+      "company": "Dropbox",
+      "title": "Senior Governance, Risk, & Compliance Program Manager",
+      "sourceUrl": "https://jobs.dropbox.com/listing/7773721?gh_jid=7773721",
+      "location": "Remote - US: Select locations",
+      "remoteType": "remote",
+      "fit": "medium",
+      "contactRole": "Director, Governance Risk & Compliance",
+      "contactSeniority": "Director",
+      "message": "This one has a hard gate I should name up front: I don't hold a CISA, CISSP, CIPP, or the other certs listed as required, so if that's a firm line, no hard feelings. Where I'd actually earn my seat is program management across messy, multi-team work. I've run cross-functional programs with senior direct reports, driven products from design through launch at Coinbase and Airbnb, and I'm expert at building AI-enabled workflows that keep scattered output connected and controlled instead of everywhere. That last part is P.H.R.E.D., my operating system for AI-assisted work: https://lab26.randallfransen.com/phred. If you need a program manager who can bring structure to your AI compliance push, worth a chat?",
+      "insertedExample": {
+        "oneHitter": "Project Hub for Retrieval, Execution, & Delivery",
+        "link": "https://lab26.randallfransen.com/phred"
+      },
+      "workExampleSelection": {
+        "key": "work-example-0ae80e2d0613",
+        "title": "P.H.R.E.D."
+      },
+      "generationAttempts": 4,
+      "hardRuleViolations": [],
+      "metrics": {
+        "nauticalTic": 0,
+        "heroPresent": 1,
+        "inventedNumber": 0,
+        "concessionOpener": 1,
+        "tellsWhatTheyWant": 0,
+        "q4BragTag": 0,
+        "exampleLinkMissing": 0,
+        "emDash": 0,
+        "ungroundedNumber": 0,
+        "openerNoFirstPerson": 0,
+        "logisticsMention": 0,
+        "admissionPresent": 0,
+        "sameShapeStack": 0,
+        "length": 711
+      }
+    },
+    {
+      "jobId": "419f08b4-5bdf-4867-8eaa-314ed5912e9e",
+      "company": "Stripe",
+      "title": "Corporate Events Manager, Expo",
+      "sourceUrl": "https://stripe.com/jobs/search?gh_jid=7804276",
+      "location": "Remote in United States",
+      "remoteType": "remote",
+      "fit": "stretch",
+      "contactRole": "Head of Global Events",
+      "contactSeniority": "Director",
+      "message": "I've spent 15+ years producing digital experiences and wrangling the cross-functional chaos that goes with them, and the expo side of Sessions is exactly the kind of coordination puzzle I like. Running vendor timelines, workbacks, and a clean run of show across a lot of moving parts is where I'm most useful. At Swift I ran a $14MM HTC retainer with a small team, and I've led production partnerships end to end, including the BAYC.com redesign at Yuga Labs (https://www.randallfransen.com/work/bored-ape-yacht-club-website-redesign) where internal teams and an outside studio had to stay in lockstep. If you're looking for someone to keep the campus, vendors, and creative aligned through onsite delivery, I'd love to talk.",
+      "insertedExample": {
+        "oneHitter": "Yuga’s property Bored Ape Yacht Club was still rocking it’s original design and functionality in 2023.",
+        "link": "https://www.randallfransen.com/work/bored-ape-yacht-club-website-redesign"
+      },
+      "workExampleSelection": {
+        "key": "work-example-f9155962c042",
+        "title": "BORED APE YACHT CLUB | Website Redesign"
+      },
+      "generationAttempts": 5,
+      "hardRuleViolations": [
+        "logistics_mentioned(onsite)"
+      ],
+      "metrics": {
+        "nauticalTic": 0,
+        "heroPresent": 0,
+        "inventedNumber": 0,
+        "concessionOpener": 0,
+        "tellsWhatTheyWant": 0,
+        "q4BragTag": 0,
+        "exampleLinkMissing": 0,
+        "emDash": 0,
+        "ungroundedNumber": 0,
+        "openerNoFirstPerson": 0,
+        "logisticsMention": 1,
+        "admissionPresent": 0,
+        "sameShapeStack": 0,
+        "length": 725
+      }
+    },
+    {
+      "jobId": "b5b1d15c-8bdb-4d92-9e37-4a899547cccc",
+      "company": "Robinhood",
+      "title": "Associate Creative Director, Copy",
+      "sourceUrl": "https://boards.greenhouse.io/robinhood/jobs/8052344?t=gh_src=&gh_jid=8052344",
+      "location": "New York, NY",
+      "remoteType": "unclear",
+      "fit": "stretch",
+      "contactRole": "Executive Creative Director",
+      "contactSeniority": "Director",
+      "message": "I've spent 15+ years running digital production for consumer brands, most recently leading the BAYC.com redesign at Yuga and the AirCover for Hosts global launch at Airbnb. Your Creative team pairs writers with producers, and that's the seat I'd actually fill: the person who brings process, wrangles vendors, and keeps cross-channel work connected while the copy stays sharp. On the Aleo Zero Knowledge Proof launch I helped turn genuinely dense fintech-adjacent tech into something people could play with (a chatbot game: https://www.randallfransen.com/work/bot-busters). If you're building out production support alongside this copy hire, worth a chat?",
+      "insertedExample": {
+        "oneHitter": "AI Chatbot Game",
+        "link": "https://www.randallfransen.com/work/bot-busters"
+      },
+      "workExampleSelection": {
+        "key": "work-example-e4cbe178b6d3",
+        "title": "Bot Busters"
+      },
+      "generationAttempts": 1,
+      "hardRuleViolations": [],
+      "metrics": {
+        "nauticalTic": 0,
+        "heroPresent": 0,
+        "inventedNumber": 0,
+        "concessionOpener": 0,
+        "tellsWhatTheyWant": 0,
+        "q4BragTag": 0,
+        "exampleLinkMissing": 0,
+        "emDash": 0,
+        "ungroundedNumber": 0,
+        "openerNoFirstPerson": 0,
+        "logisticsMention": 0,
+        "admissionPresent": 0,
+        "sameShapeStack": 0,
+        "length": 655
+      }
+    },
+    {
+      "jobId": "0787f091-0007-4aee-89ae-52adc49bf06c",
+      "company": "Discord",
+      "title": "Legal Vendor Program Manager",
+      "sourceUrl": "https://job-boards.greenhouse.io/discord/jobs/8497292002",
+      "location": "San Francisco Bay Area",
+      "remoteType": "onsite",
+      "fit": "stretch",
+      "contactRole": "Director, Legal Operations",
+      "contactSeniority": "Director",
+      "message": "The core of your Legal Vendor Program Manager role is vendor management, spend accountability, and building the systems that let it all scale, which is the seat I've filled for years. As Executive Producer at Swift I ran a $14MM HTC retainer with a team of 4, and at AKQA I managed programs of 3-4 clients with senior direct reports, enforcing budgets and holding vendors to terms the whole way. Building playbooks and source-of-truth systems so work doesn't scatter is exactly the operating structure I've made a habit of. If you want someone to bring process and vendor discipline to the legal ops function, let's talk.",
+      "insertedExample": null,
+      "workExampleSelection": null,
+      "generationAttempts": 5,
+      "hardRuleViolations": [],
+      "metrics": {
+        "nauticalTic": 0,
+        "heroPresent": 0,
+        "inventedNumber": 0,
+        "concessionOpener": 0,
+        "tellsWhatTheyWant": 0,
+        "q4BragTag": 0,
+        "exampleLinkMissing": 0,
+        "emDash": 0,
+        "ungroundedNumber": 0,
+        "openerNoFirstPerson": 0,
+        "logisticsMention": 0,
+        "admissionPresent": 0,
+        "sameShapeStack": 0,
+        "length": 621
+      }
+    }
+  ]
+}
