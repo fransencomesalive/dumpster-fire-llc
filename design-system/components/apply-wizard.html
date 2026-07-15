@@ -13,13 +13,13 @@
   /* ====== classes mirror DashboardClient.tsx so CSS ports back ======
      The wizard is ONE modal that swaps its body across 4 steps
      (Review → Contacts → Outreach → Track). Each .modalBox below is the
-     SAME dialog at a different step — not a scroll. Only the active step's
+     SAME dialog at a different step, not a scroll. Only the active step's
      body renders at a time; the stepper + footer reflect that step. */
 
   /* --- Shared modal shell (see modal.html) --- */
   .modalOverlay { position: relative; z-index: 200; background: rgba(36, 31, 26, 0.62);
     display: flex; flex-direction: column; align-items: center; gap: var(--space-7); padding: var(--space-6); }
-  .modalBox { width: min(720px, 100%);
+  .modalBox { width: min(720px, 100%); box-sizing: border-box;
     background-color: var(--c-paper-deep); background-image: var(--fiber-img), var(--grain-img);
     background-blend-mode: normal, soft-light; background-size: 170px 170px, 46px 46px;
     border: var(--line-bold) solid var(--c-ink); border-radius: var(--radius-lg);
@@ -70,12 +70,7 @@
   input[type="checkbox"] { accent-color: var(--c-teal); width: 18px; height: 18px; flex: none; }
 
   /* --- Step 2 · contact research panel + lead cards --- */
-  .copyGenerationPanel { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4);
-    background-color: var(--c-paper); border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-md);
-    padding: var(--space-4); }
-  .copyGenerationPanel > div strong { display: block; font-family: var(--font-display); font-size: 1.1rem; color: var(--c-ink); }
-  .copyGenerationPanel > div p { font-family: var(--font-body); font-size: var(--type-small); color: var(--role-text-muted); margin: var(--space-1) 0 0; }
-  .generateMessageBtn { flex-shrink: 0; align-self: center; white-space: nowrap; }
+  .generateMessageBtn { flex-shrink: 0; white-space: nowrap; }
 
   .contactSuggestion { display: flex; align-items: flex-start; gap: var(--space-3);
     background-color: var(--c-paper); border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-md);
@@ -94,7 +89,7 @@
   .seeProfileBtn:hover { background-color: color-mix(in srgb, var(--c-bluebird) 12%, var(--c-paper)); }
 
   /* Human Path is found automatically on Pursue (a metered AI lookup, not
-     instant) — this is the placeholder shown while it loads. */
+     instant); this is the placeholder shown while it loads. */
   .dsStateLabel { font-family: var(--font-body); font-style: italic; font-size: var(--type-small);
     color: var(--role-text-faint); margin: var(--space-3) 0 0; }
   .contactsLoading { display: grid; gap: var(--space-3); background-color: var(--c-paper);
@@ -112,35 +107,16 @@
   .skeletonBar.w40 { width: 40%; } .skeletonBar.w35 { width: 35%; }
 
   /* --- Step 3 · outreach message block --- */
-  .copyHeader { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3);
+  .copyHeader { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: var(--space-3);
     margin-bottom: var(--space-2); }
   .copyHeader strong { font-family: var(--font-display); font-size: 1.1rem; color: var(--c-ink); }
+  .copyActions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--space-2); margin-left: auto; }
   .copyButton { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.04em; font-size: 0.8rem;
     color: var(--c-ink); background-color: var(--c-paper); border: var(--line-reg) solid var(--c-ink);
     border-radius: var(--radius-md); box-shadow: 2px 2px 0 var(--c-ink); padding: 5px 12px; cursor: pointer; }
   .messageTextarea { width: 100%; box-sizing: border-box; font-family: var(--font-body); font-size: 1rem; color: var(--c-ink);
     background-color: var(--c-paper); border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-md);
     padding: var(--space-3) var(--space-4); min-height: 120px; resize: vertical; }
-  .messageTextarea:focus { outline: none; border-color: var(--c-teal); box-shadow: 0 0 0 3px color-mix(in srgb, var(--c-teal) 28%, transparent); }
-  /* Feedback · approve / edit / reject (data model: OutreachMessage.status +
-     saved_message_feedback). The reject reason only appears when rejected —
-     no standing "no rejection note" default. */
-  .messageFeedback { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); margin-top: var(--space-3); }
-  .feedbackPrompt { font-family: var(--font-display); font-size: 1rem; color: var(--c-ink); }
-  .feedbackBtn { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.04em; font-size: 0.85rem;
-    border-radius: var(--radius-md); border: var(--line-reg) solid var(--c-ink); box-shadow: 2px 2px 0 var(--c-ink);
-    padding: var(--space-2) var(--space-4); cursor: pointer; }
-  .feedbackBtnApprove { color: var(--c-paper); background-color: var(--c-teal); }
-  .feedbackBtnReject { color: var(--c-ink); background-color: var(--c-paper); }
-  .feedbackNote { font-family: var(--font-body); font-size: var(--type-small); color: var(--role-text-faint);
-    margin: var(--space-2) 0 0; }
-  .rejectReason { display: grid; gap: var(--space-1); margin-top: var(--space-3);
-    border-left: var(--line-bold) solid var(--c-mustard); padding-left: var(--space-3); }
-  .rejectReason label { font-family: var(--font-body); font-style: italic; font-size: var(--type-small); color: var(--role-text-faint); }
-  .rejectReason select { font-family: var(--font-body); font-size: 0.9rem; color: var(--c-ink); justify-self: start;
-    background-color: var(--c-paper); border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-md);
-    padding: var(--space-2) var(--space-3); }
-  .modalInlineLink { display: inline-block; margin-top: var(--space-3); }
 
   /* --- Step 4 · tracking checklist --- */
   .checklistGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); }
@@ -176,8 +152,7 @@
     .modalBox { padding: var(--space-5); }
     .wizardSteps { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .checklistGrid { grid-template-columns: 1fr; }
-    .copyGenerationPanel { flex-direction: column; align-items: flex-start; }
-    .generateMessageBtn { align-self: stretch; text-align: center; }
+    .copyActions { width: 100%; justify-content: flex-start; margin-left: 0; }
   }
 </style>
 </head>
@@ -301,33 +276,22 @@
         <button type="button" class="wizardStep"><span>4</span>Track</button>
       </div>
       <div class="modalStack">
-        <section class="copyGenerationPanel">
-          <div>
-            <strong>Tailored outreach message</strong>
-            <p>Generate a fresh draft for the selected contacts, or a no-contact note when none are selected.</p>
-          </div>
-          <button type="button" class="modalBtnSave generateMessageBtn">Generate New Message</button>
-        </section>
         <section>
           <div class="copyHeader">
             <strong>Sam Lewis</strong>
-            <button type="button" class="copyButton">Copy</button>
+            <div class="copyActions">
+              <button type="button" class="copyButton">Copy</button>
+              <button type="button" class="modalBtnSave generateMessageBtn">Regenerate once</button>
+            </div>
           </div>
-          <textarea class="messageTextarea">Hi Sam — I produced Topo Chico's launch end to end and shipped it across 40+ SKUs in a quarter. Liquid Death's Senior Producer role looks like the same problem at a louder volume. Worth a short conversation?</textarea>
-          <div class="messageFeedback">
-            <span class="feedbackPrompt">How&apos;s this draft?</span>
-            <button type="button" class="feedbackBtn feedbackBtnApprove">Approve</button>
-            <button type="button" class="feedbackBtn feedbackBtnReject">Reject</button>
+          <textarea class="messageTextarea" readonly>Hi Sam, I produced Topo Chico's launch end to end and shipped it across 40+ SKUs in a quarter. Liquid Death's Senior Producer role looks like the same problem at a louder volume. Worth a short conversation?</textarea>
+        </section>
+        <section>
+          <div class="contactsLoading">
+            <div class="progressLine"><span class="progressDot"></span>Writing your message&hellip;</div>
+            <div class="skeletonCard"><span class="skeletonBar w60"></span><span class="skeletonBar w40"></span><span class="skeletonBar w80"></span></div>
+            <div class="skeletonCard"><span class="skeletonBar w50"></span><span class="skeletonBar w35"></span><span class="skeletonBar w80"></span></div>
           </div>
-          <p class="feedbackNote">Approved or edited messages are saved as examples for your communication profile.</p>
-          <div class="rejectReason">
-            <label for="rr-sam">Shown only after Reject &mdash; why didn&apos;t it land?</label>
-            <select id="rr-sam" aria-label="Rejection reason">
-              <option>Too corporate</option><option>Too generic</option><option>Wrong proof</option>
-              <option>Too formal</option><option>Too long</option><option>Wrong posture</option><option>Other</option>
-            </select>
-          </div>
-          <a href="#" class="ds-link modalInlineLink">Open LinkedIn profile</a>
         </section>
       </div>
       <div class="modalFooter">

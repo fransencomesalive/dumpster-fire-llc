@@ -8,7 +8,7 @@
 <link rel="stylesheet" href="../tokens/tokens.css" />
 <link rel="stylesheet" href="../lib/base.css" />
 <style>
-  /* No halftone ground — rejected in all new work (Randall, 2026-07-04). Plain paper. */
+  /* No halftone ground. Rejected in all new work (Randall, 2026-07-04). Plain paper. */
   body { margin: 0; color: var(--c-ink); font-family: var(--font-body); background: var(--c-paper); }
 
   .wrap { max-width: 1080px; margin: 0 auto; padding: var(--space-6) var(--space-5); display: grid; gap: var(--space-6); }
@@ -21,10 +21,10 @@
 
   /* ======================= PROFILE CARD (compact full-width bar) =======================
      Reworked to a single low bar, not a stacked menu (Randall, 2026-07-12): it runs across the
-     card width without gaining height. Left: an identity group — silhouette photo on top, email
+     card width without gaining height. Left: an identity group, silhouette photo on top, email
      below it in body copy, Sign out below that (red text, filling to a red button on hover). Right:
-     a Job scan shortcut back to the dashboard, then Plan and Billing buttons that will open their own
-     popups in a later step (access code folds into the Billing popup). Mapped to existing primitives —
+     Job scan and Saved Pursuits shortcuts, then Plan and Billing buttons that open their own
+     popups in a later step (access code folds into the Billing popup). Mapped to existing primitives:
      panel surface, .ds-btn, teal CTA. The photo is a neutral silhouette placeholder until photo storage lands. */
   .profileCard { background-color: var(--c-paper-deep); background-image: var(--fiber-img), var(--grain-img);
     background-blend-mode: normal, soft-light; background-size: 170px 170px, 46px 46px;
@@ -66,6 +66,15 @@
     transition: background-color var(--dur-fast) var(--ease-snap), box-shadow var(--dur-fast) var(--ease-snap); }
   .btnScan:hover { background-color: var(--role-info); box-shadow: var(--reg-box);
     text-shadow: 1px 1px 0 rgba(36,31,26,0.35); }
+  .pursuitsTipWrap { position: relative; display: inline-flex; flex: none; }
+  .pursuitsTip { position: absolute; left: 50%; bottom: calc(100% + var(--space-2)); z-index: 2;
+    transform: translateX(-50%); white-space: nowrap; font-family: var(--font-ui); font-size: 0.8rem;
+    color: var(--c-paper); background-color: var(--c-ink); border-radius: var(--radius-sm);
+    padding: 6px 10px; box-shadow: var(--shadow-card); opacity: 0; pointer-events: none;
+    transition: opacity var(--dur-fast) var(--ease-snap); }
+  .pursuitsTip::after { content: ""; position: absolute; left: 50%; top: 100%; transform: translateX(-50%);
+    border: 6px solid transparent; border-top-color: var(--c-ink); }
+  .pursuitsTipWrap:hover .pursuitsTip, .pursuitsTipWrap:focus-within .pursuitsTip { opacity: 1; }
   .btnGhost { flex: none; font-family: var(--font-display); font-size: 1.02rem; color: var(--c-ink);
     background-color: var(--c-paper); border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-md);
     box-shadow: var(--shadow-card); padding: var(--space-3) var(--space-4); cursor: pointer;
@@ -75,10 +84,10 @@
   .actionDivider { flex: none; align-self: center; width: 3px; height: 30px; border-radius: 2px;
     background-color: var(--c-ink); box-shadow: 2px 2px 0 color-mix(in srgb, var(--c-teal) 45%, transparent);
     margin: 0 var(--space-2); }
-  /* On phones the actions wrap and Job scan drops to its own line — hide the dangling divider. */
+  /* On phones the actions wrap and Job scan drops to its own line. Hide the dangling divider. */
   @container (max-width: 640px) { .actionDivider { display: none; } }
 
-  /* Header stub, for the in-context view — carries the profile-icon link (→ onboarding). */
+  /* Header stub for the in-context view; carries the profile-icon link (→ onboarding). */
   .siteHeader { position: relative; background-color: var(--c-paper);
     background-image: var(--fiber-img), var(--grain-img); background-blend-mode: normal, soft-light;
     background-size: 170px 170px, 46px 46px; border: var(--line-reg) solid var(--c-ink);
@@ -102,12 +111,11 @@
 <div class="wrap">
   <div>
     <h1 class="page">Onboarding · Profile Card</h1>
-    <p class="lede">A single compact bar, not a menu — it runs across the card width without gaining height.
+    <p class="lede">A single compact bar, not a menu. It runs across the card width without gaining height.
     Left is the identity group: the silhouette photo (a placeholder until photo storage lands), the account
     email in body copy, and <strong>Sign out</strong> below it (red, filling to a red button on hover). Right
-    are the actions: a <strong>Job scan</strong> shortcut back to the dashboard, then <strong>Plan</strong> and
-    <strong>Billing</strong> buttons that open their own popups in a later step (the access code folds into the
-    Billing popup). In the global header, the matching profile icon links back here.</p>
+    are the actions: <strong>Job scan</strong>, <strong>Saved Pursuits</strong> with its availability tooltip,
+    then <strong>Plan</strong> and <strong>Billing</strong>. In the global header, the matching profile icon links back here.</p>
   </div>
 
   <!-- Isolated element -->
@@ -131,6 +139,10 @@
             <a class="btnScan" href="#">Job scan
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
             </a>
+            <span class="pursuitsTipWrap">
+              <span id="saved-pursuits-tip-1" class="pursuitsTip" role="tooltip">Coming Soon</span>
+              <button type="button" class="btnScan" aria-disabled="true" aria-describedby="saved-pursuits-tip-1">Saved Pursuits</button>
+            </span>
           </div>
         </div>
       </section>
@@ -172,6 +184,10 @@
             <a class="btnScan" href="#">Job scan
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
             </a>
+            <span class="pursuitsTipWrap">
+              <span id="saved-pursuits-tip-2" class="pursuitsTip" role="tooltip">Coming Soon</span>
+              <button type="button" class="btnScan" aria-disabled="true" aria-describedby="saved-pursuits-tip-2">Saved Pursuits</button>
+            </span>
           </div>
         </div>
       </section>

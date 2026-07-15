@@ -143,6 +143,8 @@ export type OutreachMessageRecord = {
   recipientType: OutreachRecipientType;
   channel: string;
   message: string;
+  previousMessage?: string;
+  regenerationCount?: 0 | 1;
   status: OutreachMessageStatus;
   rejectionReason?: string;
   selectedRoleTrackId?: string;

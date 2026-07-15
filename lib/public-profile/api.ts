@@ -32,6 +32,7 @@ import {
   persistContactSelection,
   persistHumanPathGeneration,
   persistOutreachGeneration,
+  persistOutreachRegeneration,
   persistPursuitTransition,
   recordProfileExportUsage,
   updateOutreachMessage,
@@ -491,12 +492,23 @@ export type PublicProfilePursuitsHandlerOptions = PublicProfileMatchHandlerOptio
     job: OutreachJob;
     contact: OutreachContact;
     contactSuggestion: HumanPathContactSuggestion;
+    previousMessage?: string;
   }) => Promise<OutreachMessage | undefined>;
   persistOutreach?: (
     request: PublicProfileRepositoryRequest,
     result: Extract<PursuitTransitionResult, { ok: true }>,
     drafts: GeneratedOutreachDraft[],
   ) => Promise<void>;
+  persistOutreachRegeneration?: (
+    request: PublicProfileRepositoryRequest,
+    result: Extract<PursuitTransitionResult, { ok: true }>,
+    input: {
+      messageId: string;
+      previousMessage: string;
+      message: string;
+      updatedAt: string;
+    },
+  ) => Promise<OutreachMessageRecord | undefined>;
   loadSubscriptionContext?: (
     request: PublicProfileRepositoryRequest,
     userId: string,
@@ -1575,13 +1587,29 @@ export async function handlePublicProfilePursuitOutreachRequest(
 
   const input = await request.json().catch(() => null) as Record<string, unknown> | null;
   const pursuitId = optionalString(input?.pursuitId);
+  const regenerate = input?.regenerate === true;
+  const previousMessageId = optionalString(input?.previousMessageId);
+  const issues: { field: string; message: string }[] = [];
   if (!pursuitId) {
+    issues.push({ field: "pursuitId", message: "pursuitId is required." });
+  }
+  if (input?.regenerate !== undefined && input.regenerate !== true) {
+    issues.push({ field: "regenerate", message: "regenerate must be true when provided." });
+  }
+  if (regenerate && !previousMessageId) {
+    issues.push({ field: "previousMessageId", message: "previousMessageId is required to regenerate outreach." });
+  }
+  if (!regenerate && previousMessageId) {
+    issues.push({ field: "regenerate", message: "regenerate must be true when previousMessageId is provided." });
+  }
+  if (issues.length > 0) {
     return json({
-      error: "Expected pursuitId.",
+      error: "Invalid outreach request.",
       status: "validation_error",
-      issues: [{ field: "pursuitId", message: "pursuitId is required." }],
+      issues,
     }, { status: 400 });
   }
+  const validatedPursuitId = pursuitId as string;
 
   const loadAggregate = options.loadAggregate ?? loadCandidateProfileAggregate;
   const aggregate = await loadAggregate(repositoryRequest, session.userId);
@@ -1625,7 +1653,7 @@ export async function handlePublicProfilePursuitOutreachRequest(
   }
 
   const loadPursuit = options.loadPursuit ?? loadPursuitByIdForUser;
-  const pursuit = await loadPursuit(repositoryRequest, session.userId, pursuitId);
+  const pursuit = await loadPursuit(repositoryRequest, session.userId, validatedPursuitId);
   if (!pursuit || pursuit.profileId !== aggregate.profile.id) {
     return json({ error: "Pursuit not found.", status: "not_found" }, { status: 404 });
   }
@@ -1637,6 +1665,105 @@ export async function handlePublicProfilePursuitOutreachRequest(
   }
 
   const loadContactSuggestions = options.loadContactSuggestions ?? loadContactSuggestionsForPursuit;
+  if (regenerate) {
+    const loadOutreachMessage = options.loadOutreachMessage ?? loadOutreachMessageById;
+    const previousMessage = await loadOutreachMessage(repositoryRequest, previousMessageId as string);
+    if (!previousMessage || previousMessage.pursuitId !== pursuit.id) {
+      return json({ error: "Outreach message not found.", status: "not_found" }, { status: 404 });
+    }
+    if ((previousMessage.regenerationCount ?? 0) >= 1) {
+      return json({
+        error: "This outreach message has already been regenerated.",
+        status: "already_regenerated",
+      }, { status: 409 });
+    }
+    const contactSuggestion = (await loadContactSuggestions(repositoryRequest, pursuit.id))
+      .find((contact) => contact.id === previousMessage.contactSuggestionId);
+    if (!contactSuggestion) {
+      return json({ error: "Human Path contact not found.", status: "not_found" }, { status: 404 });
+    }
+
+    const loadSubscriptionContext = options.loadSubscriptionContext ?? loadSubscriptionContextForUser;
+    const loadUsageEntries = options.loadUsageEntries ?? loadUsageLedgerForUser;
+    const subscriptionContext = await loadSubscriptionContext(repositoryRequest, session.userId);
+    const usageEntries = await loadUsageEntries(repositoryRequest, session.userId, {
+      at: generatedAt,
+      periodStart: subscriptionContext.currentPeriodStart,
+      periodEnd: subscriptionContext.currentPeriodEnd,
+    });
+    const enforceSubscription = options.enforceSubscription
+      ?? ((context, entries, at) => enforceSubscriptionFeature(context, entries, "outreach_message", {
+        at,
+        quantity: 1,
+      }));
+    const enforcement = enforceSubscription(subscriptionContext, usageEntries, generatedAt);
+    if (enforcement.status !== "allowed") {
+      return subscriptionBlockedResponse(enforcement);
+    }
+
+    const result = transitionPursuit(pursuit, "outreach_generated", generatedAt, {
+      contactIds: [contactSuggestion.id],
+      messageCount: 1,
+      previousMessageId: previousMessage.id,
+      regenerate: true,
+    });
+    if (result.ok === false) {
+      return json({
+        error: "Could not regenerate outreach.",
+        status: "transition_error",
+        issues: result.issues,
+      }, { status: 409 });
+    }
+
+    const generateOutreachForContact = options.generateOutreachForContact
+      ?? ((outreachInput) => {
+        // TODO(message-gen-track): consume previousMessage in the approved regeneration prompt.
+        return generateOutreachMessage({
+          profileMarkdown: outreachInput.profileMarkdown,
+          job: outreachInput.job,
+          contact: outreachInput.contact,
+        });
+      });
+    const outreach = await generateOutreachForContact({
+      profileMarkdown,
+      job: outreachJobFromPublicJob(job),
+      contact: outreachContactFromSuggestion(contactSuggestion),
+      contactSuggestion,
+      previousMessage: previousMessage.message,
+    });
+    if (!outreach) {
+      return json({
+        error: "Outreach generation is not configured.",
+        status: "model_unavailable",
+      }, { status: 503 });
+    }
+
+    const persistRegeneration = options.persistOutreachRegeneration ?? persistOutreachRegeneration;
+    const regeneratedMessage = await persistRegeneration(repositoryRequest, result, {
+      messageId: previousMessage.id,
+      previousMessage: previousMessage.message,
+      message: outreach.message,
+      updatedAt: generatedAt,
+    });
+    if (!regeneratedMessage) {
+      return json({
+        error: "This outreach message has already been regenerated.",
+        status: "already_regenerated",
+      }, { status: 409 });
+    }
+
+    return json({
+      status: "outreach_regenerated",
+      profileId: aggregate.profile.id,
+      job,
+      pursuit: result.pursuit,
+      message: regeneratedMessage,
+      insertedExample: outreach.insertedExample,
+      event: result.event,
+      subscription: enforcement,
+    });
+  }
+
   const selectedContacts = (await loadContactSuggestions(repositoryRequest, pursuit.id))
     .filter((contact) => contact.selectedForOutreach);
   if (selectedContacts.length === 0) {
@@ -1647,8 +1774,8 @@ export async function handlePublicProfilePursuitOutreachRequest(
     }, { status: 400 });
   }
 
-  // One generation per contact per job (Randall, 2026-07-02): contacts that
-  // already have a drafted message are never regenerated; edit the draft instead.
+  // Initial generation creates one row per contact. The one-time backup regeneration
+  // is handled above and updates that same row in place.
   const loadOutreachMessages = options.loadOutreachMessages ?? loadOutreachMessagesForPursuit;
   const existingMessages = await loadOutreachMessages(repositoryRequest, pursuit.id);
   const alreadyGenerated = new Set(

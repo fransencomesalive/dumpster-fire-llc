@@ -1288,6 +1288,121 @@ async function main() {
   assert.deepEqual((persistedDrafts as GeneratedOutreachDraft[]).map((draft) => draft.recipientType), ["likely_hiring_manager", "recruiter"]);
   assert.equal((persistedDrafts as GeneratedOutreachDraft[])[0].selectedWorkExampleId, "example-1");
 
+  // ---- One-time outreach regeneration ----
+  const regenerationValidation = await handlePublicProfilePursuitOutreachRequest(postRequest("pursuits/outreach", {
+    pursuitId: "pursuit-1",
+    regenerate: true,
+  }), {
+    getSession: async () => authed(),
+    repositoryRequest,
+    loadAggregate: async () => { throw new Error("should not load aggregate on validation error"); },
+  });
+  assert.equal(regenerationValidation.status, 400);
+  assert.equal((await body(regenerationValidation)).status, "validation_error");
+
+  const originalMessage: OutreachMessageRecord = {
+    id: "message-1",
+    pursuitId: "pursuit-1",
+    contactSuggestionId: "contact-1",
+    recipientType: "likely_hiring_manager",
+    channel: "email",
+    message: "Original message.",
+    regenerationCount: 0,
+    status: "draft",
+    createdAt: now,
+    updatedAt: now,
+  };
+  let regenerationGeneratorInput: unknown;
+  let persistedRegeneration: unknown;
+  let persistedRegenerationTransition: unknown;
+  const pursuitOutreachRegenerated = await handlePublicProfilePursuitOutreachRequest(postRequest("pursuits/outreach", {
+    pursuitId: "pursuit-1",
+    regenerate: true,
+    previousMessageId: "message-1",
+  }), {
+    now: () => now,
+    getSession: async () => authed(),
+    repositoryRequest,
+    loadAggregate: async () => agg,
+    loadPursuit: async () => savedPursuit({ status: "outreach_ready" }),
+    loadJob: async () => publicJob(),
+    loadOutreachMessage: async () => originalMessage,
+    loadContactSuggestions: async () => [contactSuggestion({ selectedForOutreach: true })],
+    loadSubscriptionContext: async () => activeBasicSubscription(),
+    loadUsageEntries: async () => [usage("outreach_message", 12)],
+    generateOutreachForContact: async (input) => {
+      regenerationGeneratorInput = input;
+      return { message: "Replacement message.", insertedExample: null };
+    },
+    persistOutreachRegeneration: async (_request, result, input) => {
+      persistedRegenerationTransition = result;
+      persistedRegeneration = input;
+      return {
+        ...originalMessage,
+        message: input.message,
+        previousMessage: input.previousMessage,
+        regenerationCount: 1,
+        updatedAt: input.updatedAt,
+      };
+    },
+  });
+  assert.equal(pursuitOutreachRegenerated.status, 200);
+  assert.equal((regenerationGeneratorInput as { previousMessage: string }).previousMessage, "Original message.");
+  assert.deepEqual(persistedRegeneration, {
+    messageId: "message-1",
+    previousMessage: "Original message.",
+    message: "Replacement message.",
+    updatedAt: now,
+  });
+  assert.equal((persistedRegenerationTransition as { usageEvents: Array<{ quantity: number }> }).usageEvents[0].quantity, 1);
+  const pursuitOutreachRegeneratedJson = await body(pursuitOutreachRegenerated);
+  assert.equal(pursuitOutreachRegeneratedJson.status, "outreach_regenerated");
+  assert.equal((pursuitOutreachRegeneratedJson.message as OutreachMessageRecord).message, "Replacement message.");
+  assert.equal((pursuitOutreachRegeneratedJson.message as OutreachMessageRecord).regenerationCount, 1);
+
+  let duplicateRegenerationGenerated = false;
+  const duplicateRegeneration = await handlePublicProfilePursuitOutreachRequest(postRequest("pursuits/outreach", {
+    pursuitId: "pursuit-1",
+    regenerate: true,
+    previousMessageId: "message-1",
+  }), {
+    now: () => now,
+    getSession: async () => authed(),
+    repositoryRequest,
+    loadAggregate: async () => agg,
+    loadPursuit: async () => savedPursuit({ status: "outreach_ready" }),
+    loadJob: async () => publicJob(),
+    loadOutreachMessage: async () => ({ ...originalMessage, regenerationCount: 1 }),
+    generateOutreachForContact: async () => {
+      duplicateRegenerationGenerated = true;
+      return { message: "Nope.", insertedExample: null };
+    },
+  });
+  assert.equal(duplicateRegeneration.status, 409);
+  assert.equal((await body(duplicateRegeneration)).status, "already_regenerated");
+  assert.equal(duplicateRegenerationGenerated, false);
+
+  const regenerationLostRace = await handlePublicProfilePursuitOutreachRequest(postRequest("pursuits/outreach", {
+    pursuitId: "pursuit-1",
+    regenerate: true,
+    previousMessageId: "message-1",
+  }), {
+    now: () => now,
+    getSession: async () => authed(),
+    repositoryRequest,
+    loadAggregate: async () => agg,
+    loadPursuit: async () => savedPursuit({ status: "outreach_ready" }),
+    loadJob: async () => publicJob(),
+    loadOutreachMessage: async () => originalMessage,
+    loadContactSuggestions: async () => [contactSuggestion({ selectedForOutreach: true })],
+    loadSubscriptionContext: async () => activeBasicSubscription(),
+    loadUsageEntries: async () => [],
+    generateOutreachForContact: async () => ({ message: "Replacement message.", insertedExample: null }),
+    persistOutreachRegeneration: async () => undefined,
+  });
+  assert.equal(regenerationLostRace.status, 409);
+  assert.equal((await body(regenerationLostRace)).status, "already_regenerated");
+
   // ---- Per-message outreach update route ----
   const draftMessage: OutreachMessageRecord = {
     id: "message-1",

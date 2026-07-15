@@ -41,6 +41,8 @@ type OutreachMessageRow = {
   recipient_type: OutreachRecipientType;
   channel: string;
   message: string;
+  previous_message: string | null;
+  regeneration_count: 0 | 1;
   status: OutreachMessageRecord["status"];
   rejection_reason: string | null;
   selected_role_track_id: string | null;
@@ -189,6 +191,8 @@ function outreachMessageBody(pursuit: Pursuit, draft: GeneratedOutreachDraft) {
     contact_suggestion_id: draft.contactSuggestionId,
     recipient_type: draft.recipientType,
     message: draft.message,
+    previous_message: null,
+    regeneration_count: 0,
     selected_resume_id: draft.selectedResumeId ?? null,
     selected_role_track_id: draft.selectedRoleTrackId ?? null,
     selected_work_example_id: draft.selectedWorkExampleId ?? null,
@@ -256,6 +260,8 @@ function mapOutreachMessage(row: OutreachMessageRow): OutreachMessageRecord {
     recipientType: row.recipient_type,
     channel: row.channel,
     message: row.message,
+    previousMessage: defined(row.previous_message),
+    regenerationCount: row.regeneration_count,
     status: row.status,
     rejectionReason: defined(row.rejection_reason),
     selectedRoleTrackId: defined(row.selected_role_track_id),
@@ -306,7 +312,7 @@ export async function loadOutreachMessagesForPursuit(
   const rows = await request<OutreachMessageRow[]>("outreach_messages", {
     query: qs({
       pursuit_id: `eq.${pursuitId}`,
-      select: "id,pursuit_id,contact_suggestion_id,recipient_type,channel,message,status,rejection_reason,selected_role_track_id,selected_resume_id,selected_work_example_id,created_at,updated_at",
+      select: "id,pursuit_id,contact_suggestion_id,recipient_type,channel,message,previous_message,regeneration_count,status,rejection_reason,selected_role_track_id,selected_resume_id,selected_work_example_id,created_at,updated_at",
       order: "created_at.asc",
     }),
   });
@@ -320,7 +326,7 @@ export async function loadOutreachMessageById(
   const rows = await request<OutreachMessageRow[]>("outreach_messages", {
     query: qs({
       id: `eq.${messageId}`,
-      select: "id,pursuit_id,contact_suggestion_id,recipient_type,channel,message,status,rejection_reason,selected_role_track_id,selected_resume_id,selected_work_example_id,created_at,updated_at",
+      select: "id,pursuit_id,contact_suggestion_id,recipient_type,channel,message,previous_message,regeneration_count,status,rejection_reason,selected_role_track_id,selected_resume_id,selected_work_example_id,created_at,updated_at",
       limit: "1",
     }),
   });
@@ -342,6 +348,41 @@ export async function updateOutreachMessage(
       updated_at: message.updatedAt,
     },
   });
+}
+
+export async function persistOutreachRegeneration(
+  request: PublicProfileRepositoryRequest,
+  result: Extract<PursuitTransitionResult, { ok: true }>,
+  input: {
+    messageId: string;
+    previousMessage: string;
+    message: string;
+    updatedAt: string;
+  },
+): Promise<OutreachMessageRecord | undefined> {
+  const rows = await request<OutreachMessageRow[]>("outreach_messages", {
+    method: "PATCH",
+    query: qs({
+      id: `eq.${input.messageId}`,
+      pursuit_id: `eq.${result.pursuit.id}`,
+      regeneration_count: "eq.0",
+      select: "id,pursuit_id,contact_suggestion_id,recipient_type,channel,message,previous_message,regeneration_count,status,rejection_reason,selected_role_track_id,selected_resume_id,selected_work_example_id,created_at,updated_at",
+    }),
+    headers: { Prefer: "return=representation" },
+    body: {
+      message: input.message,
+      previous_message: input.previousMessage,
+      regeneration_count: 1,
+      status: "draft",
+      rejection_reason: null,
+      updated_at: input.updatedAt,
+    },
+  });
+  const row = first(rows);
+  if (!row) return undefined;
+
+  await persistPursuitTransition(request, result);
+  return mapOutreachMessage(row);
 }
 
 export async function loadPursuitEventsForPursuit(

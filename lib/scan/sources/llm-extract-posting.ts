@@ -4,7 +4,11 @@
 // graceful no-key degradation (returns empty so the caller leaves the field empty).
 import type { ParsedPosting } from "./parse-posting";
 
-export type PostingModelCall = (input: { system: string; user: string }) => Promise<string | undefined>;
+export type PostingModelCall = (input: {
+  system: string;
+  user: string;
+  maxTokens?: number;
+}) => Promise<string | undefined>;
 
 export type PostingExtractInput = {
   title: string;
@@ -14,6 +18,8 @@ export type PostingExtractInput = {
 
 const MAX_ITEMS = 6;
 const MAX_DESCRIPTION_CHARS = 6000;
+const MAX_SOURCE_TEXT_CHARS = 30_000;
+const MAX_EXTRACTED_DESCRIPTION_CHARS = 12_000;
 
 const SYSTEM_PROMPT = [
   "You extract two lists from a job posting.",
@@ -26,6 +32,18 @@ const SYSTEM_PROMPT = [
   "Output the JSON only — no preamble, no code fences, no commentary.",
 ].join("\n");
 
+const FULL_POSTING_SYSTEM_PROMPT = [
+  "You extract one job posting from plain text captured from a public job page.",
+  "Return ONLY a JSON object of the form:",
+  '{"title": string, "companyName": string, "description": string, "responsibilities": string[], "requiredExperience": string[]}',
+  "title and companyName must identify the specific role and employer.",
+  "description must contain the substantive job-posting text, excluding navigation, cookie notices, and generic site chrome.",
+  "responsibilities = up to 6 short, concrete items describing what the person will do.",
+  "requiredExperience = up to 6 short, concrete qualifications, skills, or experience requirements.",
+  "Do not invent missing details. If this is not a specific readable job posting, return an empty title, companyName, and description.",
+  "Output the JSON only, with no preamble, code fences, or commentary.",
+].join("\n");
+
 function buildUserPrompt(input: PostingExtractInput) {
   return [
     `Title: ${input.title}`,
@@ -36,7 +54,7 @@ function buildUserPrompt(input: PostingExtractInput) {
   ].join("\n");
 }
 
-const defaultCallModel: PostingModelCall = async ({ system, user }) => {
+const defaultCallModel: PostingModelCall = async ({ system, user, maxTokens }) => {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     console.info("[llm:posting-extract] skipped: no ANTHROPIC_API_KEY");
@@ -47,7 +65,7 @@ const defaultCallModel: PostingModelCall = async ({ system, user }) => {
     const client = new Anthropic({ apiKey, timeout: 30_000, maxRetries: 1 });
     const response = await client.messages.create({
       model: "claude-opus-4-8",
-      max_tokens: 1024,
+      max_tokens: maxTokens ?? 1024,
       system,
       messages: [{ role: "user", content: user }],
     });
@@ -59,6 +77,59 @@ const defaultCallModel: PostingModelCall = async ({ system, user }) => {
     return undefined;
   }
 };
+
+export type ExtractedJobPosting = ParsedPosting & {
+  title: string;
+  companyName: string;
+  description: string;
+};
+
+function cleanRequiredText(value: unknown, maxChars: number) {
+  if (typeof value !== "string") return "";
+  return value.replace(/\r\n?/g, "\n").replace(/[ \t]+/g, " ").replace(/\n{3,}/g, "\n\n").trim().slice(0, maxChars);
+}
+
+export function parseJobPostingModelJson(raw: string | undefined): ExtractedJobPosting | undefined {
+  if (!raw) return undefined;
+  const start = raw.indexOf("{");
+  const end = raw.lastIndexOf("}");
+  if (start < 0 || end <= start) return undefined;
+
+  try {
+    const parsed = JSON.parse(raw.slice(start, end + 1)) as Record<string, unknown>;
+    const title = cleanRequiredText(parsed.title, 300);
+    const companyName = cleanRequiredText(parsed.companyName, 300);
+    const description = cleanRequiredText(parsed.description, MAX_EXTRACTED_DESCRIPTION_CHARS);
+    if (!title || !companyName || !description) return undefined;
+
+    return {
+      title,
+      companyName,
+      description,
+      ...parsePostingModelJson(raw),
+    };
+  } catch {
+    return undefined;
+  }
+}
+
+export async function extractJobPostingLLM(
+  input: { sourceUrl: string; pageText: string },
+  dependencies: { callModel?: PostingModelCall } = {},
+): Promise<ExtractedJobPosting | undefined> {
+  const callModel = dependencies.callModel ?? defaultCallModel;
+  const raw = await callModel({
+    system: FULL_POSTING_SYSTEM_PROMPT,
+    user: [
+      `Source URL: ${input.sourceUrl}`,
+      "",
+      "Captured page text:",
+      input.pageText.slice(0, MAX_SOURCE_TEXT_CHARS),
+    ].join("\n"),
+    maxTokens: 4096,
+  });
+  return parseJobPostingModelJson(raw);
+}
 
 function cleanItems(value: unknown): string[] {
   if (!Array.isArray(value)) return [];

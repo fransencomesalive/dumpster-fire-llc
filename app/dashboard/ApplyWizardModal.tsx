@@ -18,8 +18,6 @@ import styles from "./apply-wizard.module.css";
 type WizardStep = 1 | 2 | 3 | 4;
 const STEP_LABELS: Record<WizardStep, string> = { 1: "Review", 2: "Contacts", 3: "Outreach", 4: "Track" };
 
-const REJECT_REASONS = ["Too corporate", "Too generic", "Wrong proof", "Too formal", "Too long", "Wrong posture", "Other"];
-
 // The legacy free-text checklist has no public analog; each item maps to one real status
 // transition reachable from an outreach-ready pursuit.
 const TRACK_ACTIONS: { action: string; label: string }[] = [
@@ -89,8 +87,7 @@ export default function ApplyWizardModal({
   const [selectedContactIds, setSelectedContactIds] = useState<Set<string>>(new Set());
   const [providerUnavailable, setProviderUnavailable] = useState(false);
   const [messages, setMessages] = useState<OutreachMessageRecord[]>([]);
-  const [drafts, setDrafts] = useState<Record<string, string>>({});
-  const [rejectingId, setRejectingId] = useState<string | null>(null);
+  const [regeneratingId, setRegeneratingId] = useState<string | null>(null);
   const [trackAction, setTrackAction] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [initError, setInitError] = useState<string | null>(null);
@@ -108,13 +105,6 @@ export default function ApplyWizardModal({
       if (data.job) setJob(data.job);
       setContacts(data.contacts);
       setMessages(data.outreachMessages);
-      setDrafts((prev) => {
-        const next = { ...prev };
-        for (const message of data.outreachMessages) {
-          if (next[message.id] === undefined) next[message.id] = message.message;
-        }
-        return next;
-      });
       return data;
     },
     [api],
@@ -216,40 +206,27 @@ export default function ApplyWizardModal({
     try {
       await api(`/api/public-profile/pursuits/outreach`, "POST", { pursuitId: id });
     } catch (err) {
-      if (!(err instanceof PublicProfileApiError && err.status === 409)) throw err;
+      const body = err instanceof PublicProfileApiError ? err.body as { status?: string } | null : null;
+      if (!(err instanceof PublicProfileApiError && err.status === 409 && body?.status === "already_generated")) throw err;
     }
     await readPursuit(id);
   }
 
-  function regenerateOutreach() {
+  function regenerateOutreach(message: OutreachMessageRecord) {
     if (!pursuitId) return;
-    run(() => generateOutreach(pursuitId));
-  }
-
-  function approveMessage(message: OutreachMessageRecord) {
-    if (!pursuitId) return;
-    const draft = drafts[message.id] ?? message.message;
-    run(async () => {
-      if (draft.trim() && draft.trim() !== message.message.trim()) {
-        await api(`/api/public-profile/pursuits/outreach/${message.id}`, "PATCH", { action: "edit", message: draft });
-      }
-      await api(`/api/public-profile/pursuits/outreach/${message.id}`, "PATCH", { action: "approve" });
+    setRegeneratingId(message.id);
+    void run(async () => {
+      await api(`/api/public-profile/pursuits/outreach`, "POST", {
+        pursuitId,
+        regenerate: true,
+        previousMessageId: message.id,
+      });
       await readPursuit(pursuitId);
-    });
-  }
-
-  function rejectMessage(message: OutreachMessageRecord, reason: string) {
-    if (!pursuitId || !reason) return;
-    run(async () => {
-      await api(`/api/public-profile/pursuits/outreach/${message.id}`, "PATCH", { action: "reject", rejectionReason: reason });
-      setRejectingId(null);
-      await readPursuit(pursuitId);
-    });
+    }).finally(() => setRegeneratingId(null));
   }
 
   function copyDraft(message: OutreachMessageRecord) {
-    const draft = drafts[message.id] ?? message.message;
-    void navigator.clipboard?.writeText(draft);
+    void navigator.clipboard?.writeText(message.message);
   }
 
   function saveTracking() {
@@ -403,46 +380,40 @@ export default function ApplyWizardModal({
 
             {step === 3 ? (
               <div className={styles.modalStack}>
-                <section className={styles.copyGenerationPanel}>
-                  <div>
-                    <strong>Tailored outreach message</strong>
-                    <p>Generate a fresh draft for the selected contacts.</p>
-                  </div>
-                  <button type="button" className={`${styles.modalBtnSave} ${styles.generateMessageBtn}`} onClick={regenerateOutreach} disabled={busy}>Generate New Message</button>
-                </section>
                 {messages.length === 0 ? (
-                  <section><p className={styles.dsStateLabel}>{busy ? "Writing your drafts…" : "No drafts yet."}</p></section>
+                  busy ? (
+                    <section>
+                      <div className={styles.contactsLoading}>
+                        <div className={styles.progressLine}><span className={styles.progressDot} />Writing your message&hellip;</div>
+                        <div className={styles.skeletonCard}><span className={`${styles.skeletonBar} ${styles.w60}`} /><span className={`${styles.skeletonBar} ${styles.w40}`} /><span className={`${styles.skeletonBar} ${styles.w80}`} /></div>
+                        <div className={styles.skeletonCard}><span className={`${styles.skeletonBar} ${styles.w50}`} /><span className={`${styles.skeletonBar} ${styles.w35}`} /><span className={`${styles.skeletonBar} ${styles.w80}`} /></div>
+                      </div>
+                    </section>
+                  ) : <section><p className={styles.dsStateLabel}>No drafts yet.</p></section>
                 ) : messages.map((message) => (
                   <section key={message.id}>
-                    <div className={styles.copyHeader}>
-                      <strong>{contacts.find((contact) => contact.id === message.contactSuggestionId)?.name ?? "Draft"}</strong>
-                      <button type="button" className={styles.copyButton} onClick={() => copyDraft(message)}>Copy</button>
-                    </div>
-                    <textarea
-                      className={styles.messageTextarea}
-                      value={drafts[message.id] ?? message.message}
-                      onChange={(event) => setDrafts((prev) => ({ ...prev, [message.id]: event.target.value }))}
-                      disabled={message.status === "sent"}
-                    />
-                    <div className={styles.messageFeedback}>
-                      <span className={styles.feedbackPrompt}>How&apos;s this draft?</span>
-                      <button type="button" className={`${styles.feedbackBtn} ${styles.feedbackBtnApprove}`} onClick={() => approveMessage(message)} disabled={busy || message.status === "approved"}>Approve</button>
-                      <button type="button" className={`${styles.feedbackBtn} ${styles.feedbackBtnReject}`} onClick={() => setRejectingId((prev) => (prev === message.id ? null : message.id))} disabled={busy}>Reject</button>
-                    </div>
-                    <p className={styles.feedbackNote}>Approved or edited messages are saved as examples for your communication profile.</p>
-                    {rejectingId === message.id ? (
-                      <div className={styles.rejectReason}>
-                        <label htmlFor={`rr-${message.id}`}>Shown only after Reject &mdash; why didn&apos;t it land?</label>
-                        <select id={`rr-${message.id}`} aria-label="Rejection reason" defaultValue="" onChange={(event) => rejectMessage(message, event.target.value)}>
-                          <option value="" disabled>Choose a reason</option>
-                          {REJECT_REASONS.map((reason) => <option key={reason} value={reason}>{reason}</option>)}
-                        </select>
+                    {regeneratingId === message.id ? (
+                      <div className={styles.contactsLoading}>
+                        <div className={styles.progressLine}><span className={styles.progressDot} />Writing your message&hellip;</div>
+                        <div className={styles.skeletonCard}><span className={`${styles.skeletonBar} ${styles.w60}`} /><span className={`${styles.skeletonBar} ${styles.w40}`} /><span className={`${styles.skeletonBar} ${styles.w80}`} /></div>
+                        <div className={styles.skeletonCard}><span className={`${styles.skeletonBar} ${styles.w50}`} /><span className={`${styles.skeletonBar} ${styles.w35}`} /><span className={`${styles.skeletonBar} ${styles.w80}`} /></div>
                       </div>
-                    ) : null}
-                    {message.status !== "draft" ? <p className={styles.feedbackNote}>Status: {message.status}{message.rejectionReason ? ` — ${message.rejectionReason}` : ""}</p> : null}
+                    ) : (
+                      <>
+                        <div className={styles.copyHeader}>
+                          <strong>{contacts.find((contact) => contact.id === message.contactSuggestionId)?.name ?? "Draft"}</strong>
+                          <div className={styles.copyActions}>
+                            <button type="button" className={styles.copyButton} onClick={() => copyDraft(message)}>Copy</button>
+                            {(message.regenerationCount ?? 0) === 0 ? (
+                              <button type="button" className={`${styles.modalBtnSave} ${styles.generateMessageBtn}`} onClick={() => regenerateOutreach(message)} disabled={busy}>Regenerate once</button>
+                            ) : null}
+                          </div>
+                        </div>
+                        <textarea className={styles.messageTextarea} value={message.message} readOnly />
+                      </>
+                    )}
                   </section>
                 ))}
-                <p className={styles.feedbackNote}>Editable draft in your voice &mdash; never auto-sent.</p>
               </div>
             ) : null}
 

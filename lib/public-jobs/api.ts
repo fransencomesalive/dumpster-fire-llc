@@ -1,9 +1,14 @@
-import { getPublicAuthSession, type PublicAuthSession } from "@/lib/public-auth/session";
+import { getPublicAuthSession, type PublicAuthSession } from "../public-auth/session";
 import {
   createPublicProfileRepositoryRequest,
   getPublicProfileRepositoryConfig,
   type PublicProfileRepositoryRequest,
-} from "@/lib/public-profile/repository";
+} from "../public-profile/repository";
+import {
+  ingestJobFromLink,
+  type IngestJobFromLinkDependencies,
+  type IngestJobFromLinkResult,
+} from "./ingest-link";
 import {
   addPublicJobBoardForUser,
   logUnrecognizedBoardSubmissionBestEffort,
@@ -23,6 +28,8 @@ export type PublicJobsHandlerOptions = {
   repositoryRequest?: PublicProfileRepositoryRequest;
   // Injectable board-fetch machinery (tests); env is threaded automatically.
   scanOptions?: PublicJobsScanOptions;
+  ingestJob?: typeof ingestJobFromLink;
+  jobLinkOptions?: Omit<IngestJobFromLinkDependencies, "request" | "now">;
 };
 
 function json(body: unknown, init: ResponseInit = {}) {
@@ -119,6 +126,63 @@ export async function handlePublicJobsScanRequest(
     ...options.scanOptions,
   });
   if ("status" in result) return readinessResponse(result);
+
+  return json(result);
+}
+
+function jobLinkErrorResponse(result: Exclude<IngestJobFromLinkResult, { status: "ingested" | "already_known" }>) {
+  if (result.status === "invalid_url" || result.status === "unsafe_url") {
+    return json({
+      error: result.status === "invalid_url" ? "Expected a valid public job URL." : "That URL cannot be fetched.",
+      status: result.status,
+    }, { status: 400 });
+  }
+
+  if (result.status === "response_too_large") {
+    return json({ error: "That job page is too large to process.", status: result.status }, { status: 413 });
+  }
+
+  if (result.status === "unsupported_content") {
+    return json({ error: "That URL did not return a supported job page.", status: result.status }, { status: 415 });
+  }
+
+  if (result.status === "fetch_failed") {
+    return json({ error: "That job page could not be fetched.", status: result.status }, { status: 502 });
+  }
+
+  return json({
+    error: "Job details could not be extracted right now.",
+    status: result.status,
+  }, { status: 503 });
+}
+
+export async function handlePublicJobFromLinkRequest(
+  request: Request,
+  options: PublicJobsHandlerOptions = {},
+) {
+  const session = await sessionForRequest(request, options);
+  if (session.status !== "authenticated") return authErrorResponse(session);
+
+  const repositoryRequest = repositoryRequestForOptions(options);
+  if (!repositoryRequest) return repositoryConfigErrorResponse();
+
+  const body = await request.json().catch(() => null) as { url?: unknown } | null;
+  if (!body || typeof body.url !== "string" || !body.url.trim()) {
+    return json({
+      error: "Expected url.",
+      status: "invalid_url",
+    }, { status: 400 });
+  }
+
+  const ingest = options.ingestJob ?? ingestJobFromLink;
+  const result = await ingest({ url: body.url, userId: session.userId }, {
+    ...options.jobLinkOptions,
+    request: repositoryRequest,
+    now: options.now,
+  });
+  if (result.status !== "ingested" && result.status !== "already_known") {
+    return jobLinkErrorResponse(result);
+  }
 
   return json(result);
 }

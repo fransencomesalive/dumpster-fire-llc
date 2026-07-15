@@ -1,7 +1,7 @@
 /* Ported 1:1 from the approved DS card design-system/components/apply-wizard.html.
    Styles are the card's verbatim; the only app-integration change is .modalOverlay,
    which becomes a real fixed full-screen overlay (the card's canvas demo used position:
-   relative). Do not restyle here — change the DS card and re-port. */
+   relative). Do not restyle here; change the DS card and re-port. */
 
 .modalOverlay { position: fixed; inset: 0; z-index: 220; overflow: auto; background: rgba(36, 31, 26, 0.62);
   display: flex; flex-direction: column; align-items: center; gap: var(--space-7); padding: var(--space-6); }
@@ -50,12 +50,7 @@
 .modeSelector input[type="checkbox"], .contactSuggestion input[type="checkbox"], .checklistGrid input[type="checkbox"] {
   accent-color: var(--c-teal); width: 18px; height: 18px; flex: none; }
 
-.copyGenerationPanel { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4);
-  background-color: var(--c-paper); border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-md);
-  padding: var(--space-4); }
-.copyGenerationPanel > div strong { display: block; font-family: var(--font-display); font-size: 1.1rem; color: var(--c-ink); }
-.copyGenerationPanel > div p { font-family: var(--font-body); font-size: var(--type-small); color: var(--role-text-muted); margin: var(--space-1) 0 0; }
-.generateMessageBtn { flex-shrink: 0; align-self: center; white-space: nowrap; }
+.generateMessageBtn { flex-shrink: 0; white-space: nowrap; }
 
 .contactSuggestion { display: flex; align-items: flex-start; gap: var(--space-3);
   background-color: var(--c-paper); border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-md);
@@ -88,32 +83,16 @@
 .skeletonBar { height: 11px; border-radius: var(--radius-sm); background-color: var(--c-paper-edge); }
 .w80 { width: 80%; } .w60 { width: 60%; } .w50 { width: 50%; } .w40 { width: 40%; } .w35 { width: 35%; }
 
-.copyHeader { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3);
+.copyHeader { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: var(--space-3);
   margin-bottom: var(--space-2); }
 .copyHeader strong { font-family: var(--font-display); font-size: 1.1rem; color: var(--c-ink); }
+.copyActions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--space-2); margin-left: auto; }
 .copyButton { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.04em; font-size: 0.8rem;
   color: var(--c-ink); background-color: var(--c-paper); border: var(--line-reg) solid var(--c-ink);
   border-radius: var(--radius-md); box-shadow: 2px 2px 0 var(--c-ink); padding: 5px 12px; cursor: pointer; }
 .messageTextarea { width: 100%; box-sizing: border-box; font-family: var(--font-body); font-size: 1rem; color: var(--c-ink);
   background-color: var(--c-paper); border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-md);
   padding: var(--space-3) var(--space-4); min-height: 120px; resize: vertical; }
-.messageTextarea:focus { outline: none; border-color: var(--c-teal); box-shadow: 0 0 0 3px color-mix(in srgb, var(--c-teal) 28%, transparent); }
-.messageFeedback { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); margin-top: var(--space-3); }
-.feedbackPrompt { font-family: var(--font-display); font-size: 1rem; color: var(--c-ink); }
-.feedbackBtn { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.04em; font-size: 0.85rem;
-  border-radius: var(--radius-md); border: var(--line-reg) solid var(--c-ink); box-shadow: 2px 2px 0 var(--c-ink);
-  padding: var(--space-2) var(--space-4); cursor: pointer; }
-.feedbackBtn:disabled { opacity: 0.5; cursor: default; box-shadow: none; }
-.feedbackBtnApprove { color: var(--c-paper); background-color: var(--c-teal); }
-.feedbackBtnReject { color: var(--c-ink); background-color: var(--c-paper); }
-.feedbackNote { font-family: var(--font-body); font-size: var(--type-small); color: var(--role-text-faint); margin: var(--space-2) 0 0; }
-.rejectReason { display: grid; gap: var(--space-1); margin-top: var(--space-3);
-  border-left: var(--line-bold) solid var(--c-mustard); padding-left: var(--space-3); }
-.rejectReason label { font-family: var(--font-body); font-style: italic; font-size: var(--type-small); color: var(--role-text-faint); }
-.rejectReason select { font-family: var(--font-body); font-size: 0.9rem; color: var(--c-ink); justify-self: start;
-  background-color: var(--c-paper); border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-md);
-  padding: var(--space-2) var(--space-3); }
-.modalInlineLink { display: inline-block; margin-top: var(--space-3); }
 
 .checklistGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); }
 .checklistGrid label { display: flex; align-items: center; gap: var(--space-2); font-family: var(--font-body);
@@ -147,6 +126,5 @@
   .modalBox { padding: var(--space-5); }
   .wizardSteps { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .checklistGrid { grid-template-columns: 1fr; }
-  .copyGenerationPanel { flex-direction: column; align-items: flex-start; }
-  .generateMessageBtn { align-self: stretch; text-align: center; }
+  .copyActions { width: 100%; justify-content: flex-start; margin-left: 0; }
 }

@@ -8,12 +8,12 @@
 <link rel="stylesheet" href="../tokens/tokens.css" />
 <link rel="stylesheet" href="../lib/base.css" />
 <style>
-  /* Plain paper — no halftone in new work (Randall, 2026-07-04). */
+  /* Plain paper; no halftone in new work (Randall, 2026-07-04). */
   body { margin: 0; background: var(--c-paper); color: var(--c-ink); font-family: var(--font-body); }
 
   /* Homepage Human Path section redesigned for PARITY with the shipped wizard
      (components/apply-wizard.html). Every slide below is one wizard step, verbatim
-     phrasing and primitives — the marketing preview IS the product screen, minus
+     phrasing and primitives; the marketing preview IS the product screen, minus
      interactivity. In production this renders as ONE framed panel; the arrows and
      stepper tabs swap which step shows (CSS radio slideshow, ported classes). */
   .wrap { max-width: 900px; margin: 0 auto; padding: var(--space-6) var(--space-5); display: grid; gap: var(--space-6); }
@@ -77,22 +77,17 @@
     font-size: 0.85rem; color: var(--c-teal); font-weight: 400; }
   .contactSuggestion small { font-family: var(--font-body); font-size: 0.85rem; line-height: 1.35; color: var(--role-text-faint); }
 
-  /* Step 3 · outreach draft (apply-wizard messageTextarea + feedback) */
-  .copyHeader { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3);
+  /* Step 3 · outreach draft (apply-wizard read-only message + one regeneration) */
+  .copyHeader { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: var(--space-3);
     margin-bottom: var(--space-2); }
   .copyHeader strong { font-family: var(--font-display); font-size: 1.1rem; color: var(--c-ink); }
+  .copyActions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--space-2); margin-left: auto; }
+  .copyButton { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.04em; font-size: 0.8rem;
+    color: var(--c-ink); background-color: var(--c-paper); border: var(--line-reg) solid var(--c-ink);
+    border-radius: var(--radius-md); box-shadow: 2px 2px 0 var(--c-ink); padding: 5px 12px; cursor: pointer; }
   .messageBlock { font-family: var(--font-body); font-size: 0.95rem; color: var(--c-ink);
     background-color: var(--c-paper); border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-md);
     padding: 10px 12px; margin: 0; }
-  .feedbackRow { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); margin-top: var(--space-3); }
-  .feedbackPrompt { font-family: var(--font-display); font-size: 1rem; color: var(--c-ink); }
-  .feedbackBtn { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.04em; font-size: 0.85rem;
-    border-radius: var(--radius-md); border: var(--line-reg) solid var(--c-ink); box-shadow: 2px 2px 0 var(--c-ink);
-    padding: 6px 12px; cursor: pointer; }
-  .feedbackBtnApprove { color: var(--c-paper); background-color: var(--c-teal); }
-  .feedbackBtnReject { color: var(--c-ink); background-color: var(--c-paper); }
-  .feedbackNote { font-family: var(--font-body); font-size: var(--type-small); color: var(--role-text-faint);
-    margin: var(--space-2) 0 0; }
 
   /* Step 4 · tracking checklist (apply-wizard checklistGrid) */
   .checklistGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
@@ -138,7 +133,7 @@
 
   <!-- ============ SLIDE 1 · REVIEW (wizard step 1, verbatim) ============ -->
   <div>
-    <p class="dsStateLabel">Slide 1 of 4 · Review — in production, one panel; arrows/tabs swap slides</p>
+    <p class="dsStateLabel">Slide 1 of 4 · Review. In production, one panel; arrows/tabs swap slides</p>
     <div class="pathPanel">
       <div class="panelHeader"><h3 class="panelTitle">Human Path: Senior Producer</h3></div>
       <div class="wizardSteps" aria-label="Human Path steps">
@@ -230,14 +225,14 @@
       </div>
       <div class="panelStack">
         <section>
-          <div class="copyHeader"><strong>Sam Lewis</strong></div>
-          <p class="messageBlock">Hi Sam — I produced Topo Chico's launch end to end and shipped it across 40+ SKUs in a quarter. Liquid Death's Senior Producer role looks like the same problem at a louder volume. Worth a short conversation?</p>
-          <div class="feedbackRow">
-            <span class="feedbackPrompt">How&apos;s this draft?</span>
-            <span class="feedbackBtn feedbackBtnApprove">Approve</span>
-            <span class="feedbackBtn feedbackBtnReject">Reject</span>
+          <div class="copyHeader">
+            <strong>Sam Lewis</strong>
+            <div class="copyActions">
+              <button type="button" class="copyButton">Copy</button>
+              <button type="button" class="footerNext">Regenerate once</button>
+            </div>
           </div>
-          <p class="feedbackNote">Editable draft in your voice — never auto-sent.</p>
+          <p class="messageBlock">Hi Sam, I produced Topo Chico's launch end to end and shipped it across 40+ SKUs in a quarter. Liquid Death's Senior Producer role looks like the same problem at a louder volume. Worth a short conversation?</p>
         </section>
       </div>
       <div class="panelFooter">

@@ -1565,6 +1565,46 @@
   box-shadow: var(--reg-box);
 }
 
+.pursuitsTipWrap {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+}
+
+.pursuitsTip {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 8px);
+  z-index: 2;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-family: var(--font-ui);
+  font-size: 0.8rem;
+  color: var(--c-paper);
+  background-color: var(--c-ink);
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+  box-shadow: var(--shadow-card);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--dur-fast) var(--ease-snap);
+}
+
+.pursuitsTip::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: var(--c-ink);
+}
+
+.pursuitsTipWrap:hover .pursuitsTip,
+.pursuitsTipWrap:focus-within .pursuitsTip {
+  opacity: 1;
+}
+
 /* Small printed divider between the settings buttons and the Job scan CTA. */
 .actionDivider {
   flex: none;

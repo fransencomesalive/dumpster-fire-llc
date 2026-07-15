@@ -18,6 +18,7 @@ import {
   persistContactSelection,
   persistHumanPathGeneration,
   persistOutreachGeneration,
+  persistOutreachRegeneration,
   persistPursuitTransition,
   updateOutreachMessage,
 } from "../lib/public-profile/pursuits/repository";
@@ -248,6 +249,8 @@ async function main() {
     contact_suggestion_id: "contact-1",
     recipient_type: "likely_hiring_manager",
     message: "Hi Dana - interested in the Program Director role.",
+    previous_message: null,
+    regeneration_count: 0,
     selected_resume_id: "resume-1",
     selected_role_track_id: "track-1",
     selected_work_example_id: "example-1",
@@ -345,6 +348,7 @@ async function main() {
     recipientType: "likely_hiring_manager",
     channel: "linkedin",
     message: "Original draft.",
+    regenerationCount: 0,
     status: "draft",
     createdAt: now,
     updatedAt: now,
@@ -408,6 +412,8 @@ async function main() {
     recipient_type: "likely_hiring_manager",
     channel: "linkedin",
     message: "Original draft.",
+    previous_message: null,
+    regeneration_count: 0,
     status: "draft",
     rejection_reason: null,
     selected_role_track_id: "track-1",
@@ -419,6 +425,7 @@ async function main() {
   const loadedMessage = await loadOutreachMessageById(messageRequest, "message-1");
   assert.equal(loadedMessage?.id, "message-1");
   assert.equal(loadedMessage?.status, "draft");
+  assert.equal(loadedMessage?.regenerationCount, 0);
   assert.equal(loadedMessage?.selectedWorkExampleId, "example-1");
   assert.equal(loadedMessage?.rejectionReason, undefined);
 
@@ -443,6 +450,78 @@ async function main() {
     rejection_reason: "Too formal",
     updated_at: later,
   });
+
+  // Repository: regeneration updates the existing row only when its count is still zero,
+  // then records the pursuit event and one outreach-message credit.
+  const regenerationCalls: Array<{ table: string; method?: string; query?: string; headers?: Record<string, string>; body?: unknown }> = [];
+  const regenerationRequest: PublicProfileRepositoryRequest = async <T>(table: string, init?: { method?: string; query?: string; headers?: Record<string, string>; body?: unknown }) => {
+    regenerationCalls.push({ table, method: init?.method, query: init?.query, headers: init?.headers, body: init?.body });
+    if (table === "outreach_messages") {
+      return [{
+        id: "message-1",
+        pursuit_id: "pursuit-1",
+        contact_suggestion_id: "contact-1",
+        recipient_type: "likely_hiring_manager",
+        channel: "email",
+        message: "Replacement draft.",
+        previous_message: "Original draft.",
+        regeneration_count: 1,
+        status: "draft",
+        rejection_reason: null,
+        selected_role_track_id: "track-1",
+        selected_resume_id: null,
+        selected_work_example_id: "example-1",
+        created_at: now,
+        updated_at: later,
+      }] as T;
+    }
+    return [] as T;
+  };
+  const regenerationTransition = transitionPursuit(contacts.pursuit, "outreach_generated", later, {
+    messageCount: 1,
+    regenerate: true,
+    previousMessageId: "message-1",
+  });
+  assert.equal(regenerationTransition.ok, true);
+  if (!regenerationTransition.ok) throw new Error("regeneration transition should succeed");
+  const regeneratedMessage = await persistOutreachRegeneration(regenerationRequest, regenerationTransition, {
+    messageId: "message-1",
+    previousMessage: "Original draft.",
+    message: "Replacement draft.",
+    updatedAt: later,
+  });
+  assert.equal(regeneratedMessage?.message, "Replacement draft.");
+  assert.equal(regeneratedMessage?.previousMessage, "Original draft.");
+  assert.equal(regeneratedMessage?.regenerationCount, 1);
+  assert.equal(regenerationCalls[0].table, "outreach_messages");
+  assert.equal(regenerationCalls[0].method, "PATCH");
+  assert.ok(regenerationCalls[0].query?.includes("id=eq.message-1"));
+  assert.ok(regenerationCalls[0].query?.includes("pursuit_id=eq.pursuit-1"));
+  assert.ok(regenerationCalls[0].query?.includes("regeneration_count=eq.0"));
+  assert.deepEqual(regenerationCalls[0].headers, { Prefer: "return=representation" });
+  assert.deepEqual(regenerationCalls[0].body, {
+    message: "Replacement draft.",
+    previous_message: "Original draft.",
+    regeneration_count: 1,
+    status: "draft",
+    rejection_reason: null,
+    updated_at: later,
+  });
+  assert.deepEqual(regenerationCalls.slice(1).map((call) => call.table), ["pursuits", "pursuit_events", "usage_ledger"]);
+
+  const lostRaceCalls: string[] = [];
+  const lostRaceRequest: PublicProfileRepositoryRequest = async <T>(table: string) => {
+    lostRaceCalls.push(table);
+    return [] as T;
+  };
+  const lostRace = await persistOutreachRegeneration(lostRaceRequest, regenerationTransition, {
+    messageId: "message-1",
+    previousMessage: "Original draft.",
+    message: "Another replacement.",
+    updatedAt: later,
+  });
+  assert.equal(lostRace, undefined);
+  assert.deepEqual(lostRaceCalls, ["outreach_messages"]);
 
   console.log("public profile pursuits: all assertions passed");
 }

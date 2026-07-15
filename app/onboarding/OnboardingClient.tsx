@@ -1777,8 +1777,8 @@ export default function OnboardingClient({
   );
 
   // Profile card — a compact full-width bar in every signed-in state (onboarding-account-bar
-  // DS card). Identity group left (photo/email/sign out); actions right (Plan, Billing, then
-  // Job scan pinned far right once the profile is complete).
+  // DS card). Identity group left (photo/email/sign out); actions right (Plan, Billing, Job scan,
+  // and the Saved Pursuits availability affordance once the profile is complete).
   const accountPanel = (
     <section className={styles.accountPanel} aria-label="Profile">
       <div className={styles.accountHead}><span className={styles.accountTitle}>Profile</span></div>
@@ -1800,6 +1800,12 @@ export default function OnboardingClient({
                 Job scan
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12" /><polyline points="12 5 19 12 12 19" /></svg>
               </button>
+              <span className={styles.pursuitsTipWrap}>
+                <span id="saved-pursuits-tip" className={styles.pursuitsTip} role="tooltip">Coming Soon</span>
+                <button type="button" className={styles.btnScan} aria-disabled="true" aria-describedby="saved-pursuits-tip">
+                  Saved Pursuits
+                </button>
+              </span>
             </>
           ) : null}
         </div>
