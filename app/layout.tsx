@@ -44,16 +44,19 @@ export const metadata: Metadata = {
     default: "The Job Market Is a Dumpster Fire",
     template: "%s | The Job Market Is a Dumpster Fire",
   },
-  description: "A pursuit system for better job matching and the Human Path process for research, contact sourcing, and outreach.",
+  // Share copy is the homepage hook + first intro line + sign pair, verbatim (163 chars).
+  // Approved OG image: mascot + brand lockup on paper, 1200x630 (Claude Design "Sharing",
+  // Randall 2026-07-14). Never reintroduce internal vocabulary here (Human Path, matching).
+  description: "A job-search operating system for people who are done feeding the machine. Job boards and ATS's are where good candidates disappear. Stop applying. Start pursuing.",
   icons: {
     icon: "/scans/icon.png",
   },
   openGraph: {
     title: "The Job Market Is a Dumpster Fire",
-    description: "Build the profile behind better matching, work examples, and Human Path.",
+    description: "A job-search operating system for people who are done feeding the machine. Job boards and ATS's are where good candidates disappear. Stop applying. Start pursuing.",
     url: "https://www.thejobmarketisadumpsterfire.com",
     siteName: "The Job Market Is a Dumpster Fire",
-    images: ["/scans/opengraph-image"],
+    images: [{ url: "/og-share.png", width: 1200, height: 630 }],
   },
 };
 
