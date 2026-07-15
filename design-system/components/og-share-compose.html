@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>OG share compose · 1200×630 render source</title>
+<link rel="stylesheet" href="../tokens/tokens.css" />
+<style>
+  /* OG SHARE COMPOSE — the 1200×630 source of truth for public/og-share.png.
+     Layout matches the approved 2026-07-14 OG artwork (mascot left, lockup right);
+     the wordmark is the hero-matchbook overprint VERBATIM: teal base, tomato slip
+     ON TOP offset down-right with mix-blend-mode:multiply, at the hero's offset
+     ratio (3.6px/4.05px at 86.4px ≙ 0.0417em/0.0469em), so the overlap darkens
+     exactly like the homepage renders it. Render at 1200×630, deviceScaleFactor 1. */
+  @font-face { font-family:"Original Surfer"; src:url("../fonts/OriginalSurfer-Regular.ttf") format("truetype"); }
+  @font-face { font-family:"Bemio"; src:url("../fonts/Bemio.otf") format("opentype"); }
+
+  html, body { margin:0; padding:0; }
+  .stage { position:relative; width:1200px; height:630px; overflow:hidden; box-sizing:border-box;
+    background-color:var(--c-paper); display:flex; align-items:center; }
+
+  .mascot { flex:none; width:400px; height:auto; margin-left:92px; }
+
+  .lockup { flex:none; margin-left:64px; }
+  .lead { margin:0; font-family:"Bemio", var(--font-display); color:var(--c-ink);
+    font-size:46px; line-height:1.04; letter-spacing:0.01em; }
+  .word { position:relative; display:inline-block; margin:10px 0 0; line-height:0.9;
+    font-family:"Original Surfer", cursive; font-size:88px; }
+  .word .plate { display:block; margin:0; }
+  .word .base { color:var(--c-teal); }
+  .word .slip { position:absolute; left:0; top:0; color:var(--c-tomato);
+    transform:translate(0.0417em, 0.0469em); mix-blend-mode:multiply; }
+</style>
+</head>
+<body>
+  <div class="stage">
+    <img class="mascot" src="../dumpsterfireguy.png" alt="" />
+    <div class="lockup">
+      <p class="lead">The Job Market Is A</p>
+      <h1 class="word"><span class="plate base">Dumpster Fire</span><span class="plate slip" aria-hidden="true">Dumpster Fire</span></h1>
+    </div>
+  </div>
+</body>
+</html>

@@ -4,6 +4,14 @@ Date: 2026-07-14
 Branch: `main`
 Task brief: `docs/codex-tasks-external-job-link-2026-07-14.md`
 
+> **CLOSED OUT 2026-07-15 (Claude).** All three open items are done and verified:
+> the Task 2 migration is applied to production and recorded; Task 1 and Task 2 were
+> verified end-to-end against production with a temp QA user (created and deleted);
+> the four Claude Design cards are registered via `register_assets`. Full record in
+> `docs/current-state.md` (2026-07-15 entry) and `docs/database-migration-state.md`.
+> One finding: duplicate pursuit creation returns an unhandled 500 (unique violation
+> on `pursuits_user_id_job_id_key`) instead of a friendly 409 - documented, not fixed.
+
 ## Task 1: External Job Link Backend
 
 Status: implemented and verified offline. Included in the requested handoff commit; not pushed by this handoff.

@@ -12,6 +12,8 @@ export type PublicJobRecord = {
   id: string;
   source: string;
   sourceUrl: string;
+  // Non-null = pasted job private to that user; absent = shared pool row.
+  ownerUserId?: string;
   companyName: string;
   title: string;
   location?: string;

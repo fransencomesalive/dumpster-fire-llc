@@ -22,6 +22,7 @@ type JobRow = {
   id: string;
   source: string;
   source_url: string;
+  owner_user_id: string | null;
   company_name: string;
   title: string;
   location: string | null;
@@ -76,6 +77,7 @@ const jobs: JobRow[] = [
     id: "job-1",
     source: "greenhouse",
     source_url: "https://jobs.example/product-director",
+    owner_user_id: null,
     company_name: "Useful Studio",
     title: "Program Director",
     location: "Remote",
@@ -92,6 +94,7 @@ const jobs: JobRow[] = [
     id: "job-2",
     source: "lever",
     source_url: "https://jobs.example/legal-counsel",
+    owner_user_id: null,
     company_name: "Wrong Lane LLC",
     title: "Legal Counsel",
     location: "New York, NY",
@@ -101,6 +104,25 @@ const jobs: JobRow[] = [
     description: "Draft contracts and advise legal team.",
     posted_at: "2026-06-20T00:00:00.000Z",
     scraped_at: "2026-06-24T00:00:00.000Z",
+    created_at: now,
+    updated_at: now,
+  },
+  {
+    // Another user's pasted job: would match the profile like job-1 does, but the
+    // owner-scoped candidate query must keep it out of everyone else's scans.
+    id: "job-foreign",
+    source: "user_link",
+    source_url: "https://jobs.example/private-program-director",
+    owner_user_id: "user-other",
+    company_name: "Private Pastes Inc",
+    title: "Program Director",
+    location: "Remote",
+    remote_type: "remote",
+    employment_type: "full_time",
+    compensation_text: null,
+    description: "Lead AI workflow programs and stakeholder alignment.",
+    posted_at: "2026-06-20T00:00:00.000Z",
+    scraped_at: "2026-06-26T00:00:00.000Z",
     created_at: now,
     updated_at: now,
   },
@@ -210,13 +232,15 @@ const request: PublicProfileRepositoryRequest = async <T>(
 
   if (table === "jobs") {
     if (options.method === "POST") {
-      // Upsert on (source, source_url); honor return=representation like PostgREST.
+      // Upsert on (source, source_url, owner_user_id) with nulls-not-distinct owner
+      // semantics; honor return=representation like PostgREST.
       const rows = Array.isArray(options.body) ? options.body : [options.body];
       const returned: JobRow[] = [];
       for (const row of rows as Array<Record<string, unknown>>) {
         const source = row.source as string;
         const sourceUrl = row.source_url as string;
-        let existing = jobs.find((job) => job.source === source && job.source_url === sourceUrl);
+        const owner = (row.owner_user_id as string | null | undefined) ?? null;
+        let existing = jobs.find((job) => job.source === source && job.source_url === sourceUrl && (job.owner_user_id ?? null) === owner);
         if (existing) {
           existing.title = (row.title as string) ?? existing.title;
           existing.description = (row.description as string) ?? existing.description;
@@ -227,6 +251,7 @@ const request: PublicProfileRepositoryRequest = async <T>(
             id: `job-${jobs.length + 1}`,
             source,
             source_url: sourceUrl,
+            owner_user_id: owner,
             company_name: (row.company_name as string) ?? "",
             title: (row.title as string) ?? "",
             location: (row.location as string | null) ?? null,
@@ -249,6 +274,11 @@ const request: PublicProfileRepositoryRequest = async <T>(
     if (query.includes("id=in.")) {
       const ids = query.match(/id=in\.\(([^)]+)\)/)?.[1].split(",") ?? [];
       return jobs.filter((job) => ids.includes(job.id)) as T;
+    }
+    // Honor the owner-scoped candidate filter like PostgREST would.
+    const ownerFilter = query.match(/or=\(owner_user_id\.is\.null,owner_user_id\.eq\.([^)]+)\)/);
+    if (ownerFilter) {
+      return jobs.filter((job) => job.owner_user_id === null || job.owner_user_id === ownerFilter[1]) as T;
     }
     return jobs as T;
   }
@@ -462,6 +492,9 @@ async function main() {
   assert.equal(scan.jobs.length, 1);
   assert.equal(scan.jobs[0].id, "job-1");
   assert.equal(scan.jobs[0].saved, false);
+  // job-foreign mirrors job-1's matching content but belongs to another user; the
+  // owner-scoped candidate query must keep it out of this user's scan.
+  assert.equal(scan.jobs.some((job) => job.id === "job-foreign"), false);
   // Scan results are annotated with a profile-driven match score + label for ranking.
   assert.equal(typeof scan.jobs[0].match?.score, "number");
   assert.equal(typeof scan.jobs[0].match?.label, "string");

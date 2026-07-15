@@ -167,6 +167,10 @@ export default function DashboardClient() {
   const [boardUrlDraft, setBoardUrlDraft] = useState("");
   const [boardBusy, setBoardBusy] = useState(false);
   const [boardError, setBoardError] = useState<"unreadable" | { message: string } | null>(null);
+  // Pursue-a-link card — single URL in, then the normal Pursue flow (approved DS card 2026-07-15).
+  const [pursueLinkDraft, setPursueLinkDraft] = useState("");
+  const [pursueLinkBusy, setPursueLinkBusy] = useState(false);
+  const [pursueLinkError, setPursueLinkError] = useState<string | null>(null);
 
   async function loadJobs(accessToken: string, message?: string) {
     setJobsState((state) => state.status === "ready" ? { ...state, message } : { status: "loading" });
@@ -362,6 +366,52 @@ export default function DashboardClient() {
     }
   }
 
+  // Pursue-a-link: ingest the pasted posting via /api/jobs/from-link, then hand the job
+  // straight to the wizard. The stub record only needs the id up front; the wizard replaces
+  // it with the full record from the pursuit create/read response.
+  async function pursueLink() {
+    const accessToken = readPublicProfileAccessToken();
+    if (!accessToken) {
+      router.replace("/onboarding");
+      return;
+    }
+    const url = pursueLinkDraft.trim();
+    if (!url) return;
+
+    setPursueLinkBusy(true);
+    setPursueLinkError(null);
+    try {
+      const response = await requestPublicProfileApi<{ status: string; jobId: string; title: string; company: string }>("/api/jobs/from-link", {
+        method: "POST",
+        accessToken,
+        body: { url },
+      });
+      setPursueLinkDraft("");
+      setPursuitContext({
+        job: {
+          id: response.jobId,
+          source: "user_link",
+          sourceUrl: url,
+          companyName: response.company,
+          title: response.title,
+          description: "",
+          scrapedAt: "",
+          firstSeenAt: "",
+          lastSeenAt: "",
+          saved: false,
+          responsibilities: [],
+          requiredExperience: [],
+        },
+        accessToken,
+      });
+    } catch (error) {
+      const body = error instanceof PublicProfileApiError ? error.body as { error?: string } | null : null;
+      setPursueLinkError(body?.error ?? (error instanceof Error ? error.message : "That link could not be read."));
+    } finally {
+      setPursueLinkBusy(false);
+    }
+  }
+
   // Pursue opens the Human Path apply wizard (Review → Contacts → Outreach → Track). The wizard
   // itself creates/ensures the pursuit and drives every step; here we only gate on auth and hand
   // it the access token.
@@ -424,6 +474,33 @@ export default function DashboardClient() {
 
           <div className={jobsStyles.dashboardGrid}>
             <div className={jobsStyles.dashboardMain}>
+              {/* Pursue a job link — 1:1 from the approved DS card (dashboard-jobs.html, 2026-07-15). */}
+              <div className={`${jobsStyles.card} ${jobsStyles.pursueLinkCard}`}>
+                <div className={jobsStyles.panelHeaderRow}>
+                  <h3 className={jobsStyles.sidebarHeading}>Found a job somewhere else?</h3>
+                </div>
+                <p className={jobsStyles.boardHint}>Paste the posting link and pursue it like any match. We pull the details, find the right person, and draft outreach that sounds like&nbsp;you.</p>
+                <div className={jobsStyles.boardInputRow}>
+                  <input
+                    className={jobsStyles.boardInput}
+                    placeholder="Paste a job posting link"
+                    value={pursueLinkDraft}
+                    disabled={pursueLinkBusy}
+                    onChange={(event) => setPursueLinkDraft(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        event.preventDefault();
+                        void pursueLink();
+                      }
+                    }}
+                  />
+                  <button className={jobsStyles.boardAddBtn} disabled={pursueLinkBusy} onClick={() => void pursueLink()} type="button">
+                    {pursueLinkBusy ? "Reading…" : "Pursue"}
+                  </button>
+                </div>
+                {pursueLinkError ? <p className={jobsStyles.boardErr}>{pursueLinkError}</p> : null}
+              </div>
+
               {!savedOnly && jobs.length > 0 ? (
                 <div className={jobsStyles.ratingFilterGrid} aria-label="Filter matches by fit">
                   {tierCounts.map(({ tier, count }) => (

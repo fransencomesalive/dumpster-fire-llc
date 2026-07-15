@@ -181,6 +181,13 @@
     border:var(--line-hair) solid var(--c-ink); cursor:pointer; font-size:13px; line-height:1; }
   .boardRemove:hover { color:var(--c-paper); background:var(--c-tomato); border-color:var(--c-ink); }
 
+  /* NEW (2026-07-15) · Pursue a job link — single-value action input (input + button,
+     Enter also commits) at the top of the results column. Feeds the pasted posting into
+     the existing Pursue flow. Reuses boardInput/boardAddBtn primitives from the
+     Company job boards card; only the placement spacing is new. */
+  .pursueLinkCard { margin-bottom:var(--space-4); }
+  .pursueLinkCard .boardInputRow { margin-bottom:0; }
+
   @media (max-width:900px){
     .dashboardGrid { grid-template-columns:minmax(0,1fr); }
     .dashboardSidebar { position:static; }
@@ -202,6 +209,19 @@
 
   <div class="dashboardGrid">
     <div class="dashboardMain">
+      <!-- NEW (2026-07-15) · Pursue a job link — the direct entry to the pursuit flow for
+           postings our scans never saw. Single URL in, then the normal Pursue path. -->
+      <div class="card pursueLinkCard">
+        <div class="panelHeaderRow">
+          <h3 class="sidebarHeading">Found a job somewhere else?</h3>
+        </div>
+        <p class="boardHint">Paste the posting link and pursue it like any match. We pull the details, find the right person, and draft outreach that sounds like you.</p>
+        <div class="boardInputRow">
+          <input class="boardInput" placeholder="Paste a job posting link" />
+          <button type="button" class="boardAddBtn">Pursue</button>
+        </div>
+      </div>
+
       <div class="ratingFilterGrid" aria-label="Filter matches by fit">
         <button type="button" class="ratingFilterBtn ratingFilterBtnActive" aria-pressed="true">
           <span class="ratingStars"><span class="on">★★★★★</span></span><strong>6</strong><span class="ratingCount">roles</span>

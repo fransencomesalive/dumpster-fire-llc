@@ -27,6 +27,7 @@ import {
   loadOutreachMessageById,
   loadOutreachMessagesForPursuit,
   loadPursuitByIdForUser,
+  loadPursuitByJobForUser,
   loadPursuitEventsForPursuit,
   loadPursuitsForUser,
   persistContactSelection,
@@ -429,6 +430,11 @@ export type PublicProfilePursuitsHandlerOptions = PublicProfileMatchHandlerOptio
     request: PublicProfileRepositoryRequest,
     input: CreatePursuitInput,
   ) => Promise<PursuitTransitionResult>;
+  loadPursuitByJob?: (
+    request: PublicProfileRepositoryRequest,
+    userId: string,
+    jobId: string,
+  ) => Promise<Pursuit | undefined>;
   loadPursuit?: (
     request: PublicProfileRepositoryRequest,
     userId: string,
@@ -884,7 +890,8 @@ export async function handlePublicProfileMatchRequest(
 
   const loadJob = options.loadJob ?? loadPublicJobById;
   const job = await loadJob(repositoryRequest, jobId);
-  if (!job) {
+  // Another user's pasted job is invisible here — indistinguishable from nonexistent.
+  if (!job || (job.ownerUserId && job.ownerUserId !== session.userId)) {
     return json({ error: "Job not found.", status: "not_found" }, { status: 404 });
   }
 
@@ -1267,7 +1274,8 @@ export async function handlePublicProfilePursuitCreateRequest(
 
   const loadJob = options.loadJob ?? loadPublicJobById;
   const job = await loadJob(repositoryRequest, jobId);
-  if (!job) {
+  // Another user's pasted job is invisible here — indistinguishable from nonexistent.
+  if (!job || (job.ownerUserId && job.ownerUserId !== session.userId)) {
     return json({ error: "Job not found.", status: "not_found" }, { status: 404 });
   }
 
@@ -1291,6 +1299,18 @@ export async function handlePublicProfilePursuitCreateRequest(
   const enforcement = enforceSubscription(subscriptionContext, usageEntries, createdAt);
   if (enforcement.status !== "allowed") {
     return subscriptionBlockedResponse(enforcement);
+  }
+
+  // Pursuits are unique per (user, job); answering with the existing pursuit keeps a
+  // duplicate create from colliding with pursuits_user_id_job_id_key.
+  const loadPursuitByJob = options.loadPursuitByJob ?? loadPursuitByJobForUser;
+  const existingPursuit = await loadPursuitByJob(repositoryRequest, session.userId, jobId);
+  if (existingPursuit) {
+    return json({
+      error: "You are already pursuing this job.",
+      status: "already_pursuing",
+      pursuit: existingPursuit,
+    }, { status: 409 });
   }
 
   const createPursuit = options.createPursuit ?? createPursuitForJob;

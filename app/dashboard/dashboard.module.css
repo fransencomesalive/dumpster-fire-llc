@@ -189,6 +189,11 @@
     padding:var(--space-2) var(--space-3); margin-top:var(--space-3); line-height:1.45; }
   .boardErr b { font-family:var(--font-display); font-weight:normal; }
 
+  /* Pursue a job link (approved DS card 2026-07-15) — single-value action input at the
+     top of the results column; reuses boardInput/boardAddBtn primitives. */
+  .pursueLinkCard { margin-bottom:var(--space-4); }
+  .pursueLinkCard .boardInputRow { margin-bottom:0; }
+
   @media (max-width:900px){
     .dashboardGrid { grid-template-columns:minmax(0,1fr); }
     .dashboardSidebar { position:static; }

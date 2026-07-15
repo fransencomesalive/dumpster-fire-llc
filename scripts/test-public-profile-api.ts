@@ -424,6 +424,17 @@ async function main() {
   });
   assert.equal(matchMissingJob.status, 404);
 
+  // Another user's pasted job is indistinguishable from a nonexistent one.
+  const matchForeignOwned = await handlePublicProfileMatchRequest(postRequest("match", { jobId: "job-foreign" }), {
+    getSession: async () => authed(),
+    repositoryRequest,
+    loadAggregate: async () => agg,
+    loadJob: async () => publicJob({ id: "job-foreign", ownerUserId: "user-2" }),
+    evaluate: () => { throw new Error("must not evaluate another user's pasted job"); },
+  });
+  assert.equal(matchForeignOwned.status, 404);
+  assert.equal((await body(matchForeignOwned)).status, "not_found");
+
   let matchedJobTitle = "";
   let matchedAt = "";
   const matchOk = await handlePublicProfileMatchRequest(postRequest("match", { jobId: "job-1" }), {
@@ -632,6 +643,36 @@ async function main() {
   });
   assert.equal(pursuitMissingJob.status, 404);
 
+  // Another user's pasted job cannot be pursued; the response mirrors a missing job.
+  const pursuitForeignOwned = await handlePublicProfilePursuitCreateRequest(postRequest("pursuits", { jobId: "job-foreign" }), {
+    getSession: async () => authed(),
+    repositoryRequest,
+    loadAggregate: async () => agg,
+    loadJob: async () => publicJob({ id: "job-foreign", ownerUserId: "user-2" }),
+    evaluate: () => { throw new Error("must not evaluate another user's pasted job"); },
+    createPursuit: async () => { throw new Error("must not create a pursuit for another user's job"); },
+  });
+  assert.equal(pursuitForeignOwned.status, 404);
+  assert.equal((await body(pursuitForeignOwned)).status, "not_found");
+
+  // A duplicate create answers with the existing pursuit instead of colliding with
+  // the (user_id, job_id) unique key.
+  const pursuitDuplicate = await handlePublicProfilePursuitCreateRequest(postRequest("pursuits", { jobId: "job-1" }), {
+    now: () => now,
+    getSession: async () => authed(),
+    repositoryRequest,
+    loadAggregate: async () => agg,
+    loadJob: async () => publicJob({ id: "job-1" }),
+    loadSubscriptionContext: async () => activeBasicSubscription(),
+    loadUsageEntries: async () => [],
+    loadPursuitByJob: async () => savedPursuit({ id: "pursuit-existing", jobId: "job-1" }),
+    createPursuit: async () => { throw new Error("must not insert over an existing pursuit"); },
+  });
+  assert.equal(pursuitDuplicate.status, 409);
+  const pursuitDuplicateJson = await body(pursuitDuplicate);
+  assert.equal(pursuitDuplicateJson.status, "already_pursuing");
+  assert.equal((pursuitDuplicateJson.pursuit as Record<string, unknown>).id, "pursuit-existing");
+
   const pursuitTransitionError = await handlePublicProfilePursuitCreateRequest(postRequest("pursuits", { jobId: "job-1" }), {
     getSession: async () => authed(),
     repositoryRequest,
@@ -652,6 +693,7 @@ async function main() {
     }),
     loadSubscriptionContext: async () => activeBasicSubscription(),
     loadUsageEntries: async () => [],
+    loadPursuitByJob: async () => undefined,
     createPursuit: async () => ({ ok: false, issues: ["Nope."] }),
   });
   assert.equal(pursuitTransitionError.status, 409);
@@ -665,6 +707,7 @@ async function main() {
     loadAggregate: async () => agg,
     loadSubscriptionContext: async () => activeBasicSubscription(),
     loadUsageEntries: async () => [],
+    loadPursuitByJob: async () => undefined,
     loadJob: async () => ({
       id: "job-1",
       source: "fixture",

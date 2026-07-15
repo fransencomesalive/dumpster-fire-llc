@@ -48,10 +48,13 @@ function normalizeUrl(rawUrl: string) {
   }
 }
 
-async function findJobBySourceUrl(request: PublicProfileRepositoryRequest, sourceUrl: string) {
+// Dedupe against shared-pool rows and the user's own private rows only; another
+// user's private paste must never match (returning its id would leak it).
+async function findJobBySourceUrl(request: PublicProfileRepositoryRequest, sourceUrl: string, userId: string) {
   const rows = await request<StoredJob[]>("jobs", {
     query: qs({
       source_url: `eq.${sourceUrl}`,
+      or: `(owner_user_id.is.null,owner_user_id.eq.${userId})`,
       select: "id,title,company_name",
       limit: "1",
     }),
@@ -183,7 +186,7 @@ export async function ingestJobFromLink(
     return { status: "unsafe_url" };
   }
 
-  const existing = await findJobBySourceUrl(dependencies.request, sourceUrl);
+  const existing = await findJobBySourceUrl(dependencies.request, sourceUrl, input.userId);
   if (existing) return knownResult(existing);
 
   const fetched = await fetchJobPage(sourceUrl, dependencies);
@@ -199,11 +202,12 @@ export async function ingestJobFromLink(
   const scrapedAt = dependencies.now?.() ?? new Date().toISOString();
   const inserted = await dependencies.request<StoredJob[]>("jobs", {
     method: "POST",
-    query: "?on_conflict=source,source_url&select=id,title,company_name",
+    query: "?on_conflict=source,source_url,owner_user_id&select=id,title,company_name",
     headers: { Prefer: "resolution=ignore-duplicates,return=representation" },
     body: {
       source: "user_link",
       source_url: sourceUrl,
+      owner_user_id: input.userId,
       company_name: extracted.companyName,
       title: extracted.title,
       description: extracted.description,
@@ -220,7 +224,7 @@ export async function ingestJobFromLink(
 
   const job = inserted[0];
   if (!job) {
-    const concurrentlyInserted = await findJobBySourceUrl(dependencies.request, sourceUrl);
+    const concurrentlyInserted = await findJobBySourceUrl(dependencies.request, sourceUrl, input.userId);
     if (!concurrentlyInserted) throw new Error("Job insert did not return a row.");
     return knownResult(concurrentlyInserted);
   }

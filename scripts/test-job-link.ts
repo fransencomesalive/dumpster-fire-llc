@@ -104,6 +104,7 @@ async function main() {
     assert.deepEqual(insert.body, {
       source: "user_link",
       source_url: "https://jobs.example.test/openings/123",
+      owner_user_id: "user-1",
       company_name: "Useful Co",
       title: "Product Director",
       description: "Responsibilities: Lead useful product work. Required Qualifications: 8 years of product leadership.",
@@ -112,6 +113,11 @@ async function main() {
       scraped_at: now,
       updated_at: now,
     });
+    assert.match(insert.query ?? "", /on_conflict=source,source_url,owner_user_id/);
+    // The dedupe lookup only sees shared-pool rows and the caller's own rows.
+    const dedupe = calls.find((call) => call.method === "GET");
+    assert.ok(dedupe);
+    assert.match(decodeURIComponent(dedupe.query ?? ""), /or=\(owner_user_id\.is\.null,owner_user_id\.eq\.user-1\)/);
   }
 
   // A known normalized URL returns its existing id without fetch, model, or insert.
@@ -141,6 +147,35 @@ async function main() {
     assert.equal(calls.length, 1);
     assert.equal(fetched, false);
     assert.equal(modeled, false);
+  }
+
+  // Another user's private paste of the same URL is invisible: the dedupe lookup is
+  // owner-scoped, so this user proceeds to ingest their own private copy.
+  {
+    const insertedRow = { id: "job-own-copy", title: "Known Role", company_name: "Known Co" };
+    const { request, calls } = mockRequest((call) => call.method === "POST" ? [insertedRow] : []);
+    const result = await ingestJobFromLink({ url: "https://jobs.example.test/known", userId: "user-b" }, {
+      request,
+      resolveHostname: publicResolver,
+      fetchImpl: async () => new Response("<h1>Known Role</h1><p>Own the known work.</p>", {
+        headers: { "Content-Type": "text/html" },
+      }),
+      callModel: async () => JSON.stringify({
+        title: "Known Role",
+        companyName: "Known Co",
+        description: "Own the known work.",
+        responsibilities: [],
+        requiredExperience: [],
+      }),
+      now: () => now,
+    });
+    assert.equal(result.status, "ingested");
+    const dedupe = calls.find((call) => call.method === "GET");
+    assert.ok(dedupe);
+    assert.match(decodeURIComponent(dedupe.query ?? ""), /or=\(owner_user_id\.is\.null,owner_user_id\.eq\.user-b\)/);
+    const insert = calls.find((call) => call.method === "POST");
+    assert.ok(insert);
+    assert.equal((insert.body as Record<string, unknown>).owner_user_id, "user-b");
   }
 
   // No model output degrades explicitly and never inserts a partial job.

@@ -129,10 +129,37 @@ export default function ApplyWizardModal({
         setRoleTracks(trackList);
         setSelectedRoleTrackId(recommended ?? trackList[0]?.id ?? null);
       } catch (err) {
+        // A pursuit already exists for this job: resume it instead of failing. The 409
+        // carries the existing pursuit; contacts/messages come from the pursuit read and
+        // the match is recomputed so step 1 renders as usual.
+        if (err instanceof PublicProfileApiError && err.status === 409) {
+          const body = err.body as { status?: string; pursuit?: Pursuit } | null;
+          if (body?.status === "already_pursuing" && body.pursuit) {
+            const existing = body.pursuit;
+            try {
+              setPursuitId(existing.id);
+              const [, tracks, matched] = await Promise.all([
+                readPursuit(existing.id),
+                api<RoleTracksResponse>("/api/public-profile/role-tracks", "GET").catch(() => null),
+                api<{ match: MatchResult }>("/api/public-profile/match", "POST", { jobId: initialJob.id }),
+              ]);
+              setMatch(matched.match);
+              const recommended = matched.match.recommendations.roleTrack?.roleTrack.id ?? null;
+              setRecommendedRoleTrackId(recommended);
+              const trackList = tracks?.section.roleTracks ?? [];
+              setRoleTracks(trackList);
+              setSelectedRoleTrackId(existing.selectedRoleTrackId ?? recommended ?? trackList[0]?.id ?? null);
+              return;
+            } catch (resumeErr) {
+              setInitError(errorMessage(resumeErr, "Could not resume this pursuit."));
+              return;
+            }
+          }
+        }
         setInitError(errorMessage(err, "Could not start this pursuit."));
       }
     })();
-  }, [api, initialJob.id]);
+  }, [api, initialJob.id, readPursuit]);
 
   async function run(fn: () => Promise<void>) {
     setBusy(true);

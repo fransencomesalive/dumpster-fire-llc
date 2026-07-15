@@ -22,6 +22,7 @@ type JobRow = {
   id: string;
   source: string;
   source_url: string;
+  owner_user_id: string | null;
   company_name: string;
   title: string;
   location: string | null;
@@ -162,6 +163,7 @@ function mapPublicJobRecord(job: JobRow, saved = false): PublicJobRecord {
     id: job.id,
     source: job.source,
     sourceUrl: job.source_url,
+    ownerUserId: defined(job.owner_user_id),
     companyName: job.company_name,
     title: job.title,
     location: defined(job.location),
@@ -226,7 +228,7 @@ async function jobsById(request: PublicProfileRepositoryRequest, jobIds: string[
   return request<JobRow[]>("jobs", {
     query: qs({
       id: `in.(${jobIds.join(",")})`,
-      select: "id,source,source_url,company_name,title,location,remote_type,employment_type,compensation_text,description,posted_at,scraped_at,created_at,updated_at,responsibilities,required_experience",
+      select: "id,source,source_url,owner_user_id,company_name,title,location,remote_type,employment_type,compensation_text,description,posted_at,scraped_at,created_at,updated_at,responsibilities,required_experience",
     }),
   });
 }
@@ -423,9 +425,12 @@ export async function runPublicJobsScanForUser(
 
   const boards = await fetchUserBoardsForScan(request, userId, scannedAt, options);
 
+  // Shared-pool rows plus this user's own pasted jobs only — other users' private
+  // pastes must never surface as scan candidates.
   const candidateRows = await request<JobRow[]>("jobs", {
     query: qs({
-      select: "id,source,source_url,company_name,title,location,remote_type,employment_type,compensation_text,description,posted_at,scraped_at,created_at,updated_at",
+      select: "id,source,source_url,owner_user_id,company_name,title,location,remote_type,employment_type,compensation_text,description,posted_at,scraped_at,created_at,updated_at",
+      or: `(owner_user_id.is.null,owner_user_id.eq.${userId})`,
       order: "scraped_at.desc",
       limit: "250",
     }),

@@ -238,6 +238,25 @@ export async function loadPursuitByIdForUser(
   return row ? mapPursuit(row) : undefined;
 }
 
+// Pursuits are unique per (user, job); used to answer duplicate creates with the
+// existing pursuit instead of letting the insert collide.
+export async function loadPursuitByJobForUser(
+  request: PublicProfileRepositoryRequest,
+  userId: string,
+  jobId: string,
+): Promise<Pursuit | undefined> {
+  const rows = await request<PursuitRow[]>("pursuits", {
+    query: qs({
+      job_id: `eq.${jobId}`,
+      user_id: `eq.${userId}`,
+      select: "id,user_id,profile_id,job_id,selected_role_track_id,selected_resume_id,selected_work_example_id,status,fit_summary,risks,recommended_work_example_ids,outreach_angle,last_activity_at,created_at,updated_at",
+      limit: "1",
+    }),
+  });
+  const row = first(rows);
+  return row ? mapPursuit(row) : undefined;
+}
+
 export async function loadContactSuggestionsForPursuit(
   request: PublicProfileRepositoryRequest,
   pursuitId: string,

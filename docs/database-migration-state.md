@@ -114,6 +114,20 @@ https://supabase.com/dashboard/account/tokens if missing.
   `job_sources_ats_provider_ats_board_token_careers_url_key` is gone. Recorded as
   `job_sources_owner_user`.
 
+## Applied 2026-07-15 (confirmed + recorded in schema_migrations)
+
+- `20260714000100_outreach_message_regeneration.sql` — adds `previous_message text` and
+  `regeneration_count smallint not null default 0` (CHECK 0 or 1) to `outreach_messages`
+  (single message regeneration, Codex handoff commit `9e7f1d3`). Additive + idempotent;
+  validated by Codex on throwaway local Postgres first. Applied via the Management API and
+  recorded as `outreach_message_regeneration`. Post-checks confirmed both columns (smallint
+  default 0 NOT NULL / text nullable) and the CHECK constraint. NOTE: the code deploy
+  (auto-deploy of `9e7f1d3`) reached production BEFORE this migration ran, and the deployed
+  repository selects the new columns on every outreach-message read — the outreach read
+  path was briefly broken on prod until this migration was applied. Lesson: for handoff
+  commits that pair code + migration, apply the migration immediately after (or before)
+  the push, not at next-session pickup.
+
 ## NOT yet applied to production
 
 - None outstanding.

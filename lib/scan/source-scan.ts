@@ -42,6 +42,8 @@ function jobRowBody(job: NormalizedConnectorJob, scrapedAt: string) {
   return {
     source: job.sourceProvider,
     source_url: job.sourceUrl,
+    // Scanned postings are shared-pool rows; only user-pasted jobs carry an owner.
+    owner_user_id: null,
     company_name: job.companyName,
     title: job.title,
     location: job.location || null,
@@ -127,8 +129,8 @@ export async function ingestNormalizedJobs(
     });
 
   const query = options.returnRows
-    ? `?on_conflict=source,source_url&select=${INGESTED_ROW_SELECT}`
-    : "?on_conflict=source,source_url";
+    ? `?on_conflict=source,source_url,owner_user_id&select=${INGESTED_ROW_SELECT}`
+    : "?on_conflict=source,source_url,owner_user_id";
   const headers = options.returnRows
     ? { Prefer: "resolution=merge-duplicates,return=representation" }
     : { Prefer: "resolution=merge-duplicates" };

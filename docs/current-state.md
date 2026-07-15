@@ -1,6 +1,35 @@
 # Current State
 
-## 2026-07-04 - CRITICAL: custom domain is not serving this app (Claude)
+## 2026-07-15 - Codex handoff closed out: regen migration live, both features prod-verified, DS cards registered (Claude)
+
+Completed all three open items from `docs/codex-handoff-external-job-link-2026-07-14.md`:
+
+1. **Migration `20260714000100_outreach_message_regeneration.sql` applied to production**
+   via the Management API and recorded in `schema_migrations`. This was urgent: the code
+   deploy (`9e7f1d3`) had auto-shipped ahead of the migration and the deployed repository
+   selects `previous_message,regeneration_count` on every outreach-message read, so prod
+   outreach reads were broken until the migration landed. Post-checks confirmed columns,
+   default, and the 0/1 CHECK. Details in `docs/database-migration-state.md`.
+2. **External job link verified end-to-end on production** with a temp QA user (created,
+   verified, then deleted): real Reddit posting ingested via `POST /api/jobs/from-link`
+   (200 `ingested`, correct title/company, `source=user_link`), resubmit returned
+   `already_known` with the same jobId, and the jobId was accepted by pursuit creation.
+3. **Message regeneration verified end-to-end on production**: full funnel (pursuit ->
+   review -> Human Path -> contact selection -> outreach) then regenerate-once. Confirmed
+   `previous_message` retains the original, `regeneration_count` becomes 1, the row is
+   replaced in place (no new row), exactly one extra outreach credit is charged, a second
+   regeneration returns 409 `already_regenerated` with no charge, and no em dashes in
+   either generation.
+4. **Claude Design registration completed** for the four touched cards (Apply Wizard,
+   Copy Generation, Home Human Path, Onboarding Account Bar) - files + `_ds_manifest.json`
+   pushed and `register_assets` run (the handoff's NOT VERIFIED item).
+
+Found during verification (documented, not fixed): `POST /api/public-profile/pursuits`
+returns an empty **500** (not a friendly 409) when the user already has a pursuit for that
+job (`pursuits_user_id_job_id_key` unique violation is unhandled). The QA user's data was
+fully cleaned up; the ingested Reddit posting legitimately remains in the shared jobs pool.
+Open decision for Randall (flagged by Codex): whether user-pasted jobs need private
+ownership - `jobs` is a shared global pool visible to other users' scans.
 
 Found while verifying the QA widget deploy. `https://www.thejobmarketisadumpsterfire.com`
 (and apex) currently serve the **Lab26 project**: `/onboarding`, `/dashboard`, and
