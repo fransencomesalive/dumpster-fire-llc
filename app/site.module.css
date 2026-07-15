@@ -504,7 +504,8 @@
 .publicLandingHumanPathRadio:nth-of-type(1):checked ~ .publicLandingHumanPathViewport .publicLandingHumanPathSlide:nth-child(1),
 .publicLandingHumanPathRadio:nth-of-type(2):checked ~ .publicLandingHumanPathViewport .publicLandingHumanPathSlide:nth-child(2),
 .publicLandingHumanPathRadio:nth-of-type(3):checked ~ .publicLandingHumanPathViewport .publicLandingHumanPathSlide:nth-child(3),
-.publicLandingHumanPathRadio:nth-of-type(4):checked ~ .publicLandingHumanPathViewport .publicLandingHumanPathSlide:nth-child(4) {
+.publicLandingHumanPathRadio:nth-of-type(4):checked ~ .publicLandingHumanPathViewport .publicLandingHumanPathSlide:nth-child(4),
+.publicLandingHumanPathRadio:nth-of-type(5):checked ~ .publicLandingHumanPathViewport .publicLandingHumanPathSlide:nth-child(5) {
   opacity: 1;
   pointer-events: auto;
 }
@@ -523,7 +524,8 @@
 .publicLandingHumanPathRadio:nth-of-type(1):checked ~ .publicLandingHumanPathArrows .publicLandingHumanPathArrowSet:nth-child(1),
 .publicLandingHumanPathRadio:nth-of-type(2):checked ~ .publicLandingHumanPathArrows .publicLandingHumanPathArrowSet:nth-child(2),
 .publicLandingHumanPathRadio:nth-of-type(3):checked ~ .publicLandingHumanPathArrows .publicLandingHumanPathArrowSet:nth-child(3),
-.publicLandingHumanPathRadio:nth-of-type(4):checked ~ .publicLandingHumanPathArrows .publicLandingHumanPathArrowSet:nth-child(4) {
+.publicLandingHumanPathRadio:nth-of-type(4):checked ~ .publicLandingHumanPathArrows .publicLandingHumanPathArrowSet:nth-child(4),
+.publicLandingHumanPathRadio:nth-of-type(5):checked ~ .publicLandingHumanPathArrows .publicLandingHumanPathArrowSet:nth-child(5) {
   display: flex;
 }
 
@@ -594,7 +596,7 @@
 
 .publicLandingHumanWizardSteps {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 8px;
   margin-bottom: 10px;
 }
@@ -674,30 +676,215 @@
   flex: none;
 }
 
-/* Step 1 · role-track selector (wizard modeSection) */
-.publicLandingHumanMode {
+/* Section intro row · mascot beside the copy (approved card r3) */
+.publicLandingHowIntro {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: 10px 12px;
+  gap: 20px;
+}
+
+.publicLandingHowIntroMascot {
+  flex: none;
+  width: 128px;
+  height: auto;
+  filter: drop-shadow(2px 0 0 var(--c-paper)) drop-shadow(-2px 0 0 var(--c-paper))
+          drop-shadow(0 2px 0 var(--c-paper)) drop-shadow(0 -2px 0 var(--c-paper))
+          drop-shadow(4px 5px 0 rgba(36, 31, 26, 0.28));
+}
+
+/* Bordered sub-box (wizard modeSection primitive, content variant) */
+.publicLandingHumanSubBox {
   background-color: var(--c-paper);
   border: var(--line-reg) solid var(--c-ink);
   border-radius: var(--radius-md);
   padding: 10px 12px;
 }
 
-.publicLandingHumanMode > span {
+.publicLandingHumanPanelStack .publicLandingHumanSubBox > strong {
+  display: block;
   font-family: var(--font-display);
   font-size: 1rem;
   color: var(--c-ink);
+  margin-bottom: 2px;
 }
 
-.publicLandingHumanMode label {
+.publicLandingHumanPanelStack .publicLandingHumanSubBox > p {
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  line-height: 1.4;
+  color: var(--role-text-muted, var(--c-ink-soft));
+  margin: 0;
+}
+
+/* Resume highlight sheet · deliberately NOT an app card: a white document snippet
+   with sharp corners, hairline edge, document type, and a slight tilt (card r3). */
+.publicLandingHumanResumeSheet {
+  position: relative;
+  margin-top: 14px;
+  background: color-mix(in srgb, #ffffff 62%, var(--c-paper));
+  border: 1px solid var(--c-paper-edge);
+  border-radius: 2px;
+  padding: 14px 16px 12px;
+  box-shadow: 2px 3px 0 rgba(36, 31, 26, 0.16);
+  transform: rotate(-0.6deg);
+  font-family: var(--font-ui), Inter, system-ui, sans-serif;
+}
+
+.publicLandingHumanResumeSheetTag {
+  position: absolute;
+  top: -11px;
+  left: 12px;
+  font-family: var(--font-subhead);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 0.72rem;
+  line-height: 1;
+  color: var(--c-paper);
+  background-color: var(--c-ink);
+  border-radius: var(--radius-sm);
+  padding: 4px 8px;
+  transform: rotate(0.6deg);
+}
+
+.publicLandingHumanResumeSheetHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 2px 12px;
+  padding-bottom: 6px;
+  margin-bottom: 6px;
+  border-bottom: 1px solid var(--c-paper-edge);
+}
+
+.publicLandingHumanResumeSheetHead strong {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--c-ink);
+}
+
+.publicLandingHumanResumeSheetHead span {
+  font-size: 0.8rem;
+  color: var(--c-ink-faint);
+}
+
+.publicLandingHumanResumeSheet ul {
+  margin: 0;
+  padding-left: 1.1em;
+  list-style: disc;
+}
+
+.publicLandingHumanResumeSheet li {
+  font-size: 0.85rem;
+  line-height: 1.45;
+  color: var(--c-ink-soft);
+  margin: 0 0 3px;
+}
+
+.publicLandingHumanResumeSheet li:last-child {
+  margin-bottom: 0;
+}
+
+/* Or-paste divider · hairline rule with a centered label (card r3) */
+.publicLandingHumanOrDivider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-family: var(--font-subhead);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 0.8rem;
+  color: var(--role-text-muted, var(--c-ink-soft));
+}
+
+.publicLandingHumanOrDivider::before,
+.publicLandingHumanOrDivider::after {
+  content: "";
+  flex: 1 1 auto;
+  height: 1px;
+  background: var(--c-paper-edge);
+}
+
+/* Pursue-a-link row · static preview of the dashboard input primitive (card r3) */
+.publicLandingHumanLinkRow {
+  display: flex;
+  gap: 8px;
+}
+
+.publicLandingHumanLinkInput {
+  flex: 1 1 auto;
+  min-width: 0;
+  box-sizing: border-box;
+  font-family: var(--font-ui), Inter, system-ui, sans-serif;
+  font-size: var(--type-small, 0.9rem);
+  color: var(--c-ink-faint);
+  background: var(--c-paper);
+  border: var(--line-reg) solid var(--c-ink);
+  border-radius: var(--radius-md);
+  padding: 9px 12px;
+}
+
+.publicLandingHumanLinkBtn {
+  flex: none;
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  color: var(--role-action-text, var(--c-paper));
+  background-color: var(--role-action, var(--c-tomato));
+  background-image: var(--fiber-img), var(--grain-img);
+  background-blend-mode: normal, soft-light;
+  background-size: 170px 170px, 46px 46px;
+  border: var(--line-bold) solid var(--c-ink);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
+  padding: 8px 12px;
+}
+
+/* Copy header + Copy button (wizard read-only outreach primitive, card r3) */
+.publicLandingHumanCopyHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.publicLandingHumanCopyHeader strong {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  color: var(--c-ink);
+}
+
+.publicLandingHumanCopyBtn {
+  font-family: var(--font-subhead);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 0.8rem;
+  color: var(--c-ink);
+  background-color: var(--c-paper);
+  border: var(--line-reg) solid var(--c-ink);
+  border-radius: var(--radius-md);
+  box-shadow: 2px 2px 0 var(--c-ink);
+  padding: 5px 12px;
+}
+
+/* Coming Soon marker · teal pill (card r3) */
+.publicLandingHumanComingSoon {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  font-family: var(--font-body);
-  color: var(--role-text-muted, var(--c-ink-soft));
+  font-family: var(--font-subhead);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 0.8rem;
+  line-height: 1;
+  color: var(--c-paper);
+  background-color: var(--c-teal);
+  border: var(--line-reg) solid var(--c-ink);
+  border-radius: var(--radius-pill);
+  padding: 5px 12px;
+  background-image: var(--fiber-img), var(--grain-img);
+  background-blend-mode: normal, soft-light;
+  background-size: 170px 170px, 46px 46px;
 }
 
 /* Step 2 · contact cards (wizard contactSuggestion + formSuccess) */
@@ -769,48 +956,6 @@
   margin: 6px 0 0;
 }
 
-.publicLandingHumanFeedbackRow {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 12px;
-  margin-top: 12px;
-}
-
-.publicLandingHumanFeedbackPrompt {
-  font-family: var(--font-display);
-  font-size: 1rem;
-  color: var(--c-ink);
-}
-
-.publicLandingHumanFeedbackBtn {
-  font-family: var(--font-subhead);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  font-size: 0.85rem;
-  border-radius: var(--radius-md);
-  border: var(--line-reg) solid var(--c-ink);
-  box-shadow: 2px 2px 0 var(--c-ink);
-  padding: 6px 12px;
-}
-
-.publicLandingHumanFeedbackApprove {
-  color: var(--c-paper);
-  background-color: var(--c-teal);
-}
-
-.publicLandingHumanFeedbackReject {
-  color: var(--c-ink);
-  background-color: var(--c-paper);
-}
-
-.publicLandingHumanPanelStack .publicLandingHumanFeedbackNote {
-  font-family: var(--font-body);
-  font-size: 0.9rem;
-  color: var(--c-ink-faint);
-  margin: 8px 0 0;
-}
-
 /* Step 4 · tracking checklist (wizard checklistGrid) */
 .publicLandingHumanChecklist {
   display: grid;
@@ -828,43 +973,6 @@
   border: var(--line-reg) solid var(--c-ink);
   border-radius: var(--radius-md);
   padding: 6px 10px;
-}
-
-/* Footer mirrors the wizard footer; margin-top auto pins it to the panel
-   bottom so every slide's footer lands at the same height. */
-.publicLandingHumanPanelFooter {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 12px;
-  margin-top: auto;
-  padding-top: 12px;
-  border-top: var(--line-hair, 1px) solid var(--c-paper-edge);
-}
-
-.publicLandingHumanFooterLink {
-  margin-right: auto;
-  font-family: var(--font-display);
-  font-size: 0.95rem;
-  color: var(--c-ink);
-  background-color: var(--c-paper);
-  border: var(--line-reg) solid var(--c-ink);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-card);
-  padding: 9px 16px;
-}
-
-.publicLandingHumanFooterNext {
-  font-family: var(--font-display);
-  font-size: 0.95rem;
-  font-weight: 400;
-  color: var(--role-action-text, var(--c-paper));
-  background-color: var(--role-action, var(--c-tomato));
-  border: var(--line-bold) solid var(--c-ink);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-card);
-  padding: 9px 16px;
 }
 
 .publicLandingFeatureGrid {
@@ -1390,21 +1498,13 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .publicLandingHowIntro {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
   .publicLandingHumanChecklist {
     grid-template-columns: 1fr;
-  }
-
-  .publicLandingHumanPanelFooter {
-    justify-content: stretch;
-  }
-
-  .publicLandingHumanFooterLink,
-  .publicLandingHumanFooterNext {
-    box-sizing: border-box;
-    width: 100%;
-    margin-right: 0;
-    text-align: center;
-    justify-content: center;
   }
 
   .profileEditorHeader,

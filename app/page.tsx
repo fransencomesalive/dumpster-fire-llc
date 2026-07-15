@@ -23,10 +23,10 @@ const operatingLoop = [
   },
 ];
 
-// Approved DS card components/home-human-path.html: each slide is the matching
-// Apply Wizard step 1:1 — the marketing preview IS the product screen.
-const humanPathSteps = ["Review", "Contacts", "Outreach", "Track"];
-const humanPathSlideCount = 4;
+// Approved DS card components/home-human-path.html (r3, 2026-07-15): 5-slide
+// whole-app walkthrough — each slide borrows the real product surface it describes.
+const humanPathSteps = ["Profile", "Pursuits", "Your Human", "Message", "Records"];
+const humanPathSlideCount = 5;
 
 const subscriptionTiers = [
   { name: "Good", price: "" },
@@ -98,24 +98,27 @@ export default function HomePage() {
       </section>
 
       <section id="human-path" className={`${styles.publicLandingSection} ${styles.publicLandingHumanPathSection}`} aria-labelledby="human-path-title">
-        <div className={styles.publicLandingSectionIntro}>
-          <h2 id="human-path-title">Human Path</h2>
-          <p>You can do this on your own. Dumpster Fire packages the steps so you are not rebuilding the same path every morning.</p>
+        <div className={styles.publicLandingHowIntro}>
+          <Image className={styles.publicLandingHowIntroMascot} src={mascotImg} alt="" sizes="128px" />
+          <div className={styles.publicLandingSectionIntro}>
+            <h2 id="human-path-title">How Dumpster Fire works</h2>
+            <p>Five steps between you and a real person reading a message that actually sounds like you. Not a portal. Not a resume black hole. A person.</p>
+          </div>
         </div>
-        <div className={styles.publicLandingHumanPathShow} aria-label="Human Path preview for a senior producer role">
+        <div className={styles.publicLandingHumanPathShow} aria-label="How Dumpster Fire works, five-step walkthrough">
           {humanPathSteps.map((label, index) => (
             <input className={styles.publicLandingHumanPathRadio} defaultChecked={index === 0} id={`human-path-slide-${index + 1}`} key={`${label}-radio`} name="human-path-slide" type="radio" />
           ))}
           <div className={styles.publicLandingHumanPathViewport}>
             <div className={styles.publicLandingHumanPathTrack}>
 
-              {/* Slide 1 · Review */}
-              <article className={styles.publicLandingHumanPathSlide} aria-label="Review Human Path preview">
+              {/* Slide 1 · Profile */}
+              <article className={styles.publicLandingHumanPathSlide} aria-label="Submit your profile">
                 <div className={styles.publicLandingHumanPanel}>
                   <div className={styles.publicLandingHumanPanelHeader}>
-                    <h3>Human Path: Senior Producer</h3>
+                    <h3>Submit your profile</h3>
                   </div>
-                  <div className={styles.publicLandingHumanWizardSteps} aria-label="Human Path steps">
+                  <div className={styles.publicLandingHumanWizardSteps} aria-label="How Dumpster Fire works steps">
                     {humanPathSteps.map((label, index) => (
                       <label className={index === 0 ? styles.publicLandingHumanWizardStepActive : undefined} htmlFor={`human-path-slide-${index + 1}`} key={label}>
                         <b>{index + 1}</b>
@@ -124,35 +127,35 @@ export default function HomePage() {
                     ))}
                   </div>
                   <div className={styles.publicLandingHumanPanelStack}>
-                    <section className={styles.publicLandingHumanMode}>
-                      <span>Applying as:</span>
-                      <label><input defaultChecked type="checkbox" /><span>Executive Producer recommended</span></label>
-                      <label><input type="checkbox" /><span>Program Director</span></label>
-                    </section>
                     <section>
-                      <strong>Job review</strong>
-                      <p>Liquid Death · $150k–$185k · Remote (US)</p>
-                      <p>Fit: Good / 88. Strong overlap on creative production and launch delivery.</p>
+                      <p>Hand over your résumé as a clean PDF so the scan reads it right. We pull the substance out and toss the file. Then add work examples: what you built, where it lives, and the dent it made.</p>
                     </section>
-                    <section>
-                      <strong>Recommended strategy</strong>
-                      <p>Lead with the launch you shipped end to end; name the metric. Keep it to four sentences.</p>
+                    <section className={styles.publicLandingHumanSubBox}>
+                      <strong>Résumé scanned</strong>
+                      <p>Text captured. File discarded. Your history stays yours.</p>
                     </section>
-                  </div>
-                  <div className={styles.publicLandingHumanPanelFooter}>
-                    <span className={styles.publicLandingHumanFooterLink}>Open job posting</span>
-                    <strong className={styles.publicLandingHumanFooterNext}>Continue</strong>
+                    <section className={styles.publicLandingHumanResumeSheet}>
+                      <span className={styles.publicLandingHumanResumeSheetTag}>From your résumé</span>
+                      <div className={styles.publicLandingHumanResumeSheetHead}>
+                        <strong>Senior Producer · Topo Chico</strong>
+                        <span>2022 to 2025</span>
+                      </div>
+                      <ul>
+                        <li>Led national launch production across 40+ SKUs; shipped in one quarter.</li>
+                        <li>Owned it from first render to shelf date; beat the sell-in target by 22%.</li>
+                      </ul>
+                    </section>
                   </div>
                 </div>
               </article>
 
-              {/* Slide 2 · Contacts */}
-              <article className={styles.publicLandingHumanPathSlide} aria-label="Contacts Human Path preview">
+              {/* Slide 2 · Pursuits */}
+              <article className={styles.publicLandingHumanPathSlide} aria-label="Line up your pursuits">
                 <div className={styles.publicLandingHumanPanel}>
                   <div className={styles.publicLandingHumanPanelHeader}>
-                    <h3>Human Path: Senior Producer</h3>
+                    <h3>Line up your pursuits</h3>
                   </div>
-                  <div className={styles.publicLandingHumanWizardSteps} aria-label="Human Path steps">
+                  <div className={styles.publicLandingHumanWizardSteps} aria-label="How Dumpster Fire works steps">
                     {humanPathSteps.map((label, index) => (
                       <label className={index === 1 ? styles.publicLandingHumanWizardStepActive : undefined} htmlFor={`human-path-slide-${index + 1}`} key={label}>
                         <b>{index + 1}</b>
@@ -162,8 +165,38 @@ export default function HomePage() {
                   </div>
                   <div className={styles.publicLandingHumanPanelStack}>
                     <section>
-                      <strong>Human Path</strong>
-                      <p>The reporting chain is built automatically when you pursue this role: owning function, manager, functional leader, then recruiter.</p>
+                      <p>Scan the boards we watch, rated against your profile. Or found a posting in the wild? Paste the link. Either way, a job stops being a listing and becomes a pursuit: something you go after on purpose.</p>
+                    </section>
+                    <section className={styles.publicLandingHumanSubBox}>
+                      <strong>Senior Producer · Liquid Death</strong>
+                      <p>Fit: Good / 88. Strong overlap on creative production and launch delivery.</p>
+                    </section>
+                    <div className={styles.publicLandingHumanOrDivider}>Or paste a job you found on your own</div>
+                    <div className={styles.publicLandingHumanLinkRow}>
+                      <span className={styles.publicLandingHumanLinkInput}>Paste a job posting link</span>
+                      <span className={styles.publicLandingHumanLinkBtn}>Pursue</span>
+                    </div>
+                  </div>
+                </div>
+              </article>
+
+              {/* Slide 3 · Your Human */}
+              <article className={styles.publicLandingHumanPathSlide} aria-label="We find a human to contact">
+                <div className={styles.publicLandingHumanPanel}>
+                  <div className={styles.publicLandingHumanPanelHeader}>
+                    <h3>We find a human to contact</h3>
+                  </div>
+                  <div className={styles.publicLandingHumanWizardSteps} aria-label="How Dumpster Fire works steps">
+                    {humanPathSteps.map((label, index) => (
+                      <label className={index === 2 ? styles.publicLandingHumanWizardStepActive : undefined} htmlFor={`human-path-slide-${index + 1}`} key={label}>
+                        <b>{index + 1}</b>
+                        {label}
+                      </label>
+                    ))}
+                  </div>
+                  <div className={styles.publicLandingHumanPanelStack}>
+                    <section>
+                      <p>Job postings hide people. Dumpster Fire works out who actually owns this role, hiring manager to recruiter, and you pick who receives your message.</p>
                       <p className={styles.publicLandingHumanSuccess}>Found 2 reporting-chain contacts.</p>
                     </section>
                     <div className={styles.publicLandingHumanContact}>
@@ -185,53 +218,16 @@ export default function HomePage() {
                       </span>
                     </div>
                   </div>
-                  <div className={styles.publicLandingHumanPanelFooter}>
-                    <span className={styles.publicLandingHumanFooterLink}>Open job posting</span>
-                    <strong className={styles.publicLandingHumanFooterNext}>Continue</strong>
-                  </div>
                 </div>
               </article>
 
-              {/* Slide 3 · Outreach */}
-              <article className={styles.publicLandingHumanPathSlide} aria-label="Outreach Human Path preview">
+              {/* Slide 4 · Message */}
+              <article className={styles.publicLandingHumanPathSlide} aria-label="A message in your voice">
                 <div className={styles.publicLandingHumanPanel}>
                   <div className={styles.publicLandingHumanPanelHeader}>
-                    <h3>Human Path: Senior Producer</h3>
+                    <h3>A message in your voice</h3>
                   </div>
-                  <div className={styles.publicLandingHumanWizardSteps} aria-label="Human Path steps">
-                    {humanPathSteps.map((label, index) => (
-                      <label className={index === 2 ? styles.publicLandingHumanWizardStepActive : undefined} htmlFor={`human-path-slide-${index + 1}`} key={label}>
-                        <b>{index + 1}</b>
-                        {label}
-                      </label>
-                    ))}
-                  </div>
-                  <div className={styles.publicLandingHumanPanelStack}>
-                    <section>
-                      <strong>Sam Lewis</strong>
-                      <p className={styles.publicLandingHumanMessage}>Hi Sam — I produced Topo Chico&apos;s launch end to end and shipped it across 40+ SKUs in a quarter. Liquid Death&apos;s Senior Producer role looks like the same problem at a louder volume. Worth a short conversation?</p>
-                      <span className={styles.publicLandingHumanFeedbackRow}>
-                        <span className={styles.publicLandingHumanFeedbackPrompt}>How&apos;s this draft?</span>
-                        <span className={`${styles.publicLandingHumanFeedbackBtn} ${styles.publicLandingHumanFeedbackApprove}`}>Approve</span>
-                        <span className={`${styles.publicLandingHumanFeedbackBtn} ${styles.publicLandingHumanFeedbackReject}`}>Reject</span>
-                      </span>
-                      <p className={styles.publicLandingHumanFeedbackNote}>Editable draft in your voice — never auto-sent.</p>
-                    </section>
-                  </div>
-                  <div className={styles.publicLandingHumanPanelFooter}>
-                    <span className={styles.publicLandingHumanFooterLink}>Open job posting</span>
-                    <strong className={styles.publicLandingHumanFooterNext}>Continue</strong>
-                  </div>
-                </div>
-              </article>
-
-              {/* Slide 4 · Track */}
-              <article className={styles.publicLandingHumanPathSlide} aria-label="Track Human Path preview">
-                <div className={styles.publicLandingHumanPanel}>
-                  <div className={styles.publicLandingHumanPanelHeader}>
-                    <h3>Human Path: Senior Producer</h3>
-                  </div>
-                  <div className={styles.publicLandingHumanWizardSteps} aria-label="Human Path steps">
+                  <div className={styles.publicLandingHumanWizardSteps} aria-label="How Dumpster Fire works steps">
                     {humanPathSteps.map((label, index) => (
                       <label className={index === 3 ? styles.publicLandingHumanWizardStepActive : undefined} htmlFor={`human-path-slide-${index + 1}`} key={label}>
                         <b>{index + 1}</b>
@@ -241,35 +237,60 @@ export default function HomePage() {
                   </div>
                   <div className={styles.publicLandingHumanPanelStack}>
                     <section>
-                      <strong>Pursuit tracking</strong>
-                      <p>Check what happened. Saving moves the role into the right pipeline state.</p>
+                      <p>Written from your profile in your tone, with your work examples doing the talking. Copy it, then paste it into your message to the recruiter or hiring manager. It reads like you because it is you.</p>
+                    </section>
+                    <section>
+                      <div className={styles.publicLandingHumanCopyHeader}>
+                        <strong>Sam Lewis</strong>
+                        <span className={styles.publicLandingHumanCopyBtn}>Copy</span>
+                      </div>
+                      <p className={styles.publicLandingHumanMessage}>Hi Sam, I produced Topo Chico&apos;s launch end to end and shipped it across 40+ SKUs in a quarter. Liquid Death&apos;s Senior Producer role looks like the same problem at a louder volume. Worth a short conversation?</p>
+                    </section>
+                  </div>
+                </div>
+              </article>
+
+              {/* Slide 5 · Records */}
+              <article className={styles.publicLandingHumanPathSlide} aria-label="Save it for your records">
+                <div className={styles.publicLandingHumanPanel}>
+                  <div className={styles.publicLandingHumanPanelHeader}>
+                    <h3>Save it for your records</h3>
+                    <span className={styles.publicLandingHumanComingSoon}>Coming Soon</span>
+                  </div>
+                  <div className={styles.publicLandingHumanWizardSteps} aria-label="How Dumpster Fire works steps">
+                    {humanPathSteps.map((label, index) => (
+                      <label className={index === 4 ? styles.publicLandingHumanWizardStepActive : undefined} htmlFor={`human-path-slide-${index + 1}`} key={label}>
+                        <b>{index + 1}</b>
+                        {label}
+                      </label>
+                    ))}
+                  </div>
+                  <div className={styles.publicLandingHumanPanelStack}>
+                    <section>
+                      <p>Every pursuit keeps its own paper trail: who you messaged, what you sent, what happened next. When the recruiter finally calls back in three weeks, you will know exactly where you left off.</p>
                     </section>
                     <div className={styles.publicLandingHumanChecklist}>
-                      <label><input defaultChecked type="checkbox" /><span>Applied online</span></label>
-                      <label><input type="checkbox" /><span>Applied via LinkedIn</span></label>
                       <label><input defaultChecked type="checkbox" /><span>Messaged Sam Lewis</span></label>
+                      <label><input defaultChecked type="checkbox" /><span>Applied online</span></label>
+                      <label><input type="checkbox" /><span>Heard back</span></label>
                       <label><input type="checkbox" /><span>Saved for follow-up</span></label>
                     </div>
-                  </div>
-                  <div className={styles.publicLandingHumanPanelFooter}>
-                    <span className={styles.publicLandingHumanFooterLink}>Open job posting</span>
-                    <strong className={styles.publicLandingHumanFooterNext}>Save pursuit</strong>
                   </div>
                 </div>
               </article>
 
             </div>
           </div>
-          <div className={styles.publicLandingHumanPathArrows} aria-label="Human Path slideshow controls">
+          <div className={styles.publicLandingHumanPathArrows} aria-label="Walkthrough slideshow controls">
             {humanPathSteps.map((label, index) => {
               const previousSlide = index === 0 ? humanPathSlideCount : index;
               const nextSlide = index === humanPathSlideCount - 1 ? 1 : index + 2;
 
               return (
                 <div className={styles.publicLandingHumanPathArrowSet} key={`${label}-arrows`}>
-                  <label htmlFor={`human-path-slide-${previousSlide}`} aria-label="Previous Human Path slide">←</label>
+                  <label htmlFor={`human-path-slide-${previousSlide}`} aria-label="Previous slide">←</label>
                   <span>Slide {index + 1} of {humanPathSlideCount}</span>
-                  <label htmlFor={`human-path-slide-${nextSlide}`} aria-label="Next Human Path slide">→</label>
+                  <label htmlFor={`human-path-slide-${nextSlide}`} aria-label="Next slide">→</label>
                 </div>
               );
             })}
