@@ -1,5 +1,35 @@
 # Current State
 
+## 2026-07-15 (evening) - Homepage walkthrough LIVE + onboarding tips + prod sweep green (Claude)
+
+1. **"How Dumpster Fire works" is live on the homepage** (`5d6ca2f`, verified in prod HTML +
+   live screenshot). The 4-step Human Path gallery is replaced by the approved 5-slide
+   whole-app walkthrough (Profile / Pursuits / Your Human / Message / Records): mascot intro
+   row, document-style resume-highlight sheet ("From your résumé" tag), or-paste divider +
+   pursue-a-link preview, contact cards with "who receives your message" copy, read-only
+   message + Copy, records checklist with Coming Soon pill. No CTAs on any slide (Randall's
+   r1-r3 notes). Design source: `design-system/components/home-human-path.html` (approved
+   r3, repo mirror in parity, registered "approved + shipped"). Breakpoints verified on the
+   production build at 320/375/390/1280/1440; the old gallery's em dash died with it.
+2. **Onboarding prescriptive tips live** (`b9ccc2c`, Randall-dictated copy): résumé dropzone
+   second hint line (output is as good as the input; vet/improve/format the PDF) and
+   work-examples intro relevance guidance (examples are pulled for jobs you pursue; be
+   specific in context). Swept across resume-upload / work-examples / card-interior cards.
+3. **Full production sweep: 18/18 green** (pages 200, corrected OG byte-exact, all of
+   today's ships confirmed in deployed chunks, six auth-gated APIs 401, RLS leak checks
+   clean) + DB layer clean (1 user, 0 user_link rows, 3 migrations recorded, no bad
+   regeneration counts).
+4. **Access code confirmed in prod**: shared invite is `DUMPSTERFRIENDS` (plural), premium
+   plan, 25 uses (1 redeemed); five unused single-use `GOODEST-*` tester codes.
+5. **QA bot (PhredBot relay): parked on two Randall decisions.** The relay platform's only
+   built-in notification channel is Telegram (no native Signal); it needs an always-on host
+   (Fly.io/Railway/Studio+tunnel; storage can use existing Supabase Postgres). Next session:
+   get the two answers, then drive deploy + `QA_AGENT_URL` in Vercel + notification setup.
+   See `docs/qa-feedback-widget-integration-2026-07-02.md` "Outstanding work".
+6. **Process note**: when Randall has directed a design revision line-by-line and says
+   "ship it all", that IS the approval; do not hold the implementation at a re-approval
+   gate. The Claude Design gate exists for designs he has not seen/directed.
+
 ## 2026-07-15 (later) - Private pasted jobs + pursue-a-link entry + OG overprint fix SHIPPED (Claude)
 
 Commit `d74eec3`, deployed and verified live; migrations `20260715000100`/`20260715000200`
