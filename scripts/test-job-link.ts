@@ -120,6 +120,50 @@ async function main() {
     assert.match(decodeURIComponent(dedupe.query ?? ""), /or=\(owner_user_id\.is\.null,owner_user_id\.eq\.user-1\)/);
   }
 
+  // A client-rendered board shell (Ashby-style): visible text is only an
+  // enable-JavaScript notice, the posting ships in JSON-LD. The model must
+  // receive the JSON-LD content, not the shell text.
+  {
+    const insertedRow = { id: "job-ld", title: "Brand Project Manager", company_name: "Kit" };
+    const { request } = mockRequest((call) => call.method === "POST" ? [insertedRow] : []);
+    let modelInput = "";
+    const shellHtml = [
+      "<html><head>",
+      '<script type="application/ld+json">',
+      JSON.stringify({
+        "@context": "https://schema.org/",
+        "@type": "JobPosting",
+        title: "Brand Project Manager",
+        hiringOrganization: { "@type": "Organization", name: "Kit" },
+        employmentType: "CONTRACTOR",
+        description: "<p>Kit is hiring a Brand Project Manager.</p><ul><li>Run brand production timelines.</li></ul>",
+      }),
+      "</script>",
+      '<script>window.__appData = {"maintenanceMode":false};</script>',
+      "</head><body><div id=\"root\">You need to enable JavaScript to run this app.</div></body></html>",
+    ].join("");
+    const result = await ingestJobFromLink({ url: "https://jobs.example.test/kit/brand-pm", userId: "user-1" }, {
+      request,
+      resolveHostname: publicResolver,
+      fetchImpl: async () => new Response(shellHtml, { headers: { "Content-Type": "text/html; charset=utf-8" } }),
+      callModel: async ({ user }) => {
+        modelInput = user;
+        return JSON.stringify({
+          title: "Brand Project Manager",
+          companyName: "Kit",
+          description: "Kit is hiring a Brand Project Manager. Run brand production timelines.",
+          responsibilities: ["Run brand production timelines."],
+          requiredExperience: [],
+        });
+      },
+      now: () => now,
+    });
+    assert.equal(result.status, "ingested");
+    assert.match(modelInput, /Kit is hiring a Brand Project Manager/);
+    assert.match(modelInput, /Job title: Brand Project Manager/);
+    assert.doesNotMatch(modelInput, /enable JavaScript/);
+  }
+
   // A known normalized URL returns its existing id without fetch, model, or insert.
   {
     const existing = { id: "job-known", title: "Known Role", company_name: "Known Co" };

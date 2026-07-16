@@ -71,6 +71,48 @@ function knownResult(job: StoredJob): Extract<IngestJobFromLinkResult, { status:
   };
 }
 
+// Client-rendered boards (Ashby, new Greenhouse, Lever) serve an HTML shell
+// whose visible text is just "enable JavaScript" — but the posting ships in a
+// schema.org JSON-LD JobPosting block. Read that before falling back to
+// stripped page text.
+function jobPostingTextFromJsonLd(html: string): string | undefined {
+  const blocks = html.matchAll(/<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi);
+  for (const match of blocks) {
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(match[1]);
+    } catch {
+      continue;
+    }
+    const top = Array.isArray(parsed) ? parsed : [parsed];
+    const nodes = top.flatMap((node) =>
+      node && typeof node === "object" && Array.isArray((node as Record<string, unknown>)["@graph"])
+        ? ((node as Record<string, unknown>)["@graph"] as unknown[])
+        : [node]);
+    for (const node of nodes) {
+      if (!node || typeof node !== "object") continue;
+      const posting = node as Record<string, unknown>;
+      const type = posting["@type"];
+      const isJobPosting = type === "JobPosting" || (Array.isArray(type) && type.includes("JobPosting"));
+      if (!isJobPosting) continue;
+      const description = typeof posting.description === "string" ? textFromHtml(posting.description) : "";
+      if (!description) continue;
+      const organization = posting.hiringOrganization;
+      const companyName = organization && typeof organization === "object"
+        && typeof (organization as Record<string, unknown>).name === "string"
+        ? (organization as Record<string, unknown>).name as string
+        : "";
+      return [
+        typeof posting.title === "string" && posting.title ? `Job title: ${posting.title}` : "",
+        companyName ? `Company: ${companyName}` : "",
+        typeof posting.employmentType === "string" && posting.employmentType ? `Employment type: ${posting.employmentType}` : "",
+        description,
+      ].filter(Boolean).join("\n");
+    }
+  }
+  return undefined;
+}
+
 async function readResponseWithLimit(response: Response, maxBytes: number, controller: AbortController) {
   const contentLength = Number(response.headers.get("content-length"));
   if (Number.isFinite(contentLength) && contentLength > maxBytes) return { status: "response_too_large" } as const;
@@ -163,7 +205,13 @@ async function fetchJobPage(
       );
       if (bodyResult.status !== "ok") return bodyResult;
 
-      const pageText = contentType.startsWith("text/plain") ? bodyResult.body.trim() : textFromHtml(bodyResult.body);
+      if (contentType.startsWith("text/plain")) {
+        const plainText = bodyResult.body.trim();
+        return plainText ? { status: "ok", pageText: plainText } : { status: "extraction_unavailable" };
+      }
+      const strippedText = textFromHtml(bodyResult.body);
+      const structuredText = jobPostingTextFromJsonLd(bodyResult.body);
+      const pageText = structuredText && structuredText.length > strippedText.length ? structuredText : strippedText;
       return pageText ? { status: "ok", pageText } : { status: "extraction_unavailable" };
     }
 
