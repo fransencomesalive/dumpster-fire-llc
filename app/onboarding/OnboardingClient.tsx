@@ -1203,13 +1203,33 @@ export default function OnboardingClient({
     setResumeScan({ status: "reading", fileName: file.name, fileSize: file.size });
     setMessage("Reading your PDF…");
     try {
-      const form = new FormData();
-      form.append("file", file);
-      const response = await fetch("/api/public-profile/resumes/scan", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${accessToken}` },
-        body: form,
-      });
+      const scanRequest = (token: string) => {
+        const form = new FormData();
+        form.append("file", file);
+        return fetch("/api/public-profile/resumes/scan", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+          body: form,
+        });
+      };
+      let response = await scanRequest(accessToken);
+      // Expired session (long-lived tab): refresh once and retry, same as
+      // requestPublicProfileApi. Never surface raw auth internals to the user.
+      if (response.status === 401) {
+        const freshToken = await syncPublicProfileSession();
+        if (freshToken && freshToken !== accessToken) {
+          response = await scanRequest(freshToken);
+        }
+      }
+      if (response.status === 401) {
+        setResumeScan({
+          status: "error",
+          lead: "Your session timed out.",
+          tail: "Refresh the page and try again — your typed work is saved on this device.",
+        });
+        setMessage("Résumé scan failed.");
+        return;
+      }
       const data = await response.json().catch(() => null) as
         | { status?: string; parsingQuality?: ParsingQuality; extractedText?: string; error?: string; detail?: string }
         | null;
