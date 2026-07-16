@@ -73,6 +73,24 @@ When asking Randall to review anything (Randall, 2026-07-02):
 - Never silently decide not to commit after a `handoff` or `sync` request.
 - Never use vague completion language such as "wrapped", "saved", "done", "handoff complete", or "synced" when the git facts do not prove it.
 
+### Proactive Completion Reporting and Continuation
+
+After every implementation or verification pass, Codex must immediately report:
+
+- What is working and the evidence that verifies it.
+- What remains incomplete or unverified.
+- Every known blocker, risk, failed check, and production-readiness gap.
+- The next concrete action.
+
+Codex must not wait for Randall to ask whether anything remains, ask for status, or force
+disclosure of material findings. Passing focused tests is not a stopping point when release
+gates, integration failures, dirty files, deployment steps, or known risks remain.
+
+When safe work remains within the approved scope, Codex continues without waiting for another
+prompt. Codex stops only when the requested outcome is complete, a decision or authorization is
+genuinely required, or further action would conflict with concurrent file ownership. When it
+stops, the reason and exact next action must be reported immediately.
+
 ### Project Operating State
 
 Before doing implementation work after a restart, handoff, sync, or "pick up where we left off" request, Codex must read `docs/project-operating-state.md` and follow its Session Start Protocol. Handoff, roadmap, audit, and design docs are context, not authorization to edit. If the requested next step is ambiguous, Codex must report the ambiguity and wait for explicit scope instead of choosing creatively.

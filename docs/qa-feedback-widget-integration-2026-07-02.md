@@ -1,8 +1,8 @@
 # QA Feedback Widget + QA Agent Relay Integration
 
 Date: 2026-07-02
-Status: built + verified locally end-to-end. Production deploy of the relay is deferred (see
-"Outstanding work").
+Status: intake, Telegram notification, owner-action P0, and durable Codex lifecycle are implemented; safe executor activation remains blocked.
+See `docs/phredbot-action-feedback-plan-2026-07-16.md`.
 
 ## What this is
 
@@ -109,8 +109,34 @@ VERIFIED LIVE 2026-07-16: `POST /api/qa-report` on production returned
 `{"ok":true,"ticket_id":"JOB-007"}`; ticket confirmed in the relay store. (Earlier smoke
 tickets: JOB-005 local, JOB-006 through the tunnel.)
 
-Remaining gaps (small): the relay directory still has no git remote (cross-machine sync
-gap); intake reliability equals Studio uptime (reports fail soft with the friendly error
+## Action-feedback gap fixed at P0 on 2026-07-16
+
+Report intake and Telegram button delivery work, but the owner action loop is not
+product-complete. Live JOB-010 evidence shows that draft reply, send reply, and Codex
+approvals executed in the relay store while disappearing into an owner-facing black box:
+
+- Telegram only gives a transient, generic `Approved` answer after execution.
+- The original notification and all twelve action rows remain unchanged.
+- No durable result, failure, artifact location, or downstream status is posted.
+- `send reply` currently writes to a local outbox rather than delivering externally.
+- `Approve Codex` writes a local task packet but does not start Codex.
+- Conflicting actions remain available, allowing a closed ticket to move back to
+  `ready_for_codex` after a later approval.
+
+The P0 product, development, and QA response is tracked in
+`docs/phredbot-action-feedback-plan-2026-07-16.md`. It was implemented and exercised through
+live JOB-011: the draft action posted a durable result and refreshed the keyboard, then the
+rehearsal ticket closed with zero pending approvals. The relay health endpoint returned HTTP 200.
+
+The black-box approval experience is fixed, and the relay now persists token-fenced Codex states
+plus durable Telegram progress for queued, claimed, running, completed, failed, recovery, retry,
+and notification dead-letter outcomes. Automatic execution is still off. Security review found
+that a direct worker in the shared checkout could read reusable Codex authentication or ignored
+workspace secrets and collide with concurrent development. The required disposable-checkout and
+credential-broker activation design is recorded in the Phred action-feedback plan. Local reply
+delivery is also truthfully reported as a local queue, not external delivery.
+
+Other remaining gaps: intake reliability equals Studio uptime (reports fail soft with the friendly error
 while the machine is asleep); if the widget's KEEP-DRAFT path ever needs the ngrok
 browser interstitial bypassed, add the `ngrok-skip-browser-warning` header in the proxy
 (server-to-server JSON has not needed it). Rotation list: the ngrok authtoken passed
