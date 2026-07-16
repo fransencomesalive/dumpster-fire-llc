@@ -1217,7 +1217,7 @@ export default function OnboardingClient({
       // requestPublicProfileApi. Never surface raw auth internals to the user.
       if (response.status === 401) {
         const freshToken = await syncPublicProfileSession();
-        if (freshToken && freshToken !== accessToken) {
+        if (freshToken) {
           response = await scanRequest(freshToken);
         }
       }

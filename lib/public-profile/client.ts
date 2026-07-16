@@ -54,7 +54,7 @@ export async function requestPublicProfileApi<T>(
 
   if (response.status === 401) {
     const freshToken = await refreshPublicProfileAccessToken();
-    if (freshToken && freshToken !== options.accessToken) {
+    if (freshToken) {
       ({ response, body } = await attempt(freshToken));
     }
   }
