@@ -1,6 +1,52 @@
 # Current State
 
-## 2026-07-16 (later) - P0 scan matching FIXED: legacy engine ported (Claude, NOT YET COMMITTED/DEPLOYED)
+## 2026-07-16 (later) - P0 scan matching FIXED: legacy engine ported (Claude)
+
+> **UPDATE (same day): SHIPPED + LIVE-VERIFIED.** Commit `c9447ea` pushed to origin/main,
+> Vercel deployed. Randall's 139 stale active `job_scan_results` cleared (3 dismissed rows
+> kept; his 1 saved_jobs row — a garbage-era save — left in place but no longer surfaces).
+> Prod rescan via minted session through a real browser (Vercel bot challenge blocks curl):
+> POST /api/jobs/scan 200 → GET /api/jobs returns exactly the 4 roles the offline
+> simulation predicted (84 Strong / 74 / 72 / 72 Potential, all program-management), zero
+> garbage, zero duplicates; sidebar titleParameters = his 4 scan titles. EP-family postings
+> verified against his real aggregate (probe4): remote agency EP = Strong 84, hybrid
+> creative producer = 74, onsite EP = 62 w/ risk, low-comp = excluded on his $180k floor.
+> **SECOND BUG, same day (Randall pushed back on the 4-result outcome, he was right):**
+> the scan candidate query was capped at the newest 250 pool rows — under 10% of the
+> 2,747-job pool (16 shared boards, all cron-scanned 06:00 with identical scraped_at, so
+> the window was an arbitrary slice). Fixed in `cf216d0`: the scan pages the WHOLE
+> eligible pool (1000/page, 10k safety cap, newest-first). Deployed + live-verified:
+> prod scan now returns **47 results matching the offline evaluation exactly** — 8 Strong
+> (incl. Brand Producer @ Figma), 26 Potential (incl. Internal Content Producer +
+> Marketing Events Producer @ Anthropic, Creative Producer @ Stripe), 13 Weak, across 9
+> of the 16 boards. Boards confirmed: 16 shared, 0 user-owned for Randall.
+> Tuning levers if any specific rating looks off: profile poor-fit signals / track
+> weak-signals feed the engine as penalties; lane rules live in matching/occupation.ts.
+
+**OPEN INVESTIGATION (Randall 2026-07-16, handed to Codex): general/broad job boards are
+missing from the public scan — coverage is company boards only.** Facts to start from:
+
+1. The legacy source mandate (`app/scans/SOURCE_INVENTORY.md`, canonical) defines TWO
+   first-class source arrays: (1) broad job boards searched by candidate criteria and
+   (2) targeted company career boards. Both must feed the same
+   normalize → dedupe → match → rank flow. "Targeted company sources are not a substitute
+   for broad-market coverage."
+2. The public product ported ONLY array (2): 16 shared company ATS boards (greenhouse/
+   lever/ashby) scanned by the 06:00 cron + user-added boards via
+   `lib/scan/sources/board-registry.ts` (greenhouse|lever|ashby|workday|html). There are
+   NO broad-source connectors in `lib/scan/`.
+3. Legacy had broad sources IMPLEMENTED: Remotive (`remotive.com/api/remote-jobs`, ~28
+   rows/query cap) and Himalayas (`himalayas.app/jobs/api/search`, 20/request, ~280-380
+   rows/scan via 18 profile-derived query variants) — see the legacy connectors in
+   `app/scans/` and the inventory's per-source status/blocker notes (ready / blocked /
+   needs_key / needs_proof) for the rest (LinkedIn/Indeed etc. have documented blockers).
+4. Work needed: confirm which inventory sources are still viable; port broad connectors
+   into the public pipeline (`ingestNormalizedJobs`) with profile-derived queries; decide
+   cron vs per-scan fetch; broad rows land in the shared pool (owner_user_id null) and the
+   full-pool scan (cf216d0) + ported engine (c9447ea) already handle matching/dedupe.
+5. Scan-side coverage is otherwise verified working (47 results from the 2,747-row pool);
+   any further mismatch reports should be tested against the offline probes pattern
+   (scratchpad scan-probe) before touching the engine.
 
 **Root cause of the P0 garbage-scan bug (and the earlier "142 roles, 0 a fit"):** the public
 scan never used the refined legacy matcher. Randall had explicitly directed that the legacy
