@@ -872,6 +872,19 @@ export default function OnboardingClient({
   const [profileQuality, setProfileQuality] = useState<ProfileQualitySummary | null>(null);
   const [message, setMessage] = useState("Sign in to start your profile.");
   const [busy, setBusy] = useState(false);
+  // True until the session + plan gate resolves; the page shows a neutral
+  // loading state instead of flashing the login card or the form.
+  const [gateChecking, setGateChecking] = useState(true);
+
+  // "no_plan" sends the user to /plan. A failed check (network blip) lets the
+  // profile load proceed; loadProfile's own plan check remains as backstop.
+  const checkPlanGate = useCallback(async (token: string): Promise<"ok" | "no_plan"> => {
+    const account = await requestPublicProfileApi<{ email: string | null; planName: string | null }>(
+      "/api/account/plan",
+      { method: "GET", accessToken: token },
+    ).catch(() => null);
+    return account && !account.planName ? "no_plan" : "ok";
+  }, []);
 
   const requiredSections = useMemo(() => sections.filter((section) => section.required), [sections]);
 
@@ -991,8 +1004,22 @@ export default function OnboardingClient({
     let cancelled = false;
     void (async () => {
       const token = (await syncPublicProfileSession()) || readPublicProfileAccessToken();
-      if (!token || cancelled) return;
+      if (cancelled) return;
+      if (!token) {
+        setGateChecking(false);
+        return;
+      }
+      // Plan gate BEFORE the form ever renders: a signed-in user with no plan
+      // goes straight to /plan without a flash of onboarding. loadProfile keeps
+      // its own late check as a backstop (and for the account panel).
+      const planGate = await checkPlanGate(token);
+      if (cancelled) return;
+      if (planGate === "no_plan") {
+        router.replace("/plan");
+        return;
+      }
       setAccessToken(token);
+      setGateChecking(false);
       setBusy(true);
       loadProfile(token)
       .catch((error) => {
@@ -1005,7 +1032,7 @@ export default function OnboardingClient({
     return () => {
       cancelled = true;
     };
-  }, [loadProfile]);
+  }, [checkPlanGate, loadProfile, router]);
 
   // Onboarding is also the profile edit surface. Only auto-advance to the dashboard when the
   // profile TRANSITIONS to complete during this session (first-run completion handoff). A user
@@ -1079,6 +1106,12 @@ export default function OnboardingClient({
     setMessage("Signing in…");
     try {
       const token = await signInWithPasswordSession(email, password);
+      // Same plan gate as the mount path: no-plan accounts go to /plan
+      // without a flash of the onboarding form.
+      if ((await checkPlanGate(token)) === "no_plan") {
+        router.replace("/plan");
+        return;
+      }
       setAccessToken(token);
       await loadProfile(token);
     } catch (error) {
@@ -2022,7 +2055,7 @@ export default function OnboardingClient({
       />
 
       <div className={styles.shell}>
-        {!signedIn ? loginCard : (
+        {gateChecking ? <p className={styles.loading}>Loading…</p> : !signedIn ? loginCard : (
           <>
             {accountPanel}
             {reviewPanel}

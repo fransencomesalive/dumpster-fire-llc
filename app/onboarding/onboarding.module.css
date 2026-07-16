@@ -353,6 +353,14 @@
   min-width: 0;
 }
 
+/* Session + plan gate resolving — same loading treatment as the plan step. */
+.loading {
+  text-align: center;
+  padding: 64px 16px;
+  font-family: var(--font-body);
+  color: var(--c-ink-soft);
+}
+
 .formHeader {
   display: flex;
   justify-content: space-between;
