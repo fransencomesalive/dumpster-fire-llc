@@ -9,7 +9,7 @@ See `docs/phredbot-action-feedback-plan-2026-07-16.md`.
 A persistent comment box on every page, for every user (signed in or not), that relays
 reports to a dedicated QA agent ("PhredBot" in the design system). The QA agent triages each
 report into a ticket and — once Telegram is wired — notifies the owner with approve/reject
-actions (GitHub issue, user reply, task packet).
+actions (backlog, user reply, Codex task, or close).
 
 ## Map
 
@@ -26,7 +26,7 @@ Browser (any page)
   ~/Sites/dumpster-fire-relay (provisioned from ~/Sites/QA-AGENT via `npm run install:new`)
        │  triage → ticket (prefix JOB) in data/relay-store.json
        ▼
-  [deferred] Telegram owner notification → approve/reject → GitHub issue / user reply
+  Telegram owner notification → approve/reject → backlog / user reply / Codex / close
 ```
 
 The relay is a standalone QA-AGENT install: project_id `the-job-market-is-a-dumpster-fire`,

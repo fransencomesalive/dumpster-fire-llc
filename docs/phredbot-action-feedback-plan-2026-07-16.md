@@ -75,7 +75,7 @@ P0 acceptance criteria:
 - [x] Do not offer reply approval until a reply draft exists and is previewed.
 - [x] Invalidate conflicting and terminal sibling approvals after a state change.
 - [x] Prevent later actions from overwriting a terminal state without an explicit transition.
-- [x] Define GitHub, backlog, and Codex routing as mutually exclusive routes.
+- [x] Define backlog and Codex routing as mutually exclusive routes.
 - [x] Add Codex task states: `queued`, `claimed`, `running`, `completed`, and `failed`.
 - [x] Post a durable Telegram update whenever a downstream task changes state.
 
@@ -112,7 +112,7 @@ For every action, verify:
 4. Ticket status and available buttons match the result.
 5. Any downstream artifact or task is locatable from Telegram.
 
-The flow is not QA-complete until these checks pass for draft, reply, Codex, GitHub, backlog,
+The flow is not QA-complete until these checks pass for draft, reply, Codex, backlog,
 close, reject, duplicate tap, expiry, timeout, and adapter failure.
 
 ## Implementation and verification status
@@ -124,8 +124,6 @@ Implemented in `/Users/randallfransen/Sites/dumpster-fire-relay` on 2026-07-16:
   keyboard is refreshed.
 - Duplicate, expired, unauthorized, concurrent, failed, and restart-abandoned approvals have
   explicit handling. A failed or abandoned action restores alternatives it temporarily locked.
-- GitHub is only reported complete when the adapter confirms issue creation; successful receipts
-  include the issue URL or number.
 - Draft approval is gated on a saved preview. Local outbox delivery is reported as queued locally,
   not sent externally, and does not close the ticket.
 - Codex is labeled and stored as queued. The task packet follows repo instructions and the
@@ -158,8 +156,8 @@ Production release and JOB-012 validation:
    `com.dumpsterfire.qa-relay` after an exact-hash backup of the live JSON store.
 2. Host-local and public `HEAD` probes for health, readiness, and service metadata returned HTTP
    200. The production verification suite passed.
-3. A fresh smoke intake delivered Telegram message 13. The card excluded the unavailable GitHub
-   action and retained the independently available `Queue Codex task` action.
+3. A fresh smoke intake delivered Telegram message 13 with the independently available
+   `Queue Codex task` action.
 4. Authenticated production callbacks verified draft approval, reply approval, card refresh, and
    durable receipts. Reply approval wrote to the local outbox and said so explicitly.
 5. Codex approval created task `7b1902ca-15b4-4ea8-9c96-e6716c0efd74` in durable `queued` state.
@@ -188,6 +186,21 @@ Operator visibility release and JOB-013 validation:
 7. The exact committed release tree passed 526 tests: 517 passed, 0 failed, and 9 opt-in
    integration tests skipped. Public health and readiness returned HTTP 200; the service error log
    remained empty.
+
+## Durable product decision: no GitHub issue routing
+
+GitHub issue creation was inherited from the generic relay template. It duplicates Phred's own
+ticket, audit, status, backlog, reply, and Codex workflow, so it is not part of Dumpster Fire's
+Phred product.
+
+Relay commit `e5c4a85` permanently removed the GitHub route from Phred owner actions, project
+configuration, triage recommendations, environment templates, integration planning, live
+readiness, operator documentation, and deployment steps. Stale GitHub approvals are hard-blocked
+before they can change ticket state or supersede backlog or Codex choices. A live JOB-014 card
+contained no GitHub wording and zero GitHub buttons, then closed successfully through Phred.
+
+No GitHub token is required for this workflow. GitHub remains the source-code host; that is
+separate from duplicating QA reports into GitHub Issues.
 
 The downstream lifecycle foundation is also implemented:
 
