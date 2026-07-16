@@ -350,6 +350,8 @@ export type PublicJobsScanOptions = {
 const DEFAULT_MAX_USER_BOARDS = 6;
 const USER_BOARD_FETCH_CONCURRENCY = 3;
 const MAX_JOBS_PER_USER_BOARD = 100;
+const SCAN_POOL_PAGE_SIZE = 1000;
+const MAX_SCAN_POOL_ROWS = 10000;
 
 async function mapWithConcurrency<T>(items: T[], limit: number, task: (item: T) => Promise<void>) {
   const queue = [...items];
@@ -426,15 +428,25 @@ export async function runPublicJobsScanForUser(
   const boards = await fetchUserBoardsForScan(request, userId, scannedAt, options);
 
   // Shared-pool rows plus this user's own pasted jobs only — other users' private
-  // pastes must never surface as scan candidates.
-  const candidateRows = await request<JobRow[]>("jobs", {
-    query: qs({
-      select: "id,source,source_url,owner_user_id,company_name,title,location,remote_type,employment_type,compensation_text,description,posted_at,scraped_at,created_at,updated_at",
-      or: `(owner_user_id.is.null,owner_user_id.eq.${userId})`,
-      order: "scraped_at.desc",
-      limit: "250",
-    }),
-  });
+  // pastes must never surface as scan candidates. The WHOLE eligible pool is
+  // paged in, newest-first: a fixed newest-N window silently dropped >90% of the
+  // pool once the shared boards grew (the 2026-07-16 "4 results" bug). The row
+  // cap only bounds a runaway pool, and newest-first keeps the freshest postings
+  // if it ever bites.
+  const candidateRows: JobRow[] = [];
+  for (let offset = 0; candidateRows.length < MAX_SCAN_POOL_ROWS; offset += SCAN_POOL_PAGE_SIZE) {
+    const page = await request<JobRow[]>("jobs", {
+      query: qs({
+        select: "id,source,source_url,owner_user_id,company_name,title,location,remote_type,employment_type,compensation_text,description,posted_at,scraped_at,created_at,updated_at",
+        or: `(owner_user_id.is.null,owner_user_id.eq.${userId})`,
+        order: "scraped_at.desc,id.asc",
+        limit: String(SCAN_POOL_PAGE_SIZE),
+        offset: String(offset),
+      }),
+    });
+    candidateRows.push(...page);
+    if (page.length < SCAN_POOL_PAGE_SIZE) break;
+  }
 
   // Skipped jobs stay gone: the results upsert below force-sets status "active" on
   // conflict, so dismissed rows must never re-enter the candidate set.
