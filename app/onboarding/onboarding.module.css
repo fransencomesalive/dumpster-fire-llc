@@ -349,6 +349,10 @@
   gap: 18px;
 }
 
+.formStack > .formCard {
+  min-width: 0;
+}
+
 .formHeader {
   display: flex;
   justify-content: space-between;
@@ -2457,35 +2461,6 @@
   margin: 0;
   font-size: 0.88rem;
   color: var(--role-text-muted);
-}
-
-.lockNote {
-  margin: 0;
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  color: var(--role-text-faint);
-  font-size: 0.9rem;
-  font-style: italic;
-}
-
-/* Sections below Card 1 lock until a Role Track + résumé is saved. */
-.gateFieldset {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 18px;
-  border: 0;
-  margin: 0;
-  padding: 0;
-  min-width: 0;
-}
-
-.gateFieldset > .formCard {
-  min-width: 0;
-}
-
-.gateFieldset:disabled .formCard {
-  opacity: 0.55;
 }
 
 .errNote a {

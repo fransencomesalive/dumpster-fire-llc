@@ -164,6 +164,18 @@ For protected surfaces, Codex may inspect and report, but must not edit without 
 
 If a needed implementation touches any protected surface, Codex must report the conflict and wait.
 
+### No Gates Without Approval (hard rule, Randall 2026-07-16)
+
+Never create a gate — anything that locks, disables, hides, or sequences access to fields,
+sections, pages, or features until some condition is met — without Randall's explicit,
+per-gate approval. This applies even when a design card or doc appears to show one: the
+gating behavior itself must be called out and approved separately, never inferred. Decisions
+that block a user's progress are Randall's to make, never the agent's. (Origin: the Card 1
+onboarding gate shipped 2026-07 grayed out the entire form for new users with no explanation
+and made the app unusable.)
+
+If an existing gate is discovered in the codebase, report it; do not extend or replicate it.
+
 ### Design System ↔ Production Parity
 
 The design system (`design-system/`) and the live production surfaces are two views of the

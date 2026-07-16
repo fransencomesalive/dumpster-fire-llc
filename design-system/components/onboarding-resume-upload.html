@@ -98,8 +98,6 @@
     background-color: var(--c-teal); border: var(--line-bold) solid var(--c-ink); border-radius: var(--radius-md);
     box-shadow: var(--shadow-card); padding: var(--space-3) var(--space-6); cursor: pointer; }
 
-  .lockNote { display: flex; align-items: center; gap: var(--space-3); color: var(--role-text-faint); font-size: 0.9rem; font-style: italic; }
-
   /* Job-title chips (Randall, 2026-07-10) — multiple titles per track; type in the field,
      the chip lands ABOVE it. Reuses the onboarding-pickers token primitive (teal = saved/on).
      These titles are what the scan searches; they surface read-only on the scan page. */
@@ -117,7 +115,9 @@
     <h1 class="page">Onboarding · Role Track + Résumé <span class="step">Card 1</span></h1>
     <p class="lede">Onboarding now opens here. You <b>name (or pick) a Role Track</b> — the lane you're
     pursuing — add the <b>job titles</b> the scan should search for that lane, and add its résumé, right
-    on this first card. Nothing else in onboarding unlocks until this is saved. From then on, every
+    on this first card. Every section is editable from the start — nothing is locked (no gates,
+    Randall 2026-07-16). While the save button is disabled, a helper line under it says exactly
+    what's still needed. From then on, every
     per-track card (Work Examples, Skills, Fit Signals, Outreach) carries a <b>chip</b> of the active
     track. Titles are chips: Enter or comma lands each one above the field — paste a
     comma-separated list and every title becomes its own chip. Résumé is <b>PDF only</b>, read
@@ -128,7 +128,7 @@
 
     <!-- STATE 1 — First run: no tracks yet. Name field is italic placeholder. -->
     <div class="state">
-      <div class="stateCap"><b>1 · First run</b> — no Role Track yet. The name field is a text input.</div>
+      <div class="stateCap"><b>1 · First run</b> — no Role Track yet. The name field is a text input; the disabled save button says what's still needed.</div>
       <div class="card">
         <div class="cardHead"><h3>Start a Role Track</h3><span class="step">Step 1 of onboarding</span></div>
         <div class="field">
@@ -155,8 +155,8 @@
           <textarea class="ta" placeholder="Or paste your résumé text here…"></textarea>
           <p class="helper">No file, or a résumé that won't upload? <b>Paste the text</b> — it feeds highlights exactly the same way.</p>
         </div>
-        <button type="button" class="primary">Save Role Track &amp; Résumé</button>
-        <p class="lockNote">🔒 The rest of onboarding unlocks once this is saved.</p>
+        <button type="button" class="primary" disabled style="opacity: 0.55; cursor: default;">Save Role Track &amp; Résumé</button>
+        <p class="helper">To save: give the Role Track a name and add your résumé (PDF or pasted text).</p>
       </div>
     </div>
 

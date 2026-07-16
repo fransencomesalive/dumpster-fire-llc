@@ -955,6 +955,12 @@ export default function OnboardingClient({
           if (typeof draft.newTrackName === "string") setNewTrackName(draft.newTrackName);
           if (typeof draft.pastedResumeText === "string") setPastedResumeText(draft.pastedResumeText);
           if (draft.listFieldDrafts) setListFieldDrafts(draft.listFieldDrafts as Record<string, string>);
+          if (Array.isArray(draft.draftTitles)) setDraftTitles(draft.draftTitles as string[]);
+          if (draft.draftWorkExample) setDraftWorkExample(draft.draftWorkExample as WorkExampleSectionItem);
+          // A finished scan survives reloads — the user shouldn't have to re-upload
+          // a PDF they already scanned just because the page refreshed.
+          const scanDraft = draft.resumeScan as ResumeScanState | undefined;
+          if (scanDraft?.status === "read" && scanDraft.text?.trim()) setResumeScan(scanDraft);
         }
       }
     } catch {
@@ -1057,13 +1063,16 @@ export default function OnboardingClient({
           newTrackName,
           pastedResumeText,
           listFieldDrafts,
+          draftTitles,
+          draftWorkExample,
+          resumeScan: resumeScan.status === "read" ? resumeScan : undefined,
         }));
       } catch {
         // Storage unavailable/full — edits simply don't persist across reloads.
       }
     }, 400);
     return () => window.clearTimeout(timer);
-  }, [identity, fitSignals, workExamples, skills, voice, writingSamples, newTrackName, pastedResumeText, listFieldDrafts]);
+  }, [identity, fitSignals, workExamples, skills, voice, writingSamples, newTrackName, pastedResumeText, listFieldDrafts, draftTitles, draftWorkExample, resumeScan]);
 
   async function signIn() {
     setBusy(true);
@@ -1175,12 +1184,10 @@ export default function OnboardingClient({
   const attachedResume = activeTrack
     ? resumes.find((resume) => resume.associatedRoleTrackIds.includes(activeTrack.id))
     : undefined;
-  // The rest of onboarding unlocks once one Role Track is saved with a résumé
-  // that has text (scanned or pasted).
-  const card1Complete = roleTracks.some((track) =>
-    track.name.trim().length > 0 &&
-    track.resumeIds.some((resumeId) => resumes.some((resume) => resume.id === resumeId && resume.parsedText.trim().length > 0)));
-
+  // What still blocks the Card 1 save — surfaced next to the button so a
+  // disabled save never leaves the user guessing (Randall, 2026-07-16).
+  const card1MissingName = !(firstRun || creatingTrack ? newTrackName.trim() : activeTrack?.name.trim());
+  const card1MissingResume = !(resumeScan.status === "read" || pastedResumeText.trim());
   // Scan the dropped/chosen PDF into text. The file itself is never stored.
   async function scanResumePdf(file: File) {
     if (!accessToken) return;
@@ -2208,26 +2215,30 @@ export default function OnboardingClient({
             </div>
 
             {firstRun || creatingTrack || !attachedResume || resumeScan.status === "read" || resumeScan.status === "error" ? (
-              <button
-                type="button"
-                className={styles.card1Primary}
-                disabled={
-                  !accessToken || busy || resumeScan.status === "reading"
-                  || !(firstRun || creatingTrack ? newTrackName.trim() : activeTrack?.name.trim())
-                  || !(resumeScan.status === "read" || pastedResumeText.trim())
-                }
-                onClick={() => void saveCard1()}
-              >
-                Save Role Track &amp; Résumé
-              </button>
-            ) : null}
-            {firstRun ? (
-              <p className={styles.lockNote}>🔒 The rest of onboarding unlocks once this is saved.</p>
+              <>
+                <button
+                  type="button"
+                  className={styles.card1Primary}
+                  disabled={
+                    !accessToken || busy || resumeScan.status === "reading"
+                    || card1MissingName || card1MissingResume
+                  }
+                  onClick={() => void saveCard1()}
+                >
+                  Save Role Track &amp; Résumé
+                </button>
+                {card1MissingName || card1MissingResume ? (
+                  <p className={styles.card1Helper}>
+                    {card1MissingName && card1MissingResume
+                      ? "To save: give the Role Track a name and add your résumé (PDF or pasted text)."
+                      : card1MissingName
+                        ? "To save: give the Role Track a name."
+                        : "To save: add your résumé (PDF or pasted text)."}
+                  </p>
+                ) : null}
+              </>
             ) : null}
           </article>
-
-          {/* Everything below Card 1 stays locked until a Role Track + résumé is saved. */}
-          <fieldset className={styles.gateFieldset} disabled={!card1Complete}>
 
           {/* --- Identity & Search --- */}
           <article className={styles.formCard} id="career-profile-identitySearch">
@@ -2691,8 +2702,6 @@ export default function OnboardingClient({
               <p>Tone tags and one &quot;sounds like me&quot; plus one &quot;never sound like&quot; snippet are required.</p>
             </div>
           </article>
-
-          </fieldset>
         </div>
 
               {sectionsRail}
