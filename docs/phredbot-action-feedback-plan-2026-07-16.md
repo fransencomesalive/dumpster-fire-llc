@@ -91,8 +91,8 @@ P1 acceptance criteria:
   invalid-button removal, timeout, duplicate tap, concurrent tap, and expired approval.
 - [x] Test draft-before-send, terminal sibling invalidation, and Codex lifecycle progression.
 - [x] Prevent local outbox writes from reporting external delivery in adapter-contract tests.
-- [ ] Add a status summary with artifacts, latest action, ticket state, and downstream state.
-- [ ] Measure accepted, completed, failed, timed-out, retried, and duplicate callbacks.
+- [x] Add a status summary with artifacts, latest action, ticket state, and downstream state.
+- [x] Measure accepted, completed, failed, timed-out, retried, and duplicate callbacks.
 - [ ] Run a live rehearsal through every action outcome, including a forced failure.
 
 P2 acceptance criteria:
@@ -169,6 +169,25 @@ Production release and JOB-012 validation:
 7. Telegram still retains a historical 403 dated `2026-07-16T16:01:03Z`, from before the admin
    chat ID was corrected. Pending updates are zero, current webhook metadata matches, later real
    actions succeeded, and the fresh authenticated callback path returned HTTP 200.
+
+Operator visibility release and JOB-013 validation:
+
+1. Relay commit `c8954f3` was pushed to `origin/main` and activated after a second exact-hash JSON
+   store backup.
+2. `/status JOB-012` reported the latest owner action, local reply artifact and explicit
+   non-delivery, canceled Codex state, task artifact, and cancellation reason in one Telegram
+   response.
+3. `/metrics` now reports accepted, completed, failed, timed-out, retried, and duplicate callbacks
+   for the previous 24 hours. Live results were `Accepted: 2`, `Completed: 1`, `Retried: 1`, and
+   `Duplicate: 2`, with zero failed or timed-out callbacks.
+4. Repeating the same completed approval twice returned explicit `approval_no_longer_pending`
+   conflicts, posted durable failure feedback, and incremented retry and duplicate metrics.
+5. The queued JOB-012 smoke task was canceled through a loopback-only, operator-secret transition.
+   It remains attempt 0 and cannot be claimed. The one-time operator secret was removed afterward.
+6. JOB-013 exercised a successful post-deploy callback and ended closed with no reply or Codex task.
+7. The exact committed release tree passed 526 tests: 517 passed, 0 failed, and 9 opt-in
+   integration tests skipped. Public health and readiness returned HTTP 200; the service error log
+   remained empty.
 
 The downstream lifecycle foundation is also implemented:
 
