@@ -465,8 +465,11 @@
   padding-top: 48px;
 }
 
+/* Capped at the intro column width (JOB-008, Randall 2026-07-16): full-bleed panels
+   read as a mistake; the walkthrough shares the 770px column with the section intro. */
 .publicLandingHumanPathShow {
   margin-top: 16px;
+  max-width: 770px;
 }
 
 /* Fixed + 1px: a focused fixed element is always "in view", so clicking a
