@@ -88,17 +88,30 @@ draft. The widget can never throw into the app.
   survives reload, 0 horizontal overflow at 320/375/390px, clean at 1280/1440px, no console
   errors. `npm run lint` (0 errors) + `npx tsc --noEmit` clean.
 
-## Outstanding work (deferred, in order)
+## Outstanding work — CLOSED 2026-07-16 (deployed + verified live)
 
-1. **Deploy the relay** (its own service — Vercel serverless does not fit; it needs a
-   persistent process + disk or Postgres). Set `HOST=0.0.0.0`, `PUBLIC_BASE_URL`; for
-   durable storage set `DATABASE_URL` and run `npm run db:prepare`. A `Dockerfile` exists
-   in the relay app.
-2. **Telegram**: create `@TheJobMarketIsADumpsterPhredBot` via BotFather (manual), then in
-   the relay app `npm run telegram:handoff`, set the token env, `npm run telegram:setup`.
-3. **Vercel env**: set `QA_AGENT_URL` (production + preview) to the deployed relay URL.
-   Until then production submits fail soft with the friendly error — nothing breaks.
-4. The relay directory has no git repo/remote yet (cross-machine sync gap).
+All three deferred steps are done (Randall chose Mac Studio + tunnel over a cloud host):
 
-NOT VERIFIED: production behavior on Vercel (env unset there today — expected fail-soft,
-step 3 above is the exact verification: set env, submit from prod, check relay tickets).
+1. **Relay deployed**: runs on the Mac Studio as LaunchAgent `com.dumpsterfire.qa-relay`
+   (RunAtLoad + KeepAlive, `HOST=127.0.0.1 PORT=8787`, logs in `~/Library/Logs/qa-relay*`).
+   Storage: JSON file store (`data/relay-store.json`) — durable enough on a persistent
+   machine; `DATABASE_URL` remains available if that ever changes.
+2. **Public URL**: ngrok static endpoint `https://polygon-contents-hybrid.ngrok-free.dev`
+   (account authtoken registered; URL is stable across restarts) via LaunchAgent
+   `com.dumpsterfire.qa-tunnel` pinned with `--url=`. `PUBLIC_BASE_URL` set accordingly.
+3. **Telegram live**: `@TheJobMarketIsADumpsterPhredBot` created via BotFather, token
+   verified (getMe), Randall's admin chat id discovered + written, webhook registered at
+   `/api/telegram/webhook/the-job-market-is-a-dumpster-fire`. Preflight 19 PASS.
+4. **Vercel env**: `QA_AGENT_URL` set on production + preview via the API (token in the
+   relay `.env` as `VERCEL_TOKEN`), redeploy `22b1f76`.
+
+VERIFIED LIVE 2026-07-16: `POST /api/qa-report` on production returned
+`{"ok":true,"ticket_id":"JOB-007"}`; ticket confirmed in the relay store. (Earlier smoke
+tickets: JOB-005 local, JOB-006 through the tunnel.)
+
+Remaining gaps (small): the relay directory still has no git remote (cross-machine sync
+gap); intake reliability equals Studio uptime (reports fail soft with the friendly error
+while the machine is asleep); if the widget's KEEP-DRAFT path ever needs the ngrok
+browser interstitial bypassed, add the `ngrok-skip-browser-warning` header in the proxy
+(server-to-server JSON has not needed it). Rotation list: the ngrok authtoken passed
+through chat on 2026-07-15; the bot token and Vercel token were file-dropped and did not.
