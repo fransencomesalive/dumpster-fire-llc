@@ -470,6 +470,7 @@
 .publicLandingHumanPathShow {
   margin-top: 16px;
   max-width: 770px;
+  margin-inline: auto;
 }
 
 /* Fixed + 1px: a focused fixed element is always "in view", so clicking a
