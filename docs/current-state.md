@@ -1,5 +1,36 @@
 # Current State
 
+## 2026-07-16 - NEXT SESSION START HERE: scan-fit bug + bug list (Claude)
+
+Randall is compiling a **large bug list** for the next session. One investigation is
+already OPEN with diagnosis in progress:
+
+**BUG (open): profile scan returned "142 roles, 0 a fit."** Facts established so far:
+- His scan stored 140 active `job_scan_results` (16:38Z) with correct parameters
+  (Producer/PM titles + industries) and `providerMode: normalized_public_jobs`.
+- Match scores are NOT stored; they are computed at read time in
+  `rankJobsForProfile` (`lib/public-jobs/repository.ts` ~L287) via `evaluateMatch`
+  against the live aggregate, then the dashboard buckets by `starsFromScore`.
+- So either the engine scores everything low against his current aggregate (data
+  regression? his profile was regenerated 07-14 during résumé re-derivation), or the
+  dashboard's star bucketing/labeling misreads healthy scores.
+- Next step (script was staged, session ended before run): load his real aggregate +
+  his 140 result jobs offline via `node --experimental-transform-types` importing
+  `loadCandidateProfileAggregate` + `evaluateMatch` directly, print the true
+  score/label distribution and per-category whyNotMatched. That splits engine-vs-UI
+  in one run. Note 2026-07-15's owner-scope change to the candidate query is a
+  suspect to RULE OUT (it only filters candidates; scoring path untouched).
+
+Also shipped/closed 2026-07-16 (all live-verified):
+- **PhredBot QA bot fully operational**: relay + static ngrok tunnel as Studio
+  LaunchAgents, Telegram pings + inline approvals verified interactively; upstream
+  `mergeEnvFile` bug documented; `scripts/resend-notification.js` added to the relay.
+  First real ticket JOB-008 ran the whole loop.
+- **JOB-008 fixed**: homepage walkthrough capped at the 770px intro column
+  (`64859c2`) and centered (`f281d3c`); card at r5, mirror in parity.
+- Telegram triage how-to: the 12 approve/reject rows are a menu, pick 1-2 (ack +
+  one routing action); offer stands to slim the action set.
+
 ## 2026-07-15 (evening) - Homepage walkthrough LIVE + onboarding tips + prod sweep green (Claude)
 
 1. **"How Dumpster Fire works" is live on the homepage** (`5d6ca2f`, verified in prod HTML +
