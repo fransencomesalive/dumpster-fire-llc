@@ -113,7 +113,7 @@ export function textForJob(job: MatchJob) {
 }
 
 export function scoreSignalsAgainstText(signals: string[], text: string) {
-  const normalizedText = normalize(text);
+  const normalizedText = ` ${normalize(text)} `;
   const textWords = new Set(words(text));
   const matches: string[] = [];
   let total = 0;
@@ -121,7 +121,9 @@ export function scoreSignalsAgainstText(signals: string[], text: string) {
   for (const signal of unique(signals)) {
     const normalizedSignal = normalize(signal);
     if (!normalizedSignal) continue;
-    if (normalizedText.includes(normalizedSignal)) {
+    // Whole-token phrase match — a bare substring check let short signals like
+    // "AI" match inside words ("maintain"), inflating every category.
+    if (normalizedText.includes(` ${normalizedSignal} `)) {
       matches.push(signal);
       total += 1;
       continue;

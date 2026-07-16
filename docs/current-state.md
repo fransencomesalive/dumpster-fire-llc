@@ -1,5 +1,49 @@
 # Current State
 
+## 2026-07-16 (later) - P0 scan matching FIXED: legacy engine ported (Claude, NOT YET COMMITTED/DEPLOYED)
+
+**Root cause of the P0 garbage-scan bug (and the earlier "142 roles, 0 a fit"):** the public
+scan never used the refined legacy matcher. Randall had explicitly directed that the legacy
+`app/scans/` engine and its improvements be ported; instead the public product shipped a
+from-scratch keyword engine (Codex, `d850831` 2026-06-28) that was never tuned. Its scan
+filter admitted any job whose description contained any ≥5-char word of any parameter
+(substring "AI" matched "maintain"), and its scorer's generous neutral priors floated
+irrelevant jobs to 50–61 (= 3★) while capping real fits under 70 (= "0 fits"). Confirmed
+offline against Randall's real 139 active results: scores spanned 32–61, zero ≥70.
+
+**Fix shipped (local, verified):** ported the legacy engine into the public matching lib —
+- `lib/public-profile/matching/occupation.ts`: occupation-lane classifier (39-lane taxonomy)
+  + per-user lane derivation from Role Tracks (replaces the legacy hardcoded polarity list).
+- `lib/public-profile/matching/decision.ts`: evidence-gated additive scoring (title family
+  +34/+24, authority/keyword/industry evidence, hard risks for avoid-company / wrong-lane /
+  remote / comp-floor; excluded jobs capped ≤37). Whole-token term matching everywhere.
+  More-specific wrong-lane titles beat generic target terms ("technical program manager"
+  blocks even when "program manager" is a target).
+- `lib/public-profile/matching/dedupe.ts`: company+title duplicate-posting collapse, applied
+  at scan time (before the 75 cap) and at read time (prefers a saved copy, then best score).
+- `engine.ts` evaluateMatch is now decision-led (same MatchResult shape; categoryFits kept
+  as narrative); scorers.ts substring bug fixed (word-boundary matching).
+- `lib/public-jobs/repository.ts`: scan inclusion = decision gate + dedupe (old
+  `jobMatchesProfile` deleted).
+
+**Verified:** offline probes against prod data (read-only; scratchpad scan-probe): his 139
+results re-score to 1★x29/2★x105/4★x2 with every bug-report title (finance, staff SWE,
+inference, data center, account exec ×31) excluded ≤37; fresh-scan simulation over the real
+250-job window returns 4 genuine program-management roles. `tsc` clean, lint 0 errors,
+build green, test:matching (new regression tests for wrong-lane + TPM) + test:public-jobs +
+test:job-link all green. `test:matching` is now wired in package.json.
+
+**Open follow-ups:**
+1. NOT committed/pushed/deployed — awaiting Randall's OK.
+2. His 139 stale active `job_scan_results` rows remain; garbage now sinks to the bottom with
+   honest labels, but recommend clearing actives + rescanning after deploy (needs OK).
+3. Profile thinness: his "Program Manager" track has 0 target titles and all tracks have 0
+   keyResponsibilities (onboarding hardcodes `keyResponsibilities: []`) — enrich role tracks
+   from résumé derivation so responsibility evidence scores; LLM-assisted rating is the
+   later quality pass.
+4. Two leftover empty candidate_profiles rows from other user ids (created 07-15/16, look
+   like QA leftovers) — cleanup needs OK.
+
 ## 2026-07-16 - NEXT SESSION START HERE: scan-fit bug + bug list (Claude)
 
 Randall is compiling a **large bug list** for the next session. One investigation is

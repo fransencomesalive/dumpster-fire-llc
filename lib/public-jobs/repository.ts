@@ -1,4 +1,9 @@
 import { evaluateCandidateProfileQuality } from "../public-profile/profile-quality";
+import {
+  evaluatePublicJobDecision,
+  matchingSignalsForAggregate,
+} from "../public-profile/matching/decision";
+import { duplicatePostingKey } from "../public-profile/matching/dedupe";
 import { evaluateMatch } from "../public-profile/matching/engine";
 import type { MatchJob } from "../public-profile/matching/types";
 import {
@@ -105,35 +110,20 @@ function titleParametersForAggregate(aggregate: CandidateProfileAggregate) {
   ).slice(0, 30);
 }
 
-function avoidCompaniesForAggregate(aggregate: CandidateProfileAggregate) {
-  return new Set((aggregate.preferences?.avoidCompanies ?? []).map(normalize).filter(Boolean));
-}
-
-function jobMatchesProfile(job: JobRow, aggregate: CandidateProfileAggregate, scanParameters: string[]) {
-  const avoidedCompanies = avoidCompaniesForAggregate(aggregate);
-  if (avoidedCompanies.has(normalize(job.company_name))) return false;
-
-  if (aggregate.profile.remotePreference === "remote_only" && normalize(job.remote_type ?? "") === "onsite") {
-    return false;
-  }
-
-  if (scanParameters.length === 0) return true;
-
-  const haystack = normalize([
-    job.title,
-    job.company_name,
-    job.location ?? "",
-    job.remote_type ?? "",
-    job.employment_type ?? "",
-    job.compensation_text ?? "",
-    job.description,
-  ].join(" "));
-
-  return scanParameters.some((parameter) => {
-    const normalized = normalize(parameter);
-    if (!normalized) return false;
-    return haystack.includes(normalized) || normalized.split(" ").some((part) => part.length >= 5 && haystack.includes(part));
-  });
+function matchJobFromRow(job: JobRow): MatchJob {
+  return {
+    id: job.id,
+    title: job.title,
+    companyName: job.company_name,
+    description: job.description,
+    location: defined(job.location),
+    remoteType: defined(job.remote_type),
+    employmentType: defined(job.employment_type),
+    compensationText: defined(job.compensation_text),
+    postedAt: defined(job.posted_at),
+    scrapedAt: job.scraped_at,
+    sourceUrl: job.source_url,
+  };
 }
 
 function mapJob(job: JobRow, result: JobScanResultRow, savedJobIds: Set<string>): PublicJobRecord {
@@ -284,6 +274,8 @@ function matchJobFromRecord(job: PublicJobRecord): MatchJob {
 
 // Score each result against the candidate profile, annotate it, and rank best-first. Scoring is a
 // spectrum — poor-fit jobs are still returned (with their score/label), never hard-filtered out.
+// Duplicate postings of the same role (same company + title, distinct req ids) collapse to one
+// row: the saved one if any copy is saved, otherwise the best-scored copy.
 function rankJobsForProfile(
   jobs: PublicJobRecord[],
   aggregate: CandidateProfileAggregate,
@@ -295,7 +287,15 @@ function rankJobsForProfile(
     const match: PublicJobMatchSummary = { score: result.internalScore, label: result.label, signals };
     return { ...job, match };
   });
-  return annotated.sort((a, b) => (b.match?.score ?? 0) - (a.match?.score ?? 0));
+  annotated.sort((a, b) => (b.match?.score ?? 0) - (a.match?.score ?? 0));
+
+  const byPostingKey = new Map<string, PublicJobRecord>();
+  for (const job of annotated) {
+    const key = duplicatePostingKey({ companyName: job.companyName, title: job.title });
+    const existing = byPostingKey.get(key);
+    if (!existing || (job.saved && !existing.saved)) byPostingKey.set(key, job);
+  }
+  return [...byPostingKey.values()].sort((a, b) => (b.match?.score ?? 0) - (a.match?.score ?? 0));
 }
 
 function searchSettingsForAggregate(aggregate: CandidateProfileAggregate): PublicJobSearchSettings {
@@ -450,9 +450,29 @@ export async function runPublicJobsScanForUser(
     return true;
   });
 
-  const matchedJobs = candidates
+  // Evidence-gated inclusion (ported from the refined private engine): a job
+  // enters the results only when its title family, supporting evidence, and
+  // hard constraints clear the decision gate. Duplicate postings of the same
+  // role collapse to the best-scored copy before the cap.
+  const profileSignals = matchingSignalsForAggregate(readiness.aggregate);
+  const decided = candidates
     .filter((job) => !dismissedIds.has(job.id))
-    .filter((job) => jobMatchesProfile(job, readiness.aggregate, readiness.scanParameters))
+    .map((job) => ({
+      job,
+      decision: evaluatePublicJobDecision(matchJobFromRow(job), profileSignals, scannedAt),
+    }))
+    .filter((item) => item.decision.included)
+    .sort((a, b) => b.decision.score - a.decision.score);
+
+  const seenPostingKeys = new Set<string>();
+  const matchedJobs = decided
+    .filter(({ job }) => {
+      const key = duplicatePostingKey({ companyName: job.company_name, title: job.title });
+      if (seenPostingKeys.has(key)) return false;
+      seenPostingKeys.add(key);
+      return true;
+    })
+    .map(({ job }) => job)
     .slice(0, 75);
 
   if (matchedJobs.length > 0) {

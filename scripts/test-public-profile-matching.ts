@@ -80,9 +80,9 @@ if (weakProfile.preferences) {
 const weak = evaluateMatch({ profile: weakProfile, job: weakJob, evaluatedAt: now });
 assert.equal(weak.label, "Probably Not Worth Your Time");
 assert.ok(weak.internalScore < 40);
-assert.ok(weak.softExclusions.includes("Below compensation target."));
-assert.ok(weak.softExclusions.includes("Remote preference conflict."));
-assert.ok(weak.softExclusions.includes("Company avoid list."));
+assert.ok(weak.softExclusions.some((reason) => reason.toLowerCase().includes("avoid list")));
+assert.ok(weak.softExclusions.some((reason) => reason.toLowerCase().includes("onsite")));
+assert.ok(weak.softExclusions.some((reason) => reason.toLowerCase().includes("below your floor")));
 assert.ok(weak.whyNotMatched.some((reason) => reason.includes("Staffing")));
 assert.ok(weak.risks.length > 0);
 
@@ -104,7 +104,7 @@ const softEdge = evaluateMatch({
   }],
 });
 assert.ok(softEdge.internalScore > 0);
-assert.ok(softEdge.softExclusions.includes("Remote preference conflict."));
+assert.ok(softEdge.whyNotMatched.some((reason) => reason.includes("Hybrid")));
 assert.ok(softEdge.categoryFits.some((fit) => fit.category === "location" && fit.reasons.some((reason) => reason.includes("Remote exception noted"))));
 
 const missingDataProfile = clone(profile());
@@ -187,5 +187,96 @@ assert.ok(mismatch.internalScore > 0, "mismatched employment type still surfaces
 const noPref = evaluateMatch({ profile: profile(), job: { ...strongJob, id: "job-nopref", employmentType: undefined }, evaluatedAt: now });
 const noPrefFit = noPref.categoryFits.find((fit) => fit.category === "employment_type");
 assert.ok(noPrefFit, "employment_type category always present");
+
+// --- Wrong-lane exclusion, ported from the legacy occupation classifier (2026-07-16 P0) ---
+// A remote, fresh, well-paid posting in an unrelated lane must never float to a
+// mid rating on neutral category defaults; the 2026-07-16 bug rated these 3 stars.
+
+const wrongLaneJobs: MatchJob[] = [
+  {
+    id: "job-swe",
+    title: "Senior Staff Software Engineer, Payments",
+    companyName: "Big Exchange",
+    description: "Own backend engineering for payments. Write code, design APIs, lead architecture reviews for our platform. Cross-functional delivery with product stakeholders.",
+    remoteType: "remote",
+    compensationText: "$220k-$260k",
+    postedAt: "2026-06-27T12:00:00.000Z",
+    scrapedAt: now,
+  },
+  {
+    id: "job-finance",
+    title: "Manager, Finance Operations",
+    companyName: "Big Exchange",
+    description: "Own financial forecast and budget model operations. Lead vendor contracts and procurement process across stakeholders.",
+    remoteType: "remote",
+    compensationText: "$180k-$210k",
+    postedAt: "2026-06-27T12:00:00.000Z",
+    scrapedAt: now,
+  },
+];
+for (const wrongLaneJob of wrongLaneJobs) {
+  const wrongLane = evaluateMatch({ profile: profile(), job: wrongLaneJob, evaluatedAt: now });
+  assert.equal(wrongLane.label, "Probably Not Worth Your Time", `${wrongLaneJob.title} must not rate`);
+  assert.ok(wrongLane.internalScore <= 37, `${wrongLaneJob.title} must stay under the excluded-score cap`);
+}
+
+// A more specific wrong-lane title beats a generic target-title hit: a profile
+// targeting "Program Director"/"Program Manager" roles must not rate technical
+// program management as a fit (legacy hard-exclude semantics).
+const tpmProfile = profile();
+tpmProfile.roleTracks[0].targetTitles = ["Program Director", "Program Manager"];
+const tpm = evaluateMatch({
+  profile: tpmProfile,
+  job: {
+    id: "job-tpm",
+    title: "Technical Program Manager, Compute Infrastructure",
+    companyName: "Big Exchange",
+    description: "Own infrastructure and hardware compute programs. Lead cross-functional delivery with engineering stakeholders across network and storage roadmaps.",
+    remoteType: "remote",
+    compensationText: "$200k",
+    postedAt: "2026-06-27T12:00:00.000Z",
+    scrapedAt: now,
+  },
+  evaluatedAt: now,
+});
+assert.equal(tpm.label, "Probably Not Worth Your Time", "technical program manager must not outrank the lane block");
+assert.ok(tpm.internalScore <= 37);
+
+// --- Executive Producer scan titles (Randall 2026-07-16): the scan matches the
+// sidebar title list (track names + target titles), and producer-family roles
+// must rate on those titles alone.
+const epProfile = profile();
+epProfile.roleTracks[0].name = "Executive Producer";
+epProfile.roleTracks[0].targetTitles = ["Executive Producer", "creative producer", "production lead"];
+const epJob: MatchJob = {
+  id: "job-ep",
+  title: "Executive Producer",
+  companyName: "Big Agency",
+  description: "Lead integrated campaign production across film and digital. Own budgets, vendor relationships, and delivery timelines with creative and account stakeholders.",
+  remoteType: "remote",
+  compensationText: "$190,000 - $230,000",
+  postedAt: "2026-06-27T12:00:00.000Z",
+  scrapedAt: now,
+};
+const ep = evaluateMatch({ profile: epProfile, job: epJob, evaluatedAt: now });
+assert.equal(ep.label, "Strong Match", "a remote, well-paid Executive Producer role must rate Strong");
+assert.ok(ep.whyMatched.some((reason) => reason.includes("Executive Producer")));
+
+const epWrongLane = evaluateMatch({
+  profile: epProfile,
+  job: {
+    id: "job-ep-swe",
+    title: "Staff Software Engineer, Production Infrastructure",
+    companyName: "Big Agency",
+    description: "Own backend engineering for production systems. Write code, design APIs, and lead architecture for our platform infrastructure.",
+    remoteType: "remote",
+    compensationText: "$220,000",
+    postedAt: "2026-06-27T12:00:00.000Z",
+    scrapedAt: now,
+  },
+  evaluatedAt: now,
+});
+assert.equal(epWrongLane.label, "Probably Not Worth Your Time", "engineering roles must not ride the word 'production'");
+assert.ok(epWrongLane.internalScore <= 37);
 
 console.log("public profile matching: all assertions passed");

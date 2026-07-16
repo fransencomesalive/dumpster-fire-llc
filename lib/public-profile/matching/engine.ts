@@ -1,5 +1,10 @@
+import {
+  evaluatePublicJobDecision,
+  matchingSignalsForAggregate,
+  type PublicMatchDecision,
+} from "./decision";
 import { recommendMatchAssets } from "./recommend";
-import { CATEGORY_WEIGHTS, scoreAllCategories } from "./scorers";
+import { scoreAllCategories } from "./scorers";
 import type {
   CategoryFit,
   MatchInput,
@@ -7,11 +12,18 @@ import type {
   MatchResult,
 } from "./types";
 
-function labelForScore(score: number): MatchLabel {
-  if (score >= 80) return "Strong Match";
-  if (score >= 60) return "Potential Match";
-  if (score >= 40) return "Weak Match";
-  return "Probably Not Worth Your Time";
+// Internal hard-risk markers become user-readable sentences on the way out.
+function readableRisk(risk: string) {
+  if (risk.startsWith("hard exclude: ")) return capitalize(risk.slice("hard exclude: ".length));
+  if (risk.startsWith("hard remote constraint: ")) return capitalize(risk.slice("hard remote constraint: ".length));
+  if (risk.startsWith("hard compensation constraint: ")) return capitalize(risk.slice("hard compensation constraint: ".length));
+  return risk;
+}
+
+function capitalize(value: string) {
+  const trimmed = value.trim();
+  const sentence = trimmed.endsWith(".") ? trimmed : `${trimmed}.`;
+  return sentence.charAt(0).toUpperCase() + sentence.slice(1);
 }
 
 function unique(values: string[]) {
@@ -27,33 +39,9 @@ function unique(values: string[]) {
   return output;
 }
 
-function weightedScore(categoryFits: CategoryFit[]) {
-  const totalWeight = categoryFits.reduce((sum, fit) => sum + CATEGORY_WEIGHTS[fit.category], 0);
-  const weighted = categoryFits.reduce((sum, fit) => sum + (fit.score * CATEGORY_WEIGHTS[fit.category]), 0);
-  return Math.round((weighted / totalWeight) * 100);
-}
-
-function strongestReasons(categoryFits: CategoryFit[]) {
-  return unique(
-    categoryFits
-      .filter((fit) => fit.score >= 0.7)
-      .flatMap((fit) => fit.reasons)
-      .slice(0, 6),
-  );
-}
-
-function weakestReasons(categoryFits: CategoryFit[]) {
-  return unique(
-    categoryFits
-      .filter((fit) => fit.score < 0.55)
-      .flatMap((fit) => [...fit.risks, ...fit.softExclusions])
-      .slice(0, 6),
-  );
-}
-
-function risksForMatch(categoryFits: CategoryFit[], label: MatchLabel) {
-  const categoryRisks = unique(categoryFits.flatMap((fit) => fit.risks)).slice(0, 6);
-  if (categoryRisks.length > 0) return categoryRisks;
+function risksForMatch(decision: PublicMatchDecision, label: MatchLabel) {
+  const decisionRisks = unique(decision.risks.map(readableRisk)).slice(0, 6);
+  if (decisionRisks.length > 0) return decisionRisks;
 
   if (label === "Strong Match") {
     return ["Strong on paper. Still worth checking the day-to-day before spending serious time."];
@@ -86,31 +74,37 @@ function buildExplanation(label: MatchLabel, whyMatched: string[], whyNotMatched
   return `Probably not worth your time. ${risk}`;
 }
 
+// Score and label come from the evidence-gated decision engine (ported from the
+// refined private matcher); the per-category fits remain as supporting narrative
+// and signal chips for existing consumers.
 export function evaluateMatch(input: MatchInput): MatchResult {
   const evaluatedAt = input.evaluatedAt ?? new Date().toISOString();
-  const categoryFits = scoreAllCategories({
+  const signals = matchingSignalsForAggregate(input.profile);
+  const decision = evaluatePublicJobDecision(input.job, signals, evaluatedAt);
+  const categoryFits: CategoryFit[] = scoreAllCategories({
     profile: input.profile,
     job: input.job,
     evaluatedAt,
     remoteExceptions: input.remoteExceptions,
   });
-  const internalScore = weightedScore(categoryFits);
-  const label = labelForScore(internalScore);
   const recommendations = recommendMatchAssets(input.profile, input.job);
-  const whyMatched = strongestReasons(categoryFits);
-  const whyNotMatched = weakestReasons(categoryFits);
-  const softExclusions = unique(categoryFits.flatMap((fit) => fit.softExclusions));
-  const risks = risksForMatch(categoryFits, label);
+  const whyMatched = unique(decision.positives).slice(0, 6);
+  const whyNotMatched = unique(decision.risks.map(readableRisk)).slice(0, 6);
+  const softExclusions = unique(
+    decision.risks
+      .filter((risk) => risk.startsWith("hard "))
+      .map(readableRisk),
+  );
 
   return {
-    internalScore,
-    label,
+    internalScore: decision.score,
+    label: decision.label,
     categoryFits,
     recommendations,
-    risks,
+    risks: risksForMatch(decision, decision.label),
     whyMatched,
     whyNotMatched,
     softExclusions,
-    explanation: buildExplanation(label, whyMatched, whyNotMatched),
+    explanation: buildExplanation(decision.label, whyMatched, whyNotMatched),
   };
 }

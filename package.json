@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "test:job-link": "node scripts/test-job-link.mjs",
+    "test:matching": "node scripts/test-public-profile-matching.mjs",
     "test:public-jobs": "node scripts/test-public-jobs-repository.mjs",
     "test:public-export": "node scripts/test-public-profile-export.mjs",
     "test:public-regeneration": "node scripts/test-public-profile-regeneration.mjs",
