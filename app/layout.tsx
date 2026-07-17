@@ -56,7 +56,9 @@ export const metadata: Metadata = {
     // most platforms render only image + title + domain, and the brand name is
     // already in the artwork — the title slot is where copy actually shows.
     title: "A job-search operating system for people who are done feeding the machine.",
-    description: "A job-search operating system for people who are done feeding the machine. Job boards and ATS's are where good candidates disappear. Stop applying. Start pursuing.",
+    // Description picks up where the title leaves off — platforms that show
+    // both (Slack, Facebook) would otherwise repeat the tagline.
+    description: "Job boards and ATS's are where good candidates disappear. Stop applying. Start pursuing.",
     url: "https://www.thejobmarketisadumpsterfire.com",
     siteName: "The Job Market Is a Dumpster Fire",
     images: [{ url: "/og-share.png", width: 1200, height: 630 }],
