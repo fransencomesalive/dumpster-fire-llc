@@ -1,5 +1,14 @@
 # Current State
 
+## Refinement backlog (low priority — pick up when the big fish are fried)
+
+- **Card 1 DS lede still names an "Outreach" per-track card** that was cut from the
+  product 2026-07-09 (58c6734, Outreach Rules retired). One-word deletion in
+  `design-system/components/onboarding-resume-upload.html` ("Work Examples, Skills,
+  Outreach" → "Work Examples, Skills") + full card re-sync (Claude Design push +
+  register + mirror commit). No product code involved. (Flagged by Claude 2026-07-16,
+  parked by Randall.)
+
 ## 2026-07-16 (later) - P0 scan matching FIXED: legacy engine ported (Claude)
 
 > **UPDATE (same day): SHIPPED + LIVE-VERIFIED.** Commit `c9447ea` pushed to origin/main,
