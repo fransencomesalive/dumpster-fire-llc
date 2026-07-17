@@ -125,6 +125,9 @@
   .btnSkip { color:var(--role-text-muted); background:transparent; border:var(--line-reg) solid transparent; }
   .skipNote { flex:1 1 0; min-width:110px; font-family:var(--font-body); font-size:0.8rem; font-style:italic; color:var(--role-text-faint); }
   .btnSource { position:relative; color:var(--c-ink); background:transparent; padding-bottom:3px; }
+  /* Text-styled rail actions show their full footprint on hover — same teal
+     tint the profile-editor nav uses (Randall, 2026-07-16, option 2). */
+  .btnSkip:hover, .btnSource:hover { background-color:color-mix(in srgb, var(--c-teal) 14%, var(--c-paper)); }
 
   /* Sidebar */
   .dashboardSidebar { position:sticky; top:var(--space-5); display:flex; flex-direction:column; gap:var(--space-4); }

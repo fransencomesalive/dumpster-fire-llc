@@ -634,6 +634,13 @@
   color: var(--c-ink);
 }
 
+/* Text-styled rail actions show their full footprint on hover — same teal
+   tint the profile-editor nav uses (Randall, 2026-07-16, option 2). */
+.btnSkip:hover,
+.btnSource:hover {
+  background-color: color-mix(in srgb, var(--c-teal) 14%, var(--c-paper));
+}
+
 .dashboardSidebar {
   position: sticky;
   top: var(--space-5);
