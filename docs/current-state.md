@@ -1,5 +1,60 @@
 # Current State
 
+## 2026-07-17 - Human Path wizard UI pass: buttons + copy + regenerate + LI Profile (Claude)
+
+Session focus was the production Human Path (apply wizard). Randall gave a 5-item UI list;
+all shipped in commit `dde302d` (pushed to origin/main). Both the app and the approved
+Claude Design cards were updated in the same pass (parity held).
+
+Shipped:
+1. **Button hover pass (wizard-wide).** Every button hover is now scoped to
+   `:not(:disabled)` so disabled Continue/Back/Save/Regenerate no longer light up.
+   Non-navigable stepper steps carry `disabled` (default cursor, no tint); past steps get
+   the teal-tint hover. Contact cards + tracking-checklist rows gained a soft teal-tint
+   hover (they had none). Same disabled-hover scoping applied to `modal.html` (shared shell).
+2. **Copy button = teal**, same button family/size as Regenerate (measured 50px = 50px),
+   legacy two-squares icon. New `WizardCopyButton` component: the checkmark + "Copied"
+   state flips **only after** `navigator.clipboard.writeText` resolves (blocked write stays
+   on "Copy"). Keyed on `message.id:regenerationCount` so it resets after a regeneration.
+3. **Message box auto-grows** to the full message: CSS `field-sizing: content` +
+   `overflow-y: hidden`, with a JS `AutosizeTextarea` fallback (useLayoutEffect sets height
+   to scrollHeight) for browsers without field-sizing (Safari). No inner-scroll clipping.
+4. **"Regenerate once" -> "Regenerate"** with hover tooltips (CSS `.tipWrap` + `data-tip`,
+   pseudo-element, shows over the disabled button via the wrapper): "1 re-generation per
+   message" before use, "re-generations used" after. Button stays visible but disabled once
+   `regenerationCount > 0` (was vanishing entirely). NOTE: tooltips are hover-only, so they
+   do not show on touch devices.
+5. **LI Profile pill** (name + new-tab arrow, shared `.seeProfileBtn` primitive) on BOTH
+   the step-2 contact cards (next to each name) and the step-3 recipient header. Wired to
+   the discovered `linkedin_url`. Full chain verified: contact-provider extracts/cleans the
+   URL (prompt asks for direct LinkedIn profile, prefers LI-reachable) ->
+   `contact_suggestions.linkedin_url` persistence -> pursuit read -> pill `href`, opens new
+   tab. Pill only renders when a URL exists (no dead links). Same external-link arrow added
+   to "Open job posting".
+
+Files: `app/dashboard/ApplyWizardModal.tsx`, `app/dashboard/apply-wizard.module.css`,
+`design-system/components/{apply-wizard,copy-generation,modal}.html`. DS cards registered
+in Claude Design: apply-wizard **r7**, copy-generation **r2**, modal **r2**.
+
+Verified: `tsc` clean; production build green; Playwright at 320/375/390/1280/1440 — zero
+overflow, no textarea clipping, Copy/Regenerate heights equal, teal Copy hovers to bluebird,
+disabled Regenerate + disabled stepper do NOT change on hover (default cursor), tooltip
+renders with correct text, contact-card hover tint fires, step-2 LI pills sit next to each
+name (at 320px a long name wraps the pill cleanly, no clip).
+
+**NOT prod-verified end-to-end.** The wizard's live behavior (real clipboard, autosize,
+tooltips, LI pills on both steps) was not exercised against production with a throwaway QA
+account — the full flow requires a real pursuit + a metered OpenAI discovery call. Verified
+at the card/measurement/build layer only. Next session, if desired: drive the live wizard
+once through a temp QA user to confirm.
+
+**Deferred (Randall's call, not done):** the homepage walkthrough card
+(`design-system/components/home-human-path.html`) Message slide still shows the OLD flat
+Copy button. It's a protected surface (homepage) and was out of scope; sweep to the new
+teal Copy next session if wanted.
+
+**Next session:** more Human Path items on Randall's list (not yet enumerated).
+
 ## 2026-07-16 (night) - Phred Telegram workflow externally delivers replies
 
 The Phred QA workflow now closes the user-reply loop instead of stopping at a local
