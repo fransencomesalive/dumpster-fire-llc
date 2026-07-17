@@ -78,15 +78,17 @@
     box-shadow: var(--shadow-card); padding: var(--space-3) var(--space-5); cursor: pointer;
     text-decoration: none; display: inline-flex; align-items: center;
     transition: background-color var(--dur-fast) var(--ease-snap), box-shadow var(--dur-fast) var(--ease-snap); }
-  .modalBtnClose:hover { background-color: color-mix(in srgb, var(--c-teal) 14%, var(--c-paper));
+   /* Hovers never fire on disabled buttons (hover pass, Randall 2026-07-17). */
+  .modalBtnClose:hover:not(:disabled) { background-color: color-mix(in srgb, var(--c-teal) 14%, var(--c-paper));
     box-shadow: var(--reg-box); }
   .modalBtnSave { font-family: var(--font-display); font-size: 1rem; color: var(--role-action-text);
     background-color: var(--role-action); border: var(--line-bold) solid var(--c-ink); border-radius: var(--radius-md);
     box-shadow: var(--shadow-card); padding: var(--space-3) var(--space-5); cursor: pointer;
     transition: background-color var(--dur-fast) var(--ease-snap), box-shadow var(--dur-fast) var(--ease-snap),
                 text-shadow var(--dur-fast) var(--ease-snap); }
-  .modalBtnSave:hover, .modalBtnSave.reg-on { background-color: var(--role-info);
+  .modalBtnSave:hover:not(:disabled), .modalBtnSave.reg-on { background-color: var(--role-info);
     box-shadow: var(--reg-box); text-shadow: 1px 1px 0 rgba(36, 31, 26, 0.35); }
+  .modalBtnSave:disabled, .modalBtnClose:disabled { opacity: 0.55; cursor: default; }
 
   /* Close-confirm · the "save before you go?" interrupt, calm bluebird note */
   .closeConfirmPanel { background-color: var(--c-paper);

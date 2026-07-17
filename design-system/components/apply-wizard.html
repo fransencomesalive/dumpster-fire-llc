@@ -42,6 +42,10 @@
   .wizardStep span { display: inline-grid; place-items: center; flex: none; width: 24px; height: 24px;
     font-family: var(--font-subhead); font-size: 0.92rem; color: var(--c-ink);
     background-color: var(--c-paper-deep); border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-pill); }
+  /* Only completed (past) steps navigate; the active and future steps are disabled, so they
+     get no pointer cursor and no hover tint (hover pass, Randall 2026-07-17). */
+  .wizardStep:disabled { cursor: default; }
+  .wizardStep:hover:not(:disabled) { background-color: color-mix(in srgb, var(--c-teal) 14%, var(--c-paper)); }
   .wizardStepActive { color: var(--c-paper); background-color: var(--c-teal);
     background-image: var(--fiber-img), var(--grain-img); background-blend-mode: normal, soft-light;
     background-size: 170px 170px, 46px 46px; box-shadow: var(--shadow-card); }
@@ -74,18 +78,21 @@
 
   .contactSuggestion { display: flex; align-items: flex-start; gap: var(--space-3);
     background-color: var(--c-paper); border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-md);
-    padding: var(--space-4); cursor: pointer; }
+    padding: var(--space-4); cursor: pointer;
+    transition: background-color var(--dur-fast) var(--ease-snap); }
+  .contactSuggestion:hover { background-color: color-mix(in srgb, var(--c-teal) 8%, var(--c-paper)); }
   .contactSuggestion > span { display: grid; gap: 3px; }
   .contactSuggestion strong { font-family: var(--font-display); font-size: 1.1rem; color: var(--c-ink); }
   .contactSuggestion em { font-family: var(--font-body); font-style: italic; color: var(--role-text-muted); }
   .contactSuggestion b { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.04em;
     font-size: 0.9rem; color: var(--c-teal); font-weight: 400; }
   .contactSuggestion small { font-family: var(--font-body); font-size: var(--type-small); color: var(--role-text-faint); }
-  .contactLinks { margin-top: var(--space-1); }
-  .seeProfileBtn { display: inline-flex; align-items: center; font-family: var(--font-subhead);
+  .seeProfileBtn { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-subhead);
     text-transform: uppercase; letter-spacing: 0.04em; font-size: 0.8rem; color: var(--c-bluebird);
     background-color: var(--c-paper); border: var(--line-reg) solid var(--c-bluebird); border-radius: var(--radius-pill);
-    padding: 4px 12px; text-decoration: none; }
+    padding: 4px 12px; text-decoration: none;
+    transition: background-color var(--dur-fast) var(--ease-snap); }
+  .seeProfileBtn svg { flex: none; width: 13px; height: 13px; }
   .seeProfileBtn:hover { background-color: color-mix(in srgb, var(--c-bluebird) 12%, var(--c-paper)); }
 
   /* Human Path is found automatically on Pursue (a metered AI lookup, not
@@ -110,19 +117,49 @@
   .copyHeader { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: var(--space-3);
     margin-bottom: var(--space-2); }
   .copyHeader strong { font-family: var(--font-display); font-size: 1.1rem; color: var(--c-ink); }
+  /* Name + LI Profile pill sit together: step 2 contact cards and the step 3 recipient
+     header share this row (Randall 2026-07-17). */
+  .copyRecipient { display: inline-flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; min-width: 0; }
   .copyActions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--space-2); margin-left: auto; }
-  .copyButton { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.04em; font-size: 0.8rem;
-    color: var(--c-ink); background-color: var(--c-paper); border: var(--line-reg) solid var(--c-ink);
-    border-radius: var(--radius-md); box-shadow: 2px 2px 0 var(--c-ink); padding: 5px 12px; cursor: pointer; }
+  /* Copy = teal (teal = positive; Randall 2026-07-17): same button family as the footer pair,
+     two-squares icon; the checkmark + Copied state appears only after the text is confirmed
+     on the clipboard. */
+  .copyButton { display: inline-flex; align-items: center; justify-content: center; gap: 6px; flex-shrink: 0;
+    font-family: var(--font-display); font-size: 1rem; color: var(--c-paper); background-color: var(--c-teal);
+    border: var(--line-bold) solid var(--c-ink); border-radius: var(--radius-md); box-shadow: var(--shadow-card);
+    padding: var(--space-3) var(--space-4); cursor: pointer;
+    transition: background-color var(--dur-fast) var(--ease-snap), box-shadow var(--dur-fast) var(--ease-snap); }
+  .copyButton svg { flex: none; width: 15px; height: 15px; }
+  .copyButton:hover:not(:disabled) { background-color: var(--role-info); box-shadow: var(--reg-box);
+    text-shadow: 1px 1px 0 rgba(36, 31, 26, 0.35); }
+  .copyButtonCopied, .copyButtonCopied:hover:not(:disabled) { background-color: var(--c-teal);
+    box-shadow: var(--shadow-card); text-shadow: none; }
+  /* Tooltip (Randall 2026-07-17): the one-shot Regenerate explains itself on hover. The
+     wrapper span carries data-tip so the tip still shows over the disabled button. */
+  .tipWrap { position: relative; display: inline-flex; }
+  .tipWrap::before { content: ""; position: absolute; bottom: calc(100% + 3px); left: 50%;
+    transform: translateX(-50%); border: 5px solid transparent; border-top-color: var(--c-ink);
+    opacity: 0; pointer-events: none; transition: opacity var(--dur-fast) var(--ease-snap); }
+  .tipWrap::after { content: attr(data-tip); position: absolute; bottom: calc(100% + 8px); left: 50%;
+    transform: translateX(-50%); z-index: 10; white-space: nowrap;
+    font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.72rem;
+    color: var(--c-paper); background-color: var(--c-ink); border-radius: var(--radius-sm);
+    padding: 5px 9px; opacity: 0; pointer-events: none; transition: opacity var(--dur-fast) var(--ease-snap); }
+  .tipWrap:hover::before, .tipWrap:focus-within::before,
+  .tipWrap:hover::after, .tipWrap:focus-within::after { opacity: 1; }
+  /* field-sizing grows the box to the full message (no inner scroll, Randall 2026-07-17);
+     the app adds a JS autosize fallback for browsers without field-sizing support. */
   .messageTextarea { width: 100%; box-sizing: border-box; font-family: var(--font-body); font-size: 1rem; color: var(--c-ink);
     background-color: var(--c-paper); border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-md);
-    padding: var(--space-3) var(--space-4); min-height: 120px; resize: vertical; }
+    padding: var(--space-3) var(--space-4); min-height: 120px; resize: vertical; field-sizing: content; overflow-y: hidden; }
 
   /* --- Step 4 · tracking checklist --- */
   .checklistGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); }
   .checklistGrid label { display: flex; align-items: center; gap: var(--space-2); font-family: var(--font-body);
     color: var(--role-text); background-color: var(--c-paper); border: var(--line-reg) solid var(--c-ink);
-    border-radius: var(--radius-md); padding: var(--space-2) var(--space-3); cursor: pointer; }
+    border-radius: var(--radius-md); padding: var(--space-2) var(--space-3); cursor: pointer;
+    transition: background-color var(--dur-fast) var(--ease-snap); }
+  .checklistGrid label:hover { background-color: color-mix(in srgb, var(--c-teal) 8%, var(--c-paper)); }
 
   .formSuccess { font-family: var(--font-body); font-size: 0.9rem; color: var(--c-ink); background: var(--c-paper);
     border: var(--line-hair) solid var(--c-paper-edge); border-left: var(--line-bold) solid var(--c-teal);
@@ -133,13 +170,16 @@
     margin-top: var(--space-6); padding-top: var(--space-4); border-top: var(--line-hair) solid var(--c-paper-edge); }
   .modalBtnClose { font-family: var(--font-display); font-size: 1rem; color: var(--c-ink); background-color: var(--c-paper);
     border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-md); box-shadow: var(--shadow-card);
-    padding: var(--space-3) var(--space-5); cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; }
-  .modalBtnClose:hover { background-color: color-mix(in srgb, var(--c-teal) 14%, var(--c-paper)); box-shadow: var(--reg-box); }
+    padding: var(--space-3) var(--space-5); cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; }
+  .modalBtnClose svg { flex: none; width: 15px; height: 15px; }
+  /* Hovers never fire on disabled buttons (hover pass, Randall 2026-07-17). */
+  .modalBtnClose:hover:not(:disabled) { background-color: color-mix(in srgb, var(--c-teal) 14%, var(--c-paper)); box-shadow: var(--reg-box); }
   .modalBtnSave { font-family: var(--font-display); font-size: 1rem; color: var(--role-action-text); background-color: var(--role-action);
     border: var(--line-bold) solid var(--c-ink); border-radius: var(--radius-md); box-shadow: var(--shadow-card);
     padding: var(--space-3) var(--space-5); cursor: pointer; }
-  .modalBtnSave:hover, .modalBtnSave.reg-on { background-color: var(--role-info); box-shadow: var(--reg-box);
+  .modalBtnSave:hover:not(:disabled), .modalBtnSave.reg-on { background-color: var(--role-info); box-shadow: var(--reg-box);
     text-shadow: 1px 1px 0 rgba(36, 31, 26, 0.35); }
+  .modalBtnSave:disabled, .modalBtnClose:disabled, .copyButton:disabled { opacity: 0.55; cursor: default; }
   /* Open-job-posting link sits left of the primary pair */
   .footerSpacer { margin-right: auto; }
 
@@ -171,10 +211,11 @@
         </button>
       </div>
       <div class="wizardSteps" aria-label="Human Path steps">
-        <button type="button" class="wizardStep wizardStepActive"><span>1</span>Review</button>
-        <button type="button" class="wizardStep"><span>2</span>Contacts</button>
-        <button type="button" class="wizardStep"><span>3</span>Outreach</button>
-        <button type="button" class="wizardStep"><span>4</span>Track</button>
+        <!-- Only past steps are enabled; active + future steps carry disabled. -->
+        <button type="button" class="wizardStep wizardStepActive" disabled><span>1</span>Review</button>
+        <button type="button" class="wizardStep" disabled><span>2</span>Contacts</button>
+        <button type="button" class="wizardStep" disabled><span>3</span>Outreach</button>
+        <button type="button" class="wizardStep" disabled><span>4</span>Track</button>
       </div>
       <div class="modalStack">
         <section class="modeSection">
@@ -197,7 +238,8 @@
         </section>
       </div>
       <div class="modalFooter">
-        <a href="#" class="modalBtnClose footerSpacer">Open job posting</a>
+        <a href="#" class="modalBtnClose footerSpacer">Open job posting
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" /></svg></a>
         <button type="button" class="modalBtnSave">Continue</button>
       </div>
     </div>
@@ -215,9 +257,9 @@
       </div>
       <div class="wizardSteps" aria-label="Human Path steps">
         <button type="button" class="wizardStep"><span>1</span>Review</button>
-        <button type="button" class="wizardStep wizardStepActive"><span>2</span>Contacts</button>
-        <button type="button" class="wizardStep"><span>3</span>Outreach</button>
-        <button type="button" class="wizardStep"><span>4</span>Track</button>
+        <button type="button" class="wizardStep wizardStepActive" disabled><span>2</span>Contacts</button>
+        <button type="button" class="wizardStep" disabled><span>3</span>Outreach</button>
+        <button type="button" class="wizardStep" disabled><span>4</span>Track</button>
       </div>
       <div class="modalStack">
         <section>
@@ -228,21 +270,27 @@
         <label class="contactSuggestion">
           <input type="checkbox" checked />
           <span>
-            <strong>Sam Lewis</strong>
+            <span class="copyRecipient">
+              <strong>Sam Lewis</strong>
+              <a href="#" class="seeProfileBtn">LI Profile
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" /></svg></a>
+            </span>
             <em>VP, Brand &amp; Creative · Hiring Manager</em>
             <b>&#9733;&#9733;&#9733;&#9733;&#9734; · 82% confidence · Verified</b>
             <small>Owns the function this role reports into; confirmed current at Liquid Death.</small>
-            <span class="contactLinks"><a href="#" class="seeProfileBtn">See LI Profile</a></span>
           </span>
         </label>
         <label class="contactSuggestion">
           <input type="checkbox" />
           <span>
-            <strong>Willem Blom</strong>
+            <span class="copyRecipient">
+              <strong>Willem Blom</strong>
+              <a href="#" class="seeProfileBtn">LI Profile
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" /></svg></a>
+            </span>
             <em>Senior Recruiter · Recruiter</em>
             <b>&#9733;&#9733;&#9733;&#9734;&#9734; · 64% confidence · Unverified lead</b>
             <small>Confirm this person before reaching out.</small>
-            <span class="contactLinks"><a href="#" class="seeProfileBtn">See LI Profile</a></span>
           </span>
         </label>
         <p class="dsStateLabel">While the Human Path is being built, the step shows:</p>
@@ -253,7 +301,8 @@
         </div>
       </div>
       <div class="modalFooter">
-        <a href="#" class="modalBtnClose footerSpacer">Open job posting</a>
+        <a href="#" class="modalBtnClose footerSpacer">Open job posting
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" /></svg></a>
         <button type="button" class="modalBtnSave">Continue</button>
       </div>
     </div>
@@ -272,19 +321,47 @@
       <div class="wizardSteps" aria-label="Human Path steps">
         <button type="button" class="wizardStep"><span>1</span>Review</button>
         <button type="button" class="wizardStep"><span>2</span>Contacts</button>
-        <button type="button" class="wizardStep wizardStepActive"><span>3</span>Outreach</button>
-        <button type="button" class="wizardStep"><span>4</span>Track</button>
+        <button type="button" class="wizardStep wizardStepActive" disabled><span>3</span>Outreach</button>
+        <button type="button" class="wizardStep" disabled><span>4</span>Track</button>
       </div>
       <div class="modalStack">
         <section>
           <div class="copyHeader">
-            <strong>Sam Lewis</strong>
+            <span class="copyRecipient">
+              <strong>Sam Lewis</strong>
+              <a href="#" class="seeProfileBtn">LI Profile
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" /></svg></a>
+            </span>
             <div class="copyActions">
-              <button type="button" class="copyButton">Copy</button>
-              <button type="button" class="modalBtnSave generateMessageBtn">Regenerate once</button>
+              <button type="button" class="copyButton">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
+                <span>Copy</span>
+              </button>
+              <span class="tipWrap" data-tip="1 re-generation per message">
+                <button type="button" class="modalBtnSave generateMessageBtn">Regenerate</button>
+              </span>
             </div>
           </div>
           <textarea class="messageTextarea" readonly>Hi Sam, I produced Topo Chico's launch end to end and shipped it across 40+ SKUs in a quarter. Liquid Death's Senior Producer role looks like the same problem at a louder volume. Worth a short conversation?</textarea>
+        </section>
+        <section>
+          <p class="dsStateLabel">After Copy lands on the clipboard and the one regeneration is used:</p>
+          <div class="copyHeader">
+            <span class="copyRecipient">
+              <strong>Sam Lewis</strong>
+              <a href="#" class="seeProfileBtn">LI Profile
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" /></svg></a>
+            </span>
+            <div class="copyActions">
+              <button type="button" class="copyButton copyButtonCopied">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12" /></svg>
+                <span>Copied</span>
+              </button>
+              <span class="tipWrap" data-tip="re-generations used">
+                <button type="button" class="modalBtnSave generateMessageBtn" disabled>Regenerate</button>
+              </span>
+            </div>
+          </div>
         </section>
         <section>
           <div class="contactsLoading">
@@ -295,7 +372,8 @@
         </section>
       </div>
       <div class="modalFooter">
-        <a href="#" class="modalBtnClose footerSpacer">Open job posting</a>
+        <a href="#" class="modalBtnClose footerSpacer">Open job posting
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" /></svg></a>
         <button type="button" class="modalBtnSave">Continue</button>
       </div>
     </div>
@@ -315,7 +393,7 @@
         <button type="button" class="wizardStep"><span>1</span>Review</button>
         <button type="button" class="wizardStep"><span>2</span>Contacts</button>
         <button type="button" class="wizardStep"><span>3</span>Outreach</button>
-        <button type="button" class="wizardStep wizardStepActive"><span>4</span>Track</button>
+        <button type="button" class="wizardStep wizardStepActive" disabled><span>4</span>Track</button>
       </div>
       <div class="modalStack">
         <section>
@@ -332,7 +410,8 @@
         </div>
       </div>
       <div class="modalFooter">
-        <a href="#" class="modalBtnClose footerSpacer">Open job posting</a>
+        <a href="#" class="modalBtnClose footerSpacer">Open job posting
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" /></svg></a>
         <button type="button" class="modalBtnSave reg-on">Save pursuit</button>
       </div>
     </div>

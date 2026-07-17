@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { PublicProfileApiError, requestPublicProfileApi } from "@/lib/public-profile/client";
 import type { PublicJobRecord } from "@/lib/public-jobs/types";
 import type { MatchResult } from "@/lib/public-profile/matching/types";
@@ -54,6 +54,54 @@ function humanizeContactType(type: HumanPathContactSuggestion["contactType"]): s
 function confidenceStars(confidence: HumanPathContactSuggestion["confidence"]): string {
   const filled = confidence === "high" ? 4 : confidence === "medium" ? 3 : 2;
   return "★".repeat(filled) + "☆".repeat(5 - filled);
+}
+
+const EXTERNAL_LINK_ICON = (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" />
+  </svg>
+);
+
+// The Copied state only appears after the clipboard write resolves; a blocked write
+// leaves the button in its Copy state instead of claiming success.
+function WizardCopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+  async function copyText() {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+    } catch {
+      // Clipboard unavailable or blocked; stay on Copy.
+    }
+  }
+  return (
+    <button
+      type="button"
+      className={`${styles.copyButton}${copied ? ` ${styles.copyButtonCopied}` : ""}`}
+      onClick={copyText}
+      aria-label={copied ? "Message copied to clipboard" : "Copy message"}
+    >
+      {copied ? (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12" /></svg>
+      ) : (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
+      )}
+      <span>{copied ? "Copied" : "Copy"}</span>
+    </button>
+  );
+}
+
+// JS autosize fallback for browsers without CSS field-sizing: the box always grows to
+// the full message instead of clipping behind an inner scrollbar.
+function AutosizeTextarea({ value }: { value: string }) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight + 4}px`;
+  }, [value]);
+  return <textarea ref={ref} className={styles.messageTextarea} value={value} readOnly />;
 }
 
 function errorMessage(error: unknown, fallback: string): string {
@@ -252,10 +300,6 @@ export default function ApplyWizardModal({
     }).finally(() => setRegeneratingId(null));
   }
 
-  function copyDraft(message: OutreachMessageRecord) {
-    void navigator.clipboard?.writeText(message.message);
-  }
-
   function saveTracking() {
     if (!pursuitId || !trackAction) {
       onClose();
@@ -286,6 +330,7 @@ export default function ApplyWizardModal({
           key={n}
           className={`${styles.wizardStep} ${n === step ? styles.wizardStepActive : ""}`}
           onClick={() => { if (n < step) setStep(n); }}
+          disabled={n >= step}
         >
           <span>{n}</span>{STEP_LABELS[n]}
         </button>
@@ -295,7 +340,7 @@ export default function ApplyWizardModal({
 
   const footer = (
     <div className={styles.modalFooter}>
-      <a href={job.sourceUrl} target="_blank" rel="noreferrer" className={`${styles.modalBtnClose} ${styles.footerSpacer}`}>Open job posting</a>
+      <a href={job.sourceUrl} target="_blank" rel="noreferrer" className={`${styles.modalBtnClose} ${styles.footerSpacer}`}>Open job posting{EXTERNAL_LINK_ICON}</a>
       {step > 1 ? (
         <button type="button" className={styles.modalBtnClose} onClick={() => setStep((s) => (s - 1) as WizardStep)} disabled={busy}>Back</button>
       ) : null}
@@ -388,14 +433,16 @@ export default function ApplyWizardModal({
                   <label className={styles.contactSuggestion} key={contact.id}>
                     <input type="checkbox" checked={selectedContactIds.has(contact.id)} onChange={() => toggleContact(contact.id)} />
                     <span>
-                      <strong>{contact.name}</strong>
+                      <span className={styles.copyRecipient}>
+                        <strong>{contact.name}</strong>
+                        {contact.linkedinUrl ? (
+                          <a href={contact.linkedinUrl} target="_blank" rel="noreferrer" className={styles.seeProfileBtn}>LI Profile{EXTERNAL_LINK_ICON}</a>
+                        ) : null}
+                      </span>
                       <em>{contact.title} &middot; {humanizeContactType(contact.contactType)}</em>
                       <b>{confidenceStars(contact.confidence)} &middot; {contact.confidence} confidence</b>
                       <small>{contact.roleConnection || contact.relevanceReason}</small>
                       {contact.verificationNotes.length > 0 ? <small>{contact.verificationNotes.join(" ")}</small> : null}
-                      {contact.linkedinUrl ? (
-                        <span className={styles.contactLinks}><a href={contact.linkedinUrl} target="_blank" rel="noreferrer" className={styles.seeProfileBtn}>See LI Profile</a></span>
-                      ) : null}
                     </span>
                   </label>
                 ))}
@@ -417,30 +464,39 @@ export default function ApplyWizardModal({
                       </div>
                     </section>
                   ) : <section><p className={styles.dsStateLabel}>No drafts yet.</p></section>
-                ) : messages.map((message) => (
-                  <section key={message.id}>
-                    {regeneratingId === message.id ? (
-                      <div className={styles.contactsLoading}>
-                        <div className={styles.progressLine}><span className={styles.progressDot} />Writing your message&hellip;</div>
-                        <div className={styles.skeletonCard}><span className={`${styles.skeletonBar} ${styles.w60}`} /><span className={`${styles.skeletonBar} ${styles.w40}`} /><span className={`${styles.skeletonBar} ${styles.w80}`} /></div>
-                        <div className={styles.skeletonCard}><span className={`${styles.skeletonBar} ${styles.w50}`} /><span className={`${styles.skeletonBar} ${styles.w35}`} /><span className={`${styles.skeletonBar} ${styles.w80}`} /></div>
-                      </div>
-                    ) : (
-                      <>
-                        <div className={styles.copyHeader}>
-                          <strong>{contacts.find((contact) => contact.id === message.contactSuggestionId)?.name ?? "Draft"}</strong>
-                          <div className={styles.copyActions}>
-                            <button type="button" className={styles.copyButton} onClick={() => copyDraft(message)}>Copy</button>
-                            {(message.regenerationCount ?? 0) === 0 ? (
-                              <button type="button" className={`${styles.modalBtnSave} ${styles.generateMessageBtn}`} onClick={() => regenerateOutreach(message)} disabled={busy}>Regenerate once</button>
-                            ) : null}
-                          </div>
+                ) : messages.map((message) => {
+                  const recipient = contacts.find((contact) => contact.id === message.contactSuggestionId);
+                  const regenerated = (message.regenerationCount ?? 0) > 0;
+                  return (
+                    <section key={message.id}>
+                      {regeneratingId === message.id ? (
+                        <div className={styles.contactsLoading}>
+                          <div className={styles.progressLine}><span className={styles.progressDot} />Writing your message&hellip;</div>
+                          <div className={styles.skeletonCard}><span className={`${styles.skeletonBar} ${styles.w60}`} /><span className={`${styles.skeletonBar} ${styles.w40}`} /><span className={`${styles.skeletonBar} ${styles.w80}`} /></div>
+                          <div className={styles.skeletonCard}><span className={`${styles.skeletonBar} ${styles.w50}`} /><span className={`${styles.skeletonBar} ${styles.w35}`} /><span className={`${styles.skeletonBar} ${styles.w80}`} /></div>
                         </div>
-                        <textarea className={styles.messageTextarea} value={message.message} readOnly />
-                      </>
-                    )}
-                  </section>
-                ))}
+                      ) : (
+                        <>
+                          <div className={styles.copyHeader}>
+                            <span className={styles.copyRecipient}>
+                              <strong>{recipient?.name ?? "Draft"}</strong>
+                              {recipient?.linkedinUrl ? (
+                                <a href={recipient.linkedinUrl} target="_blank" rel="noreferrer" className={styles.seeProfileBtn}>LI Profile{EXTERNAL_LINK_ICON}</a>
+                              ) : null}
+                            </span>
+                            <div className={styles.copyActions}>
+                              <WizardCopyButton key={`${message.id}:${message.regenerationCount ?? 0}`} text={message.message} />
+                              <span className={styles.tipWrap} data-tip={regenerated ? "re-generations used" : "1 re-generation per message"}>
+                                <button type="button" className={`${styles.modalBtnSave} ${styles.generateMessageBtn}`} onClick={() => regenerateOutreach(message)} disabled={busy || regenerated}>Regenerate</button>
+                              </span>
+                            </div>
+                          </div>
+                          <AutosizeTextarea value={message.message} />
+                        </>
+                      )}
+                    </section>
+                  );
+                })}
               </div>
             ) : null}
 

@@ -27,6 +27,8 @@
 .wizardStep span { display: inline-grid; place-items: center; flex: none; width: 24px; height: 24px;
   font-family: var(--font-subhead); font-size: 0.92rem; color: var(--c-ink);
   background-color: var(--c-paper-deep); border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-pill); }
+.wizardStep:disabled { cursor: default; }
+.wizardStep:hover:not(:disabled) { background-color: color-mix(in srgb, var(--c-teal) 14%, var(--c-paper)); }
 .wizardStepActive { color: var(--c-paper); background-color: var(--c-teal);
   background-image: var(--fiber-img), var(--grain-img); background-blend-mode: normal, soft-light;
   background-size: 170px 170px, 46px 46px; box-shadow: var(--shadow-card); }
@@ -54,18 +56,21 @@
 
 .contactSuggestion { display: flex; align-items: flex-start; gap: var(--space-3);
   background-color: var(--c-paper); border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-md);
-  padding: var(--space-4); cursor: pointer; }
+  padding: var(--space-4); cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease-snap); }
+.contactSuggestion:hover { background-color: color-mix(in srgb, var(--c-teal) 8%, var(--c-paper)); }
 .contactSuggestion > span { display: grid; gap: 3px; }
 .contactSuggestion strong { font-family: var(--font-display); font-size: 1.1rem; color: var(--c-ink); }
 .contactSuggestion em { font-family: var(--font-body); font-style: italic; color: var(--role-text-muted); }
 .contactSuggestion b { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.04em;
   font-size: 0.9rem; color: var(--c-teal); font-weight: 400; }
 .contactSuggestion small { font-family: var(--font-body); font-size: var(--type-small); color: var(--role-text-faint); }
-.contactLinks { margin-top: var(--space-1); }
-.seeProfileBtn { display: inline-flex; align-items: center; font-family: var(--font-subhead);
+.seeProfileBtn { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-subhead);
   text-transform: uppercase; letter-spacing: 0.04em; font-size: 0.8rem; color: var(--c-bluebird);
   background-color: var(--c-paper); border: var(--line-reg) solid var(--c-bluebird); border-radius: var(--radius-pill);
-  padding: 4px 12px; text-decoration: none; }
+  padding: 4px 12px; text-decoration: none;
+  transition: background-color var(--dur-fast) var(--ease-snap); }
+.seeProfileBtn svg { flex: none; width: 13px; height: 13px; }
 .seeProfileBtn:hover { background-color: color-mix(in srgb, var(--c-bluebird) 12%, var(--c-paper)); }
 
 .dsStateLabel { font-family: var(--font-body); font-style: italic; font-size: var(--type-small);
@@ -86,18 +91,39 @@
 .copyHeader { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: var(--space-3);
   margin-bottom: var(--space-2); }
 .copyHeader strong { font-family: var(--font-display); font-size: 1.1rem; color: var(--c-ink); }
+.copyRecipient { display: inline-flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; min-width: 0; }
 .copyActions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--space-2); margin-left: auto; }
-.copyButton { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.04em; font-size: 0.8rem;
-  color: var(--c-ink); background-color: var(--c-paper); border: var(--line-reg) solid var(--c-ink);
-  border-radius: var(--radius-md); box-shadow: 2px 2px 0 var(--c-ink); padding: 5px 12px; cursor: pointer; }
+.copyButton { display: inline-flex; align-items: center; justify-content: center; gap: 6px; flex-shrink: 0;
+  font-family: var(--font-display); font-size: 1rem; color: var(--c-paper); background-color: var(--c-teal);
+  border: var(--line-bold) solid var(--c-ink); border-radius: var(--radius-md); box-shadow: var(--shadow-card);
+  padding: var(--space-3) var(--space-4); cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease-snap), box-shadow var(--dur-fast) var(--ease-snap); }
+.copyButton svg { flex: none; width: 15px; height: 15px; }
+.copyButton:hover:not(:disabled) { background-color: var(--role-info); box-shadow: var(--reg-box);
+  text-shadow: 1px 1px 0 rgba(36, 31, 26, 0.35); }
+.copyButtonCopied, .copyButtonCopied:hover:not(:disabled) { background-color: var(--c-teal);
+  box-shadow: var(--shadow-card); text-shadow: none; }
+.tipWrap { position: relative; display: inline-flex; }
+.tipWrap::before { content: ""; position: absolute; bottom: calc(100% + 3px); left: 50%;
+  transform: translateX(-50%); border: 5px solid transparent; border-top-color: var(--c-ink);
+  opacity: 0; pointer-events: none; transition: opacity var(--dur-fast) var(--ease-snap); }
+.tipWrap::after { content: attr(data-tip); position: absolute; bottom: calc(100% + 8px); left: 50%;
+  transform: translateX(-50%); z-index: 10; white-space: nowrap;
+  font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.72rem;
+  color: var(--c-paper); background-color: var(--c-ink); border-radius: var(--radius-sm);
+  padding: 5px 9px; opacity: 0; pointer-events: none; transition: opacity var(--dur-fast) var(--ease-snap); }
+.tipWrap:hover::before, .tipWrap:focus-within::before,
+.tipWrap:hover::after, .tipWrap:focus-within::after { opacity: 1; }
 .messageTextarea { width: 100%; box-sizing: border-box; font-family: var(--font-body); font-size: 1rem; color: var(--c-ink);
   background-color: var(--c-paper); border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-md);
-  padding: var(--space-3) var(--space-4); min-height: 120px; resize: vertical; }
+  padding: var(--space-3) var(--space-4); min-height: 120px; resize: vertical; field-sizing: content; overflow-y: hidden; }
 
 .checklistGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); }
 .checklistGrid label { display: flex; align-items: center; gap: var(--space-2); font-family: var(--font-body);
   color: var(--role-text); background-color: var(--c-paper); border: var(--line-reg) solid var(--c-ink);
-  border-radius: var(--radius-md); padding: var(--space-2) var(--space-3); cursor: pointer; }
+  border-radius: var(--radius-md); padding: var(--space-2) var(--space-3); cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease-snap); }
+.checklistGrid label:hover { background-color: color-mix(in srgb, var(--c-teal) 8%, var(--c-paper)); }
 
 .formSuccess { font-family: var(--font-body); font-size: 0.9rem; color: var(--c-ink); background: var(--c-paper);
   border: var(--line-hair) solid var(--c-paper-edge); border-left: var(--line-bold) solid var(--c-teal);
@@ -111,14 +137,15 @@
   margin-top: var(--space-6); padding-top: var(--space-4); border-top: var(--line-hair) solid var(--c-paper-edge); }
 .modalBtnClose { font-family: var(--font-display); font-size: 1rem; color: var(--c-ink); background-color: var(--c-paper);
   border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-md); box-shadow: var(--shadow-card);
-  padding: var(--space-3) var(--space-5); cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; }
-.modalBtnClose:hover { background-color: color-mix(in srgb, var(--c-teal) 14%, var(--c-paper)); box-shadow: var(--reg-box); }
+  padding: var(--space-3) var(--space-5); cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; }
+.modalBtnClose svg { flex: none; width: 15px; height: 15px; }
+.modalBtnClose:hover:not(:disabled) { background-color: color-mix(in srgb, var(--c-teal) 14%, var(--c-paper)); box-shadow: var(--reg-box); }
 .modalBtnSave { font-family: var(--font-display); font-size: 1rem; color: var(--role-action-text); background-color: var(--role-action);
   border: var(--line-bold) solid var(--c-ink); border-radius: var(--radius-md); box-shadow: var(--shadow-card);
   padding: var(--space-3) var(--space-5); cursor: pointer; }
-.modalBtnSave:hover, .modalBtnSaveOn { background-color: var(--role-info); box-shadow: var(--reg-box);
+.modalBtnSave:hover:not(:disabled), .modalBtnSaveOn { background-color: var(--role-info); box-shadow: var(--reg-box);
   text-shadow: 1px 1px 0 rgba(36, 31, 26, 0.35); }
-.modalBtnSave:disabled, .modalBtnClose:disabled { opacity: 0.55; cursor: default; }
+.modalBtnSave:disabled, .modalBtnClose:disabled, .copyButton:disabled { opacity: 0.55; cursor: default; }
 .footerSpacer { margin-right: auto; }
 
 @media (max-width: 560px) {

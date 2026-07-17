@@ -9,7 +9,8 @@
 <link rel="stylesheet" href="../lib/base.css" />
 <style>
   /* Mirrors the one-time regeneration treatment in ApplyWizardModal.tsx.
-     Regenerate = tomato; Copy reuses the wizard's neutral action. */
+     Regenerate = tomato; Copy = teal (teal = positive; Randall 2026-07-17) with a
+     clipboard-confirmed Copied state. */
   body { margin: 0; color: var(--c-ink); font-family: var(--font-ui); }
   .wrap { max-width: 680px; margin: 0 auto; padding: var(--space-6) var(--space-5); display: grid; gap: var(--space-5); }
   h1.page { font-family: var(--font-display); font-size: var(--type-h1); margin: 0 0 var(--space-2); }
@@ -27,18 +28,37 @@
   .copyGenerationPanel p { margin: 0 0 var(--space-3); font-family: var(--font-ui); font-size: 0.85rem;
     line-height: 1.5; color: var(--role-text-muted); }
 
-  /* small copy button */
-  .copyBtn { display: inline-flex; align-items: center; justify-content: center; gap: 5px; flex-shrink: 0; min-width: 76px;
-    padding: 5px 9px; cursor: pointer; font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.05em;
-    font-size: 0.74rem; line-height: 1; white-space: nowrap; color: var(--c-ink);
-    background-color: var(--c-paper); border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-sm);
-    box-shadow: 2px 2px 0 var(--c-ink);
+  /* Copy button: teal, two-squares icon; checkmark + Copied appears only after the text is
+     confirmed on the clipboard. */
+  .copyBtn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; flex-shrink: 0;
+    font-family: var(--font-display); font-size: 1rem; color: var(--c-paper); background-color: var(--c-teal);
+    border: var(--line-bold) solid var(--c-ink); border-radius: var(--radius-md); box-shadow: var(--shadow-card);
+    padding: var(--space-3) var(--space-4); cursor: pointer;
     transition: background-color var(--dur-fast) var(--ease-snap), box-shadow var(--dur-fast) var(--ease-snap); }
-  .copyBtn svg { flex: none; width: 14px; height: 14px; }
-  .copyBtn:hover { background-color: color-mix(in srgb, var(--c-teal) 16%, var(--c-paper)); box-shadow: var(--reg-box); }
+  .copyBtn svg { flex: none; width: 15px; height: 15px; }
+  .copyBtn:hover:not(:disabled) { background-color: var(--role-info); box-shadow: var(--reg-box);
+    text-shadow: 1px 1px 0 rgba(36,31,26,0.35); }
+  .copyBtnCopied, .copyBtnCopied:hover:not(:disabled) { background-color: var(--c-teal);
+    box-shadow: var(--shadow-card); text-shadow: none; }
+  /* Tooltip: the one-shot Regenerate explains itself on hover; the wrapper span carries
+     data-tip so the tip still shows over the disabled button. */
+  .tipWrap { position: relative; display: inline-flex; }
+  .tipWrap::before { content: ""; position: absolute; bottom: calc(100% + 3px); left: 50%;
+    transform: translateX(-50%); border: 5px solid transparent; border-top-color: var(--c-ink);
+    opacity: 0; pointer-events: none; transition: opacity var(--dur-fast) var(--ease-snap); }
+  .tipWrap::after { content: attr(data-tip); position: absolute; bottom: calc(100% + 8px); left: 50%;
+    transform: translateX(-50%); z-index: 10; white-space: nowrap;
+    font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.72rem;
+    color: var(--c-paper); background-color: var(--c-ink); border-radius: var(--radius-sm);
+    padding: 5px 9px; opacity: 0; pointer-events: none; transition: opacity var(--dur-fast) var(--ease-snap); }
+  .tipWrap:hover::before, .tipWrap:focus-within::before,
+  .tipWrap:hover::after, .tipWrap:focus-within::after { opacity: 1; }
+  /* field-sizing grows the box to the full message (no inner scroll); the app adds a JS
+     autosize fallback for browsers without field-sizing support. */
   .messageTextarea { width: 100%; box-sizing: border-box; resize: vertical; min-height: 150px; padding: var(--space-4);
     font: inherit; font-family: var(--font-ui); font-size: 0.92rem; line-height: 1.55; color: var(--c-ink);
-    background-color: var(--c-paper); border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-lg); }
+    background-color: var(--c-paper); border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-lg);
+    field-sizing: content; overflow-y: hidden; }
   .messageTextarea:focus { outline: none; border-color: var(--c-teal);
     box-shadow: 0 0 0 3px color-mix(in srgb, var(--c-teal) 28%, transparent); }
 
@@ -48,8 +68,9 @@
     border: var(--line-bold) solid var(--c-ink); border-radius: var(--radius-md); box-shadow: var(--shadow-card);
     padding: var(--space-3) var(--space-5); cursor: pointer;
     transition: background-color var(--dur-fast) var(--ease-snap), box-shadow var(--dur-fast) var(--ease-snap); }
-  .generateMessageBtn:hover { background-color: var(--role-info); box-shadow: var(--reg-box);
+  .generateMessageBtn:hover:not(:disabled) { background-color: var(--role-info); box-shadow: var(--reg-box);
     text-shadow: 1px 1px 0 rgba(36,31,26,0.35); }
+  .generateMessageBtn:disabled { opacity: 0.55; cursor: default; }
   .contactsLoading { display: grid; gap: var(--space-3); background-color: var(--c-paper);
     border: var(--line-reg) dashed var(--c-ink); border-radius: var(--radius-md); padding: var(--space-4); }
   .progressLine { display: flex; align-items: center; gap: var(--space-2); font-family: var(--font-display);
@@ -80,13 +101,24 @@
       <strong>Outreach to the hiring manager</strong>
       <div class="headerActions">
         <button type="button" class="copyBtn">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
           <span>Copy</span>
         </button>
-        <button type="button" class="generateMessageBtn">Regenerate once</button>
+        <span class="tipWrap" data-tip="1 re-generation per message">
+          <button type="button" class="generateMessageBtn">Regenerate</button>
+        </span>
       </div>
     </div>
     <p>Written for Maya Chen, Head of Design. References your design-systems and 0→1 work.</p>
+    <div class="headerActions" style="margin-top: var(--space-3);">
+      <button type="button" class="copyBtn copyBtnCopied">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+        <span>Copied</span>
+      </button>
+      <span class="tipWrap" data-tip="re-generations used">
+        <button type="button" class="generateMessageBtn" disabled>Regenerate</button>
+      </span>
+    </div>
     <textarea class="messageTextarea" readonly>Hi Maya, I saw Northbeam is hiring a Senior Product Designer to own the design system through a 0→1 analytics launch. That's the exact shape of work I did at Atlas: built the system from scratch and partnered with PM/eng from discovery to ship. Would love to compare notes on how you're scoping the role. Open to a short call this week?</textarea>
   </section>
 
