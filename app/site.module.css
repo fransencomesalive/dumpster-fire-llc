@@ -1871,7 +1871,9 @@
 /* Direct hero-matchbook map for public home. */
 .publicLandingHeroSection {
   min-height: auto;
-  padding: var(--space-6) 0 var(--space-7) !important;
+  /* --space-7 top: the matchbook frame sat too close under the sticky header
+     (Randall, 2026-07-16 — same class as the dashboard title spacing fix). */
+  padding: var(--space-7) 0 var(--space-7) !important;
 }
 
 .publicLandingHeroInner {
