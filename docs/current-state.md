@@ -1,5 +1,52 @@
 # Current State
 
+## 2026-07-16 (evening) — Randall's bug list: 13 fixes SHIPPED + PROD-VERIFIED (Claude)
+
+Every item below is committed to origin/main, deployed, and verified on production
+(throwaway QA accounts via Supabase admin, created → deleted; Playwright measurement,
+not eyeballing). No open work from this list.
+
+1. **Onboarding Card 1 gate REMOVED** (0be2bbe) — the fieldset that grayed out all of
+   onboarding until Card 1 saved is gone; disabled Card 1 save now says what's missing.
+   NEW HARD RULE in AGENTS.md: "No Gates Without Approval" — never lock/disable/hide/
+   sequence access without Randall's explicit per-gate OK.
+2. **Stale-token 401s fixed app-wide** (7097285 + 2ce084c) — requestPublicProfileApi and
+   the resume-scan fetch refresh the session once and retry on 401 (hour-old tabs sent
+   dead tokens; raw "Invalid bearer token." leaked into UI — now human copy).
+3. **Plan gate resolves pre-render** (001d97d) — no-plan users never see a flash of the
+   onboarding form; neutral loading state meanwhile.
+4. **Ashby/JS-shell job links ingest** (1937625) — JSON-LD JobPosting parsing in
+   ingest-link; unit case added; verified with the reported Kit posting end-to-end.
+5. **Skip / Open posting hover footprint** (7ac600c) — teal-tint hover on the public
+   dashboard + paper scan surface; 3 DS cards swept. (Hit areas measured fine; the
+   "dead clicks" were the stale-token bug above.)
+6. **Inline page loader** (a38fe53) — mascot standee + one line on onboarding/dashboard/
+   plan landings (approved in Claude Design as a scan-progress card state).
+7. **OG share** (4940f79 + d84418d) — og:title = feed-the-machine tagline (iMessage shows
+   only image+title+domain, never og:description), og:description picks up after it.
+   Tab title + SEO meta description unchanged.
+8. **Fit Signals fields REMOVED from onboarding** (e6026e1) — testers found them
+   superfluous; was already optional. Backend/API/matching contribution + stored data
+   intact. 3 DS cards swept. **"Avoid companies" was checked and has NO gate anywhere**
+   (completion, validation, UI) — live-proven; if a tester reports it again, get a
+   screenshot of what looked required.
+9. **Dashboard heading spacing + hierarchy** (330f9c1) — topBar clears the sticky header;
+   section h2 steps to 1.5rem; missing topBar added to the dashboard-jobs DS card.
+10. **Homepage matchbook spacing** (c73addd + c393047) — hero frame clears the header
+    (gap 20→36px); card-to-first-headline gap 174→104px desktop / 72px mobile (only the
+    first post-hero section tightened; section rhythm below unchanged).
+
+Ops notes: Vercel git builds can queue up to ~20 min — check `npx vercel ls` before
+assuming the webhook failed (one redundant-but-harmless manual deploy happened). Reusable
+prod E2E harnesses (new-user flow, forced-expiry, loaders, heading measurements) lived in
+the session scratchpad and are GONE with the session — offer stood to commit under
+scripts/qa/, Randall did not take it up; recreate from this doc's descriptions if needed.
+
+**Next session starting point:** no open items from this bug list. Check the refinement
+backlog below, the still-queued v8 outreach-prompt review (message-gen track), and
+whatever new tester feedback has arrived. Parallel session shipped 2258c03 (QA reply
+delivery endpoint) mid-session — coordinate before touching lib/qa or app/api/internal.
+
 ## Refinement backlog (low priority — pick up when the big fish are fried)
 
 - **Card 1 DS lede still names an "Outreach" per-track card** that was cut from the
