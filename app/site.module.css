@@ -1871,9 +1871,16 @@
 /* Direct hero-matchbook map for public home. */
 .publicLandingHeroSection {
   min-height: auto;
-  /* --space-7 top: the matchbook frame sat too close under the sticky header
-     (Randall, 2026-07-16 — same class as the dashboard title spacing fix). */
-  padding: var(--space-7) 0 var(--space-7) !important;
+  /* --space-7 top: the matchbook frame sat too close under the sticky header;
+     --space-5 bottom: tighten the run-in to the first section headline
+     (Randall, 2026-07-16). */
+  padding: var(--space-7) 0 var(--space-5) !important;
+}
+
+/* Only the first section after the hero pulls closer to the matchbook card —
+   the generic section rhythm (clamp 70-126px) stays for everything below. */
+.publicLandingHeroSection + .publicLandingSection {
+  padding-top: clamp(48px, 7vw, 80px);
 }
 
 .publicLandingHeroInner {
