@@ -13,7 +13,8 @@
     "test:public-export": "node scripts/test-public-profile-export.mjs",
     "test:public-regeneration": "node scripts/test-public-profile-regeneration.mjs",
     "test:resume-highlights": "node scripts/test-public-profile-resume-highlights.mjs",
-    "test:resume-parse": "node scripts/test-public-profile-resume-parse.mjs"
+    "test:resume-parse": "node scripts/test-public-profile-resume-parse.mjs",
+    "test:qa-reply": "node scripts/test-qa-user-reply-webhook.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.106.0",
