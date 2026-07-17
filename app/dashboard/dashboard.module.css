@@ -3,9 +3,11 @@
      matcher/rules/tuning). Class names mirror DashboardClient.tsx so CSS ports back. */
   .pageWrap { width:min(1080px, calc(100% - 48px)); margin:0 auto; }
 
-  /* Section header · headline first, scan line + badge beneath. No eyebrow. */
+  /* Section header · headline first, scan line + badge beneath. No eyebrow.
+     1.5rem (the low end of the h2 clamp): the page title above uses the full
+     --type-h2, so the section heading steps down (Randall, 2026-07-16). */
   .sectionHead { display:flex; align-items:baseline; flex-wrap:wrap; gap:var(--space-3) var(--space-4); margin-bottom:var(--space-5); }
-  .sectionHead h2 { font-family:var(--font-display); font-size:var(--type-h2); color:var(--c-ink); margin:0; }
+  .sectionHead h2 { font-family:var(--font-display); font-size:1.5rem; color:var(--c-ink); margin:0; }
   .lastScan { font-family:var(--font-subhead); text-transform:uppercase; letter-spacing:var(--tracking-subhead);
     font-size:1.1rem; color:var(--c-tomato); margin:0; }
   .scanBadge { font-family:var(--font-subhead); text-transform:uppercase; letter-spacing:0.05em;
@@ -223,8 +225,10 @@
   .empty { font-family:var(--font-body); color:var(--role-text-muted); background:var(--c-paper);
     border:var(--line-hair) dashed var(--c-paper-edge); border-radius:var(--radius-md); padding:var(--space-4); }
 
-  /* Dashboard top bar (replaces the old landing-style hero; no eyebrow) */
-  .topBar { width:min(1080px, calc(100% - 48px)); margin:0 auto var(--space-5);
+  /* Dashboard top bar (replaces the old landing-style hero; no eyebrow).
+     Top margin matches onboarding's first block below the sticky header —
+     without it the title sat flush against the header (Randall, 2026-07-16). */
+  .topBar { width:min(1080px, calc(100% - 48px)); margin:clamp(20px, 4vw, 32px) auto var(--space-5);
     display:flex; align-items:center; justify-content:space-between; gap:var(--space-4); flex-wrap:wrap;
     padding-bottom:var(--space-4); border-bottom:var(--line-reg) solid var(--c-ink); }
   .topTitle { margin:0; font-family:var(--font-display); font-size:var(--type-h2); color:var(--c-ink); }

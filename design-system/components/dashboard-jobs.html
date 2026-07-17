@@ -16,8 +16,18 @@
   .pageWrap { width:min(1080px, calc(100% - 48px)); margin:0 auto; }
 
   /* Section header · headline first, scan line + badge beneath. No eyebrow. */
+  /* Page title bar above the section (production topBar, added 2026-07-12; card
+     parity 2026-07-16). Top margin matches onboarding's first block below the
+     sticky header. */
+  .topBar { width:min(1080px, calc(100% - 48px)); margin:clamp(20px, 4vw, 32px) auto var(--space-5);
+    display:flex; align-items:center; justify-content:space-between; gap:var(--space-4); flex-wrap:wrap;
+    padding-bottom:var(--space-4); border-bottom:var(--line-reg) solid var(--c-ink); }
+  .topTitle { margin:0; font-family:var(--font-display); font-size:var(--type-h2); color:var(--c-ink); }
+
+  /* 1.5rem (low end of the h2 clamp): the page title above carries --type-h2,
+     so the section heading steps down (Randall, 2026-07-16). */
   .sectionHead { display:flex; align-items:baseline; flex-wrap:wrap; gap:var(--space-3) var(--space-4); margin-bottom:var(--space-5); }
-  .sectionHead h2 { font-family:var(--font-display); font-size:var(--type-h2); color:var(--c-ink); margin:0; }
+  .sectionHead h2 { font-family:var(--font-display); font-size:1.5rem; color:var(--c-ink); margin:0; }
   .lastScan { font-family:var(--font-subhead); text-transform:uppercase; letter-spacing:var(--tracking-subhead);
     font-size:1.1rem; color:var(--c-tomato); margin:0; }
   .scanBadge { font-family:var(--font-subhead); text-transform:uppercase; letter-spacing:0.05em;
@@ -204,6 +214,9 @@
 </style>
 </head>
 <body>
+<header class="topBar">
+  <h1 class="topTitle">Your career dashboard</h1>
+</header>
 <section class="pageWrap">
   <div class="sectionHead">
     <h2>Your best matches</h2>
