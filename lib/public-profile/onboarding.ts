@@ -1,6 +1,5 @@
 export type PublicProfileOnboardingSectionKey =
   | "identitySearch"
-  | "fitSignals"
   | "roleTracks"
   | "resumes"
   | "workExamples"
@@ -27,12 +26,6 @@ export const publicProfileOnboardingSections: PublicProfileOnboardingSection[] =
   description: "Name, location, compensation, and search preferences.",
   path: "/api/public-profile/identity-search",
   required: true,
-}, {
-  key: "fitSignals",
-  label: "Fit Signals",
-  description: "What makes a role a strong fit and what makes it a weak one.",
-  path: "/api/public-profile/fit-signals",
-  required: false,
 }, {
   key: "workExamples",
   label: "Work Examples",

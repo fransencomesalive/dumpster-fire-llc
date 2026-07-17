@@ -43,12 +43,6 @@ type IdentitySearchSection = {
   avoidCompanies: string[];
 };
 
-type FitSignalsSection = {
-  id?: string;
-  goodSignals: string[];
-  poorFitSignals: string[];
-};
-
 type RoleTrackSectionItem = {
   id: string;
   name: string;
@@ -242,11 +236,6 @@ const emptyVoice: VoicePersonalitySection = {
   avoidNote: "",
 };
 
-const emptyFitSignals: FitSignalsSection = {
-  goodSignals: [],
-  poorFitSignals: [],
-};
-
 /* ============================================================
    Helpers
    ============================================================ */
@@ -264,8 +253,8 @@ function textToList(value: string) {
   return value.split(",").map((entry) => entry.trim()).filter(Boolean);
 }
 
-// Newline-separated variants for prose-length list entries (fit signals, skill
-// evidence): sentences keep their commas; each line is one entry (Randall 2026-07-10).
+// Newline-separated variants for prose-length list entries (skill evidence):
+// sentences keep their commas; each line is one entry (Randall 2026-07-10).
 function linesToText(values: string[] | undefined) {
   return (values ?? []).join("\n");
 }
@@ -384,8 +373,6 @@ function reasonBelongsToSection(sectionKey: PublicProfileOnboardingSectionKey, r
   switch (sectionKey) {
     case "identitySearch":
       return value.includes("full name") || value.includes("location") || value.includes("remote preference") || value.includes("employment");
-    case "fitSignals":
-      return value.includes("fit signal");
     case "roleTracks":
       // Card 1 owns both the Role Track and its résumé, so résumé blockers roll up here.
       return value.includes("role track") || value.startsWith("resume ") || value.includes("at least one resume");
@@ -816,7 +803,6 @@ export default function OnboardingClient({
   const [reviewOpen, setReviewOpen] = useState(false);
 
   const [identity, setIdentity] = useState<IdentitySearchSection>(emptyIdentity);
-  const [fitSignals, setFitSignals] = useState<FitSignalsSection>(emptyFitSignals);
   const [roleTracks, setRoleTracks] = useState<RoleTrackSectionItem[]>([]);
   const [resumes, setResumes] = useState<ResumeUploadSectionItem[]>([]);
   const [workExamples, setWorkExamples] = useState<WorkExampleSectionItem[]>([]);
@@ -923,7 +909,6 @@ export default function OnboardingClient({
 
     const [
       identityResponse,
-      fitSignalsResponse,
       roleTracksResponse,
       resumeResponse,
       workExamplesResponse,
@@ -932,7 +917,6 @@ export default function OnboardingClient({
       writingSamplesResponse,
     ] = await Promise.all([
       get<IdentitySearchSection>("/api/public-profile/identity-search"),
-      get<FitSignalsSection>("/api/public-profile/fit-signals"),
       get<RoleTracksSection>("/api/public-profile/role-tracks"),
       get<ResumeUploadsSection>("/api/public-profile/resumes"),
       get<WorkExamplesSection>("/api/public-profile/work-examples"),
@@ -942,7 +926,6 @@ export default function OnboardingClient({
     ]);
 
     setIdentity(identityResponse.section);
-    setFitSignals(fitSignalsResponse.section);
     setRoleTracks(roleTracksResponse.section.roleTracks);
     setResumes(resumeResponse.section.resumes);
     setWorkExamples(workExamplesResponse.section.workExamples);
@@ -960,7 +943,6 @@ export default function OnboardingClient({
         const draft = JSON.parse(raw) as Record<string, unknown>;
         if (draft?.v === 1) {
           if (draft.identity) setIdentity(draft.identity as IdentitySearchSection);
-          if (draft.fitSignals) setFitSignals(draft.fitSignals as FitSignalsSection);
           if (draft.workExamples) setWorkExamples(draft.workExamples as WorkExampleSectionItem[]);
           if (draft.skills) setSkills(draft.skills as SkillsInventorySectionItem[]);
           if (draft.voice) setVoice(draft.voice as VoicePersonalitySection);
@@ -1082,7 +1064,6 @@ export default function OnboardingClient({
         window.localStorage.setItem(draftStorageKeyRef.current, JSON.stringify({
           v: 1,
           identity,
-          fitSignals,
           workExamples,
           skills,
           voice,
@@ -1099,7 +1080,7 @@ export default function OnboardingClient({
       }
     }, 400);
     return () => window.clearTimeout(timer);
-  }, [identity, fitSignals, workExamples, skills, voice, writingSamples, newTrackName, pastedResumeText, listFieldDrafts, draftTitles, draftWorkExample, resumeScan]);
+  }, [identity, workExamples, skills, voice, writingSamples, newTrackName, pastedResumeText, listFieldDrafts, draftTitles, draftWorkExample, resumeScan]);
 
   async function signIn() {
     setBusy(true);
@@ -1169,7 +1150,6 @@ export default function OnboardingClient({
     clearPublicProfileAccessToken();
     setAccessToken("");
     setIdentity(emptyIdentity);
-    setFitSignals(emptyFitSignals);
     setRoleTracks([]);
     setResumes([]);
     setWorkExamples([]);
@@ -1205,11 +1185,6 @@ export default function OnboardingClient({
 
   const saveIdentity = () =>
     saveSection<IdentitySearchSection>("Identity & Search", "/api/public-profile/identity-search", identity, (section) => setIdentity(section));
-  const saveFitSignals = () =>
-    saveSection<FitSignalsSection>("Fit Signals", "/api/public-profile/fit-signals", fitSignals, (section) => {
-      setFitSignals(section);
-      closeFields("fit."); // populated fields collapse back to saved-text/pencil
-    });
   // --- Card 1: Role Track + Résumé (onboarding-resume-upload DS card) ---
 
   const firstRun = roleTracks.length === 0;
@@ -1747,7 +1722,7 @@ export default function OnboardingClient({
   ) : null;
 
   // Per-track card header (card-interior spec): title + teal [+] add beside it,
-  // active-track chip on the right. onAdd omitted (Fit Signals) → no [+].
+  // active-track chip on the right. onAdd omitted → no [+].
   function perTrackHeader(title: string, onAdd?: () => void, addLabel?: string) {
     return (
       <div className={styles.cardHead}>
@@ -2418,35 +2393,6 @@ export default function OnboardingClient({
             <div className={styles.formActions}>
               <button className={styles.primaryButton} disabled={!accessToken || busy} onClick={saveIdentity} type="button">Save Identity & Search</button>
               <p>{message}</p>
-            </div>
-          </article>
-
-          {/* --- Fit Signals --- */}
-          <article className={styles.formCard} id="career-profile-fitSignals">
-            {perTrackHeader("Fit Signals")}
-            {cardIntro("Soft signals that nudge job ratings up or down. Poor-fit jobs still surface, rated lower, with the reason shown.")}
-            {[
-              { key: "fit.good", label: "What makes a role a strong fit", draftKey: "fitSignals.goodSignals", values: fitSignals.goodSignals, set: (values: string[]) => setFitSignals({ ...fitSignals, goodSignals: values }) },
-              { key: "fit.poor", label: "What makes a role a poor fit", draftKey: "fitSignals.poorFitSignals", values: fitSignals.poorFitSignals, set: (values: string[]) => setFitSignals({ ...fitSignals, poorFitSignals: values }) },
-            ].map((field) => {
-              const showRead = field.values.length > 0 && !isEditing(field.key);
-              return (
-                <div className={styles.voiceField} key={field.key}>
-                  <div className={styles.entryFieldHead}>
-                    <span className={styles.subFieldLabel}>{field.label}</span>
-                    {showRead ? editPencilButton(field.key, `Edit ${field.label.toLowerCase()}`) : null}
-                  </div>
-                  {showRead ? (
-                    <p className={styles.savedText}>{linesToText(field.values)}</p>
-                  ) : (
-                    <textarea onFocus={() => openField(field.key)} {...lineListField(field.draftKey, field.values, field.set)} />
-                  )}
-                </div>
-              );
-            })}
-            <div className={styles.formActions}>
-              <button className={styles.primaryButton} disabled={!accessToken || busy} onClick={saveFitSignals} type="button">Save Fit Signals</button>
-              <p>One signal per line. These shape rating context, never hard filters.</p>
             </div>
           </article>
 
