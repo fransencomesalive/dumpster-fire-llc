@@ -1,8 +1,66 @@
 # PhredBot Action Feedback and Execution Plan
 
 Date: 2026-07-16
-Status: P0 live; durable Codex lifecycle implemented; safe executor activation blocked
+Status: external reply delivery and dual Codex/Claude execution live; final human-tap rehearsal pending
 Scope: PhredBot owner actions for Dumpster Fire QA reports
+
+## Current operating state (supersedes older limitations below where they conflict)
+
+The original black-box problem is fixed across reply delivery, backlog routing, and agent
+execution. Historical sections below remain useful evidence, but statements that replies only
+write locally or workers do not execute are no longer current.
+
+Current architecture:
+
+1. The website submits QA reports to the local relay through the public ngrok tunnel.
+2. The relay creates the durable Phred ticket and posts its Telegram action card.
+3. Draft and approval callbacks receive immediate and durable Telegram feedback.
+4. Approved replies are signed by the relay and posted to
+   `https://www.thejobmarketisadumpsterfire.com/api/internal/qa/user-reply`.
+5. The app validates the raw-body HMAC, timestamp, project, ticket, recipient, and payload,
+   then sends through Resend SMTP.
+6. Backlog tickets can be listed with `/backlog`, opened with `/backlog JOB-###`, and routed
+   idempotently to either the connected Codex or Claude worker.
+
+Release references:
+
+- App `2258c03`: signed approved-reply endpoint and Resend adapter.
+- Relay `6d6be7c`: Telegram backlog listing and Codex/Claude routing.
+- Relay `e23fe6c`, `76f758a`, and `d63c0c6`: Claude authentication, isolated provider
+  workspaces, review routing, and notification retry behavior.
+- Relay full test run after backlog work: 567 total, 558 passed, 0 failed, 9 skipped.
+
+Production configuration and verification:
+
+- Vercel production contains the Resend key and all `QA_REPLY_*` values. The relay contains
+  the matching signing secret and production webhook URL. Secret values are not committed.
+- Resend is restricted to the verified sender domain
+  `mail.thejobmarketisadumpsterfire.com`; the visible From address is `Dumpster Fire
+  <no-reply@mail.thejobmarketisadumpsterfire.com>`.
+- Reply delivery uses a 15-second timeout, two transient retries, and a Resend idempotency
+  header derived from the reply ID.
+- Production homepage returned HTTP 200. The signed endpoint returned HTTP 202 with a Resend
+  message ID.
+- `JOB-018` exercised report intake, Telegram callback handling, draft creation, delivery
+  approval, signed external webhook delivery, and terminal state. Delivery succeeded on
+  attempt 1; the reply became `sent`; the ticket became `closed` with
+  `close_reason=user_reply_sent`.
+- Local `/healthz` and `/readyz` passed. Public ngrok `/healthz` passed. Readiness reported
+  external signed delivery and both Codex and Claude workers connected.
+
+Remaining verification is narrow: use the next real report and human Telegram button tap to
+observe the Telegram-issued transient callback acknowledgement alongside the already verified
+durable receipt and inbox delivery. Synthetic callback IDs correctly fail Telegram's temporary
+toast API because Telegram did not issue them; they still exercise the relay action and receipt
+paths.
+
+Durable diagnosis lesson: verify the provider's exact authorized sender domain before changing
+credentials or asking for domain setup. The first production attempt used the root domain and
+Resend returned SMTP 550. Randall's screenshot showed that the existing verified and key-scoped
+domain was the `mail.` subdomain. Correcting the From address fixed delivery without changing
+the API key or repeating domain verification. When the user says setup is already done, use the
+provider error and exact configured value to locate the mismatch instead of sending the user
+back through completed setup.
 
 ## Product problem
 

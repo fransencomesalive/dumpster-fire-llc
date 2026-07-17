@@ -1,5 +1,55 @@
 # Current State
 
+## 2026-07-16 (night) - Phred Telegram workflow externally delivers replies
+
+The Phred QA workflow now closes the user-reply loop instead of stopping at a local
+outbox file.
+
+Shipped and verified:
+
+- App commit `2258c03` added the signed production endpoint
+  `POST /api/internal/qa/user-reply`.
+- Relay commit `6d6be7c` added Telegram backlog management through `/backlog` and
+  `/backlog JOB-###`, with idempotent Codex/Claude routing approvals.
+- The relay posts approved replies to the app with an HMAC signature, a 15-second
+  timeout, and two transient retries. The app sends through Resend SMTP with a stable
+  idempotency key.
+- Production sender identity is `Dumpster Fire
+  <no-reply@mail.thejobmarketisadumpsterfire.com>`. The verified Resend domain is the
+  `mail.` subdomain, not the root domain. Reply-To remains the existing public Contact
+  address.
+- Vercel production contains the Resend credential, webhook signing secret, project ID,
+  From identity, Reply-To, and subject prefix. Secret values remain outside git.
+- The local relay LaunchAgent uses external webhook delivery. Local and public ngrok
+  health/readiness passed after restart. Readiness reported signed external delivery,
+  two retries, and connected Codex and Claude workers.
+- Live validation ticket `JOB-018` passed draft and delivery callbacks. The app returned
+  HTTP 202, Resend accepted the email on attempt 1, the reply was stored as `sent`, and
+  the ticket closed with `user_reply_sent`. This was webhook delivery, not local outbox
+  delivery.
+
+Operational flow:
+
+1. Website feedback creates a Phred ticket and Telegram card.
+2. `Save reply draft` creates and previews the response.
+3. `Deliver approved reply` sends externally and posts a durable Telegram result.
+4. `/backlog` lists queued product work; `/backlog JOB-###` opens a ticket for Codex or
+   Claude routing.
+
+Important diagnosis lesson: do not infer an email provider's authorized From domain from
+the public site hostname. Validate the exact provider domain first. The initial root-domain
+From address failed with Resend SMTP 550 even though email setup was already complete. The
+Resend key was correctly restricted to the verified
+`mail.thejobmarketisadumpsterfire.com` subdomain. The screenshot of the existing key exposed
+the mismatch; changing only the From address fixed delivery. When Randall says setup is
+already complete, diagnose the remaining mismatch from direct evidence instead of asking him
+to repeat setup.
+
+Next Phred starting point: use the next real website report to confirm a human Telegram tap
+produces the transient callback acknowledgement, durable receipt, and inbox delivery together.
+The full delivery action path is already verified. Synthetic callback IDs cannot validate
+Telegram's temporary callback toast because Telegram did not issue those IDs.
+
 ## 2026-07-16 (evening) — Randall's bug list: 13 fixes SHIPPED + PROD-VERIFIED (Claude)
 
 Every item below is committed to origin/main, deployed, and verified on production
