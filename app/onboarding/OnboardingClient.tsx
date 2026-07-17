@@ -2055,7 +2055,13 @@ export default function OnboardingClient({
       />
 
       <div className={styles.shell}>
-        {gateChecking ? <p className={styles.loading}>Loading…</p> : !signedIn ? loginCard : (
+        {gateChecking ? (
+          <div className={styles.pageLoad}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img className={styles.pageLoadGif} src="/DF-small.gif" alt="" aria-hidden="true" />
+            <p className={styles.pageLoadLabel}>Loading your profile…</p>
+          </div>
+        ) : !signedIn ? loginCard : (
           <>
             {accountPanel}
             {reviewPanel}

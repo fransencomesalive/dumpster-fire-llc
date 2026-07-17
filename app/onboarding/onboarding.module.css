@@ -353,12 +353,29 @@
   min-width: 0;
 }
 
-/* Session + plan gate resolving — same loading treatment as the plan step. */
-.loading {
-  text-align: center;
+/* Session + plan gate resolving — inline page loader (scan-progress DS card):
+   the mascot standee + one display-font line, no scrim, no progress bar. */
+.pageLoad {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-2);
   padding: 64px 16px;
-  font-family: var(--font-body);
-  color: var(--c-ink-soft);
+}
+
+.pageLoadGif {
+  display: block;
+  width: 96px;
+  height: 96px;
+  object-fit: contain;
+  filter: drop-shadow(2px 0 0 var(--c-paper)) drop-shadow(-2px 0 0 var(--c-paper))
+          drop-shadow(0 2px 0 var(--c-paper)) drop-shadow(4px 5px 0 rgba(36, 31, 26, 0.26));
+}
+
+.pageLoadLabel {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  color: var(--c-ink);
+  margin: 0;
 }
 
 .formHeader {

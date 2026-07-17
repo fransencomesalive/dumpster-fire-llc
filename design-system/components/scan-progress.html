@@ -85,6 +85,20 @@
     background-color: var(--role-action); border: var(--line-bold) solid var(--c-ink);
     border-radius: var(--radius-md); box-shadow: var(--shadow-card);
     padding: var(--space-3) var(--space-6); cursor: pointer; }
+
+  /* Inline page loader · landing states (onboarding gate, dashboard jobs, plan).
+     Derived from the overlay above: the same mascot standee carries the wait, but
+     NO scrim, NO box, NO progress bar — a page load has no phases to report. It
+     sits centered where the page's content is about to land, page chrome stays
+     visible (Randall, 2026-07-16). */
+  .pageLoadSection { background: var(--c-paper); padding: var(--space-6);
+    display: flex; flex-direction: column; align-items: center; gap: var(--space-4); }
+  .pageLoadSection .dsLabel { color: var(--role-text-faint); }
+  .pageLoad { display: grid; justify-items: center; gap: var(--space-2); padding: 64px 16px; }
+  .pageLoadGif { display: block; width: 96px; height: 96px; object-fit: contain;
+    filter: drop-shadow(2px 0 0 var(--c-paper)) drop-shadow(-2px 0 0 var(--c-paper))
+            drop-shadow(0 2px 0 var(--c-paper)) drop-shadow(4px 5px 0 rgba(36, 31, 26, 0.26)); }
+  .pageLoadLabel { font-family: var(--font-display); font-size: 1.15rem; color: var(--c-ink); margin: 0; }
 </style>
 </head>
 <body>
@@ -157,6 +171,18 @@
       </div>
     </div>
 
+  </div>
+
+  <div class="pageLoadSection">
+    <p class="dsLabel">Inline page loader · landing wait on onboarding / dashboard / plan — no scrim, no bar, chrome stays visible</p>
+    <div class="pageLoad">
+      <img class="pageLoadGif" src="../DF-small.gif" alt="" aria-hidden="true" />
+      <p class="pageLoadLabel">Loading your profile…</p>
+    </div>
+    <div class="pageLoad">
+      <img class="pageLoadGif" src="../DF-small.gif" alt="" aria-hidden="true" />
+      <p class="pageLoadLabel">Loading your matches…</p>
+    </div>
   </div>
 </body>
 </html>

@@ -124,6 +124,13 @@
      tint the profile-editor nav uses (Randall, 2026-07-16, option 2). */
   .btnSkip:hover, .btnSource:hover { background-color:color-mix(in srgb, var(--c-teal) 14%, var(--c-paper)); }
 
+  /* Inline page loader (scan-progress DS card): mascot standee + one line. */
+  .pageLoad { display:grid; justify-items:center; gap:var(--space-2); padding:64px 16px; }
+  .pageLoadGif { display:block; width:96px; height:96px; object-fit:contain;
+    filter:drop-shadow(2px 0 0 var(--c-paper)) drop-shadow(-2px 0 0 var(--c-paper))
+           drop-shadow(0 2px 0 var(--c-paper)) drop-shadow(4px 5px 0 rgba(36, 31, 26, 0.26)); }
+  .pageLoadLabel { font-family:var(--font-display); font-size:1.15rem; color:var(--c-ink); margin:0; }
+
   /* Sidebar */
   /* Sticky, but the column has grown past one viewport (Overview + titles + search
      settings + board adder) — cap its height and let it scroll internally so the

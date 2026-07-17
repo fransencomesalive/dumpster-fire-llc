@@ -463,7 +463,11 @@ export default function DashboardClient() {
           </div>
 
           {jobsState.status === "loading" ? (
-            <p className={jobsStyles.message}>Loading jobs…</p>
+            <div className={jobsStyles.pageLoad}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img className={jobsStyles.pageLoadGif} src="/DF-small.gif" alt="" aria-hidden="true" />
+              <p className={jobsStyles.pageLoadLabel}>Loading your matches…</p>
+            </div>
           ) : null}
           {jobsState.status === "error" ? (
             <p className={jobsStyles.error}>{jobsState.message}</p>

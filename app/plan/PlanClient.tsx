@@ -120,7 +120,11 @@ export default function PlanClient() {
     <div>
       <SiteHeader sectionHrefPrefix="/" />
       {checking ? (
-        <p className={styles.loading}>Loading…</p>
+        <div className={styles.pageLoad}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img className={styles.pageLoadGif} src="/DF-small.gif" alt="" aria-hidden="true" />
+          <p className={styles.pageLoadLabel}>Loading your plan…</p>
+        </div>
       ) : (
         <div className={styles.wrap}>
           {applied ? (
