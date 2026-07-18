@@ -108,6 +108,10 @@ The first successful Copy of a specific message must atomically and idempotently
 Copying another message creates a separate dated message-history entry while the shared Sent
 Outreach Message action remains checked. Re-copying the same message creates no duplicate.
 
+Copy is available only at the live Outreach step. In the pursuit history the same message is
+shown as a read-only, non-selectable record with no copy control, so saved outreach cannot be
+reused for a different recipient by swapping the name.
+
 The browser clipboard operation and server persistence cannot be one physical transaction.
 If Copy succeeds but persistence fails, the approved UI must expose a retry/recovery state and
 must not claim that tracking was saved.
@@ -120,10 +124,16 @@ It must support these data capabilities:
 
 - Human-readable dates and times for marks and reversals.
 - Dated Message sent entries with the recipient.
-- An expandable Message sent entry that reveals the exact saved message snapshot.
+- An expandable Message sent entry that reveals the exact saved message snapshot as a
+  read-only record.
 - A recipient link to the original scraped LinkedIn profile when available.
 - Plain recipient text when no LinkedIn URL exists.
 - Honest unavailable states for legacy data that cannot prove a date, recipient, or message.
+
+The revealed message is view-only. The pursuit history exposes no copy control, and its
+message text is not selectable, so a sent message cannot be recycled for a different
+recipient by swapping the name (Randall 2026-07-18). The only message-copy action is the
+live Apply Wizard Outreach step; the history is a record, not a reuse surface.
 
 It must never expose technical IDs, event codes, raw payloads, model/provider details,
 backend status names, or recovery commentary. Claude owns the hierarchy, grouping, expansion
@@ -298,6 +308,8 @@ All routes are owner-scoped at both the handler and database-policy layers.
 - Reversals preserve history and Applied classification.
 - Copy success, persistence failure, retry, and duplicate Copy are handled idempotently.
 - Multiple recipients and message snapshots remain distinct.
+- Saved messages in the pursuit history are read-only and non-selectable, with no copy or
+  reuse control.
 - Inactive, dismissed, expired, removed-source, and pasted postings remain accessible.
 - Offer is absent from new types, APIs, tests, designs, production UI, and public copy.
 - Applied Tracking invokes zero generation work.
@@ -311,10 +323,11 @@ All routes are owner-scoped at both the handler and database-policy layers.
 
 ### Design and responsive
 
-- Desktop shows Saved for Later and Applied simultaneously.
-- Mobile at 320, 375, and 390 pixels shows one bucket at a time through a toggle. The
-  columns never stack.
-- Desktop is verified at 1280 and 1440 pixels.
+- The page shows one bucket at a time through a Saved for Later / Applied toggle at every
+  breakpoint. The two buckets are never shown side by side and never stack. The default
+  bucket is Saved for Later. (Randall 2026-07-18, supersedes the earlier two-column desktop
+  model.)
+- Verified at 320, 375, and 390 pixels and at 1280 and 1440 pixels.
 - The Apply Wizard and saved Applied context use the same approved Tracking component.
 - The pursuit history reads as a designed record, not a technical log.
 - No overflow, navigation overlap, clipped targets, or partial clickable hit areas.

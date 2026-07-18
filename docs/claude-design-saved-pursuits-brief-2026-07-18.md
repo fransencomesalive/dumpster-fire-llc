@@ -32,8 +32,10 @@ Tracking step. The saved Applied context must use the same design and production
 ## Locked product behavior
 
 - Destination: Saved Pursuits
-- Desktop buckets: Saved for Later and Applied, visible simultaneously
-- Mobile buckets: toggle between Saved for Later and Applied; never stack both lists
+- Buckets: Saved for Later and Applied, shown one at a time through a toggle at every
+  breakpoint; never side by side, never stacked (Randall 2026-07-18, supersedes the earlier
+  two-column desktop direction)
+- Default bucket: Saved for Later
 - Any positive tracking action promotes a never-tracked pursuit to Applied
 - Applied classification never automatically reverses
 - Six independent actions:
@@ -83,7 +85,8 @@ Tracking card for Applied. Applied must map to the updated Step 4 in `apply-wiza
 6. Uncheck/reversal treatment that preserves the dated history.
 7. Copy succeeded but tracking persistence failed, with an honest retry/recovery state.
 8. Applied saved context with current actions and existing messages.
-9. Applied context with no generation or regeneration controls.
+9. Applied context with no generation or regeneration controls, and saved messages shown as a
+   read-only, non-selectable record with no copy control.
 10. Missing recipient-link state.
 11. Honest legacy-history state where exact message, recipient, or timestamp is unavailable.
 
@@ -101,10 +104,14 @@ The design must support:
 - Human-readable dates and times
 - Tracking marks and reversals
 - Message sent entries with a recipient
-- Expandable exact saved-message text
+- Expandable exact saved-message text as a read-only record
 - Recipient link to the original LinkedIn profile when available
 - Plain recipient text when the link is unavailable
 - Multiple messages and recipients without ambiguity
+
+The revealed message is view-only: no copy control and non-selectable text, so a sent message
+cannot be reused for a different recipient by swapping the name (Randall 2026-07-18). The only
+message-copy action is the live Apply Wizard Outreach step.
 
 Do not show event codes, database status names, IDs, JSON payloads, providers, generation
 internals, or recovery-session commentary. Claude owns the hierarchy, grouping, date treatment,
@@ -112,13 +119,19 @@ expansion interaction, labels, and wording.
 
 ## Saved Pursuits page states
 
-### Desktop
+The page uses the toggle solution at every breakpoint (Randall 2026-07-18, superseding the
+earlier two-column desktop direction). One bucket is shown at a time; the two buckets are
+never shown side by side and never stacked.
 
-- Saved for Later and Applied visible simultaneously as two columns
-- Counts for both buckets
-- Last-activity ordering
+### All breakpoints
+
+- Saved for Later / Applied toggle switches the visible bucket
+- Only one bucket visible at a time; never side by side, never stacked
+- Default bucket is Saved for Later
+- Counts on both toggle segments
+- Last-activity ordering within the visible bucket
 - Populated state
-- Empty state for either or both buckets
+- Empty state for the selected bucket
 - Loading state
 - Error and retry state
 - Raw saved posting with no wizard work
@@ -126,18 +139,12 @@ expansion interaction, labels, and wording.
 - Applied pursuit
 - Inactive, dismissed, expired, removed-source, and pasted-posting states
 
-### Mobile
+### Toggle and responsive requirements
 
-- Toggle between Saved for Later and Applied
-- Only one bucket visible at a time
-- Never stack the two buckets
-- Define the default bucket
 - Define selected, hover, pressed, and keyboard-focus treatment
 - Include counts without causing overflow
 - Full target bounds for the toggle and cards
-- Validate at 320, 375, and 390 pixels
-
-Desktop must also be reviewed at 1280 and 1440 pixels.
+- Validate at 320, 375, and 390 pixels, and at 1280 and 1440 pixels
 
 ## Entry points and vocabulary sweep
 
@@ -157,8 +164,8 @@ Present a numbered review in Claude Design containing:
 
 1. Exact approved cards and revision names.
 2. Exact production component/file mapping.
-3. Desktop two-column behavior.
-4. Mobile toggle behavior and default state.
+3. Toggle behavior at all breakpoints (one bucket at a time, never two columns, never stacked).
+4. Default bucket and toggle selected, hover, pressed, and keyboard-focus treatment.
 5. Every Apply Wizard Tracking state.
 6. Applied-context parity behavior.
 7. Pursuit-history hierarchy and labels.
