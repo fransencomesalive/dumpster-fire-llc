@@ -96,17 +96,39 @@
   border-left: var(--line-reg, 1.5px) solid var(--c-ink-faint);
 }
 
+/* Browse links use the ds-link primitive (Randall, 2026-07-17, approved in Claude Design):
+   a teal underline that carries the registration slip on hover, exactly like the Log in link
+   and the footer links. Overrides the subhead/uppercase theme layer so these read as the
+   display-font underlined links from the approved header card. */
 .publicLandingNavLinks a {
-  color: var(--landing-copy, var(--c-ink-soft));
-  font-size: 13px;
-  font-weight: 800;
+  position: relative;
+  font-family: var(--font-display) !important;
+  text-transform: none !important;
+  letter-spacing: normal !important;
+  font-size: 1rem;
+  font-weight: 400;
   line-height: 1;
+  color: var(--c-ink);
   text-decoration: none;
-  opacity: 0.82;
+  padding-bottom: 3px;
+  opacity: 1;
 }
 
-.publicLandingNavLinks a:hover {
-  opacity: 1;
+.publicLandingNavLinks a::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: var(--line-reg);
+  background: var(--role-accent);
+  mix-blend-mode: multiply;
+  transition: box-shadow var(--dur-fast) var(--ease-snap);
+}
+
+.publicLandingNavLinks a:hover::after,
+.publicLandingNavLinks a:focus-visible::after {
+  box-shadow: var(--reg-shadow);
 }
 
 .publicLandingNavSignIn {
