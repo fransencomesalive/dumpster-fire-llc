@@ -1,0 +1,150 @@
+<!-- @dsCard group="Hero options" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Home · Header → matchbook gap</title>
+<link rel="stylesheet" href="../tokens/tokens.css" />
+<link rel="stylesheet" href="../lib/base.css" />
+<style>
+  /* Spacing study only (Randall, 2026-07-17): the ONE thing being decided here is the
+     VERTICAL gap between the sticky header bar and the top of the matchbook hero card.
+     Header markup is lifted from Chrome · Header & Nav; the matchbook card from Hero ·
+     Matchbook. Widths are held at the live values (header content 1160, card 1080) but
+     width is NOT the question — only the gap labelled on each stage. */
+  body { margin: 0; color: var(--c-ink); font-family: var(--font-body); background: var(--c-paper); }
+
+  .wrap { max-width: 1240px; margin: 0 auto; padding: var(--space-6) var(--space-5); display: grid; gap: var(--space-6); }
+  h1.page { font-family: var(--font-display); font-size: var(--type-h1); margin: 0 0 var(--space-2); }
+  .lede { font-family: var(--font-body); color: var(--role-text-muted); max-width: 64ch; margin: 0; }
+  .stageLabel { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: var(--tracking-subhead);
+    font-size: 0.82rem; color: var(--c-tomato); margin: 0 0 var(--space-2); }
+
+  /* Live page composition: header bar (1160) then the hero band with the matchbook card (1080). */
+  .scroller { overflow-x: auto; }
+  .stage { min-width: 900px; background: var(--c-paper);
+    background-image: var(--fiber-img), var(--grain-img); background-blend-mode: normal, soft-light;
+    background-size: 170px 170px, 46px 46px;
+    border: var(--line-hair) solid var(--c-paper-edge); border-radius: var(--radius-md); padding: 14px 0 0; }
+
+  /* ---- header bar (from Chrome · Header & Nav) ---- */
+  .barWidth { width: min(1160px, calc(100% - 48px)); margin: 0 auto; }
+  .siteHeader { position: relative; background-color: var(--c-paper);
+    background-image: var(--fiber-img), var(--grain-img); background-blend-mode: normal, soft-light;
+    background-size: 170px 170px, 46px 46px;
+    border: var(--line-reg) solid var(--c-ink); border-bottom-width: var(--line-bold);
+    border-radius: var(--radius-md); box-shadow: var(--shadow-card); }
+  .headerInner { display: flex; align-items: center; gap: var(--space-5); padding: var(--space-3) var(--space-5); }
+  .brand { display: inline-flex; align-items: center; gap: var(--space-3); text-decoration: none; color: var(--c-ink); flex: none; }
+  .brand img { width: 34px; height: 34px; object-fit: contain; filter: drop-shadow(2px 2px 0 rgba(36,31,26,0.28)); }
+  .brandWord { font-family: var(--font-display); font-size: 1.05rem; letter-spacing: var(--tracking-display);
+    text-transform: uppercase; color: var(--c-ink); }
+  .navPrimary { display: flex; align-items: center; gap: var(--space-4); margin-left: var(--space-4);
+    padding-left: var(--space-4); border-left: var(--line-reg) solid var(--c-paper-edge); }
+  .navLink { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.04em;
+    font-size: 0.82rem; color: var(--c-ink); }
+  .headerActions { margin-left: auto; display: flex; align-items: center; gap: var(--space-3); flex: none; }
+  .btnPill { display: inline-flex; align-items: center; min-height: 34px; padding: 0 14px; border-radius: var(--radius-pill);
+    border: var(--line-reg) solid var(--c-ink); background: var(--c-teal); color: var(--c-paper);
+    font-family: var(--font-display); font-size: 0.85rem; text-decoration: none; }
+
+  /* ---- hero band + matchbook card (from Hero · Matchbook) ---- */
+  .heroBand { background-color: var(--c-paper-deep); background-image: var(--grain-img);
+    background-blend-mode: soft-light; background-size: 46px 46px; padding-bottom: 34px; }
+  /* The gap under the header is set per-stage via --gap. */
+  .heroBand { padding-top: var(--gap); }
+  .heroInner { position: relative; width: min(1080px, calc(100% - 48px)); margin: 0 auto; box-sizing: border-box;
+    padding: clamp(var(--space-6), 6vw, var(--space-8)) clamp(var(--space-5), 5vw, var(--space-7));
+    border: var(--line-bold) solid var(--c-ink);
+    display: flex; flex-direction: column; align-items: center; gap: var(--space-5); }
+  .heroInner::before { content: ""; position: absolute; inset: 8px; border: var(--line-hair) solid var(--c-ink); pointer-events: none; }
+  .heroMascot { width: clamp(160px, 20vw, 220px); height: auto; object-fit: contain;
+    filter: drop-shadow(2.5px 0 0 var(--c-paper)) drop-shadow(-2.5px 0 0 var(--c-paper))
+            drop-shadow(0 2.5px 0 var(--c-paper)) drop-shadow(0 -2.5px 0 var(--c-paper))
+            drop-shadow(6px 7px 0 rgba(36,31,26,0.32)); }
+  .heroLead { margin: 0; font-family: var(--font-display); color: var(--c-ink);
+    font-size: clamp(1.2rem, 2.2vw, 1.7rem); line-height: 1.04; letter-spacing: var(--tracking-display); text-align: center; }
+
+  /* Gap read-out chip pinned between the two elements. */
+  .gapTag { display: block; width: fit-content; margin: 0 auto; font-family: var(--font-subhead);
+    text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.72rem; color: var(--c-paper);
+    background: var(--c-ink); border-radius: var(--radius-sm); padding: 3px 8px; position: relative; top: calc(var(--gap) / -2 - 9px); }
+
+  .stageA { --gap: 10px; }
+  .stageB { --gap: 36px; }
+  .stageC { --gap: 56px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div>
+    <h1 class="page">Header &rarr; matchbook card · vertical gap</h1>
+    <p class="lede">The vertical space between the bottom of the sticky header bar and the top of the
+    matchbook hero card. <strong>Decided (Randall, 2026-07-17): 10px</strong> &mdash; stage A below is the
+    production value; B (was 36px) and C (56px) are kept for reference. Width is held at the live values
+    and is not part of this study.</p>
+  </div>
+
+  <div>
+    <p class="stageLabel">A · production &mdash; 10px</p>
+    <div class="scroller"><div class="stage stageA">
+      <div class="barWidth">
+        <header class="siteHeader"><div class="headerInner">
+          <a class="brand" href="#"><img src="../dumpsterfireguy.png" alt="" aria-hidden="true" /><span class="brandWord">Home</span></a>
+          <nav class="navPrimary"><span class="navLink">Features</span><span class="navLink">Human Path</span><span class="navLink">Pricing</span><span class="navLink">Contact</span></nav>
+          <div class="headerActions"><a class="btnPill" href="#">Sign in</a><a class="btnPill" href="#">Create profile</a></div>
+        </div></header>
+      </div>
+      <div class="heroBand">
+        <span class="gapTag">10px</span>
+        <div class="heroInner">
+          <img class="heroMascot" src="../dumpsterfireguy.png" alt="" aria-hidden="true" />
+          <p class="heroLead">The Job Market Is A Dumpster Fire</p>
+        </div>
+      </div>
+    </div></div>
+  </div>
+
+  <div>
+    <p class="stageLabel">B · previous &mdash; 36px</p>
+    <div class="scroller"><div class="stage stageB">
+      <div class="barWidth">
+        <header class="siteHeader"><div class="headerInner">
+          <a class="brand" href="#"><img src="../dumpsterfireguy.png" alt="" aria-hidden="true" /><span class="brandWord">Home</span></a>
+          <nav class="navPrimary"><span class="navLink">Features</span><span class="navLink">Human Path</span><span class="navLink">Pricing</span><span class="navLink">Contact</span></nav>
+          <div class="headerActions"><a class="btnPill" href="#">Sign in</a><a class="btnPill" href="#">Create profile</a></div>
+        </div></header>
+      </div>
+      <div class="heroBand">
+        <span class="gapTag">36px</span>
+        <div class="heroInner">
+          <img class="heroMascot" src="../dumpsterfireguy.png" alt="" aria-hidden="true" />
+          <p class="heroLead">The Job Market Is A Dumpster Fire</p>
+        </div>
+      </div>
+    </div></div>
+  </div>
+
+  <div>
+    <p class="stageLabel">C · looser &mdash; 56px</p>
+    <div class="scroller"><div class="stage stageC">
+      <div class="barWidth">
+        <header class="siteHeader"><div class="headerInner">
+          <a class="brand" href="#"><img src="../dumpsterfireguy.png" alt="" aria-hidden="true" /><span class="brandWord">Home</span></a>
+          <nav class="navPrimary"><span class="navLink">Features</span><span class="navLink">Human Path</span><span class="navLink">Pricing</span><span class="navLink">Contact</span></nav>
+          <div class="headerActions"><a class="btnPill" href="#">Sign in</a><a class="btnPill" href="#">Create profile</a></div>
+        </div></header>
+      </div>
+      <div class="heroBand">
+        <span class="gapTag">56px</span>
+        <div class="heroInner">
+          <img class="heroMascot" src="../dumpsterfireguy.png" alt="" aria-hidden="true" />
+          <p class="heroLead">The Job Market Is A Dumpster Fire</p>
+        </div>
+      </div>
+    </div></div>
+  </div>
+</div>
+</body>
+</html>

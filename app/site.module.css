@@ -1883,10 +1883,10 @@
 /* Direct hero-matchbook map for public home. */
 .publicLandingHeroSection {
   min-height: auto;
-  /* --space-7 top: the matchbook frame sat too close under the sticky header;
-     --space-5 bottom: tighten the run-in to the first section headline
-     (Randall, 2026-07-16). */
-  padding: var(--space-7) 0 var(--space-5) !important;
+  /* Top padding tuned so the matchbook frame sits 10px below the sticky header
+     (Randall, 2026-07-17, chosen in Claude Design gap study);
+     --space-5 bottom: tighten the run-in to the first section headline. */
+  padding: 22px 0 var(--space-5) !important;
 }
 
 /* Only the first section after the hero pulls closer to the matchbook card —

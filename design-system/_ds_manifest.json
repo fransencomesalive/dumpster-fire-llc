@@ -64,6 +64,10 @@
       "group": "Hero options"
     },
     {
+      "path": "components/home-hero-header-spacing.html",
+      "group": "Hero options"
+    },
+    {
       "group": "Patterns",
       "path": "patterns/scan-page.html"
     },
