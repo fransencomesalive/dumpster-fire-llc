@@ -187,7 +187,7 @@ delivery endpoint) mid-session — coordinate before touching lib/qa or app/api/
 **OPEN INVESTIGATION (Randall 2026-07-16, handed to Codex): general/broad job boards are
 missing from the public scan — coverage is company boards only.** Facts to start from:
 
-1. The legacy source mandate (`app/scans/SOURCE_INVENTORY.md`, canonical) defines TWO
+1. The legacy source mandate (`docs/legacy-reference/SOURCE_INVENTORY.md`, canonical) defines TWO
    first-class source arrays: (1) broad job boards searched by candidate criteria and
    (2) targeted company career boards. Both must feed the same
    normalize → dedupe → match → rank flow. "Targeted company sources are not a substitute
@@ -199,8 +199,10 @@ missing from the public scan — coverage is company boards only.** Facts to sta
 3. Legacy had broad sources IMPLEMENTED: Remotive (`remotive.com/api/remote-jobs`, ~28
    rows/query cap) and Himalayas (`himalayas.app/jobs/api/search`, 20/request, ~280-380
    rows/scan via 18 profile-derived query variants) — see the legacy connectors in
-   `app/scans/` and the inventory's per-source status/blocker notes (ready / blocked /
-   needs_key / needs_proof) for the rest (LinkedIn/Indeed etc. have documented blockers).
+   `docs/legacy-reference/` (`connectors.ts`, `connector-runner.ts`, `search-sources.ts`,
+   `board-registry.ts`, extracted from the retired `app/scans/` at commit `4e1e5d0`) and the
+   inventory's per-source status/blocker notes (ready / blocked / needs_key / needs_proof)
+   for the rest (LinkedIn/Indeed etc. have documented blockers).
 4. Work needed: confirm which inventory sources are still viable; port broad connectors
    into the public pipeline (`ingestNormalizedJobs`) with profile-derived queries; decide
    cron vs per-scan fetch; broad rows land in the shared pool (owner_user_id null) and the
