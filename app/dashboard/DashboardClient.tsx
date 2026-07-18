@@ -158,8 +158,9 @@ export default function DashboardClient() {
   const [jobsState, setJobsState] = useState<JobsState>({ status: "idle" });
   const [jobsBusy, setJobsBusy] = useState(false);
   const [pursuitContext, setPursuitContext] = useState<{ job: PublicJobRecord; accessToken: string } | null>(null);
-  // Each star tier toggles on/off independently; an empty set shows every match.
-  const [fitFilters, setFitFilters] = useState<Set<number>>(() => new Set());
+  // Each star tier toggles on/off independently. Every tier starts ON (teal); toggling a
+  // tier off (cream) hides that bucket. Matches the legacy /scans default.
+  const [fitFilters, setFitFilters] = useState<Set<number>>(() => new Set([5, 4, 3, 2, 1]));
   const [savedOnly, setSavedOnly] = useState(false);
   const [scanProgress, setScanProgress] = useState<ScanProgress>({ status: "idle" });
   // Company job boards card — the user's private job_sources rows.
@@ -434,7 +435,7 @@ export default function DashboardClient() {
   }));
   const visibleJobs = savedOnly
     ? savedJobs
-    : (fitFilters.size > 0 ? jobs.filter((job) => fitFilters.has(starsFromScore(job.match?.score ?? 0))) : jobs);
+    : jobs.filter((job) => fitFilters.has(starsFromScore(job.match?.score ?? 0)));
   const scanFillWidth = scanProgress.status === "running"
     ? (scanProgress.phase === 0 ? "30%" : scanProgress.phase === 1 ? "62%" : "88%")
     : "100%";
@@ -534,7 +535,9 @@ export default function DashboardClient() {
                 <p className={jobsStyles.empty}>
                   {savedOnly
                     ? "No saved jobs yet. Save matches you want to revisit before deciding whether to pursue them."
-                    : "No active jobs yet. Run a scan once your profile search settings are ready."}
+                    : jobs.length > 0
+                      ? "Every fit tier is turned off. Turn a star tier back on to see your matches."
+                      : "No active jobs yet. Run a scan once your profile search settings are ready."}
                 </p>
               ) : (
                 <div className={jobsStyles.matchList}>
