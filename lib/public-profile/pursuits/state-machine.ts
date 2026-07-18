@@ -29,9 +29,18 @@ const NEXT_STATUS_BY_EVENT: Partial<Record<PursuitEventType, PursuitStatus>> = {
   deleted: "deleted",
 };
 
+// Statuses that already sit at or beyond review_complete. Re-completing review from any of
+// these is idempotent: it updates the review selections but never moves the pursuit backward.
+// A resumed Human Path always re-enters at step 1, so Continue must succeed no matter how far
+// the pursuit previously advanced before it was abandoned.
+const REVIEW_OR_LATER: PursuitStatus[] = [
+  "review_complete", "human_path_generated", "outreach_ready", "outreach_sent",
+  "applied", "responded", "interviewing", "offer", "rejected",
+];
+
 const ALLOWED_FROM: Record<PursuitEventType, PursuitStatus[]> = {
   created: [],
-  review_completed: ["saved", "discovered", "review_complete"],
+  review_completed: ["saved", "discovered", ...REVIEW_OR_LATER],
   human_path_generated: ["review_complete", "human_path_generated"],
   contacts_selected: ["human_path_generated", "outreach_ready"],
   outreach_generated: ["outreach_ready"],
@@ -151,7 +160,11 @@ export function transitionPursuit(
     return { ok: false, issues: [`Cannot apply ${eventType} from ${pursuit.status}.`] };
   }
 
-  const nextStatus = NEXT_STATUS_BY_EVENT[eventType] ?? pursuit.status;
+  // Re-completing review on an already-advanced pursuit updates its selections without
+  // regressing the status (see REVIEW_OR_LATER).
+  const nextStatus = eventType === "review_completed" && REVIEW_OR_LATER.includes(pursuit.status)
+    ? pursuit.status
+    : NEXT_STATUS_BY_EVENT[eventType] ?? pursuit.status;
   const next: Pursuit = {
     ...pursuit,
     status: nextStatus,

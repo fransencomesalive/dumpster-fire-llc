@@ -7,10 +7,10 @@ import "./ds.css";
 
 const gotham = localFont({
   src: [
-    { path: "./scans/fonts/Gotham-Light.otf", weight: "300", style: "normal" },
-    { path: "./scans/fonts/Gotham-Medium.otf", weight: "500", style: "normal" },
-    { path: "./scans/fonts/Gotham-Bold.otf", weight: "700", style: "normal" },
-    { path: "./scans/fonts/Gotham-Black.otf", weight: "900", style: "normal" },
+    { path: "./fonts/Gotham-Light.otf", weight: "300", style: "normal" },
+    { path: "./fonts/Gotham-Medium.otf", weight: "500", style: "normal" },
+    { path: "./fonts/Gotham-Bold.otf", weight: "700", style: "normal" },
+    { path: "./fonts/Gotham-Black.otf", weight: "900", style: "normal" },
   ],
   variable: "--font-gotham",
 });
@@ -48,9 +48,6 @@ export const metadata: Metadata = {
   // Approved OG image: mascot + brand lockup on paper, 1200x630 (Claude Design "Sharing",
   // Randall 2026-07-14). Never reintroduce internal vocabulary here (Human Path, matching).
   description: "A job-search operating system for people who are done feeding the machine. Job boards and ATS's are where good candidates disappear. Stop applying. Start pursuing.",
-  icons: {
-    icon: "/scans/icon.png",
-  },
   openGraph: {
     // Share-card title carries the tagline (Randall, 2026-07-16): iMessage and
     // most platforms render only image + title + domain, and the brand name is

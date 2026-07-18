@@ -186,11 +186,16 @@ export default function ApplyWizardModal({
             const existing = body.pursuit;
             try {
               setPursuitId(existing.id);
-              const [, tracks, matched] = await Promise.all([
+              const [resumed, tracks, matched] = await Promise.all([
                 readPursuit(existing.id),
                 api<RoleTracksResponse>("/api/public-profile/role-tracks", "GET").catch(() => null),
                 api<{ match: MatchResult }>("/api/public-profile/match", "POST", { jobId: initialJob.id }),
               ]);
+              // Pre-select the Human Path already found for this pursuit so a resumed wizard
+              // can advance without re-running the metered contact lookup.
+              setSelectedContactIds(new Set(
+                resumed.contacts.filter((contact) => contact.confidence === "high").map((contact) => contact.id),
+              ));
               setMatch(matched.match);
               const recommended = matched.match.recommendations.roleTrack?.roleTrack.id ?? null;
               setRecommendedRoleTrackId(recommended);
@@ -229,7 +234,10 @@ export default function ApplyWizardModal({
         selectedRoleTrackId: selectedRoleTrackId ?? undefined,
       });
       setStep(2);
-      await discoverContacts(pursuitId);
+      // A resumed pursuit already carries its Human Path; only run discovery when none
+      // exist yet, so we neither re-charge the metered lookup nor attempt an invalid
+      // re-transition from a further-along pursuit state.
+      if (contacts.length === 0) await discoverContacts(pursuitId);
     });
   }
 
@@ -389,7 +397,7 @@ export default function ApplyWizardModal({
                           checked={selectedRoleTrackId === track.id}
                           onChange={() => setSelectedRoleTrackId(track.id)}
                         />
-                        <span>{track.name}{track.id === recommendedRoleTrackId ? " recommended" : ""}</span>
+                        <span>{track.name}{track.id === recommendedRoleTrackId ? " (recommended)" : ""}</span>
                       </label>
                     ))}
                   </div>

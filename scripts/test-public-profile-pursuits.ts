@@ -74,6 +74,15 @@ if (humanPath.ok) {
 }
 
 if (!humanPath.ok) throw new Error("human path transition should succeed");
+// A resumed Human Path re-enters at step 1, so re-completing review on an already-advanced
+// pursuit must succeed, update the selection, and never regress the status.
+const rereviewed = completeReview(humanPath.pursuit, { selectedRoleTrackId: "track-2" }, "2026-06-29T14:30:00.000Z");
+assert.equal(rereviewed.ok, true);
+if (rereviewed.ok) {
+  assert.equal(rereviewed.pursuit.status, "human_path_generated");
+  assert.equal(rereviewed.pursuit.selectedRoleTrackId, "track-2");
+}
+
 const contacts = transitionPursuit(humanPath.pursuit, "contacts_selected", "2026-06-29T15:00:00.000Z", { contactIds: ["contact-1"] });
 assert.equal(contacts.ok, true);
 if (contacts.ok) {

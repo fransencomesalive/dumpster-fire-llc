@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import mascotImg from "./scans/dumpsterfireguy.png";
+import mascotImg from "./dumpsterfireguy.png";
 import SiteHeader from "./components/SiteHeader";
 import styles from "./site.module.css";
 

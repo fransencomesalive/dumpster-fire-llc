@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
-import mascotImg from "../scans/dumpsterfireguy.png";
+import mascotImg from "../dumpsterfireguy.png";
 import styles from "../site.module.css";
 
 // The persistent sticky site header, shared by the homepage and onboarding so the

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import mascotImg from "../scans/dumpsterfireguy.png";
+import mascotImg from "../dumpsterfireguy.png";
 import { clearPublicProfileAccessToken, readPublicProfileAccessToken } from "@/lib/public-profile/browser-session";
 import {
   isGoogleSignInEnabled,

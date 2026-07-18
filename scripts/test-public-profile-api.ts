@@ -859,10 +859,31 @@ async function main() {
     getSession: async () => authed(),
     repositoryRequest,
     loadAggregate: async () => agg,
-    loadPursuit: async () => savedPursuit({ status: "outreach_ready" }),
+    loadPursuit: async () => savedPursuit({ status: "expired" }),
   });
   assert.equal(reviewTransitionError.status, 409);
   assert.equal((await body(reviewTransitionError)).status, "transition_error");
+
+  // A resumed Human Path re-enters at step 1, so re-completing review on an already-advanced
+  // pursuit succeeds and updates the selection without regressing the pursuit's status.
+  let persistedResumeReview: { pursuit: { status: string; selectedRoleTrackId?: string } } | undefined;
+  const reviewResumedAdvanced = await handlePublicProfilePursuitReviewRequest(postRequest("pursuits/review", {
+    pursuitId: "pursuit-1",
+    selectedRoleTrackId: "track-1",
+  }), {
+    now: () => now,
+    getSession: async () => authed(),
+    repositoryRequest,
+    loadAggregate: async () => agg,
+    loadPursuit: async () => savedPursuit({ status: "outreach_ready" }),
+    persistTransition: async (_request, result) => {
+      persistedResumeReview = result as typeof persistedResumeReview;
+    },
+  });
+  assert.equal(reviewResumedAdvanced.status, 200);
+  assert.equal((await body(reviewResumedAdvanced)).status, "review_complete");
+  assert.equal(persistedResumeReview?.pursuit.status, "outreach_ready");
+  assert.equal(persistedResumeReview?.pursuit.selectedRoleTrackId, "track-1");
 
   let persistedReview: unknown;
   const reviewComplete = await handlePublicProfilePursuitReviewRequest(postRequest("pursuits/review", {

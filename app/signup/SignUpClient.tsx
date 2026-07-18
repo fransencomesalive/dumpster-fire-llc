@@ -4,7 +4,7 @@ import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import mascotImg from "../scans/dumpsterfireguy.png";
+import mascotImg from "../dumpsterfireguy.png";
 import SiteHeader from "../components/SiteHeader";
 import {
   isGoogleSignInEnabled,
