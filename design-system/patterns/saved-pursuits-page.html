@@ -1,0 +1,386 @@
+<!-- @dsCard group="Patterns" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Patterns · Saved Pursuits</title>
+<link rel="stylesheet" href="../tokens/tokens.css" />
+<link rel="stylesheet" href="../lib/base.css" />
+<style>
+  /* ===== Saved Pursuits — the protected full page =====================
+     Two buckets, Saved for Later and Applied. Per Randall (2026-07-18) the page
+     uses the SAME toggle solution at EVERY breakpoint: one bucket at a time,
+     switched by a segmented toggle, on desktop and mobile alike. The two lists
+     are never shown side by side and never stack. Each list is ordered by latest
+     activity. Default bucket is Saved for later. Class names port back to a
+     SavedPursuitsClient; reuses the dashboard chrome and the Tracking vocabulary
+     from apply-wizard.html (same six actions, same classification). */
+  body { margin:0; background:var(--c-paper); color:var(--c-ink); font-family:var(--font-body); padding:var(--space-6) 0 var(--space-7); }
+
+  .topBar { width:min(760px, calc(100% - 48px)); margin:clamp(20px, 4vw, 32px) auto var(--space-5);
+    padding-bottom:var(--space-4); border-bottom:var(--line-reg) solid var(--c-ink); }
+  .topTitle { margin:0; font-family:var(--font-display); font-size:var(--type-h2); color:var(--c-ink); }
+  .topLede { margin:4px 0 0; font-family:var(--font-body); color:var(--role-text-muted); max-width:52ch; }
+
+  /* Demo scaffold only — labels each screen/state (not part of the ported page) */
+  .dsScreenLabel { width:min(760px, calc(100% - 48px)); margin:var(--space-7) auto var(--space-3);
+    font-family:var(--font-subhead); text-transform:uppercase; letter-spacing:0.05em; font-size:0.9rem;
+    color:var(--c-ink); border-left:var(--line-bold) solid var(--c-teal); padding-left:var(--space-3); }
+
+  /* ---- Single-column shell (same at all breakpoints) ---- */
+  .savedShell { width:min(760px, calc(100% - 48px)); margin:0 auto; }
+
+  /* Bucket toggle · the one control that switches buckets, full shell width */
+  .bucketToggle { display:flex; width:100%; box-sizing:border-box; border:var(--line-reg) solid var(--c-ink);
+    border-radius:var(--radius-pill); overflow:hidden; box-shadow:var(--shadow-card); background:var(--c-paper);
+    margin-bottom:var(--space-4); }
+  .bucketToggle button { flex:1 1 0; min-width:0; min-height:46px; display:inline-flex; align-items:center;
+    justify-content:center; gap:8px; font-family:var(--font-subhead); text-transform:uppercase; letter-spacing:0.04em;
+    font-size:0.9rem; color:var(--c-ink); background:transparent; border:none; padding:0 var(--space-3); cursor:pointer;
+    transition:background-color var(--dur-fast) var(--ease-snap); }
+  .bucketToggle button + button { border-left:var(--line-reg) solid var(--c-ink); }
+  .bucketToggle button:hover:not([aria-selected="true"]) { background-color:color-mix(in srgb, var(--c-teal) 12%, var(--c-paper)); }
+  .bucketToggle button:active { background-color:color-mix(in srgb, var(--c-teal) 22%, var(--c-paper)); }
+  .bucketToggle button[aria-selected="true"] { color:var(--c-paper); background-color:var(--c-teal);
+    background-image:var(--fiber-img), var(--grain-img); background-blend-mode:normal, soft-light; background-size:170px 170px, 46px 46px; }
+  .bucketToggle button:focus-visible { outline:3px solid var(--c-bluebird); outline-offset:-3px; }
+  .tCount { display:inline-grid; place-items:center; min-width:22px; height:22px; padding:0 7px; box-sizing:border-box;
+    font-size:0.78rem; line-height:1; color:var(--c-ink); background:var(--c-paper); border:var(--line-hair) solid var(--c-ink);
+    border-radius:var(--radius-pill); }
+  .bucketToggle button[aria-selected="true"] .tCount { color:var(--c-teal); background:var(--c-paper); border-color:var(--c-paper); }
+
+  /* Sub-header for the visible bucket (title + sort) */
+  .bucketSubHead { display:flex; align-items:baseline; gap:var(--space-3); flex-wrap:wrap;
+    margin-bottom:var(--space-4); }
+  .bucketSubTitle { font-family:var(--font-display); font-size:1.2rem; color:var(--c-ink); }
+  .bucketSort { margin-left:auto; font-family:var(--font-subhead); text-transform:uppercase; letter-spacing:0.04em;
+    font-size:0.74rem; color:var(--role-text-faint); }
+
+  .pursuitList { display:flex; flex-direction:column; gap:var(--space-4); }
+
+  /* ---- Pursuit card ---- */
+  .pursuitCard { background-color:var(--c-paper-deep); background-image:var(--fiber-img), var(--grain-img);
+    background-blend-mode:normal, soft-light; background-size:170px 170px, 46px 46px;
+    border:var(--line-reg) solid var(--c-ink); border-radius:var(--radius-lg); box-shadow:var(--shadow-card);
+    padding:var(--space-4) var(--space-5); display:flex; flex-direction:column; gap:var(--space-3); }
+  .pursuitCard.isDim { opacity:0.92; }
+  .pursuitTitle { margin:0; font-family:var(--font-display); font-size:1.12rem; line-height:1.15; color:var(--c-ink);
+    overflow-wrap:anywhere; }
+  .titleDivider { display:inline-block; width:8px; height:8px; margin:0 8px; background:var(--c-teal);
+    border:1px solid var(--c-ink); transform:rotate(45deg); vertical-align:0.08em; }
+  .companyName { font-family:var(--font-body); font-weight:400; color:var(--c-ink); }
+  .pursuitMeta { font-family:var(--font-body); font-size:0.9rem; color:var(--role-text-muted); }
+
+  /* Small informational flags for postings that changed after saving. Neutral,
+     never alarming: the immutable snapshot keeps them openable. */
+  .flagRow2 { display:flex; flex-wrap:wrap; gap:var(--space-2); }
+  .pursuitFlag { display:inline-flex; align-items:center; gap:5px; font-family:var(--font-subhead);
+    text-transform:uppercase; letter-spacing:0.04em; font-size:0.68rem; color:var(--role-text-muted);
+    background-color:var(--c-paper); border:var(--line-hair) solid var(--c-ink); border-radius:var(--radius-pill);
+    padding:3px 9px; }
+  .pursuitFlag.isPasted { color:var(--c-bluebird); border-color:var(--c-bluebird); }
+
+  /* Applied bucket: a compact read of the tracked actions (not a control here;
+     the controls live in the Tracking modal the card opens). */
+  .trackChips { display:flex; flex-wrap:wrap; gap:var(--space-2); }
+  .trackChip { display:inline-flex; align-items:center; gap:5px; font-family:var(--font-subhead);
+    text-transform:uppercase; letter-spacing:0.04em; font-size:0.7rem; color:var(--c-teal);
+    background-color:var(--c-paper); border:var(--line-hair) solid var(--c-teal); border-radius:var(--radius-pill);
+    padding:3px 10px; }
+  .trackChip svg { width:11px; height:11px; flex:none; }
+  .trackChip.isNeg { color:var(--role-text-muted); border-color:var(--c-ink); }
+
+  /* Saved-for-later progress hint (draft ready, contacts found, or not started) */
+  .savedHint { display:inline-flex; align-items:center; gap:6px; font-family:var(--font-body); font-size:0.86rem;
+    color:var(--role-text-muted); }
+  .savedHint .dot { width:8px; height:8px; flex:none; border-radius:var(--radius-pill);
+    background-color:var(--c-mustard); border:1px solid var(--c-ink); }
+  .savedHint.isNone .dot { background-color:var(--c-paper-edge); }
+
+  .pursuitFoot { display:flex; align-items:center; flex-wrap:wrap; gap:var(--space-2) var(--space-3);
+    margin-top:2px; padding-top:var(--space-3); border-top:var(--line-hair) solid var(--c-paper-edge); }
+  .pursuitStamp { font-family:var(--font-subhead); text-transform:uppercase; letter-spacing:0.04em; font-size:0.72rem;
+    color:var(--role-text-faint); }
+  .pursuitActions { display:flex; align-items:center; gap:var(--space-2); margin-left:auto; }
+  .pursuitActions button, .pursuitActions a { font-family:var(--font-display); font-size:0.92rem; border-radius:var(--radius-md);
+    padding:var(--space-2) var(--space-4); cursor:pointer; text-decoration:none; white-space:nowrap; }
+  .btnOpen { color:var(--role-action-text); background-color:var(--role-action);
+    border:var(--line-bold) solid var(--c-ink); box-shadow:var(--shadow-card); }
+  .btnOpen:hover { background-color:var(--role-info); box-shadow:var(--reg-box); text-shadow:1px 1px 0 rgba(36,31,26,0.35); }
+  .btnQuiet { color:var(--c-ink); background:transparent; border:var(--line-reg) solid transparent; padding-bottom:3px; }
+  .btnQuiet:hover:not(:disabled) { background-color:color-mix(in srgb, var(--c-teal) 14%, var(--c-paper)); }
+  .btnQuiet:disabled { color:var(--role-text-faint); cursor:default; }
+
+  /* ---- Empty / loading / error ---- */
+  .bucketEmpty { background-color:var(--c-paper); border:var(--line-reg) dashed var(--c-ink); border-radius:var(--radius-md);
+    padding:var(--space-6) var(--space-5); text-align:center; }
+  .bucketEmpty strong { display:block; font-family:var(--font-display); font-size:1.1rem; color:var(--c-ink); margin-bottom:var(--space-2); }
+  .bucketEmpty p { margin:0 auto var(--space-3); font-family:var(--font-body); font-size:0.92rem; color:var(--role-text-muted); max-width:38ch; }
+  .emptyCta { display:inline-block; font-family:var(--font-display); font-size:0.95rem; color:var(--c-ink);
+    background:var(--c-paper); border:var(--line-reg) solid var(--c-ink); border-radius:var(--radius-md);
+    box-shadow:var(--shadow-card); padding:var(--space-2) var(--space-4); text-decoration:none; }
+
+  .skelCard { background-color:var(--c-paper-deep); border:var(--line-hair) solid var(--c-paper-edge);
+    border-radius:var(--radius-lg); padding:var(--space-4) var(--space-5); display:grid; gap:var(--space-3);
+    position:relative; overflow:hidden; }
+  .skelCard::after { content:""; position:absolute; inset:0; pointer-events:none;
+    background:linear-gradient(100deg, transparent 25%, rgba(255,253,247,0.6) 50%, transparent 75%);
+    transform:translateX(-100%); animation:skelSheen 1.5s ease-in-out infinite; }
+  @keyframes skelSheen { from { transform:translateX(-100%); } to { transform:translateX(100%); } }
+  .skelBar { height:12px; border-radius:var(--radius-sm); background-color:var(--c-paper-edge); }
+  .skelBar.w70 { width:70%; } .skelBar.w45 { width:45%; } .skelBar.w30 { width:30%; }
+
+  .bucketError { display:flex; flex-wrap:wrap; align-items:center; gap:var(--space-3);
+    font-family:var(--font-body); color:var(--c-ink); background-color:var(--c-paper);
+    border:var(--line-reg) solid var(--c-tomato); border-left:var(--line-bold) solid var(--c-tomato);
+    border-radius:var(--radius-md); padding:var(--space-4); }
+  .bucketError p { margin:0; flex:1 1 14rem; }
+  .bucketError .retryBtn { font-family:var(--font-display); font-size:0.95rem; color:var(--c-ink); background:var(--c-paper);
+    border:var(--line-reg) solid var(--c-ink); border-radius:var(--radius-md); box-shadow:var(--shadow-card);
+    padding:var(--space-2) var(--space-4); cursor:pointer; white-space:nowrap; }
+
+  /* ---- Phone frames · same shell/toggle at 375 and 320 to prove parity ---- */
+  .phoneRow { width:min(760px, calc(100% - 48px)); margin:0 auto; display:flex; flex-wrap:wrap; gap:var(--space-5); align-items:flex-start; }
+  .phoneFrame { width:375px; max-width:100%; box-sizing:border-box; background:var(--c-paper);
+    border:var(--line-bold) solid var(--c-ink); border-radius:var(--radius-lg); box-shadow:6px 6px 0 rgba(36,31,26,0.35);
+    padding:var(--space-4); }
+  .phoneFrame.w320 { width:320px; }
+  .phoneCap { font-family:var(--font-subhead); text-transform:uppercase; letter-spacing:0.04em; font-size:0.72rem;
+    color:var(--role-text-faint); margin:0 0 var(--space-3); }
+  .mTitle { margin:0 0 var(--space-3); font-family:var(--font-display); font-size:1.5rem; color:var(--c-ink); }
+  .toggleStateNote { width:min(760px, calc(100% - 48px)); margin:var(--space-4) auto 0; font-family:var(--font-body);
+    font-size:0.85rem; font-style:italic; color:var(--role-text-faint); }
+</style>
+</head>
+<body>
+<header class="topBar">
+  <h1 class="topTitle">Saved Pursuits</h1>
+  <p class="topLede">Everything you have saved or started, in one place. Switch between Saved for later (unstarted and in progress) and Applied (anything you have tracked).</p>
+</header>
+
+<!-- ============ SCREEN 1 · SAVED FOR LATER (default) ============ -->
+<p class="dsScreenLabel">Any width 320 to 1440 · Default view · Saved for later selected</p>
+<section class="savedShell">
+  <div class="bucketToggle" role="tablist" aria-label="Choose bucket">
+    <button type="button" role="tab" aria-selected="true">Saved for later <span class="tCount">4</span></button>
+    <button type="button" role="tab" aria-selected="false">Applied <span class="tCount">3</span></button>
+  </div>
+  <div class="bucketSubHead">
+    <span class="bucketSubTitle">Saved for later</span>
+    <span class="bucketSort">Latest activity</span>
+  </div>
+  <div class="pursuitList">
+    <!-- Partially completed Saved for Later (draft + contacts kept) -->
+    <article class="pursuitCard">
+      <h3 class="pursuitTitle">Senior Producer<span class="titleDivider" aria-hidden="true"></span><span class="companyName">Liquid Death</span></h3>
+      <p class="pursuitMeta">$150k&ndash;$185k · Remote (US)</p>
+      <span class="savedHint"><span class="dot"></span>Draft message and 2 contacts ready</span>
+      <div class="pursuitFoot">
+        <span class="pursuitStamp">Updated Jul 17</span>
+        <div class="pursuitActions">
+          <a href="#" class="btnQuiet">Open posting ↗</a>
+          <button type="button" class="btnOpen">Resume</button>
+        </div>
+      </div>
+    </article>
+    <!-- Raw saved posting · no wizard work yet -->
+    <article class="pursuitCard">
+      <h3 class="pursuitTitle">Content Strategist<span class="titleDivider" aria-hidden="true"></span><span class="companyName">Notion</span></h3>
+      <p class="pursuitMeta">$120k&ndash;$140k · Remote (US)</p>
+      <span class="savedHint isNone"><span class="dot"></span>Saved posting, not started</span>
+      <div class="pursuitFoot">
+        <span class="pursuitStamp">Saved Jul 16</span>
+        <div class="pursuitActions">
+          <a href="#" class="btnQuiet">Open posting ↗</a>
+          <button type="button" class="btnOpen">Resume</button>
+        </div>
+      </div>
+    </article>
+    <!-- Pasted posting · saved from a link, kept as an immutable snapshot -->
+    <article class="pursuitCard">
+      <h3 class="pursuitTitle">Growth Lead<span class="titleDivider" aria-hidden="true"></span><span class="companyName">Oatly</span></h3>
+      <p class="pursuitMeta">Compensation not listed · Hybrid</p>
+      <div class="flagRow2"><span class="pursuitFlag isPasted">Pasted posting</span></div>
+      <div class="pursuitFoot">
+        <span class="pursuitStamp">Saved Jul 15</span>
+        <div class="pursuitActions">
+          <a href="#" class="btnQuiet">Open posting ↗</a>
+          <button type="button" class="btnOpen">Resume</button>
+        </div>
+      </div>
+    </article>
+    <!-- Saved posting whose source listing expired · snapshot still opens -->
+    <article class="pursuitCard isDim">
+      <h3 class="pursuitTitle">Brand Designer<span class="titleDivider" aria-hidden="true"></span><span class="companyName">Ghia</span></h3>
+      <p class="pursuitMeta">$110k&ndash;$130k · Remote</p>
+      <div class="flagRow2"><span class="pursuitFlag">No longer listed</span></div>
+      <div class="pursuitFoot">
+        <span class="pursuitStamp">Saved Jul 9</span>
+        <div class="pursuitActions">
+          <button type="button" class="btnQuiet" disabled>Posting closed</button>
+          <button type="button" class="btnOpen">Resume</button>
+        </div>
+      </div>
+    </article>
+  </div>
+</section>
+
+<!-- ============ SCREEN 2 · APPLIED selected ============ -->
+<p class="dsScreenLabel">Any width · Applied selected · same shell, one bucket at a time</p>
+<section class="savedShell">
+  <div class="bucketToggle" role="tablist" aria-label="Choose bucket">
+    <button type="button" role="tab" aria-selected="false">Saved for later <span class="tCount">4</span></button>
+    <button type="button" role="tab" aria-selected="true">Applied <span class="tCount">3</span></button>
+  </div>
+  <div class="bucketSubHead">
+    <span class="bucketSubTitle">Applied</span>
+    <span class="bucketSort">Latest activity</span>
+  </div>
+  <div class="pursuitList">
+    <!-- Applied · interviewing, full chip read -->
+    <article class="pursuitCard">
+      <h3 class="pursuitTitle">Senior Product Designer<span class="titleDivider" aria-hidden="true"></span><span class="companyName">Stripe</span></h3>
+      <p class="pursuitMeta">$140k&ndash;$165k · Remote (US)</p>
+      <div class="trackChips">
+        <span class="trackChip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Sent message</span>
+        <span class="trackChip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Applied</span>
+        <span class="trackChip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Response</span>
+        <span class="trackChip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Interviewing</span>
+      </div>
+      <div class="pursuitFoot">
+        <span class="pursuitStamp">Last activity Jul 17</span>
+        <div class="pursuitActions">
+          <a href="#" class="btnQuiet">Open posting ↗</a>
+          <button type="button" class="btnOpen">Open tracking</button>
+        </div>
+      </div>
+    </article>
+    <!-- Applied · sent message + applied, awaiting reply -->
+    <article class="pursuitCard">
+      <h3 class="pursuitTitle">Creative Producer<span class="titleDivider" aria-hidden="true"></span><span class="companyName">A24</span></h3>
+      <p class="pursuitMeta">$130k&ndash;$155k · New York</p>
+      <div class="trackChips">
+        <span class="trackChip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Sent message</span>
+        <span class="trackChip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Applied</span>
+      </div>
+      <div class="pursuitFoot">
+        <span class="pursuitStamp">Last activity Jul 15</span>
+        <div class="pursuitActions">
+          <a href="#" class="btnQuiet">Open posting ↗</a>
+          <button type="button" class="btnOpen">Open tracking</button>
+        </div>
+      </div>
+    </article>
+    <!-- Applied · pursuit whose source was removed · not moving forward -->
+    <article class="pursuitCard isDim">
+      <h3 class="pursuitTitle">Program Director<span class="titleDivider" aria-hidden="true"></span><span class="companyName">Anthropic</span></h3>
+      <p class="pursuitMeta">Hybrid · San Francisco</p>
+      <div class="trackChips">
+        <span class="trackChip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Sent message</span>
+        <span class="trackChip isNeg">Not moving forward</span>
+      </div>
+      <div class="flagRow2"><span class="pursuitFlag">Source removed</span></div>
+      <div class="pursuitFoot">
+        <span class="pursuitStamp">Last activity Jul 3</span>
+        <div class="pursuitActions">
+          <button type="button" class="btnQuiet" disabled>Posting closed</button>
+          <button type="button" class="btnOpen">Open tracking</button>
+        </div>
+      </div>
+    </article>
+  </div>
+</section>
+
+<!-- ============ SCREEN 3 · EMPTY ============ -->
+<p class="dsScreenLabel">Empty · the selected bucket has nothing yet</p>
+<section class="savedShell">
+  <div class="bucketToggle" role="tablist" aria-label="Choose bucket">
+    <button type="button" role="tab" aria-selected="true">Saved for later <span class="tCount">0</span></button>
+    <button type="button" role="tab" aria-selected="false">Applied <span class="tCount">0</span></button>
+  </div>
+  <div class="bucketEmpty">
+    <strong>Nothing saved yet</strong>
+    <p>Save a match or paste a posting link from your dashboard, and it lands here.</p>
+    <a href="#" class="emptyCta">Go to dashboard</a>
+  </div>
+</section>
+
+<!-- ============ SCREEN 4 · LOADING ============ -->
+<p class="dsScreenLabel">Loading</p>
+<section class="savedShell">
+  <div class="bucketToggle" role="tablist" aria-label="Choose bucket" aria-busy="true">
+    <button type="button" role="tab" aria-selected="true">Saved for later</button>
+    <button type="button" role="tab" aria-selected="false">Applied</button>
+  </div>
+  <div class="pursuitList">
+    <div class="skelCard"><span class="skelBar w70"></span><span class="skelBar w45"></span><span class="skelBar w30"></span></div>
+    <div class="skelCard"><span class="skelBar w45"></span><span class="skelBar w70"></span><span class="skelBar w30"></span></div>
+    <div class="skelCard"><span class="skelBar w70"></span><span class="skelBar w30"></span><span class="skelBar w45"></span></div>
+  </div>
+</section>
+
+<!-- ============ SCREEN 5 · ERROR + RETRY ============ -->
+<p class="dsScreenLabel">Error · load failed, retry without losing the page</p>
+<section class="savedShell">
+  <div class="bucketToggle" role="tablist" aria-label="Choose bucket">
+    <button type="button" role="tab" aria-selected="true">Saved for later</button>
+    <button type="button" role="tab" aria-selected="false">Applied</button>
+  </div>
+  <div class="bucketError">
+    <p><strong>We could not load your pursuits.</strong> Nothing was lost. Check your connection and try again.</p>
+    <button type="button" class="retryBtn">Retry</button>
+  </div>
+</section>
+
+<!-- ============ SCREEN 6 · PHONE PARITY (375 / 320) ============ -->
+<p class="dsScreenLabel">Phone parity · 375 and 320 · identical shell and toggle, counts still fit</p>
+<div class="phoneRow">
+  <!-- 375 · default -->
+  <div class="phoneFrame">
+    <p class="phoneCap">375px · default view</p>
+    <h1 class="mTitle">Saved Pursuits</h1>
+    <div class="bucketToggle" role="tablist" aria-label="Choose bucket">
+      <button type="button" role="tab" aria-selected="true">Saved for later <span class="tCount">4</span></button>
+      <button type="button" role="tab" aria-selected="false">Applied <span class="tCount">3</span></button>
+    </div>
+    <div class="pursuitList">
+      <article class="pursuitCard">
+        <h3 class="pursuitTitle">Senior Producer<span class="titleDivider" aria-hidden="true"></span><span class="companyName">Liquid Death</span></h3>
+        <p class="pursuitMeta">$150k&ndash;$185k · Remote (US)</p>
+        <span class="savedHint"><span class="dot"></span>Draft and 2 contacts ready</span>
+        <div class="pursuitFoot">
+          <span class="pursuitStamp">Updated Jul 17</span>
+          <div class="pursuitActions"><button type="button" class="btnOpen">Resume</button></div>
+        </div>
+      </article>
+    </div>
+  </div>
+  <!-- 320 · narrowest -->
+  <div class="phoneFrame w320">
+    <p class="phoneCap">320px · Applied selected, no overflow</p>
+    <h1 class="mTitle">Saved Pursuits</h1>
+    <div class="bucketToggle" role="tablist" aria-label="Choose bucket">
+      <button type="button" role="tab" aria-selected="false">Saved for later <span class="tCount">4</span></button>
+      <button type="button" role="tab" aria-selected="true">Applied <span class="tCount">3</span></button>
+    </div>
+    <div class="pursuitList">
+      <article class="pursuitCard">
+        <h3 class="pursuitTitle">Senior Product Designer<span class="titleDivider" aria-hidden="true"></span><span class="companyName">Stripe</span></h3>
+        <p class="pursuitMeta">$140k&ndash;$165k · Remote (US)</p>
+        <div class="trackChips">
+          <span class="trackChip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Sent message</span>
+          <span class="trackChip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Interviewing</span>
+        </div>
+        <div class="pursuitFoot">
+          <span class="pursuitStamp">Last activity Jul 17</span>
+          <div class="pursuitActions"><button type="button" class="btnOpen">Open tracking</button></div>
+        </div>
+      </article>
+    </div>
+  </div>
+</div>
+<p class="toggleStateNote">Toggle states across all breakpoints: selected = teal fill; hover = teal tint; pressed = deeper tint; keyboard focus = bluebird ring. Each half is a full 46px tap target; the two lists are never shown together and never stack.</p>
+
+</body>
+</html>

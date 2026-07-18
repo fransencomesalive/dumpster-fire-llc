@@ -72,6 +72,10 @@
       "path": "patterns/scan-page.html"
     },
     {
+      "group": "Patterns",
+      "path": "patterns/saved-pursuits-page.html"
+    },
+    {
       "path": "components/home-human-path.html",
       "group": "Patterns"
     },
@@ -142,10 +146,6 @@
     {
       "group": "Components",
       "path": "components/copy-generation.html"
-    },
-    {
-      "group": "Components",
-      "path": "components/detail.html"
     },
     {
       "group": "Components",

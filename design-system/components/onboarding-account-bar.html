@@ -66,15 +66,6 @@
     transition: background-color var(--dur-fast) var(--ease-snap), box-shadow var(--dur-fast) var(--ease-snap); }
   .btnScan:hover { background-color: var(--role-info); box-shadow: var(--reg-box);
     text-shadow: 1px 1px 0 rgba(36,31,26,0.35); }
-  .pursuitsTipWrap { position: relative; display: inline-flex; flex: none; }
-  .pursuitsTip { position: absolute; left: 50%; bottom: calc(100% + var(--space-2)); z-index: 2;
-    transform: translateX(-50%); white-space: nowrap; font-family: var(--font-ui); font-size: 0.8rem;
-    color: var(--c-paper); background-color: var(--c-ink); border-radius: var(--radius-sm);
-    padding: 6px 10px; box-shadow: var(--shadow-card); opacity: 0; pointer-events: none;
-    transition: opacity var(--dur-fast) var(--ease-snap); }
-  .pursuitsTip::after { content: ""; position: absolute; left: 50%; top: 100%; transform: translateX(-50%);
-    border: 6px solid transparent; border-top-color: var(--c-ink); }
-  .pursuitsTipWrap:hover .pursuitsTip, .pursuitsTipWrap:focus-within .pursuitsTip { opacity: 1; }
   .btnGhost { flex: none; font-family: var(--font-display); font-size: 1.02rem; color: var(--c-ink);
     background-color: var(--c-paper); border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-md);
     box-shadow: var(--shadow-card); padding: var(--space-3) var(--space-4); cursor: pointer;
@@ -114,8 +105,8 @@
     <p class="lede">A single compact bar, not a menu. It runs across the card width without gaining height.
     Left is the identity group: the silhouette photo (a placeholder until photo storage lands), the account
     email in body copy, and <strong>Sign out</strong> below it (red, filling to a red button on hover). Right
-    are the actions: <strong>Job scan</strong>, <strong>Saved Pursuits</strong> with its availability tooltip,
-    then <strong>Plan</strong> and <strong>Billing</strong>. In the global header, the matching profile icon links back here.</p>
+    are the actions: <strong>Job scan</strong> and <strong>Saved Pursuits</strong> (now active, linking to the Saved
+    Pursuits page), then <strong>Plan</strong> and <strong>Billing</strong>. In the global header, the matching profile icon links back here.</p>
   </div>
 
   <!-- Isolated element -->
@@ -139,10 +130,7 @@
             <a class="btnScan" href="#">Job scan
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
             </a>
-            <span class="pursuitsTipWrap">
-              <span id="saved-pursuits-tip-1" class="pursuitsTip" role="tooltip">Coming Soon</span>
-              <button type="button" class="btnScan" aria-disabled="true" aria-describedby="saved-pursuits-tip-1">Saved Pursuits</button>
-            </span>
+            <a class="btnScan" href="#">Saved Pursuits</a>
           </div>
         </div>
       </section>
@@ -184,10 +172,7 @@
             <a class="btnScan" href="#">Job scan
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
             </a>
-            <span class="pursuitsTipWrap">
-              <span id="saved-pursuits-tip-2" class="pursuitsTip" role="tooltip">Coming Soon</span>
-              <button type="button" class="btnScan" aria-disabled="true" aria-describedby="saved-pursuits-tip-2">Saved Pursuits</button>
-            </span>
+            <a class="btnScan" href="#">Saved Pursuits</a>
           </div>
         </div>
       </section>

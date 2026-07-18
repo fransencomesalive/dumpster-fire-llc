@@ -150,13 +150,6 @@
     font-size: 0.8rem; color: var(--role-text-muted); }
   .orDivider::before, .orDivider::after { content: ""; flex: 1 1 auto; height: 1px; background: var(--c-paper-edge); }
 
-  /* Coming Soon marker · teal pill, same treatment as the scan badge family */
-  .comingSoonPill { display: inline-flex; align-items: center; font-family: var(--font-subhead);
-    text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.8rem; line-height: 1;
-    color: var(--c-paper); background-color: var(--c-teal); border: var(--line-reg) solid var(--c-ink);
-    border-radius: var(--radius-pill); padding: 5px 12px;
-    background-image: var(--fiber-img), var(--grain-img); background-blend-mode: normal, soft-light;
-    background-size: 170px 170px, 46px 46px; }
 
   /* Carousel arrows · min 20px below the panel; production radios are position:fixed 1px
      so clicking a tab/arrow never scrolls the page. Section must fit one viewport. */
@@ -327,7 +320,6 @@
     <div class="pathPanel">
       <div class="panelHeader">
         <h3 class="panelTitle">Save it for your records</h3>
-        <span class="comingSoonPill">Coming Soon</span>
       </div>
       <div class="wizardSteps" aria-label="How it works steps">
         <span class="wizardStep"><b>1</b>Profile</span>
@@ -341,10 +333,10 @@
           <p>Every pursuit keeps its own paper trail: who you messaged, what you sent, what happened next. When the recruiter finally calls back in three weeks, you will know exactly where you left off.</p>
         </section>
         <div class="checklistGrid">
-          <label><input type="checkbox" checked /><span>Messaged Sam Lewis</span></label>
+          <label><input type="checkbox" checked /><span>Sent outreach message</span></label>
           <label><input type="checkbox" checked /><span>Applied online</span></label>
-          <label><input type="checkbox" /><span>Heard back</span></label>
-          <label><input type="checkbox" /><span>Saved for follow-up</span></label>
+          <label><input type="checkbox" /><span>Received response</span></label>
+          <label><input type="checkbox" /><span>Interviewing</span></label>
         </div>
       </div>
       <div class="arrows"><span class="arrowBtn">&larr;</span><span>Slide 5 of 5</span><span class="arrowBtn">&rarr;</span></div>

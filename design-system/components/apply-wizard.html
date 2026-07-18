@@ -171,6 +171,81 @@
     border: var(--line-hair) solid var(--c-paper-edge); border-left: var(--line-bold) solid var(--c-teal);
     border-radius: var(--radius-sm); padding: var(--space-2) var(--space-3); margin: var(--space-1) 0 0; }
 
+  /* --- Step 4 · Tracking model (Saved Pursuits) ------------------------------
+     The six actions are independent facts with NO mutual-exclusion gates. Any
+     positive check promotes a never-tracked pursuit to Applied; the CTA reads
+     "Save for later" only while every action is unchecked, and "Save to Applied"
+     after the first positive check. Unchecking never demotes an Applied pursuit.
+     Reuses .checklistGrid for the 2-up action grid. */
+  .trackIntro { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--space-2); }
+  .trackClass { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.8rem;
+    color: var(--c-paper); background-color: var(--c-teal); border: var(--line-hair) solid var(--c-ink);
+    border-radius: var(--radius-pill); padding: 2px 12px; }
+  .trackClass.isSaved { color: var(--c-ink); background-color: var(--c-paper); }
+
+  /* Applied context opens straight into Tracking with NO generation. A compact
+     bar replaces the 4-step wizard stepper so no generation step is implied. */
+  .appliedBar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3);
+    background-color: var(--c-paper); border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-md);
+    padding: var(--space-3) var(--space-4); margin-bottom: var(--space-5); }
+  .appliedBar .appliedTag { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.05em;
+    font-size: 0.82rem; color: var(--c-paper); background-color: var(--c-teal); border: var(--line-reg) solid var(--c-ink);
+    border-radius: var(--radius-pill); padding: 3px 12px; }
+  .appliedBar small { font-family: var(--font-body); color: var(--role-text-muted); }
+
+  /* Pursuit history = a designed, human-readable record, NOT a system log. A left
+     rail threads dated entries: marks, reversals, and expandable sent-message
+     entries. Never shows event codes, IDs, payloads, or provider internals. */
+  .pursuitHistory { border-top: var(--line-hair) solid var(--c-paper-edge); padding-top: var(--space-4); }
+  .pursuitHistory > strong { display: block; font-family: var(--font-display); font-size: 1.1rem;
+    color: var(--c-ink); margin-bottom: var(--space-1); }
+  .historyList { list-style: none; margin: var(--space-3) 0 0; padding: 0 0 0 var(--space-4);
+    position: relative; display: grid; gap: var(--space-3); }
+  .historyList::before { content: ""; position: absolute; left: 4px; top: 7px; bottom: 7px; width: 2px;
+    background-color: var(--c-paper-edge); }
+  .historyItem { position: relative; }
+  .historyItem::before { content: ""; position: absolute; left: calc(-1 * var(--space-4) + -1px); top: 5px;
+    width: 10px; height: 10px; border-radius: var(--radius-pill);
+    background-color: var(--c-teal); border: var(--line-hair) solid var(--c-ink); }
+  .historyItem.isReversal::before { background-color: var(--c-paper-deep); }
+  .historyItem.isUnavailable::before { background-color: var(--c-paper); border-style: dashed; }
+  .historyLine { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-2) var(--space-3); }
+  .historyLabel { font-family: var(--font-body); color: var(--c-ink); }
+  .historyItem.isReversal .historyLabel, .historyItem.isUnavailable .historyLabel { color: var(--role-text-muted); }
+  .historyTime { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.04em;
+    font-size: 0.76rem; color: var(--role-text-faint); }
+  .historyMeta { display: block; font-family: var(--font-body); font-size: var(--type-small);
+    font-style: italic; color: var(--role-text-faint); margin-top: 2px; }
+
+  /* Expandable sent-message entry: native <details> reveals the exact saved
+     snapshot with a re-copy control (idempotent), no JS and no regeneration. */
+  .historyMsg summary { list-style: none; cursor: pointer; display: flex; flex-wrap: wrap; align-items: baseline;
+    gap: var(--space-2) var(--space-3); }
+  .historyMsg summary::-webkit-details-marker { display: none; }
+  .msgDisclosure { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.04em;
+    font-size: 0.72rem; color: var(--c-bluebird); }
+  .historyMsg[open] .msgDisclosure { color: var(--role-text-faint); }
+  /* Saved outreach in the history is a VIEW-ONLY record: no copy control, and the
+     text is not selectable, so a sent message cannot be recycled for a new person by
+     swapping the name (Randall 2026-07-18). The live Outreach step keeps its Copy. */
+  .historyMsgBody { font-family: var(--font-body); color: var(--c-ink); background-color: var(--c-paper);
+    border: var(--line-hair) solid var(--c-paper-edge); border-left: var(--line-bold) solid var(--c-teal);
+    border-radius: var(--radius-sm); padding: var(--space-3); margin-top: var(--space-2);
+    -webkit-user-select: none; user-select: none; }
+  .historyMsgBody p { margin: 0; }
+
+  /* Copy succeeded on the clipboard but server persistence failed: never claim
+     tracking was saved; expose an honest retry. Tomato = a problem to resolve. */
+  .trackAlert { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3);
+    font-family: var(--font-body); color: var(--c-ink); background-color: var(--c-paper);
+    border: var(--line-reg) solid var(--c-tomato); border-left: var(--line-bold) solid var(--c-tomato);
+    border-radius: var(--radius-md); padding: var(--space-3) var(--space-4); }
+  .trackAlert p { margin: 0; flex: 1 1 14rem; }
+  .retryBtn { font-family: var(--font-display); font-size: 0.95rem; color: var(--c-ink); background-color: var(--c-paper);
+    border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-md); box-shadow: var(--shadow-card);
+    padding: var(--space-2) var(--space-4); cursor: pointer; white-space: nowrap; }
+  .retryBtn:hover { background-color: color-mix(in srgb, var(--c-teal) 14%, var(--c-paper)); box-shadow: var(--reg-box); }
+
   /* --- Footer --- */
   .modalFooter { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--space-3);
     margin-top: var(--space-6); padding-top: var(--space-4); border-top: var(--line-hair) solid var(--c-paper-edge); }
@@ -385,7 +460,20 @@
     </div>
 
     <!-- ================= STEP 4 of 4 · TRACK ================= -->
-    <p class="dsStepLabel">Step 4 of 4 · Track</p>
+    <!-- PRODUCTION COMPONENT MAPPING (Randall 2026-07-18):
+         The six actions are the locked Saved Pursuits model (independent multi-select
+         facts, no gates). Every state below is the SAME Track component; only the entry
+         point differs, and there is NO separate Applied component.
+           · Live wizard Track step (first completion): states 1, 2, 4, 5, 7.
+           · Saved Pursuits page (re-opening a pursuit / Applied context): states 3, 6,
+             8, 9, 10, 11, which show accrued history (responses, interviews, reversals,
+             legacy imports) that only exists once a pursuit is re-opened from the Saved
+             Pursuits page.
+         State 3 in particular (multiple actions incl. Received response) is a Saved
+         Pursuits page state, not a first-run wizard state. -->
+
+    <!-- STATE 1 · Six unchecked · never tracked · Save for later -->
+    <p class="dsStepLabel">Track · State 1 · never tracked · Save for later</p>
     <div class="modalBox">
       <div class="modalHeader">
         <h4 class="modalTitle">Human Path: Senior Producer</h4>
@@ -403,22 +491,574 @@
       </div>
       <div class="modalStack">
         <section>
-          <strong>Pursuit tracking</strong>
-          <p>Check what happened. Saving moves the role into the right pipeline state.</p>
+          <div class="trackIntro">
+            <strong>Pursuit tracking</strong>
+            <span class="trackClass isSaved">Saved for later</span>
+          </div>
+          <p>Check what has happened. Every mark is kept with its date, and nothing is overwritten. The first check moves this pursuit to Applied.</p>
         </section>
         <div class="checklistGrid">
+          <label><input type="checkbox" /><span>Sent outreach message</span></label>
+          <label><input type="checkbox" /><span>Applied online</span></label>
+          <label><input type="checkbox" /><span>Received response</span></label>
+          <label><input type="checkbox" /><span>Interviewing</span></label>
+          <label><input type="checkbox" /><span>Not moving forward</span></label>
+          <label><input type="checkbox" /><span>Never heard back</span></label>
+        </div>
+        <section class="pursuitHistory">
+          <strong>Pursuit history</strong>
+          <p class="dsStateLabel">Nothing tracked yet. Marks and sent messages will appear here with their dates.</p>
+        </section>
+      </div>
+      <div class="modalFooter">
+        <a href="#" class="modalBtnClose footerSpacer">Open job posting
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" /></svg></a>
+        <button type="button" class="modalBtnSave">Save for later</button>
+      </div>
+    </div>
+
+    <!-- STATE 2 · First positive check · Save to Applied -->
+    <p class="dsStepLabel">Track · State 2 · first positive check · Save to Applied</p>
+    <div class="modalBox">
+      <div class="modalHeader">
+        <h4 class="modalTitle">Human Path: Senior Producer</h4>
+        <button type="button" class="modalClose" aria-label="Close">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+      </div>
+      <div class="wizardSteps" aria-label="Human Path steps">
+        <button type="button" class="wizardStep"><span>1</span>Review</button>
+        <button type="button" class="wizardStep"><span>2</span>Contacts</button>
+        <button type="button" class="wizardStep"><span>3</span>Outreach</button>
+        <button type="button" class="wizardStep wizardStepActive" disabled><span>4</span>Track</button>
+      </div>
+      <div class="modalStack">
+        <section>
+          <div class="trackIntro">
+            <strong>Pursuit tracking</strong>
+            <span class="trackClass">Applied</span>
+          </div>
+          <p>One mark moves this pursuit to Applied. It stays Applied even if you later uncheck everything.</p>
+        </section>
+        <div class="checklistGrid">
+          <label><input type="checkbox" /><span>Sent outreach message</span></label>
           <label><input type="checkbox" checked /><span>Applied online</span></label>
-          <label><input type="checkbox" /><span>Applied via LinkedIn</span></label>
-          <label><input type="checkbox" checked /><span>Messaged Sam Lewis</span></label>
-          <label><input type="checkbox" /><span>Sent email</span></label>
-          <label><input type="checkbox" /><span>Saved for follow-up</span></label>
-          <label><input type="checkbox" /><span>Skipped after review</span></label>
+          <label><input type="checkbox" /><span>Received response</span></label>
+          <label><input type="checkbox" /><span>Interviewing</span></label>
+          <label><input type="checkbox" /><span>Not moving forward</span></label>
+          <label><input type="checkbox" /><span>Never heard back</span></label>
+        </div>
+        <section class="pursuitHistory">
+          <strong>Pursuit history</strong>
+          <ol class="historyList">
+            <li class="historyItem">
+              <div class="historyLine">
+                <span class="historyLabel">Applied online</span>
+                <span class="historyTime">Today · 2:14 PM</span>
+              </div>
+            </li>
+          </ol>
+        </section>
+      </div>
+      <div class="modalFooter">
+        <a href="#" class="modalBtnClose footerSpacer">Open job posting
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" /></svg></a>
+        <button type="button" class="modalBtnSave reg-on">Save to Applied</button>
+      </div>
+    </div>
+
+    <!-- STATE 3 · Multiple actions checked -->
+    <p class="dsStepLabel">Track · State 3 · multiple actions + response · from the Saved Pursuits page</p>
+    <div class="modalBox">
+      <div class="modalHeader">
+        <h4 class="modalTitle">Human Path: Senior Producer</h4>
+        <button type="button" class="modalClose" aria-label="Close">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+      </div>
+      <div class="wizardSteps" aria-label="Human Path steps">
+        <button type="button" class="wizardStep"><span>1</span>Review</button>
+        <button type="button" class="wizardStep"><span>2</span>Contacts</button>
+        <button type="button" class="wizardStep"><span>3</span>Outreach</button>
+        <button type="button" class="wizardStep wizardStepActive" disabled><span>4</span>Track</button>
+      </div>
+      <div class="modalStack">
+        <section>
+          <div class="trackIntro">
+            <strong>Pursuit tracking</strong>
+            <span class="trackClass">Applied</span>
+          </div>
+          <p>Mark as many as apply. The actions are independent, so nothing cancels anything else out.</p>
+        </section>
+        <div class="checklistGrid">
+          <label><input type="checkbox" checked /><span>Sent outreach message</span></label>
+          <label><input type="checkbox" checked /><span>Applied online</span></label>
+          <label><input type="checkbox" checked /><span>Received response</span></label>
+          <label><input type="checkbox" /><span>Interviewing</span></label>
+          <label><input type="checkbox" /><span>Not moving forward</span></label>
+          <label><input type="checkbox" /><span>Never heard back</span></label>
+        </div>
+        <section class="pursuitHistory">
+          <strong>Pursuit history</strong>
+          <ol class="historyList">
+            <li class="historyItem">
+              <div class="historyLine">
+                <span class="historyLabel">Received response</span>
+                <span class="historyTime">Today · 4:26 PM</span>
+              </div>
+            </li>
+            <li class="historyItem">
+              <details class="historyMsg">
+                <summary>
+                  <span class="historyLabel">Sent outreach message to Sam Lewis</span>
+                  <a href="#" class="seeProfileBtn">LI Profile
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" /></svg></a>
+                  <span class="historyTime">Today · 2:10 PM</span>
+                  <span class="msgDisclosure">Show message</span>
+                </summary>
+                <div class="historyMsgBody">
+                  <p>Hi Sam, I produced Topo Chico's launch end to end and shipped it across 40+ SKUs in a quarter. Liquid Death's Senior Producer role looks like the same problem at a louder volume. Worth a short conversation?</p>
+                </div>
+              </details>
+            </li>
+            <li class="historyItem">
+              <div class="historyLine">
+                <span class="historyLabel">Applied online</span>
+                <span class="historyTime">Today · 2:03 PM</span>
+              </div>
+            </li>
+          </ol>
+        </section>
+      </div>
+      <div class="modalFooter">
+        <a href="#" class="modalBtnClose footerSpacer">Open job posting
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" /></svg></a>
+        <button type="button" class="modalBtnSave reg-on">Save to Applied</button>
+      </div>
+    </div>
+
+    <!-- STATE 4 · Resumed Saved for Later with prior Review / Contacts / Outreach artifacts -->
+    <p class="dsStepLabel">Track · State 4 · resumed Saved for Later, prior work kept</p>
+    <div class="modalBox">
+      <div class="modalHeader">
+        <h4 class="modalTitle">Human Path: Senior Producer</h4>
+        <button type="button" class="modalClose" aria-label="Close">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+      </div>
+      <div class="wizardSteps" aria-label="Human Path steps">
+        <button type="button" class="wizardStep"><span>1</span>Review</button>
+        <button type="button" class="wizardStep"><span>2</span>Contacts</button>
+        <button type="button" class="wizardStep"><span>3</span>Outreach</button>
+        <button type="button" class="wizardStep wizardStepActive" disabled><span>4</span>Track</button>
+      </div>
+      <div class="modalStack">
+        <section>
+          <div class="trackIntro">
+            <strong>Pursuit tracking</strong>
+            <span class="trackClass isSaved">Saved for later</span>
+          </div>
+          <p class="formSuccess">Your review, contacts, and draft message are saved. Step back anytime; this stays Saved for later until you check an action.</p>
+        </section>
+        <div class="checklistGrid">
+          <label><input type="checkbox" /><span>Sent outreach message</span></label>
+          <label><input type="checkbox" /><span>Applied online</span></label>
+          <label><input type="checkbox" /><span>Received response</span></label>
+          <label><input type="checkbox" /><span>Interviewing</span></label>
+          <label><input type="checkbox" /><span>Not moving forward</span></label>
+          <label><input type="checkbox" /><span>Never heard back</span></label>
+        </div>
+        <section class="pursuitHistory">
+          <strong>Pursuit history</strong>
+          <p class="dsStateLabel">No tracking marks yet. Your saved review, contacts, and draft are kept with the pursuit and do not change its state.</p>
+        </section>
+      </div>
+      <div class="modalFooter">
+        <a href="#" class="modalBtnClose footerSpacer">Open job posting
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" /></svg></a>
+        <button type="button" class="modalBtnSave">Save for later</button>
+      </div>
+    </div>
+
+    <!-- STATE 5 · Successful Copy reflected as Sent Outreach Message -->
+    <p class="dsStepLabel">Track · State 5 · Copy recorded as Sent outreach message</p>
+    <div class="modalBox">
+      <div class="modalHeader">
+        <h4 class="modalTitle">Human Path: Senior Producer</h4>
+        <button type="button" class="modalClose" aria-label="Close">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+      </div>
+      <div class="wizardSteps" aria-label="Human Path steps">
+        <button type="button" class="wizardStep"><span>1</span>Review</button>
+        <button type="button" class="wizardStep"><span>2</span>Contacts</button>
+        <button type="button" class="wizardStep"><span>3</span>Outreach</button>
+        <button type="button" class="wizardStep wizardStepActive" disabled><span>4</span>Track</button>
+      </div>
+      <div class="modalStack">
+        <section>
+          <div class="trackIntro">
+            <strong>Pursuit tracking</strong>
+            <span class="trackClass">Applied</span>
+          </div>
+          <p class="formSuccess">Copying your message checked Sent outreach message and moved this pursuit to Applied.</p>
+        </section>
+        <div class="checklistGrid">
+          <label><input type="checkbox" checked /><span>Sent outreach message</span></label>
+          <label><input type="checkbox" /><span>Applied online</span></label>
+          <label><input type="checkbox" /><span>Received response</span></label>
+          <label><input type="checkbox" /><span>Interviewing</span></label>
+          <label><input type="checkbox" /><span>Not moving forward</span></label>
+          <label><input type="checkbox" /><span>Never heard back</span></label>
+        </div>
+        <section class="pursuitHistory">
+          <strong>Pursuit history</strong>
+          <ol class="historyList">
+            <li class="historyItem">
+              <details class="historyMsg">
+                <summary>
+                  <span class="historyLabel">Sent outreach message to Sam Lewis</span>
+                  <a href="#" class="seeProfileBtn">LI Profile
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" /></svg></a>
+                  <span class="historyTime">Today · 2:10 PM</span>
+                  <span class="msgDisclosure">Show message</span>
+                </summary>
+                <div class="historyMsgBody">
+                  <p>Hi Sam, I produced Topo Chico's launch end to end and shipped it across 40+ SKUs in a quarter. Liquid Death's Senior Producer role looks like the same problem at a louder volume. Worth a short conversation?</p>
+                </div>
+              </details>
+              <span class="historyMeta">Recorded when you copied the message.</span>
+            </li>
+          </ol>
+        </section>
+      </div>
+      <div class="modalFooter">
+        <a href="#" class="modalBtnClose footerSpacer">Open job posting
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" /></svg></a>
+        <button type="button" class="modalBtnSave reg-on">Save to Applied</button>
+      </div>
+    </div>
+
+    <!-- STATE 6 · Uncheck / reversal preserves dated history, stays Applied -->
+    <p class="dsStepLabel">Track · State 6 · reversal kept in history, stays Applied</p>
+    <div class="modalBox">
+      <div class="modalHeader">
+        <h4 class="modalTitle">Human Path: Senior Producer</h4>
+        <button type="button" class="modalClose" aria-label="Close">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+      </div>
+      <div class="wizardSteps" aria-label="Human Path steps">
+        <button type="button" class="wizardStep"><span>1</span>Review</button>
+        <button type="button" class="wizardStep"><span>2</span>Contacts</button>
+        <button type="button" class="wizardStep"><span>3</span>Outreach</button>
+        <button type="button" class="wizardStep wizardStepActive" disabled><span>4</span>Track</button>
+      </div>
+      <div class="modalStack">
+        <section>
+          <div class="trackIntro">
+            <strong>Pursuit tracking</strong>
+            <span class="trackClass">Applied</span>
+          </div>
+          <p>Unchecking corrects the current state and is kept as a dated reversal. It never moves an Applied pursuit back to Saved for later.</p>
+        </section>
+        <div class="checklistGrid">
+          <label><input type="checkbox" checked /><span>Sent outreach message</span></label>
+          <label><input type="checkbox" /><span>Applied online</span></label>
+          <label><input type="checkbox" /><span>Received response</span></label>
+          <label><input type="checkbox" /><span>Interviewing</span></label>
+          <label><input type="checkbox" /><span>Not moving forward</span></label>
+          <label><input type="checkbox" /><span>Never heard back</span></label>
+        </div>
+        <section class="pursuitHistory">
+          <strong>Pursuit history</strong>
+          <ol class="historyList">
+            <li class="historyItem isReversal">
+              <div class="historyLine">
+                <span class="historyLabel">Unmarked Applied online</span>
+                <span class="historyTime">Today · 3:02 PM</span>
+              </div>
+              <span class="historyMeta">Correction. Earlier marks are kept below.</span>
+            </li>
+            <li class="historyItem">
+              <div class="historyLine">
+                <span class="historyLabel">Applied online</span>
+                <span class="historyTime">Today · 2:14 PM</span>
+              </div>
+            </li>
+            <li class="historyItem">
+              <div class="historyLine">
+                <span class="historyLabel">Sent outreach message to Sam Lewis</span>
+                <span class="historyTime">Today · 2:10 PM</span>
+              </div>
+            </li>
+          </ol>
+        </section>
+      </div>
+      <div class="modalFooter">
+        <a href="#" class="modalBtnClose footerSpacer">Open job posting
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" /></svg></a>
+        <button type="button" class="modalBtnSave reg-on">Save changes</button>
+      </div>
+    </div>
+
+    <!-- STATE 7 · Copy succeeded but tracking persistence failed · honest retry -->
+    <p class="dsStepLabel">Track · State 7 · copied, but saving failed · retry</p>
+    <div class="modalBox">
+      <div class="modalHeader">
+        <h4 class="modalTitle">Human Path: Senior Producer</h4>
+        <button type="button" class="modalClose" aria-label="Close">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+      </div>
+      <div class="wizardSteps" aria-label="Human Path steps">
+        <button type="button" class="wizardStep"><span>1</span>Review</button>
+        <button type="button" class="wizardStep"><span>2</span>Contacts</button>
+        <button type="button" class="wizardStep"><span>3</span>Outreach</button>
+        <button type="button" class="wizardStep wizardStepActive" disabled><span>4</span>Track</button>
+      </div>
+      <div class="modalStack">
+        <div class="trackAlert">
+          <p><strong>Copied, but not saved.</strong> Your message is on the clipboard. We could not record it to this pursuit, so it is not tracked yet and this pursuit is still Saved for later.</p>
+          <button type="button" class="retryBtn">Retry saving</button>
+        </div>
+        <section>
+          <div class="trackIntro">
+            <strong>Pursuit tracking</strong>
+            <span class="trackClass isSaved">Saved for later</span>
+          </div>
+          <p>Sent outreach message stays unchecked until saving succeeds. You can retry above or check it yourself.</p>
+        </section>
+        <div class="checklistGrid">
+          <label><input type="checkbox" /><span>Sent outreach message</span></label>
+          <label><input type="checkbox" /><span>Applied online</span></label>
+          <label><input type="checkbox" /><span>Received response</span></label>
+          <label><input type="checkbox" /><span>Interviewing</span></label>
+          <label><input type="checkbox" /><span>Not moving forward</span></label>
+          <label><input type="checkbox" /><span>Never heard back</span></label>
         </div>
       </div>
       <div class="modalFooter">
         <a href="#" class="modalBtnClose footerSpacer">Open job posting
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" /></svg></a>
-        <button type="button" class="modalBtnSave reg-on">Save pursuit</button>
+        <button type="button" class="modalBtnSave">Save for later</button>
+      </div>
+    </div>
+
+    <!-- STATE 8 · Applied saved context · current actions + existing messages ·
+         opens directly in Tracking (appliedBar replaces the 4-step stepper) -->
+    <p class="dsStepLabel">Track · State 8 · Applied saved context (opens directly)</p>
+    <div class="modalBox">
+      <div class="modalHeader">
+        <h4 class="modalTitle">Senior Producer · Liquid Death</h4>
+        <button type="button" class="modalClose" aria-label="Close">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+      </div>
+      <div class="appliedBar">
+        <span class="appliedTag">Applied</span>
+        <small>Applying as Executive Producer. Your saved tracking and messages are here.</small>
+      </div>
+      <div class="modalStack">
+        <section>
+          <div class="trackIntro">
+            <strong>Pursuit tracking</strong>
+          </div>
+          <p>Keep this up to date as things move. Marks are independent, and every change is kept with its date.</p>
+        </section>
+        <div class="checklistGrid">
+          <label><input type="checkbox" checked /><span>Sent outreach message</span></label>
+          <label><input type="checkbox" checked /><span>Applied online</span></label>
+          <label><input type="checkbox" checked /><span>Received response</span></label>
+          <label><input type="checkbox" checked /><span>Interviewing</span></label>
+          <label><input type="checkbox" /><span>Not moving forward</span></label>
+          <label><input type="checkbox" /><span>Never heard back</span></label>
+        </div>
+        <section class="pursuitHistory">
+          <strong>Pursuit history</strong>
+          <ol class="historyList">
+            <li class="historyItem">
+              <div class="historyLine">
+                <span class="historyLabel">Interviewing</span>
+                <span class="historyTime">Jul 17 · 11:20 AM</span>
+              </div>
+            </li>
+            <li class="historyItem">
+              <div class="historyLine">
+                <span class="historyLabel">Received response</span>
+                <span class="historyTime">Jul 16 · 9:05 AM</span>
+              </div>
+            </li>
+            <li class="historyItem">
+              <details class="historyMsg">
+                <summary>
+                  <span class="historyLabel">Sent outreach message to Sam Lewis</span>
+                  <a href="#" class="seeProfileBtn">LI Profile
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" /></svg></a>
+                  <span class="historyTime">Jul 15 · 2:10 PM</span>
+                  <span class="msgDisclosure">Show message</span>
+                </summary>
+                <div class="historyMsgBody">
+                  <p>Hi Sam, I produced Topo Chico's launch end to end and shipped it across 40+ SKUs in a quarter. Liquid Death's Senior Producer role looks like the same problem at a louder volume. Worth a short conversation?</p>
+                </div>
+              </details>
+            </li>
+            <li class="historyItem">
+              <div class="historyLine">
+                <span class="historyLabel">Applied online</span>
+                <span class="historyTime">Jul 15 · 2:03 PM</span>
+              </div>
+            </li>
+          </ol>
+        </section>
+      </div>
+      <div class="modalFooter">
+        <a href="#" class="modalBtnClose footerSpacer">Open job posting
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" /></svg></a>
+        <button type="button" class="modalBtnSave reg-on">Save changes</button>
+      </div>
+    </div>
+
+    <!-- STATE 9 · Applied context · saved message reopened, Copy only, NO generation/regeneration -->
+    <p class="dsStepLabel">Track · State 9 · Applied saved message · view only, not copyable, no generation</p>
+    <div class="modalBox">
+      <div class="modalHeader">
+        <h4 class="modalTitle">Senior Producer · Liquid Death</h4>
+        <button type="button" class="modalClose" aria-label="Close">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+      </div>
+      <div class="appliedBar">
+        <span class="appliedTag">Applied</span>
+        <small>Applying as Executive Producer. Saved messages can be reopened to read.</small>
+      </div>
+      <div class="modalStack">
+        <section class="pursuitHistory" style="border-top: none; padding-top: 0;">
+          <strong>Saved messages</strong>
+          <ol class="historyList">
+            <li class="historyItem">
+              <details class="historyMsg" open>
+                <summary>
+                  <span class="historyLabel">Sent outreach message to Sam Lewis</span>
+                  <a href="#" class="seeProfileBtn">LI Profile
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" /></svg></a>
+                  <span class="historyTime">Jul 15 · 2:10 PM</span>
+                  <span class="msgDisclosure">Hide message</span>
+                </summary>
+                <div class="historyMsgBody">
+                  <p>Hi Sam, I produced Topo Chico's launch end to end and shipped it across 40+ SKUs in a quarter. Liquid Death's Senior Producer role looks like the same problem at a louder volume. Worth a short conversation?</p>
+                </div>
+              </details>
+            </li>
+          </ol>
+          <p class="dsStateLabel">A sent message is kept as a read-only record. There is no copy control and the text is not selectable, so an old message can't be reused for a new person by swapping the name. Applied pursuits never regenerate or spend another pursuit.</p>
+        </section>
+      </div>
+      <div class="modalFooter">
+        <a href="#" class="modalBtnClose footerSpacer">Open job posting
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" /></svg></a>
+        <button type="button" class="modalBtnSave reg-on">Save changes</button>
+      </div>
+    </div>
+
+    <!-- STATE 10 · Missing recipient-link · plain recipient text -->
+    <p class="dsStepLabel">Track · State 10 · sent message with no recipient link</p>
+    <div class="modalBox">
+      <div class="modalHeader">
+        <h4 class="modalTitle">Senior Producer · Liquid Death</h4>
+        <button type="button" class="modalClose" aria-label="Close">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+      </div>
+      <div class="appliedBar">
+        <span class="appliedTag">Applied</span>
+        <small>Applying as Executive Producer.</small>
+      </div>
+      <div class="modalStack">
+        <section class="pursuitHistory" style="border-top: none; padding-top: 0;">
+          <strong>Pursuit history</strong>
+          <ol class="historyList">
+            <li class="historyItem">
+              <details class="historyMsg">
+                <summary>
+                  <span class="historyLabel">Sent outreach message to Jordan Alvarez</span>
+                  <span class="historyTime">Jul 15 · 9:40 AM</span>
+                  <span class="msgDisclosure">Show message</span>
+                </summary>
+                <div class="historyMsgBody">
+                  <p>Hi Jordan, I led the relaunch that took our DTC line from flat to 32% quarter over quarter. Your Growth Lead opening reads like the next version of that work. Open to a quick chat?</p>
+                </div>
+              </details>
+              <span class="historyMeta">A profile link was not saved for this recipient.</span>
+            </li>
+          </ol>
+        </section>
+      </div>
+      <div class="modalFooter">
+        <a href="#" class="modalBtnClose footerSpacer">Open job posting
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" /></svg></a>
+        <button type="button" class="modalBtnSave reg-on">Save changes</button>
+      </div>
+    </div>
+
+    <!-- STATE 11 · Legacy history · exact message / recipient / timestamp unavailable -->
+    <p class="dsStepLabel">Track · State 11 · legacy history, details unavailable</p>
+    <div class="modalBox">
+      <div class="modalHeader">
+        <h4 class="modalTitle">Content Strategist · Notion</h4>
+        <button type="button" class="modalClose" aria-label="Close">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+      </div>
+      <div class="appliedBar">
+        <span class="appliedTag">Applied</span>
+        <small>Imported from an earlier pursuit.</small>
+      </div>
+      <div class="modalStack">
+        <section class="pursuitHistory" style="border-top: none; padding-top: 0;">
+          <strong>Pursuit history</strong>
+          <ol class="historyList">
+            <li class="historyItem">
+              <div class="historyLine">
+                <span class="historyLabel">Applied online</span>
+                <span class="historyTime">Jun 2026</span>
+              </div>
+              <span class="historyMeta">Imported. The exact date and time were not recorded.</span>
+            </li>
+            <li class="historyItem isUnavailable">
+              <div class="historyLine">
+                <span class="historyLabel">Sent an outreach message</span>
+                <span class="historyTime">Date unavailable</span>
+              </div>
+              <span class="historyMeta">Imported from an earlier pursuit. The exact message and recipient were not saved, so there is nothing to open.</span>
+            </li>
+          </ol>
+        </section>
+      </div>
+      <div class="modalFooter">
+        <a href="#" class="modalBtnClose footerSpacer">Open job posting
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" /></svg></a>
+        <button type="button" class="modalBtnSave reg-on">Save changes</button>
       </div>
     </div>
 
