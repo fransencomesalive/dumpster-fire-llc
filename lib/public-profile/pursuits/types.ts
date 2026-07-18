@@ -15,6 +15,34 @@ export type PursuitStatus =
 
 export type PursuitUsageType = "pursuit" | "human_path" | "outreach_message";
 
+export type PursuitTrackingAction =
+  | "outreach_sent"
+  | "applied_online"
+  | "response_received"
+  | "interviewing"
+  | "not_moving_forward"
+  | "never_heard_back";
+
+export type PursuitTrackingSource = "manual" | "message_copy" | "migration";
+
+export type PursuitJobSnapshot = {
+  title?: string;
+  companyName?: string;
+  location?: string;
+  compensation?: string;
+  sourceUrl?: string;
+  description?: string;
+  capturedAt?: string;
+};
+
+export type PursuitSelectionSnapshot = {
+  roleTrackId?: string;
+  resumeId?: string;
+  workExampleId?: string;
+  contactSuggestionIds?: string[];
+  capturedAt?: string;
+};
+
 export type PursuitEventType =
   | "created"
   | "review_completed"
@@ -44,9 +72,31 @@ export type Pursuit = {
   risks: string[];
   recommendedWorkExampleIds: string[];
   outreachAngle?: string;
+  trackingStartedAt?: string;
+  notes?: string;
+  jobSnapshot?: PursuitJobSnapshot;
+  selectionSnapshot?: PursuitSelectionSnapshot;
   lastActivityAt: string;
   createdAt: string;
   updatedAt: string;
+};
+
+export type PursuitTrackingEvent = {
+  id?: string;
+  pursuitId: string;
+  userId: string;
+  action: PursuitTrackingAction;
+  checked: boolean;
+  source: PursuitTrackingSource;
+  outreachMessageId?: string;
+  contactSuggestionId?: string;
+  messageSnapshot?: string;
+  recipientNameSnapshot?: string;
+  recipientTitleSnapshot?: string;
+  recipientLinkedinUrlSnapshot?: string;
+  idempotencyKey: string;
+  occurredAt: string;
+  createdAt: string;
 };
 
 export type PursuitEvent = {
@@ -150,6 +200,7 @@ export type OutreachMessageRecord = {
   selectedRoleTrackId?: string;
   selectedResumeId?: string;
   selectedWorkExampleId?: string;
+  sentAt?: string;
   createdAt: string;
   updatedAt: string;
 };

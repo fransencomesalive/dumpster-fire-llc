@@ -9,11 +9,18 @@ import {
   transitionPursuit,
 } from "../lib/public-profile/pursuits/state-machine";
 import {
+  PURSUIT_TRACKING_ACTIONS,
+  derivePursuitTrackingState,
+  planPursuitTrackingChanges,
+  pursuitBucket,
+} from "../lib/public-profile/pursuits/tracking";
+import {
   createPursuitForJob,
   loadContactSuggestionsForPursuit,
   loadOutreachMessageById,
   loadOutreachMessagesForPursuit,
   loadPursuitEventsForPursuit,
+  loadPursuitTrackingEventsForUser,
   loadPursuitsForUser,
   persistContactSelection,
   persistHumanPathGeneration,
@@ -48,6 +55,130 @@ if (created.ok) {
 
 if (!created.ok) throw new Error("createPursuit should succeed");
 const createdPursuit = created.pursuit;
+assert.deepEqual(PURSUIT_TRACKING_ACTIONS, [
+  "outreach_sent",
+  "applied_online",
+  "response_received",
+  "interviewing",
+  "not_moving_forward",
+  "never_heard_back",
+]);
+assert.equal(pursuitBucket(createdPursuit), "saved_for_later");
+
+const initialTracking = planPursuitTrackingChanges({
+  pursuit: createdPursuit,
+  currentEvents: [],
+  requested: { outreach_sent: true, applied_online: true },
+  source: "manual",
+  idempotencyKey: "tracking-request-1",
+  occurredAt: later,
+});
+assert.equal(initialTracking.ok, true);
+if (!initialTracking.ok) throw new Error("initial tracking plan should succeed");
+assert.equal(initialTracking.events.length, 2);
+assert.equal(initialTracking.state.outreach_sent, true);
+assert.equal(initialTracking.state.applied_online, true);
+assert.equal(initialTracking.pursuit.trackingStartedAt, later);
+assert.equal(pursuitBucket(initialTracking.pursuit), "applied");
+
+const idempotentRetry = planPursuitTrackingChanges({
+  pursuit: initialTracking.pursuit,
+  currentEvents: initialTracking.events,
+  requested: { outreach_sent: false },
+  source: "manual",
+  idempotencyKey: "tracking-request-1",
+  occurredAt: "2026-06-29T13:30:00.000Z",
+});
+assert.equal(idempotentRetry.ok, true);
+if (!idempotentRetry.ok) throw new Error("idempotent tracking retry should succeed");
+assert.equal(idempotentRetry.events.length, 0);
+assert.equal(idempotentRetry.state.outreach_sent, true);
+
+const reversedTracking = planPursuitTrackingChanges({
+  pursuit: initialTracking.pursuit,
+  currentEvents: initialTracking.events,
+  requested: { outreach_sent: false },
+  source: "manual",
+  idempotencyKey: "tracking-request-2",
+  occurredAt: "2026-06-29T14:00:00.000Z",
+});
+assert.equal(reversedTracking.ok, true);
+if (!reversedTracking.ok) throw new Error("tracking reversal should succeed");
+assert.equal(reversedTracking.events.length, 1);
+assert.equal(reversedTracking.events[0].checked, false);
+assert.equal(reversedTracking.state.outreach_sent, false);
+assert.equal(pursuitBucket(reversedTracking.pursuit), "applied");
+assert.equal(
+  derivePursuitTrackingState([
+    reversedTracking.events[0],
+    ...initialTracking.events,
+  ]).outreach_sent,
+  false,
+);
+
+const copyTracking = planPursuitTrackingChanges({
+  pursuit: createdPursuit,
+  currentEvents: [],
+  requested: { outreach_sent: true },
+  source: "message_copy",
+  idempotencyKey: "copy-message-1",
+  outreachMessageId: "message-1",
+  contactSuggestionId: "contact-1",
+  messageSnapshot: "Hi Dana.",
+  recipientNameSnapshot: "Dana Lee",
+  recipientTitleSnapshot: "VP Product",
+  recipientLinkedinUrlSnapshot: "https://linkedin.example/dana",
+  occurredAt: later,
+});
+assert.equal(copyTracking.ok, true);
+if (!copyTracking.ok) throw new Error("copy tracking should succeed");
+assert.equal(copyTracking.events[0].source, "message_copy");
+assert.equal(copyTracking.events[0].messageSnapshot, "Hi Dana.");
+assert.equal(copyTracking.events[0].recipientTitleSnapshot, "VP Product");
+assert.equal(copyTracking.events[0].recipientLinkedinUrlSnapshot, "https://linkedin.example/dana");
+
+const secondMessageCopy = planPursuitTrackingChanges({
+  pursuit: copyTracking.pursuit,
+  currentEvents: copyTracking.events,
+  requested: { outreach_sent: true },
+  source: "message_copy",
+  idempotencyKey: "copy-message-2",
+  outreachMessageId: "message-2",
+  messageSnapshot: "Hi Sam.",
+  recipientNameSnapshot: "Sam Rivera",
+  recipientTitleSnapshot: "Product Director",
+  occurredAt: "2026-06-29T13:30:00.000Z",
+});
+assert.equal(secondMessageCopy.ok, true);
+if (!secondMessageCopy.ok) throw new Error("second message copy should succeed");
+assert.equal(secondMessageCopy.events.length, 1);
+assert.equal(secondMessageCopy.events[0].outreachMessageId, "message-2");
+assert.equal(secondMessageCopy.state.outreach_sent, true);
+
+const duplicateMessageCopy = planPursuitTrackingChanges({
+  pursuit: secondMessageCopy.pursuit,
+  currentEvents: [...copyTracking.events, ...secondMessageCopy.events],
+  requested: { outreach_sent: true },
+  source: "message_copy",
+  idempotencyKey: "copy-message-2-retry",
+  outreachMessageId: "message-2",
+  messageSnapshot: "Hi Sam.",
+  occurredAt: "2026-06-29T13:45:00.000Z",
+});
+assert.equal(duplicateMessageCopy.ok, true);
+if (!duplicateMessageCopy.ok) throw new Error("duplicate message copy should be idempotent");
+assert.equal(duplicateMessageCopy.events.length, 0);
+
+const invalidCopyTracking = planPursuitTrackingChanges({
+  pursuit: createdPursuit,
+  currentEvents: [],
+  requested: { outreach_sent: true },
+  source: "message_copy",
+  idempotencyKey: "copy-without-message",
+  occurredAt: later,
+});
+assert.equal(invalidCopyTracking.ok, false);
+
 const reviewed = completeReview(created.pursuit, {
   selectedRoleTrackId: "track-1",
   selectedResumeId: "resume-1",
@@ -287,6 +418,19 @@ async function main() {
       risks: [],
       recommended_work_example_ids: [],
       outreach_angle: null,
+      tracking_started_at: later,
+      notes: "Follow up after the conference.",
+      job_snapshot: {
+        title: "Program Director",
+        companyName: "Useful Studio",
+        sourceUrl: "https://jobs.example/program-director",
+        capturedAt: now,
+      },
+      selection_snapshot: {
+        roleTrackId: "track-1",
+        contactSuggestionIds: ["contact-1"],
+        capturedAt: now,
+      },
       last_activity_at: now,
       created_at: now,
       updated_at: now,
@@ -300,6 +444,10 @@ async function main() {
   assert.ok(listCalls[0].query?.includes("order=last_activity_at.desc"));
   assert.equal(defaultList[0].id, "pursuit-1");
   assert.equal(defaultList[0].status, "saved");
+  assert.equal(defaultList[0].trackingStartedAt, later);
+  assert.equal(defaultList[0].notes, "Follow up after the conference.");
+  assert.equal(defaultList[0].jobSnapshot?.title, "Program Director");
+  assert.deepEqual(defaultList[0].selectionSnapshot?.contactSuggestionIds, ["contact-1"]);
 
   listCalls.length = 0;
   await loadPursuitsForUser(listRequest, "user-1", { status: "outreach_sent" });
@@ -322,6 +470,7 @@ async function main() {
     selected_role_track_id: "track-1",
     selected_resume_id: "resume-1",
     selected_work_example_id: "example-1",
+    sent_at: later,
     created_at: now,
     updated_at: now,
   }] as T;
@@ -331,6 +480,7 @@ async function main() {
   assert.equal(outreachMessages[0].contactSuggestionId, "contact-1");
   assert.equal(outreachMessages[0].rejectionReason, undefined);
   assert.equal(outreachMessages[0].selectedWorkExampleId, "example-1");
+  assert.equal(outreachMessages[0].sentAt, later);
 
   const eventsRequest: PublicProfileRepositoryRequest = async <T>() => [{
     id: "event-1",
@@ -348,6 +498,50 @@ async function main() {
   assert.equal(pursuitEvents[0].eventType, "created");
   assert.equal(pursuitEvents[0].toStatus, "saved");
   assert.equal(pursuitEvents[0].fromStatus, undefined);
+
+  const trackingEventCalls: Array<{ table: string; query?: string }> = [];
+  const trackingEventsRequest: PublicProfileRepositoryRequest = async <T>(
+    table: string,
+    requestOptions: Parameters<PublicProfileRepositoryRequest>[1],
+  ) => {
+    trackingEventCalls.push({ table, query: requestOptions.query });
+    return [{
+      id: "tracking-event-1",
+      pursuit_id: "pursuit-1",
+      user_id: "user-1",
+      action: "outreach_sent",
+      checked: true,
+      source: "message_copy",
+      outreach_message_id: "message-1",
+      contact_suggestion_id: "contact-1",
+      message_snapshot: "Hi Dana.",
+      recipient_name_snapshot: "Dana Lee",
+      recipient_title_snapshot: "VP Product",
+      recipient_linkedin_url_snapshot: "https://linkedin.example/dana",
+      idempotency_key: "copy-message-1:outreach_sent",
+      occurred_at: later,
+      created_at: later,
+    }] as T;
+  };
+  const trackingEvents = await loadPursuitTrackingEventsForUser(
+    trackingEventsRequest,
+    "user-1",
+    "pursuit-1",
+  );
+  assert.equal(trackingEventCalls[0].table, "pursuit_tracking_events");
+  const trackingQuery = decodeURIComponent(trackingEventCalls[0].query ?? "");
+  assert.ok(trackingQuery.includes("pursuit_id=eq.pursuit-1"));
+  assert.ok(trackingQuery.includes("user_id=eq.user-1"));
+  assert.ok(trackingQuery.includes("order=occurred_at.asc,created_at.asc"));
+  assert.equal(trackingEvents[0].id, "tracking-event-1");
+  assert.equal(trackingEvents[0].source, "message_copy");
+  assert.equal(trackingEvents[0].messageSnapshot, "Hi Dana.");
+  assert.equal(trackingEvents[0].recipientNameSnapshot, "Dana Lee");
+  assert.equal(trackingEvents[0].recipientTitleSnapshot, "VP Product");
+  assert.equal(
+    trackingEvents[0].recipientLinkedinUrlSnapshot,
+    "https://linkedin.example/dana",
+  );
 
   // ---- Per-message outreach actions ----
   const baseMessage: OutreachMessageRecord = {

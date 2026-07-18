@@ -9,7 +9,12 @@ import type {
   Pursuit,
   PursuitEvent,
   PursuitEventType,
+  PursuitJobSnapshot,
+  PursuitSelectionSnapshot,
   PursuitStatus,
+  PursuitTrackingAction,
+  PursuitTrackingEvent,
+  PursuitTrackingSource,
   PursuitTransitionResult,
   PursuitUsageEvent,
   PursuitUsageType,
@@ -29,6 +34,10 @@ type PursuitRow = {
   risks: string[];
   recommended_work_example_ids: string[];
   outreach_angle: string | null;
+  tracking_started_at?: string | null;
+  notes?: string | null;
+  job_snapshot?: PursuitJobSnapshot | null;
+  selection_snapshot?: PursuitSelectionSnapshot | null;
   last_activity_at: string;
   created_at: string;
   updated_at: string;
@@ -48,9 +57,31 @@ type OutreachMessageRow = {
   selected_role_track_id: string | null;
   selected_resume_id: string | null;
   selected_work_example_id: string | null;
+  sent_at?: string | null;
   created_at: string;
   updated_at: string;
 };
+
+type PursuitTrackingEventRow = {
+  id: string;
+  pursuit_id: string;
+  user_id: string;
+  action: PursuitTrackingAction;
+  checked: boolean;
+  source: PursuitTrackingSource;
+  outreach_message_id: string | null;
+  contact_suggestion_id: string | null;
+  message_snapshot: string | null;
+  recipient_name_snapshot: string | null;
+  recipient_title_snapshot: string | null;
+  recipient_linkedin_url_snapshot: string | null;
+  idempotency_key: string;
+  occurred_at: string;
+  created_at: string;
+};
+
+const PURSUIT_SELECT = "id,user_id,profile_id,job_id,selected_role_track_id,selected_resume_id,selected_work_example_id,status,fit_summary,risks,recommended_work_example_ids,outreach_angle,tracking_started_at,notes,job_snapshot,selection_snapshot,last_activity_at,created_at,updated_at";
+const OUTREACH_MESSAGE_SELECT = "id,pursuit_id,contact_suggestion_id,recipient_type,channel,message,previous_message,regeneration_count,status,rejection_reason,selected_role_track_id,selected_resume_id,selected_work_example_id,sent_at,created_at,updated_at";
 
 type PursuitEventRow = {
   id: string;
@@ -107,6 +138,10 @@ function mapPursuit(row: PursuitRow): Pursuit {
     risks: row.risks,
     recommendedWorkExampleIds: row.recommended_work_example_ids,
     outreachAngle: defined(row.outreach_angle),
+    trackingStartedAt: defined(row.tracking_started_at),
+    notes: defined(row.notes),
+    jobSnapshot: defined(row.job_snapshot),
+    selectionSnapshot: defined(row.selection_snapshot),
     lastActivityAt: row.last_activity_at,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -127,6 +162,14 @@ function pursuitRowBody(pursuit: Pursuit) {
     risks: pursuit.risks,
     recommended_work_example_ids: pursuit.recommendedWorkExampleIds,
     outreach_angle: pursuit.outreachAngle ?? null,
+    ...(pursuit.trackingStartedAt !== undefined
+      ? { tracking_started_at: pursuit.trackingStartedAt }
+      : {}),
+    ...(pursuit.notes !== undefined ? { notes: pursuit.notes } : {}),
+    ...(pursuit.jobSnapshot !== undefined ? { job_snapshot: pursuit.jobSnapshot } : {}),
+    ...(pursuit.selectionSnapshot !== undefined
+      ? { selection_snapshot: pursuit.selectionSnapshot }
+      : {}),
     last_activity_at: pursuit.lastActivityAt,
     created_at: pursuit.createdAt,
     updated_at: pursuit.updatedAt,
@@ -230,7 +273,7 @@ export async function loadPursuitByIdForUser(
     query: qs({
       id: `eq.${pursuitId}`,
       user_id: `eq.${userId}`,
-      select: "id,user_id,profile_id,job_id,selected_role_track_id,selected_resume_id,selected_work_example_id,status,fit_summary,risks,recommended_work_example_ids,outreach_angle,last_activity_at,created_at,updated_at",
+      select: PURSUIT_SELECT,
       limit: "1",
     }),
   });
@@ -249,7 +292,7 @@ export async function loadPursuitByJobForUser(
     query: qs({
       job_id: `eq.${jobId}`,
       user_id: `eq.${userId}`,
-      select: "id,user_id,profile_id,job_id,selected_role_track_id,selected_resume_id,selected_work_example_id,status,fit_summary,risks,recommended_work_example_ids,outreach_angle,last_activity_at,created_at,updated_at",
+      select: PURSUIT_SELECT,
       limit: "1",
     }),
   });
@@ -286,6 +329,7 @@ function mapOutreachMessage(row: OutreachMessageRow): OutreachMessageRecord {
     selectedRoleTrackId: defined(row.selected_role_track_id),
     selectedResumeId: defined(row.selected_resume_id),
     selectedWorkExampleId: defined(row.selected_work_example_id),
+    sentAt: defined(row.sent_at),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -305,6 +349,26 @@ function mapPursuitEvent(row: PursuitEventRow): PursuitEvent {
   };
 }
 
+function mapPursuitTrackingEvent(row: PursuitTrackingEventRow): PursuitTrackingEvent {
+  return {
+    id: row.id,
+    pursuitId: row.pursuit_id,
+    userId: row.user_id,
+    action: row.action,
+    checked: row.checked,
+    source: row.source,
+    outreachMessageId: defined(row.outreach_message_id),
+    contactSuggestionId: defined(row.contact_suggestion_id),
+    messageSnapshot: defined(row.message_snapshot),
+    recipientNameSnapshot: defined(row.recipient_name_snapshot),
+    recipientTitleSnapshot: defined(row.recipient_title_snapshot),
+    recipientLinkedinUrlSnapshot: defined(row.recipient_linkedin_url_snapshot),
+    idempotencyKey: row.idempotency_key,
+    occurredAt: row.occurred_at,
+    createdAt: row.created_at,
+  };
+}
+
 export async function loadPursuitsForUser(
   request: PublicProfileRepositoryRequest,
   userId: string,
@@ -312,7 +376,7 @@ export async function loadPursuitsForUser(
 ): Promise<Pursuit[]> {
   const query: Record<string, string> = {
     user_id: `eq.${userId}`,
-    select: "id,user_id,profile_id,job_id,selected_role_track_id,selected_resume_id,selected_work_example_id,status,fit_summary,risks,recommended_work_example_ids,outreach_angle,last_activity_at,created_at,updated_at",
+    select: PURSUIT_SELECT,
     order: "last_activity_at.desc",
   };
   if (options.status) {
@@ -331,7 +395,7 @@ export async function loadOutreachMessagesForPursuit(
   const rows = await request<OutreachMessageRow[]>("outreach_messages", {
     query: qs({
       pursuit_id: `eq.${pursuitId}`,
-      select: "id,pursuit_id,contact_suggestion_id,recipient_type,channel,message,previous_message,regeneration_count,status,rejection_reason,selected_role_track_id,selected_resume_id,selected_work_example_id,created_at,updated_at",
+      select: OUTREACH_MESSAGE_SELECT,
       order: "created_at.asc",
     }),
   });
@@ -345,7 +409,7 @@ export async function loadOutreachMessageById(
   const rows = await request<OutreachMessageRow[]>("outreach_messages", {
     query: qs({
       id: `eq.${messageId}`,
-      select: "id,pursuit_id,contact_suggestion_id,recipient_type,channel,message,previous_message,regeneration_count,status,rejection_reason,selected_role_track_id,selected_resume_id,selected_work_example_id,created_at,updated_at",
+      select: OUTREACH_MESSAGE_SELECT,
       limit: "1",
     }),
   });
@@ -385,7 +449,7 @@ export async function persistOutreachRegeneration(
       id: `eq.${input.messageId}`,
       pursuit_id: `eq.${result.pursuit.id}`,
       regeneration_count: "eq.0",
-      select: "id,pursuit_id,contact_suggestion_id,recipient_type,channel,message,previous_message,regeneration_count,status,rejection_reason,selected_role_track_id,selected_resume_id,selected_work_example_id,created_at,updated_at",
+      select: OUTREACH_MESSAGE_SELECT,
     }),
     headers: { Prefer: "return=representation" },
     body: {
@@ -416,6 +480,22 @@ export async function loadPursuitEventsForPursuit(
     }),
   });
   return rows.map(mapPursuitEvent);
+}
+
+export async function loadPursuitTrackingEventsForUser(
+  request: PublicProfileRepositoryRequest,
+  userId: string,
+  pursuitId: string,
+): Promise<PursuitTrackingEvent[]> {
+  const rows = await request<PursuitTrackingEventRow[]>("pursuit_tracking_events", {
+    query: qs({
+      pursuit_id: `eq.${pursuitId}`,
+      user_id: `eq.${userId}`,
+      select: "id,pursuit_id,user_id,action,checked,source,outreach_message_id,contact_suggestion_id,message_snapshot,recipient_name_snapshot,recipient_title_snapshot,recipient_linkedin_url_snapshot,idempotency_key,occurred_at,created_at",
+      order: "occurred_at.asc,created_at.asc",
+    }),
+  });
+  return rows.map(mapPursuitTrackingEvent);
 }
 
 export async function createPursuitForJob(

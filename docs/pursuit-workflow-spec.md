@@ -1,5 +1,12 @@
 # Dumpster Fire Pursuit Workflow Specification
 
+> **PARTIALLY SUPERSEDED, 2026-07-18:** The canonical specification for Saved Pursuits is
+> `docs/saved-pursuits-feature-spec-2026-07-18.md`. That document supersedes this file's
+> Saved Job versus Pursuit split, linear tracking lifecycle, dashboard-column model, and
+> Offer action. The Review, Human Path, contact-selection, outreach-generation, expiration,
+> and no-automatic-deletion principles here remain valid where they do not conflict with the
+> newer specification.
+
 ## Purpose
 
 A Pursuit is the core unit of work in Dumpster Fire.
