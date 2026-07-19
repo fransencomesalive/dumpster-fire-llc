@@ -29,8 +29,9 @@ Implemented behavior:
   as unavailable rather than displaying an invented date.
 - Original posting and mutable selection context are snapshotted. Profile and job references are
   nullable and use `ON DELETE SET NULL`, so saved history survives profile/job deletion.
-- Dashboard Save/Unsave now crosses one canonical atomic RPC. Save keeps `saved_jobs` compatible
-  while creating or reusing the canonical pursuit; Unsave removes only the compatibility row.
+- Dashboard Save/Unsave uses one canonical atomic RPC when migration `180003` is installed. A
+  missing-RPC-only compatibility fallback preserves the existing `saved_jobs` surface during the
+  main-auto-deploy/explicit-migration authorization window; every other RPC error still surfaces.
 - Existing `saved_jobs` rows convert idempotently into canonical unmetered Saved for Later
   pursuits. Notes and valid legacy facts are preserved; Offer is counted but never mapped.
 - Initial outreach retries replay a prior committed result before profile, job, contact, message,
@@ -149,9 +150,10 @@ still owns:
 ### Compatibility surface
 
 `saved_jobs` remains as a compatibility table and the legacy scalar pursuit status/endpoints remain
-temporarily. New Save writes are canonical and atomic, and migration `180003` converts existing
-rows, but retiring legacy reads/writes requires the approved UI/data cutover and verified
-production reconciliation.
+temporarily. New Save writes are canonical and atomic after migration `180003`; until that RPC is
+present, only its explicit missing-function error falls back to the legacy compatibility write.
+Migration `180003` converts those rows. Retiring legacy reads/writes requires the approved UI/data
+cutover and verified production reconciliation.
 
 Initial outreach clients should send a stable idempotency key for each distinct generation intent.
 A repeated key replays the exact committed request; a new key allows a later distinct generation

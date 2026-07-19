@@ -131,6 +131,7 @@ const jobs: JobRow[] = [
 const scanResults: ScanResultRow[] = [];
 const savedJobs: SavedJobRow[] = [];
 const canonicalSaveCalls: Array<Record<string, unknown>> = [];
+let canonicalSaveRpcAvailable = true;
 const jobSources: JobSourceRow[] = [];
 const unrecognizedBoardSubmissions: Array<{ user_id: string; url: string; reason: string }> = [];
 let failSubmissionLogging = false;
@@ -142,6 +143,9 @@ const request: PublicProfileRepositoryRequest = async <T>(
   const query = decodeURIComponent(options.query ?? "");
 
   if (table === "rpc/set_canonical_job_saved") {
+    if (!canonicalSaveRpcAvailable) {
+      throw new Error("Supabase POST rpc/set_canonical_job_saved failed (404): PGRST202");
+    }
     const body = options.body as Record<string, unknown>;
     canonicalSaveCalls.push(body);
     const saved = body.p_saved === true;
@@ -539,6 +543,21 @@ async function main() {
   assert.equal(unsaved.summary.savedJobs, 0);
   assert.equal(unsaved.jobs[0].saved, false);
   assert.equal(canonicalSaveCalls[1].p_saved, false);
+
+  // A main deployment can briefly precede an explicitly authorized production
+  // migration. Missing-RPC fallback keeps the existing Save surface available,
+  // while every other RPC failure must still surface.
+  canonicalSaveRpcAvailable = false;
+  const compatibilitySaved = await setPublicJobSavedForUser(request, userId, "job-1", true, now);
+  assert.equal("status" in compatibilitySaved, false);
+  if ("status" in compatibilitySaved) throw new Error("Expected compatibility save response");
+  assert.equal(compatibilitySaved.summary.savedJobs, 1);
+  assert.equal(canonicalSaveCalls.length, 2);
+  const compatibilityUnsaved = await setPublicJobSavedForUser(request, userId, "job-1", false, now);
+  assert.equal("status" in compatibilityUnsaved, false);
+  if ("status" in compatibilityUnsaved) throw new Error("Expected compatibility unsave response");
+  assert.equal(compatibilityUnsaved.summary.savedJobs, 0);
+  canonicalSaveRpcAvailable = true;
 
   const missing = await setPublicJobSavedForUser(request, userId, "job-missing", true, now);
   assert.deepEqual(missing, { status: "not_in_results" });

@@ -763,17 +763,46 @@ export async function setPublicJobSavedForUser(
     job = mapPublicJobRecord(jobRow);
   }
 
-  await request("rpc/set_canonical_job_saved", {
-    method: "POST",
-    body: {
-      p_user_id: userId,
-      p_profile_id: readiness.aggregate.profile.id,
-      p_job_id: jobId,
-      p_saved: saved,
-      p_job_snapshot: snapshotPublicJob(job, updatedAt),
-      p_now: updatedAt,
-    },
-  });
+  try {
+    await request("rpc/set_canonical_job_saved", {
+      method: "POST",
+      body: {
+        p_user_id: userId,
+        p_profile_id: readiness.aggregate.profile.id,
+        p_job_id: jobId,
+        p_saved: saved,
+        p_job_snapshot: snapshotPublicJob(job, updatedAt),
+        p_now: updatedAt,
+      },
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "";
+    const rpcMissing = message.includes("set_canonical_job_saved")
+      && (message.includes("PGRST202") || message.includes("(404)"));
+    if (!rpcMissing) throw error;
+
+    // Main auto-deploys before production migrations are explicitly authorized.
+    // Preserve the existing Save surface during that release window; once migration
+    // 180003 installs the RPC, every write automatically uses the canonical path above.
+    if (saved) {
+      await request("saved_jobs", {
+        method: "POST",
+        query: "?on_conflict=user_id,job_id",
+        headers: { Prefer: "resolution=merge-duplicates" },
+        body: {
+          user_id: userId,
+          profile_id: readiness.aggregate.profile.id,
+          job_id: jobId,
+          updated_at: updatedAt,
+        },
+      });
+    } else {
+      await request("saved_jobs", {
+        method: "DELETE",
+        query: qs({ user_id: `eq.${userId}`, job_id: `eq.${jobId}` }),
+      });
+    }
+  }
 
   return readPublicJobsForUser(request, userId, updatedAt);
 }
