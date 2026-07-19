@@ -13,6 +13,7 @@ import {
   derivePursuitTrackingState,
   planPursuitTrackingChanges,
   pursuitBucket,
+  pursuitHistory,
 } from "../lib/public-profile/pursuits/tracking";
 import {
   createPursuitForJob,
@@ -25,8 +26,10 @@ import {
   persistContactSelection,
   persistHumanPathGeneration,
   persistOutreachGeneration,
+  persistOutreachMessageCopy,
   persistOutreachRegeneration,
   persistPursuitTransition,
+  persistPursuitTrackingMutation,
   updateOutreachMessage,
 } from "../lib/public-profile/pursuits/repository";
 import type { OutreachMessageRecord } from "../lib/public-profile/pursuits/types";
@@ -49,8 +52,8 @@ assert.equal(created.ok, true);
 if (created.ok) {
   assert.equal(created.pursuit.status, "saved");
   assert.equal(created.event.eventType, "created");
-  assert.equal(created.event.usageType, "pursuit");
-  assert.equal(created.usageEvents[0].usageType, "pursuit");
+  assert.equal(created.event.usageType, undefined);
+  assert.deepEqual(created.usageEvents, []);
 }
 
 if (!created.ok) throw new Error("createPursuit should succeed");
@@ -64,6 +67,28 @@ assert.deepEqual(PURSUIT_TRACKING_ACTIONS, [
   "never_heard_back",
 ]);
 assert.equal(pursuitBucket(createdPursuit), "saved_for_later");
+assert.equal(PURSUIT_TRACKING_ACTIONS.includes("offer" as never), false);
+
+for (let mask = 0; mask < 64; mask += 1) {
+  const requested = Object.fromEntries(PURSUIT_TRACKING_ACTIONS.map((action, index) => [
+    action,
+    Boolean(mask & (1 << index)),
+  ]));
+  const combination = planPursuitTrackingChanges({
+    pursuit: createdPursuit,
+    currentEvents: [],
+    requested,
+    source: "manual",
+    idempotencyKey: `combination-${mask}`,
+    occurredAt: later,
+  });
+  assert.equal(combination.ok, true);
+  if (!combination.ok) throw new Error(`tracking combination ${mask} should succeed`);
+  for (const [index, action] of PURSUIT_TRACKING_ACTIONS.entries()) {
+    assert.equal(combination.state[action], Boolean(mask & (1 << index)));
+  }
+  assert.equal(pursuitBucket(combination.pursuit), mask === 0 ? "saved_for_later" : "applied");
+}
 
 const initialTracking = planPursuitTrackingChanges({
   pursuit: createdPursuit,
@@ -124,7 +149,7 @@ const copyTracking = planPursuitTrackingChanges({
   idempotencyKey: "copy-message-1",
   outreachMessageId: "message-1",
   contactSuggestionId: "contact-1",
-  messageSnapshot: "Hi Dana.",
+  messageSnapshot: "  Hi Dana.\n\nThanks.  ",
   recipientNameSnapshot: "Dana Lee",
   recipientTitleSnapshot: "VP Product",
   recipientLinkedinUrlSnapshot: "https://linkedin.example/dana",
@@ -133,7 +158,7 @@ const copyTracking = planPursuitTrackingChanges({
 assert.equal(copyTracking.ok, true);
 if (!copyTracking.ok) throw new Error("copy tracking should succeed");
 assert.equal(copyTracking.events[0].source, "message_copy");
-assert.equal(copyTracking.events[0].messageSnapshot, "Hi Dana.");
+assert.equal(copyTracking.events[0].messageSnapshot, "  Hi Dana.\n\nThanks.  ");
 assert.equal(copyTracking.events[0].recipientTitleSnapshot, "VP Product");
 assert.equal(copyTracking.events[0].recipientLinkedinUrlSnapshot, "https://linkedin.example/dana");
 
@@ -179,6 +204,53 @@ const invalidCopyTracking = planPursuitTrackingChanges({
 });
 assert.equal(invalidCopyTracking.ok, false);
 
+const allMarked = planPursuitTrackingChanges({
+  pursuit: createdPursuit,
+  currentEvents: [],
+  requested: Object.fromEntries(PURSUIT_TRACKING_ACTIONS.map((action) => [action, true])),
+  source: "manual",
+  idempotencyKey: "mark-all",
+  occurredAt: later,
+});
+assert.equal(allMarked.ok, true);
+if (!allMarked.ok) throw new Error("marking every tracking action should succeed");
+const allReversed = planPursuitTrackingChanges({
+  pursuit: allMarked.pursuit,
+  currentEvents: allMarked.events,
+  requested: Object.fromEntries(PURSUIT_TRACKING_ACTIONS.map((action) => [action, false])),
+  source: "manual",
+  idempotencyKey: "reverse-all",
+  occurredAt: "2026-06-29T14:00:00.000Z",
+});
+assert.equal(allReversed.ok, true);
+if (!allReversed.ok) throw new Error("reversing every tracking action should succeed");
+assert.equal(allMarked.events.length + allReversed.events.length, 12);
+assert.deepEqual(allReversed.state, {
+  outreach_sent: false,
+  applied_online: false,
+  response_received: false,
+  interviewing: false,
+  not_moving_forward: false,
+  never_heard_back: false,
+});
+assert.equal(allReversed.pursuit.trackingStartedAt, later);
+assert.equal(pursuitBucket(allReversed.pursuit), "applied");
+
+const safeHistory = pursuitHistory([
+  ...copyTracking.events,
+  ...reversedTracking.events,
+]);
+assert.equal(safeHistory[0].type, "tracking");
+assert.equal(safeHistory[0].label, "Sent outreach message");
+assert.equal(safeHistory[0].change, "unmarked");
+const messageHistory = safeHistory.find((entry) => entry.type === "message");
+assert.equal(messageHistory?.message.text, "  Hi Dana.\n\nThanks.  ");
+assert.equal(messageHistory?.recipient.name, "Dana Lee");
+const serializedHistory = JSON.stringify(safeHistory);
+for (const forbidden of ["idempotencyKey", "pursuitId", "userId", "message_copy", "outreach_sent"]) {
+  assert.equal(serializedHistory.includes(forbidden), false);
+}
+
 const reviewed = completeReview(created.pursuit, {
   selectedRoleTrackId: "track-1",
   selectedResumeId: "resume-1",
@@ -222,12 +294,15 @@ if (contacts.ok) {
 }
 
 if (!contacts.ok) throw new Error("contact selection should succeed");
-const outreach = transitionPursuit(contacts.pursuit, "outreach_generated", "2026-06-29T16:00:00.000Z", { messageCount: 2 });
+const outreach = transitionPursuit(contacts.pursuit, "outreach_generated", "2026-06-29T16:00:00.000Z", {
+  messageCount: 2,
+  chargePursuit: true,
+});
 assert.equal(outreach.ok, true);
 if (outreach.ok) {
   assert.equal(outreach.pursuit.status, "outreach_ready");
-  assert.equal(outreach.usageEvents[0].usageType, "outreach_message");
-  assert.equal(outreach.usageEvents[0].quantity, 2);
+  assert.deepEqual(outreach.usageEvents.map((event) => event.usageType), ["pursuit", "outreach_message"]);
+  assert.equal(outreach.usageEvents[1].quantity, 2);
 }
 
 if (!outreach.ok) throw new Error("outreach transition should succeed");
@@ -251,12 +326,7 @@ assert.equal(interviewing.ok, true);
 if (interviewing.ok) assert.equal(interviewing.pursuit.status, "interviewing");
 
 if (!interviewing.ok) throw new Error("interviewing pursuit should be available for tracking tests");
-const offer = transitionPursuit(interviewing.pursuit, "offer", "2026-06-29T21:00:00.000Z");
-assert.equal(offer.ok, true);
-if (offer.ok) assert.equal(offer.pursuit.status, "offer");
-
-if (!offer.ok) throw new Error("offer pursuit should be available for tracking tests");
-const rejected = transitionPursuit(offer.pursuit, "rejected", "2026-06-29T22:00:00.000Z");
+const rejected = transitionPursuit(interviewing.pursuit, "rejected", "2026-06-29T22:00:00.000Z");
 assert.equal(rejected.ok, true);
 if (rejected.ok) assert.equal(rejected.pursuit.status, "rejected");
 
@@ -298,7 +368,7 @@ async function main() {
   assert.equal(calls[0].table, "pursuits");
   assert.equal(calls[0].method, "POST");
   assert.equal(calls[1].table, "pursuit_events");
-  assert.equal(calls[2].table, "usage_ledger");
+  assert.equal(calls.some((call) => call.table === "usage_ledger"), false);
 
   if (!reviewed.ok) throw new Error("reviewed pursuit should be available for repository test");
   calls.length = 0;
@@ -369,8 +439,88 @@ async function main() {
   });
 
   if (!outreach.ok) throw new Error("outreach pursuit should be available for repository test");
-  calls.length = 0;
-  await persistOutreachGeneration(request, outreach, [{
+  const atomicCalls: Array<{ table: string; method?: string; body?: unknown }> = [];
+  const atomicPursuitRow = {
+    id: outreach.pursuit.id,
+    user_id: "user-1",
+    profile_id: "profile-1",
+    job_id: "job-1",
+    selected_role_track_id: "track-1",
+    selected_resume_id: "resume-1",
+    selected_work_example_id: "example-1",
+    status: "outreach_ready",
+    fit_summary: null,
+    risks: [],
+    recommended_work_example_ids: [],
+    outreach_angle: null,
+    tracking_started_at: later,
+    pursuit_metered_at: later,
+    notes: null,
+    job_snapshot: {},
+    selection_snapshot: {},
+    last_activity_at: later,
+    created_at: now,
+    updated_at: later,
+  };
+  const atomicMessageRow = {
+    id: "message-atomic-1",
+    pursuit_id: outreach.pursuit.id,
+    contact_suggestion_id: "contact-1",
+    recipient_type: "likely_hiring_manager",
+    channel: "other",
+    message: "Hi Dana - interested in the Program Director role.",
+    previous_message: null,
+    regeneration_count: 0,
+    status: "draft",
+    rejection_reason: null,
+    selected_role_track_id: "track-1",
+    selected_resume_id: "resume-1",
+    selected_work_example_id: "example-1",
+    sent_at: null,
+    created_at: later,
+    updated_at: later,
+  };
+  const atomicTrackingRow = {
+    id: "tracking-event-atomic-1",
+    pursuit_id: outreach.pursuit.id,
+    user_id: "user-1",
+    action: "outreach_sent",
+    checked: true,
+    source: "message_copy",
+    outreach_message_id: "message-atomic-1",
+    contact_suggestion_id: "contact-1",
+    message_snapshot: "Hi Dana.",
+    recipient_name_snapshot: "Dana Lee",
+    recipient_title_snapshot: "VP Product",
+    recipient_linkedin_url_snapshot: "https://linkedin.example/dana",
+    idempotency_key: "copy-message-atomic:outreach_sent",
+    occurred_at: later,
+    created_at: later,
+  };
+  const atomicRequest: PublicProfileRepositoryRequest = async <T>(
+    table: string,
+    options: Parameters<PublicProfileRepositoryRequest>[1],
+  ) => {
+    atomicCalls.push({ table, method: options.method, body: options.body });
+    if (table === "rpc/persist_initial_outreach_generation") {
+      return {
+        status: "outreach_generated",
+        pursuit: atomicPursuitRow,
+        messages: [atomicMessageRow],
+        pursuitDebited: true,
+        outreachDebited: 1,
+        replayed: false,
+      } as T;
+    }
+    return {
+      status: table === "rpc/mutate_pursuit_tracking" ? "tracking_updated" : "message_copy_recorded",
+      pursuit: atomicPursuitRow,
+      events: [atomicTrackingRow],
+      replayed: false,
+    } as T;
+  };
+
+  const persistedInitial = await persistOutreachGeneration(atomicRequest, outreach, [{
     contactSuggestionId: "contact-1",
     recipientType: "likely_hiring_manager",
     message: "Hi Dana - interested in the Program Director role.",
@@ -378,26 +528,34 @@ async function main() {
     selectedResumeId: "resume-1",
     selectedWorkExampleId: "example-1",
     createdAt: outreach.pursuit.updatedAt,
-  }]);
-  assert.equal(calls[0].table, "pursuits");
-  assert.equal(calls[1].table, "pursuit_events");
-  assert.equal(calls[2].table, "usage_ledger");
-  assert.equal(calls[3].table, "outreach_messages");
-  assert.equal(calls[3].method, "POST");
-  assert.deepEqual(calls[3].body, [{
-    pursuit_id: outreach.pursuit.id,
-    contact_suggestion_id: "contact-1",
-    recipient_type: "likely_hiring_manager",
-    message: "Hi Dana - interested in the Program Director role.",
-    previous_message: null,
-    regeneration_count: 0,
-    selected_resume_id: "resume-1",
-    selected_role_track_id: "track-1",
-    selected_work_example_id: "example-1",
-    status: "draft",
-    created_at: outreach.pursuit.updatedAt,
-    updated_at: outreach.pursuit.updatedAt,
-  }]);
+  }], { idempotencyKey: "initial-outreach-1" });
+  assert.equal(atomicCalls.length, 1);
+  assert.equal(atomicCalls[0].table, "rpc/persist_initial_outreach_generation");
+  assert.equal(persistedInitial.messages[0].id, "message-atomic-1");
+  assert.equal(persistedInitial.pursuitDebited, true);
+  assert.equal(persistedInitial.outreachDebited, 1);
+
+  atomicCalls.length = 0;
+  const trackingCommit = await persistPursuitTrackingMutation(atomicRequest, {
+    userId: "user-1",
+    pursuitId: outreach.pursuit.id,
+    changes: { applied_online: true, response_received: true },
+    idempotencyKey: "tracking-atomic-1",
+  });
+  assert.equal(atomicCalls.length, 1);
+  assert.equal(atomicCalls[0].table, "rpc/mutate_pursuit_tracking");
+  assert.equal(trackingCommit.state.outreach_sent, true);
+  assert.equal(trackingCommit.history[0].type, "message");
+
+  atomicCalls.length = 0;
+  const copyCommit = await persistOutreachMessageCopy(atomicRequest, {
+    userId: "user-1",
+    outreachMessageId: "message-atomic-1",
+    idempotencyKey: "copy-message-atomic",
+  });
+  assert.equal(atomicCalls.length, 1);
+  assert.equal(atomicCalls[0].table, "rpc/record_outreach_message_copy");
+  assert.equal(copyCommit.history[0].type, "message");
 
   const listCalls: Array<{ table: string; query?: string }> = [];
   const listRequest: PublicProfileRepositoryRequest = async <T>(

@@ -14,12 +14,15 @@ import type {
   PursuitStatus,
   PursuitTrackingAction,
   PursuitTrackingEvent,
+  PursuitTrackingCommit,
+  PursuitInitialOutreachCommit,
   PursuitTrackingSource,
   PursuitTransitionResult,
   PursuitUsageEvent,
   PursuitUsageType,
 } from "./types";
 import { createPursuit } from "./state-machine";
+import { derivePursuitTrackingState, pursuitHistory } from "./tracking";
 
 type PursuitRow = {
   id: string;
@@ -35,6 +38,7 @@ type PursuitRow = {
   recommended_work_example_ids: string[];
   outreach_angle: string | null;
   tracking_started_at?: string | null;
+  pursuit_metered_at?: string | null;
   notes?: string | null;
   job_snapshot?: PursuitJobSnapshot | null;
   selection_snapshot?: PursuitSelectionSnapshot | null;
@@ -80,7 +84,7 @@ type PursuitTrackingEventRow = {
   created_at: string;
 };
 
-const PURSUIT_SELECT = "id,user_id,profile_id,job_id,selected_role_track_id,selected_resume_id,selected_work_example_id,status,fit_summary,risks,recommended_work_example_ids,outreach_angle,tracking_started_at,notes,job_snapshot,selection_snapshot,last_activity_at,created_at,updated_at";
+const PURSUIT_SELECT = "id,user_id,profile_id,job_id,selected_role_track_id,selected_resume_id,selected_work_example_id,status,fit_summary,risks,recommended_work_example_ids,outreach_angle,tracking_started_at,pursuit_metered_at,notes,job_snapshot,selection_snapshot,last_activity_at,created_at,updated_at";
 const OUTREACH_MESSAGE_SELECT = "id,pursuit_id,contact_suggestion_id,recipient_type,channel,message,previous_message,regeneration_count,status,rejection_reason,selected_role_track_id,selected_resume_id,selected_work_example_id,sent_at,created_at,updated_at";
 
 type PursuitEventRow = {
@@ -112,6 +116,22 @@ type ContactSuggestionRow = {
   updated_at: string;
 };
 
+type AtomicTrackingResultRow = {
+  status: "tracking_updated" | "message_copy_recorded";
+  replayed: boolean;
+  pursuit: PursuitRow;
+  events: PursuitTrackingEventRow[];
+};
+
+type AtomicOutreachGenerationResultRow = {
+  status: "outreach_generated";
+  replayed: boolean;
+  pursuit: PursuitRow;
+  messages: OutreachMessageRow[];
+  pursuitDebited: boolean;
+  outreachDebited: number;
+};
+
 function qs(params: Record<string, string>) {
   return `?${new URLSearchParams(params).toString()}`;
 }
@@ -139,6 +159,7 @@ function mapPursuit(row: PursuitRow): Pursuit {
     recommendedWorkExampleIds: row.recommended_work_example_ids,
     outreachAngle: defined(row.outreach_angle),
     trackingStartedAt: defined(row.tracking_started_at),
+    pursuitMeteredAt: defined(row.pursuit_metered_at),
     notes: defined(row.notes),
     jobSnapshot: defined(row.job_snapshot),
     selectionSnapshot: defined(row.selection_snapshot),
@@ -164,6 +185,9 @@ function pursuitRowBody(pursuit: Pursuit) {
     outreach_angle: pursuit.outreachAngle ?? null,
     ...(pursuit.trackingStartedAt !== undefined
       ? { tracking_started_at: pursuit.trackingStartedAt }
+      : {}),
+    ...(pursuit.pursuitMeteredAt !== undefined
+      ? { pursuit_metered_at: pursuit.pursuitMeteredAt }
       : {}),
     ...(pursuit.notes !== undefined ? { notes: pursuit.notes } : {}),
     ...(pursuit.jobSnapshot !== undefined ? { job_snapshot: pursuit.jobSnapshot } : {}),
@@ -498,6 +522,56 @@ export async function loadPursuitTrackingEventsForUser(
   return rows.map(mapPursuitTrackingEvent);
 }
 
+function mapAtomicTrackingResult(result: AtomicTrackingResultRow): PursuitTrackingCommit {
+  const events = result.events.map(mapPursuitTrackingEvent);
+  return {
+    status: result.replayed ? "idempotent_replay" : "committed",
+    pursuit: mapPursuit(result.pursuit),
+    state: derivePursuitTrackingState(events),
+    history: pursuitHistory(events),
+  };
+}
+
+export async function persistPursuitTrackingMutation(
+  request: PublicProfileRepositoryRequest,
+  input: {
+    userId: string;
+    pursuitId: string;
+    changes: Partial<Record<PursuitTrackingAction, boolean>>;
+    idempotencyKey: string;
+  },
+): Promise<PursuitTrackingCommit> {
+  const result = await request<AtomicTrackingResultRow>("rpc/mutate_pursuit_tracking", {
+    method: "POST",
+    body: {
+      p_pursuit_id: input.pursuitId,
+      p_user_id: input.userId,
+      p_requested: input.changes,
+      p_idempotency_key: input.idempotencyKey,
+    },
+  });
+  return mapAtomicTrackingResult(result);
+}
+
+export async function persistOutreachMessageCopy(
+  request: PublicProfileRepositoryRequest,
+  input: {
+    userId: string;
+    outreachMessageId: string;
+    idempotencyKey: string;
+  },
+): Promise<PursuitTrackingCommit> {
+  const result = await request<AtomicTrackingResultRow>("rpc/record_outreach_message_copy", {
+    method: "POST",
+    body: {
+      p_outreach_message_id: input.outreachMessageId,
+      p_user_id: input.userId,
+      p_idempotency_key: input.idempotencyKey,
+    },
+  });
+  return mapAtomicTrackingResult(result);
+}
+
 export async function createPursuitForJob(
   request: PublicProfileRepositoryRequest,
   input: CreatePursuitInput,
@@ -611,13 +685,25 @@ export async function persistOutreachGeneration(
   request: PublicProfileRepositoryRequest,
   result: Extract<PursuitTransitionResult, { ok: true }>,
   drafts: GeneratedOutreachDraft[],
-) {
-  await persistPursuitTransition(request, result);
-
-  if (drafts.length > 0) {
-    await request("outreach_messages", {
+  input: { idempotencyKey: string } = { idempotencyKey: `initial-outreach:${result.pursuit.id}` },
+): Promise<PursuitInitialOutreachCommit> {
+  const response = await request<AtomicOutreachGenerationResultRow>(
+    "rpc/persist_initial_outreach_generation",
+    {
       method: "POST",
-      body: drafts.map((draft) => outreachMessageBody(result.pursuit, draft)),
-    });
-  }
+      body: {
+        p_pursuit_id: result.pursuit.id,
+        p_user_id: result.pursuit.userId,
+        p_messages: drafts.map((draft) => outreachMessageBody(result.pursuit, draft)),
+        p_idempotency_key: input.idempotencyKey,
+      },
+    },
+  );
+  return {
+    status: response.replayed ? "idempotent_replay" : "committed",
+    pursuit: mapPursuit(response.pursuit),
+    messages: response.messages.map(mapOutreachMessage),
+    pursuitDebited: response.pursuitDebited,
+    outreachDebited: response.outreachDebited,
+  };
 }

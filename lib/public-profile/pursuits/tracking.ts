@@ -1,5 +1,6 @@
 import type {
   Pursuit,
+  PursuitHistoryEntry,
   PursuitTrackingAction,
   PursuitTrackingEvent,
   PursuitTrackingSource,
@@ -16,6 +17,19 @@ export const PURSUIT_TRACKING_ACTIONS = [
 
 export type PursuitTrackingState = Record<PursuitTrackingAction, boolean>;
 export type PursuitBucket = "saved_for_later" | "applied";
+
+const PURSUIT_TRACKING_LABELS: Record<PursuitTrackingAction, string> = {
+  outreach_sent: "Sent outreach message",
+  applied_online: "Applied online",
+  response_received: "Received response",
+  interviewing: "Interviewing",
+  not_moving_forward: "Not moving forward",
+  never_heard_back: "Never heard back",
+};
+
+export function pursuitTrackingLabel(action: PursuitTrackingAction): string {
+  return PURSUIT_TRACKING_LABELS[action];
+}
 
 export type PlanPursuitTrackingChangesInput = {
   pursuit: Pursuit;
@@ -72,6 +86,48 @@ export function pursuitBucket(pursuit: Pick<Pursuit, "trackingStartedAt">): Purs
   return pursuit.trackingStartedAt ? "applied" : "saved_for_later";
 }
 
+export function pursuitHistory(events: PursuitTrackingEvent[]): PursuitHistoryEntry[] {
+  return [...events]
+    .sort((left, right) => {
+      const occurrenceOrder = right.occurredAt.localeCompare(left.occurredAt);
+      if (occurrenceOrder !== 0) return occurrenceOrder;
+      return right.createdAt.localeCompare(left.createdAt);
+    })
+    .map((event): PursuitHistoryEntry => {
+      const occurredAt = event.occurredAt || event.createdAt || null;
+      if (event.source === "message_copy" && event.action === "outreach_sent" && event.checked) {
+        const recipientName = event.recipientNameSnapshot?.trim() || null;
+        const recipientTitle = event.recipientTitleSnapshot?.trim() || null;
+        const recipientLinkedinUrl = event.recipientLinkedinUrlSnapshot?.trim() || null;
+        const messageText = event.messageSnapshot ?? null;
+        return {
+          type: "message",
+          label: "Sent outreach message",
+          occurredAt,
+          timestampAvailable: Boolean(occurredAt),
+          recipient: {
+            name: recipientName,
+            title: recipientTitle,
+            linkedinUrl: recipientLinkedinUrl,
+            available: Boolean(recipientName || recipientTitle || recipientLinkedinUrl),
+          },
+          message: {
+            text: messageText,
+            available: Boolean(messageText),
+          },
+        };
+      }
+
+      return {
+        type: "tracking",
+        label: pursuitTrackingLabel(event.action),
+        change: event.checked ? "marked" : "unmarked",
+        occurredAt,
+        timestampAvailable: Boolean(occurredAt),
+      };
+    });
+}
+
 export function planPursuitTrackingChanges(
   input: PlanPursuitTrackingChangesInput,
 ): PursuitTrackingPlanResult {
@@ -99,6 +155,18 @@ export function planPursuitTrackingChanges(
 
   const currentState = derivePursuitTrackingState(input.currentEvents);
   const existingKeys = new Set(input.currentEvents.map((event) => event.idempotencyKey));
+  const requestAlreadyApplied = input.currentEvents.some(
+    (event) => event.idempotencyKey === idempotencyKey
+      || event.idempotencyKey.startsWith(`${idempotencyKey}:`),
+  );
+  if (requestAlreadyApplied) {
+    return {
+      ok: true,
+      pursuit: input.pursuit,
+      events: [],
+      state: currentState,
+    };
+  }
   const copiedMessageAlreadyRecorded = input.source === "message_copy"
     && input.currentEvents.some((event) => (
       event.source === "message_copy"

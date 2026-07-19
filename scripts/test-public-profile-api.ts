@@ -16,10 +16,13 @@ import {
   handlePublicProfilePursuitLifecycleRequest,
   handlePublicProfilePursuitOutreachRequest,
   handlePublicProfilePursuitOutreachMessageUpdateRequest,
+  handlePublicProfilePursuitMessageCopyRequest,
   handlePublicProfilePursuitReadRequest,
   handlePublicProfilePursuitReviewRequest,
   handlePublicProfilePursuitsListRequest,
   handlePublicProfilePursuitStatusRequest,
+  handlePublicProfilePursuitTrackingRequest,
+  handlePublicProfileSavedPursuitsListRequest,
   handlePublicProfileBootstrapRequest,
   handlePublicProfileRegenerationRequest,
   handleProfileResetRequest,
@@ -37,7 +40,7 @@ import {
   handleWritingSamplesSectionPatchRequest,
 } from "../lib/public-profile/api";
 import type { PublicProfileRepositoryRequest } from "../lib/public-profile/repository";
-import type { GeneratedOutreachDraft, HumanPathContact, HumanPathContactSuggestion, OutreachMessageRecord, Pursuit, PursuitEvent } from "../lib/public-profile/pursuits/types";
+import type { GeneratedOutreachDraft, HumanPathContact, HumanPathContactSuggestion, OutreachMessageRecord, Pursuit, PursuitTrackingCommit, PursuitTrackingEvent } from "../lib/public-profile/pursuits/types";
 import type { PublicJobRecord } from "../lib/public-jobs/types";
 import type { SubscriptionContext, UsageLedgerEntry } from "../lib/public-profile/subscription/types";
 import type { PublicProfileRegenerationResult } from "../lib/public-profile/service";
@@ -97,6 +100,27 @@ function savedPursuit(overrides: Partial<Pursuit> = {}): Pursuit {
     lastActivityAt: now,
     createdAt: now,
     updatedAt: now,
+    ...overrides,
+  };
+}
+
+function trackingEvent(overrides: Partial<PursuitTrackingEvent> = {}): PursuitTrackingEvent {
+  return {
+    id: "tracking-event-1",
+    pursuitId: "pursuit-1",
+    userId: "user-1",
+    action: "outreach_sent",
+    checked: true,
+    source: "message_copy",
+    outreachMessageId: "message-1",
+    contactSuggestionId: "contact-1",
+    messageSnapshot: "Hi Dana.",
+    recipientNameSnapshot: "Dana Lee",
+    recipientTitleSnapshot: "VP Product",
+    recipientLinkedinUrlSnapshot: "https://linkedin.example/dana",
+    idempotencyKey: "copy-message-1:outreach_sent",
+    occurredAt: now,
+    createdAt: now,
     ...overrides,
   };
 }
@@ -536,6 +560,58 @@ async function main() {
   const missingJobItems = (await body(pursuitsListMissingJob)).pursuits as Array<Record<string, unknown>>;
   assert.equal(missingJobItems[0].job, null);
 
+  // ---- Saved Pursuits bucket list ----
+  let savedListUserId = "";
+  const savedPursuitsList = await handlePublicProfileSavedPursuitsListRequest(
+    getRequest("saved-pursuits"),
+    {
+      getSession: async () => authed(),
+      repositoryRequest,
+      loadPursuits: async (_request, userId) => {
+        savedListUserId = userId;
+        return [
+          savedPursuit({ id: "saved-older", jobId: "job-1", lastActivityAt: "2026-06-20T00:00:00.000Z" }),
+          savedPursuit({ id: "applied-newer", jobId: "job-2", trackingStartedAt: now, lastActivityAt: now }),
+          savedPursuit({ id: "saved-newer", jobId: "job-3", lastActivityAt: "2026-06-22T00:00:00.000Z" }),
+        ];
+      },
+      loadJobs: async () => new Map([
+        ["job-1", publicJob({ id: "job-1", title: "Older saved" })],
+        ["job-2", publicJob({ id: "job-2", title: "Applied" })],
+        ["job-3", publicJob({ id: "job-3", title: "Newer saved" })],
+      ]),
+      loadPursuitTrackingEvents: async (_request, _userId, pursuitId) => (
+        pursuitId === "applied-newer" ? [trackingEvent({ pursuitId })] : []
+      ),
+      loadOutreachMessages: async (_request, pursuitId) => pursuitId === "saved-newer"
+        ? [{
+          id: "message-list-1",
+          pursuitId,
+          recipientType: "likely_hiring_manager",
+          channel: "email",
+          message: "Sensitive message body",
+          status: "draft",
+          createdAt: now,
+          updatedAt: now,
+        }]
+        : [],
+      loadContactSuggestions: async (_request, pursuitId) => pursuitId === "saved-newer"
+        ? [contactSuggestion({ email: "private@example.com", selectedForOutreach: true })]
+        : [],
+    },
+  );
+  assert.equal(savedPursuitsList.status, 200);
+  assert.equal(savedListUserId, "user-1");
+  const savedPursuitsJson = await body(savedPursuitsList);
+  assert.deepEqual(savedPursuitsJson.counts, { savedForLater: 2, applied: 1 });
+  const savedBucket = savedPursuitsJson.savedForLater as Array<Record<string, unknown>>;
+  assert.equal(savedBucket[0].id, "saved-newer");
+  assert.equal(savedBucket[1].id, "saved-older");
+  const serializedSavedList = JSON.stringify(savedPursuitsJson);
+  for (const forbidden of ["Sensitive message body", "private@example.com", "linkedin.example", "idempotencyKey", "payload"]) {
+    assert.equal(serializedSavedList.includes(forbidden), false);
+  }
+
   // ---- Pursuit read route ----
   const pursuitReadUnauthorized = await handlePublicProfilePursuitReadRequest(getRequest("pursuits/pursuit-1"), "pursuit-1", {
     getSession: async () => ({ status: "unauthenticated", reason: "Missing bearer token." }),
@@ -570,24 +646,17 @@ async function main() {
     createdAt: now,
     updatedAt: now,
   };
-  const readEvent: PursuitEvent = {
-    id: "event-1",
-    pursuitId: "pursuit-1",
-    userId: "user-1",
-    eventType: "created",
-    toStatus: "saved",
-    usageType: "pursuit",
-    payload: {},
-    createdAt: now,
-  };
   const pursuitReadOk = await handlePublicProfilePursuitReadRequest(getRequest("pursuits/pursuit-1"), "pursuit-1", {
     getSession: async () => authed(),
     repositoryRequest,
-    loadPursuit: async () => savedPursuit({ id: "pursuit-1", jobId: "job-1" }),
+    loadPursuit: async () => savedPursuit({ id: "pursuit-1", jobId: "job-1", trackingStartedAt: now }),
     loadJob: async () => publicJob({ id: "job-1" }),
     loadContactSuggestions: async () => [contactSuggestion({ id: "contact-1", selectedForOutreach: true })],
     loadOutreachMessages: async () => [readOutreachMessage],
-    loadPursuitEvents: async () => [readEvent],
+    loadPursuitTrackingEvents: async () => [trackingEvent()],
+    loadAggregate: async () => { throw new Error("Applied detail must not load profile generation context"); },
+    humanPathProvider: async () => { throw new Error("Applied detail must not invoke Human Path"); },
+    generateOutreachForContact: async () => { throw new Error("Applied detail must not generate outreach"); },
   });
   assert.equal(pursuitReadOk.status, 200);
   const pursuitReadJson = await body(pursuitReadOk);
@@ -596,7 +665,11 @@ async function main() {
   assert.equal((pursuitReadJson.job as Record<string, unknown>).id, "job-1");
   assert.equal((pursuitReadJson.contacts as unknown[]).length, 1);
   assert.equal(((pursuitReadJson.outreachMessages as Array<Record<string, unknown>>)[0]).id, "message-1");
-  assert.equal(((pursuitReadJson.events as Array<Record<string, unknown>>)[0]).eventType, "created");
+  assert.equal(pursuitReadJson.bucket, "applied");
+  assert.equal((pursuitReadJson.tracking as Record<string, unknown>).outreach_sent, true);
+  assert.equal((pursuitReadJson.history as Array<Record<string, unknown>>)[0].type, "message");
+  assert.equal("events" in pursuitReadJson, false);
+  assert.equal(JSON.stringify(pursuitReadJson.history).includes("idempotencyKey"), false);
 
   // ---- Pursuit create route ----
   const pursuitValidation = await handlePublicProfilePursuitCreateRequest(postRequest("pursuits", {}), {
@@ -663,8 +736,8 @@ async function main() {
     repositoryRequest,
     loadAggregate: async () => agg,
     loadJob: async () => publicJob({ id: "job-1" }),
-    loadSubscriptionContext: async () => activeBasicSubscription(),
-    loadUsageEntries: async () => [],
+    loadSubscriptionContext: async () => { throw new Error("saving must not load subscription context"); },
+    loadUsageEntries: async () => { throw new Error("saving must not load pursuit usage"); },
     loadPursuitByJob: async () => savedPursuit({ id: "pursuit-existing", jobId: "job-1" }),
     createPursuit: async () => { throw new Error("must not insert over an existing pursuit"); },
   });
@@ -691,8 +764,8 @@ async function main() {
       responsibilities: [],
       requiredExperience: [],
     }),
-    loadSubscriptionContext: async () => activeBasicSubscription(),
-    loadUsageEntries: async () => [],
+    loadSubscriptionContext: async () => { throw new Error("saving must not load subscription context"); },
+    loadUsageEntries: async () => { throw new Error("saving must not load pursuit usage"); },
     loadPursuitByJob: async () => undefined,
     createPursuit: async () => ({ ok: false, issues: ["Nope."] }),
   });
@@ -705,8 +778,8 @@ async function main() {
     getSession: async () => authed(),
     repositoryRequest,
     loadAggregate: async () => agg,
-    loadSubscriptionContext: async () => activeBasicSubscription(),
-    loadUsageEntries: async () => [],
+    loadSubscriptionContext: async () => { throw new Error("saving must not load subscription context"); },
+    loadUsageEntries: async () => { throw new Error("saving must not load pursuit usage"); },
     loadPursuitByJob: async () => undefined,
     loadJob: async () => ({
       id: "job-1",
@@ -761,7 +834,6 @@ async function main() {
           userId: input.userId,
           eventType: "created",
           toStatus: "saved",
-          usageType: "pursuit",
           payload: {},
           createdAt: input.now,
         },
@@ -1300,7 +1372,9 @@ async function main() {
 
   let persistedOutreach: unknown;
   let persistedDrafts: unknown;
+  let persistedGenerationKey = "";
   let outreachUsageOptions: unknown;
+  let pursuitEnforcementCalls = 0;
   const generatedForContacts: unknown[] = [];
   const pursuitOutreachGenerated = await handlePublicProfilePursuitOutreachRequest(postRequest("pursuits/outreach", { pursuitId: "pursuit-1" }), {
     now: () => now,
@@ -1324,6 +1398,11 @@ async function main() {
       outreachUsageOptions = options;
       return [usage("outreach_message", 12)];
     },
+    enforcePursuitSubscription: () => {
+      pursuitEnforcementCalls += 1;
+      return { status: "allowed", feature: "pursuit", used: 0 };
+    },
+    enforceSubscription: () => ({ status: "allowed", feature: "outreach_message", used: 12 }),
     generateOutreachForContact: async (input) => {
       generatedForContacts.push(input);
       return {
@@ -1331,9 +1410,30 @@ async function main() {
         insertedExample: { oneHitter: "Cut turnaround 40%.", link: "https://example.com/x" },
       };
     },
-    persistOutreach: async (_request, result, drafts) => {
+    persistOutreach: async (_request, result, drafts, input) => {
       persistedOutreach = result;
       persistedDrafts = drafts;
+      persistedGenerationKey = input.idempotencyKey;
+      return {
+        status: "committed",
+        pursuit: { ...result.pursuit, pursuitMeteredAt: now },
+        messages: drafts.map((draft, index) => ({
+          id: `message-${index + 1}`,
+          pursuitId: result.pursuit.id,
+          contactSuggestionId: draft.contactSuggestionId,
+          recipientType: draft.recipientType,
+          channel: "other",
+          message: draft.message,
+          status: "draft",
+          selectedRoleTrackId: draft.selectedRoleTrackId,
+          selectedResumeId: draft.selectedResumeId,
+          selectedWorkExampleId: draft.selectedWorkExampleId,
+          createdAt: now,
+          updatedAt: now,
+        })),
+        pursuitDebited: true,
+        outreachDebited: drafts.length,
+      };
     },
   });
   assert.equal(pursuitOutreachGenerated.status, 200);
@@ -1343,14 +1443,46 @@ async function main() {
     periodEnd: "2026-07-01T00:00:00.000Z",
   });
   assert.equal(generatedForContacts.length, 2);
+  assert.equal(pursuitEnforcementCalls, 1);
+  assert.equal(persistedGenerationKey, "initial-outreach:pursuit-1:contact-1:contact-2");
   const pursuitOutreachJson = await body(pursuitOutreachGenerated);
   assert.equal(pursuitOutreachJson.status, "outreach_generated");
   assert.equal((pursuitOutreachJson.event as Record<string, unknown>).usageType, "outreach_message");
   assert.equal((pursuitOutreachJson.messages as unknown[]).length, 2);
+  assert.deepEqual(pursuitOutreachJson.metering, { pursuitDebited: true, outreachDebited: 2 });
+  assert.equal((pursuitOutreachJson.messages as Array<Record<string, unknown>>)[0].id, "message-1");
   assert.equal((persistedOutreach as { pursuit: Pursuit }).pursuit.status, "outreach_ready");
   assert.equal((persistedDrafts as GeneratedOutreachDraft[]).length, 2);
   assert.deepEqual((persistedDrafts as GeneratedOutreachDraft[]).map((draft) => draft.recipientType), ["likely_hiring_manager", "recruiter"]);
   assert.equal((persistedDrafts as GeneratedOutreachDraft[])[0].selectedWorkExampleId, "example-1");
+
+  const initialPersistenceFailed = await handlePublicProfilePursuitOutreachRequest(
+    postRequest("pursuits/outreach", { pursuitId: "pursuit-1" }),
+    {
+      now: () => now,
+      getSession: async () => authed(),
+      repositoryRequest,
+      loadAggregate: async () => agg,
+      loadPursuit: async () => savedPursuit({
+        status: "outreach_ready",
+        pursuitMeteredAt: now,
+      }),
+      loadJob: async () => publicJob(),
+      loadOutreachMessages: async () => [],
+      loadContactSuggestions: async () => [contactSuggestion({ selectedForOutreach: true })],
+      loadSubscriptionContext: async () => activeBasicSubscription(),
+      loadUsageEntries: async () => [],
+      enforcePursuitSubscription: () => { throw new Error("metered pursuit must not be enforced again"); },
+      enforceSubscription: () => ({ status: "allowed", feature: "outreach_message", used: 0 }),
+      generateOutreachForContact: async () => ({ message: "Generated but not saved.", insertedExample: null }),
+      persistOutreach: async () => { throw new Error("atomic persistence unavailable"); },
+    },
+  );
+  assert.equal(initialPersistenceFailed.status, 503);
+  const initialPersistenceFailureJson = await body(initialPersistenceFailed);
+  assert.equal(initialPersistenceFailureJson.status, "persistence_failed");
+  assert.equal(initialPersistenceFailureJson.saved, false);
+  assert.equal(initialPersistenceFailureJson.retryable, true);
 
   // ---- One-time outreach regeneration ----
   const regenerationValidation = await handlePublicProfilePursuitOutreachRequest(postRequest("pursuits/outreach", {
@@ -1555,6 +1687,197 @@ async function main() {
   assert.equal(messageUpdateApprovedJson.status, "outreach_message_updated");
   assert.equal((messageUpdateApprovedJson.message as OutreachMessageRecord).status, "approved");
   assert.equal(persistedMessage?.status, "approved");
+
+  // ---- Saved Pursuits tracking mutation ----
+  const committedTracking: PursuitTrackingCommit = {
+    status: "committed",
+    pursuit: savedPursuit({ trackingStartedAt: now }),
+    state: {
+      outreach_sent: true,
+      applied_online: true,
+      response_received: false,
+      interviewing: false,
+      not_moving_forward: false,
+      never_heard_back: false,
+    },
+    history: [{
+      type: "tracking",
+      label: "Applied online",
+      change: "marked",
+      occurredAt: now,
+      timestampAvailable: true,
+    }],
+  };
+  const trackingValidation = await handlePublicProfilePursuitTrackingRequest(
+    patchRequest("pursuits/pursuit-1/tracking", {
+      changes: { offer: true },
+      idempotencyKey: "tracking-1",
+    }),
+    "pursuit-1",
+    {
+      getSession: async () => authed(),
+      repositoryRequest,
+      loadPursuit: async () => { throw new Error("invalid tracking must not load a pursuit"); },
+    },
+  );
+  assert.equal(trackingValidation.status, 400);
+  assert.equal(JSON.stringify(await body(trackingValidation)).includes("offer is not an accepted tracking action"), true);
+
+  let trackingPersistInput: unknown;
+  const trackingSaved = await handlePublicProfilePursuitTrackingRequest(
+    patchRequest("pursuits/pursuit-1/tracking", {
+      changes: { applied_online: true, response_received: false },
+      idempotencyKey: "tracking-1",
+      occurredAt: "1900-01-01T00:00:00.000Z",
+    }),
+    "pursuit-1",
+    {
+      getSession: async () => authed(),
+      repositoryRequest,
+      loadPursuit: async () => savedPursuit(),
+      persistTrackingMutation: async (_request, input) => {
+        trackingPersistInput = input;
+        return committedTracking;
+      },
+    },
+  );
+  assert.equal(trackingSaved.status, 200);
+  assert.deepEqual(trackingPersistInput, {
+    userId: "user-1",
+    pursuitId: "pursuit-1",
+    changes: { applied_online: true, response_received: false },
+    idempotencyKey: "tracking-1",
+  });
+  const trackingSavedJson = await body(trackingSaved);
+  assert.equal(trackingSavedJson.bucket, "applied");
+  assert.equal((trackingSavedJson.tracking as Record<string, unknown>).applied_online, true);
+  assert.equal(JSON.stringify(trackingSavedJson.history).includes("action"), false);
+
+  const trackingPersistenceFailed = await handlePublicProfilePursuitTrackingRequest(
+    patchRequest("pursuits/pursuit-1/tracking", {
+      changes: { interviewing: true },
+      idempotencyKey: "tracking-fails",
+    }),
+    "pursuit-1",
+    {
+      getSession: async () => authed(),
+      repositoryRequest,
+      loadPursuit: async () => savedPursuit(),
+      persistTrackingMutation: async () => { throw new Error("database unavailable"); },
+    },
+  );
+  assert.equal(trackingPersistenceFailed.status, 503);
+  const trackingFailureJson = await body(trackingPersistenceFailed);
+  assert.equal(trackingFailureJson.trackingSaved, false);
+  assert.equal(trackingFailureJson.retryable, true);
+
+  const trackingConflict = await handlePublicProfilePursuitTrackingRequest(
+    patchRequest("pursuits/pursuit-1/tracking", {
+      changes: { interviewing: true },
+      idempotencyKey: "tracking-conflict",
+    }),
+    "pursuit-1",
+    {
+      getSession: async () => authed(),
+      repositoryRequest,
+      loadPursuit: async () => savedPursuit(),
+      persistTrackingMutation: async () => {
+        throw new Error("idempotency_key was already used for a different tracking mutation");
+      },
+    },
+  );
+  assert.equal(trackingConflict.status, 409);
+  assert.equal((await body(trackingConflict)).status, "idempotency_conflict");
+
+  // ---- Live Outreach Copy tracking ----
+  const copiedCommit: PursuitTrackingCommit = {
+    ...committedTracking,
+    history: [{
+      type: "message",
+      label: "Sent outreach message",
+      occurredAt: now,
+      timestampAvailable: true,
+      recipient: {
+        name: "Dana Lee",
+        title: "VP Product",
+        linkedinUrl: "https://linkedin.example/dana",
+        available: true,
+      },
+      message: { text: "Hi Dana.", available: true },
+    }],
+  };
+  let copyPersistInput: unknown;
+  const copySaved = await handlePublicProfilePursuitMessageCopyRequest(
+    postRequest("pursuits/outreach/message-1/copy", { idempotencyKey: "copy-1", message: "Client forgery" }),
+    "message-1",
+    {
+      getSession: async () => authed(),
+      repositoryRequest,
+      loadOutreachMessage: async () => readOutreachMessage,
+      loadPursuit: async () => savedPursuit(),
+      persistMessageCopy: async (_request, input) => {
+        copyPersistInput = input;
+        return copiedCommit;
+      },
+    },
+  );
+  assert.equal(copySaved.status, 200);
+  assert.deepEqual(copyPersistInput, {
+    userId: "user-1",
+    outreachMessageId: "message-1",
+    idempotencyKey: "copy-1",
+  });
+  const copySavedJson = await body(copySaved);
+  assert.equal(copySavedJson.recorded, true);
+  assert.equal((copySavedJson.history as Array<Record<string, unknown>>)[0].type, "message");
+
+  const copyReplay = await handlePublicProfilePursuitMessageCopyRequest(
+    postRequest("pursuits/outreach/message-1/copy", { idempotencyKey: "copy-1-retry" }),
+    "message-1",
+    {
+      getSession: async () => authed(),
+      repositoryRequest,
+      loadOutreachMessage: async () => readOutreachMessage,
+      loadPursuit: async () => savedPursuit(),
+      persistMessageCopy: async () => ({ ...copiedCommit, status: "idempotent_replay" }),
+    },
+  );
+  assert.equal(copyReplay.status, 200);
+  assert.equal((await body(copyReplay)).recorded, false);
+
+  let foreignCopyPersisted = false;
+  const foreignCopy = await handlePublicProfilePursuitMessageCopyRequest(
+    postRequest("pursuits/outreach/message-1/copy", { idempotencyKey: "copy-foreign" }),
+    "message-1",
+    {
+      getSession: async () => authed(),
+      repositoryRequest,
+      loadOutreachMessage: async () => ({ ...readOutreachMessage, pursuitId: "foreign-pursuit" }),
+      loadPursuit: async () => undefined,
+      persistMessageCopy: async () => {
+        foreignCopyPersisted = true;
+        return copiedCommit;
+      },
+    },
+  );
+  assert.equal(foreignCopy.status, 404);
+  assert.equal(foreignCopyPersisted, false);
+
+  const copyPersistenceFailed = await handlePublicProfilePursuitMessageCopyRequest(
+    postRequest("pursuits/outreach/message-1/copy", { idempotencyKey: "copy-fails" }),
+    "message-1",
+    {
+      getSession: async () => authed(),
+      repositoryRequest,
+      loadOutreachMessage: async () => readOutreachMessage,
+      loadPursuit: async () => savedPursuit(),
+      persistMessageCopy: async () => { throw new Error("database unavailable"); },
+    },
+  );
+  assert.equal(copyPersistenceFailed.status, 503);
+  const copyFailureJson = await body(copyPersistenceFailed);
+  assert.equal(copyFailureJson.trackingSaved, false);
+  assert.equal(copyFailureJson.retryable, true);
 
   // ---- Pursuit status route ----
   const pursuitStatusValidation = await handlePublicProfilePursuitStatusRequest(postRequest("pursuits/status", {}), {

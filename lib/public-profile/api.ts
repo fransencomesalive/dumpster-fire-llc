@@ -28,12 +28,14 @@ import {
   loadOutreachMessagesForPursuit,
   loadPursuitByIdForUser,
   loadPursuitByJobForUser,
-  loadPursuitEventsForPursuit,
+  loadPursuitTrackingEventsForUser,
   loadPursuitsForUser,
   persistContactSelection,
   persistHumanPathGeneration,
   persistOutreachGeneration,
+  persistOutreachMessageCopy,
   persistOutreachRegeneration,
+  persistPursuitTrackingMutation,
   persistPursuitTransition,
   recordProfileExportUsage,
   updateOutreachMessage,
@@ -46,6 +48,12 @@ import {
   transitionPursuit,
   type OutreachMessageAction,
 } from "./pursuits/state-machine";
+import {
+  derivePursuitTrackingState,
+  pursuitBucket,
+  pursuitHistory,
+  PURSUIT_TRACKING_ACTIONS,
+} from "./pursuits/tracking";
 import type {
   CompleteReviewInput,
   CreatePursuitInput,
@@ -60,6 +68,10 @@ import type {
   PursuitEventType,
   PursuitStatus,
   PursuitTransitionResult,
+  PursuitTrackingAction,
+  PursuitTrackingCommit,
+  PursuitTrackingEvent,
+  PursuitInitialOutreachCommit,
 } from "./pursuits/types";
 import { enforceSubscriptionFeature } from "./subscription/enforcement";
 import {
@@ -465,6 +477,28 @@ export type PublicProfilePursuitsHandlerOptions = PublicProfileMatchHandlerOptio
     request: PublicProfileRepositoryRequest,
     pursuitId: string,
   ) => Promise<PursuitEvent[]>;
+  loadPursuitTrackingEvents?: (
+    request: PublicProfileRepositoryRequest,
+    userId: string,
+    pursuitId: string,
+  ) => Promise<PursuitTrackingEvent[]>;
+  persistTrackingMutation?: (
+    request: PublicProfileRepositoryRequest,
+    input: {
+      userId: string;
+      pursuitId: string;
+      changes: Partial<Record<PursuitTrackingAction, boolean>>;
+      idempotencyKey: string;
+    },
+  ) => Promise<PursuitTrackingCommit>;
+  persistMessageCopy?: (
+    request: PublicProfileRepositoryRequest,
+    input: {
+      userId: string;
+      outreachMessageId: string;
+      idempotencyKey: string;
+    },
+  ) => Promise<PursuitTrackingCommit>;
   persistTransition?: (
     request: PublicProfileRepositoryRequest,
     result: Extract<PursuitTransitionResult, { ok: true }>,
@@ -504,7 +538,8 @@ export type PublicProfilePursuitsHandlerOptions = PublicProfileMatchHandlerOptio
     request: PublicProfileRepositoryRequest,
     result: Extract<PursuitTransitionResult, { ok: true }>,
     drafts: GeneratedOutreachDraft[],
-  ) => Promise<void>;
+    input: { idempotencyKey: string },
+  ) => Promise<PursuitInitialOutreachCommit | void>;
   persistOutreachRegeneration?: (
     request: PublicProfileRepositoryRequest,
     result: Extract<PursuitTransitionResult, { ok: true }>,
@@ -525,6 +560,11 @@ export type PublicProfilePursuitsHandlerOptions = PublicProfileMatchHandlerOptio
     options: { at: string; periodStart?: string; periodEnd?: string },
   ) => Promise<UsageLedgerEntry[]>;
   enforceSubscription?: (
+    context: SubscriptionContext,
+    entries: UsageLedgerEntry[],
+    at: string,
+  ) => SubscriptionEnforcementResult;
+  enforcePursuitSubscription?: (
     context: SubscriptionContext,
     entries: UsageLedgerEntry[],
     at: string,
@@ -641,7 +681,6 @@ const TRACKING_ACTIONS = {
   applied: "applied",
   responded: "responded",
   interviewing: "interviewing",
-  offer: "offer",
   rejected: "rejected",
 } satisfies Record<string, PursuitEventType>;
 
@@ -650,6 +689,43 @@ function parseTrackingAction(value: unknown): PursuitEventType | undefined {
   return action && action in TRACKING_ACTIONS
     ? TRACKING_ACTIONS[action as keyof typeof TRACKING_ACTIONS]
     : undefined;
+}
+
+function parsePursuitTrackingChanges(value: unknown): {
+  changes: Partial<Record<PursuitTrackingAction, boolean>>;
+  issues: { field: string; message: string }[];
+} {
+  const issues: { field: string; message: string }[] = [];
+  const changes: Partial<Record<PursuitTrackingAction, boolean>> = {};
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return {
+      changes,
+      issues: [{ field: "changes", message: "changes must be an object with at least one tracking action." }],
+    };
+  }
+
+  const allowed = new Set<string>(PURSUIT_TRACKING_ACTIONS);
+  for (const [action, checked] of Object.entries(value as Record<string, unknown>)) {
+    if (!allowed.has(action)) {
+      issues.push({ field: `changes.${action}`, message: `${action} is not an accepted tracking action.` });
+      continue;
+    }
+    if (typeof checked !== "boolean") {
+      issues.push({ field: `changes.${action}`, message: `${action} must be true or false.` });
+      continue;
+    }
+    changes[action as PursuitTrackingAction] = checked;
+  }
+
+  if (Object.keys(changes).length === 0 && issues.length === 0) {
+    issues.push({ field: "changes", message: "At least one tracking change is required." });
+  }
+  return { changes, issues };
+}
+
+function parseIdempotencyKey(value: unknown): string | undefined {
+  const key = optionalString(value);
+  return key && key.length <= 200 ? key : undefined;
 }
 
 const LIFECYCLE_ACTIONS = {
@@ -980,6 +1056,74 @@ export async function handlePublicProfilePursuitsListRequest(
   });
 }
 
+export async function handlePublicProfileSavedPursuitsListRequest(
+  request: Request,
+  options: PublicProfilePursuitsHandlerOptions = {},
+) {
+  const session = await sessionForRequest(request, options);
+  if (session.status !== "authenticated") return authErrorResponse(session);
+
+  const repositoryRequest = repositoryRequestForOptions(options);
+  if (!repositoryRequest) return repositoryConfigErrorResponse();
+
+  const loadPursuits = options.loadPursuits ?? loadPursuitsForUser;
+  const pursuits = await loadPursuits(repositoryRequest, session.userId, {});
+  const loadJobs = options.loadJobs ?? loadPublicJobsByIds;
+  const jobsById = await loadJobs(repositoryRequest, pursuits.map((pursuit) => pursuit.jobId));
+  const loadTrackingEvents = options.loadPursuitTrackingEvents ?? loadPursuitTrackingEventsForUser;
+  const loadOutreachMessages = options.loadOutreachMessages ?? loadOutreachMessagesForPursuit;
+  const loadContacts = options.loadContactSuggestions ?? loadContactSuggestionsForPursuit;
+
+  const items = await Promise.all(pursuits.map(async (pursuit) => {
+    const [trackingEvents, messages, contacts] = await Promise.all([
+      loadTrackingEvents(repositoryRequest, session.userId, pursuit.id),
+      loadOutreachMessages(repositoryRequest, pursuit.id),
+      loadContacts(repositoryRequest, pursuit.id),
+    ]);
+    const job = jobsById.get(pursuit.jobId);
+    const snapshot = pursuit.jobSnapshot;
+    return {
+      id: pursuit.id,
+      bucket: pursuitBucket(pursuit),
+      posting: {
+        title: snapshot?.title ?? job?.title ?? null,
+        companyName: snapshot?.companyName ?? job?.companyName ?? null,
+        location: snapshot?.location ?? job?.location ?? null,
+        compensation: snapshot?.compensation ?? job?.compensationText ?? null,
+        sourceUrl: snapshot?.sourceUrl ?? job?.sourceUrl ?? null,
+        availability: job ? "available" : snapshot ? "snapshot_only" : "unavailable",
+      },
+      savedContext: {
+        selectedContactCount: contacts.filter((contact) => contact.selectedForOutreach).length,
+        messageCount: messages.length,
+      },
+      tracking: derivePursuitTrackingState(trackingEvents),
+      createdAt: pursuit.createdAt,
+      lastActivityAt: pursuit.lastActivityAt,
+    };
+  }));
+
+  const byLatestActivity = (left: typeof items[number], right: typeof items[number]) => (
+    right.lastActivityAt.localeCompare(left.lastActivityAt)
+  );
+  const savedForLater = items
+    .filter((item) => item.bucket === "saved_for_later")
+    .sort(byLatestActivity);
+  const applied = items
+    .filter((item) => item.bucket === "applied")
+    .sort(byLatestActivity);
+
+  return json({
+    status: "ok",
+    counts: {
+      savedForLater: savedForLater.length,
+      applied: applied.length,
+    },
+    savedForLater,
+    applied,
+  });
+}
+
 type PursuedJobOutreachEntry = {
   contactName: string | null;
   contactTitle: string | null;
@@ -1221,22 +1365,38 @@ export async function handlePublicProfilePursuitReadRequest(
   const loadJob = options.loadJob ?? loadPublicJobById;
   const loadContactSuggestions = options.loadContactSuggestions ?? loadContactSuggestionsForPursuit;
   const loadOutreachMessages = options.loadOutreachMessages ?? loadOutreachMessagesForPursuit;
-  const loadEvents = options.loadPursuitEvents ?? loadPursuitEventsForPursuit;
+  const loadTrackingEvents = options.loadPursuitTrackingEvents ?? loadPursuitTrackingEventsForUser;
 
-  const [job, contacts, outreachMessages, events] = await Promise.all([
+  const [job, contacts, outreachMessages, trackingEvents] = await Promise.all([
     loadJob(repositoryRequest, pursuit.jobId),
     loadContactSuggestions(repositoryRequest, pursuit.id),
     loadOutreachMessages(repositoryRequest, pursuit.id),
-    loadEvents(repositoryRequest, pursuit.id),
+    loadTrackingEvents(repositoryRequest, session.userId, pursuit.id),
   ]);
 
   return json({
     status: "ok",
     pursuit,
     job: job ?? null,
-    contacts,
+    contacts: contacts.map((contact) => ({
+      id: contact.id,
+      name: contact.name,
+      title: contact.title,
+      companyName: contact.companyName,
+      linkedinUrl: contact.linkedinUrl,
+      contactType: contact.contactType,
+      confidence: contact.confidence,
+      relevanceReason: contact.relevanceReason,
+      roleConnection: contact.roleConnection,
+      verificationNotes: [],
+      selectedForOutreach: contact.selectedForOutreach,
+      createdAt: contact.createdAt,
+      updatedAt: contact.updatedAt,
+    })),
     outreachMessages,
-    events,
+    bucket: pursuitBucket(pursuit),
+    tracking: derivePursuitTrackingState(trackingEvents),
+    history: pursuitHistory(trackingEvents),
   });
 }
 
@@ -1285,21 +1445,6 @@ export async function handlePublicProfilePursuitCreateRequest(
     job: matchJobFromPublicJob(job),
     evaluatedAt: createdAt,
   });
-
-  const loadSubscriptionContext = options.loadSubscriptionContext ?? loadSubscriptionContextForUser;
-  const loadUsageEntries = options.loadUsageEntries ?? loadUsageLedgerForUser;
-  const subscriptionContext = await loadSubscriptionContext(repositoryRequest, session.userId);
-  const usageEntries = await loadUsageEntries(repositoryRequest, session.userId, {
-    at: createdAt,
-    periodStart: subscriptionContext.currentPeriodStart,
-    periodEnd: subscriptionContext.currentPeriodEnd,
-  });
-  const enforceSubscription = options.enforceSubscription
-    ?? ((context, entries, at) => enforceSubscriptionFeature(context, entries, "pursuit", { at }));
-  const enforcement = enforceSubscription(subscriptionContext, usageEntries, createdAt);
-  if (enforcement.status !== "allowed") {
-    return subscriptionBlockedResponse(enforcement);
-  }
 
   // Pursuits are unique per (user, job); answering with the existing pursuit keeps a
   // duplicate create from colliding with pursuits_user_id_job_id_key.
@@ -1819,6 +1964,22 @@ export async function handlePublicProfilePursuitOutreachRequest(
     periodStart: subscriptionContext.currentPeriodStart,
     periodEnd: subscriptionContext.currentPeriodEnd,
   });
+  const shouldChargePursuit = !pursuit.pursuitMeteredAt;
+  if (shouldChargePursuit) {
+    const enforcePursuitSubscription = options.enforcePursuitSubscription
+      ?? ((context, entries, at) => enforceSubscriptionFeature(context, entries, "pursuit", {
+        at,
+        quantity: 1,
+      }));
+    const pursuitEnforcement = enforcePursuitSubscription(
+      subscriptionContext,
+      usageEntries,
+      generatedAt,
+    );
+    if (pursuitEnforcement.status !== "allowed") {
+      return subscriptionBlockedResponse(pursuitEnforcement);
+    }
+  }
   const enforceSubscription = options.enforceSubscription
     ?? ((context, entries, at) => enforceSubscriptionFeature(context, entries, "outreach_message", {
       at,
@@ -1832,6 +1993,7 @@ export async function handlePublicProfilePursuitOutreachRequest(
   const result = transitionPursuit(pursuit, "outreach_generated", generatedAt, {
     contactIds: contactsToGenerate.map((contact) => contact.id),
     messageCount: contactsToGenerate.length,
+    chargePursuit: shouldChargePursuit,
   });
   if (result.ok === false) {
     return json({
@@ -1878,14 +2040,37 @@ export async function handlePublicProfilePursuitOutreachRequest(
     createdAt: generatedAt,
   }));
   const persistOutreach = options.persistOutreach ?? persistOutreachGeneration;
-  await persistOutreach(repositoryRequest, result, drafts);
+  const generationIdempotencyKey = [
+    "initial-outreach",
+    pursuit.id,
+    ...contactsToGenerate.map((contact) => contact.id).sort(),
+  ].join(":");
+  let persisted: PursuitInitialOutreachCommit | void;
+  try {
+    persisted = await persistOutreach(repositoryRequest, result, drafts, {
+      idempotencyKey: generationIdempotencyKey,
+    });
+  } catch {
+    return json({
+      error: "The messages were generated but could not be saved. Try again.",
+      status: "persistence_failed",
+      retryable: true,
+      saved: false,
+    }, { status: 503 });
+  }
+  const persistedCommit = persisted as PursuitInitialOutreachCommit | undefined;
 
   return json({
     status: "outreach_generated",
     profileId: aggregate.profile.id,
     job,
-    pursuit: result.pursuit,
-    messages: generatedMessages.map(({ contact, outreach }) => ({
+    pursuit: persistedCommit?.pursuit ?? result.pursuit,
+    messages: persistedCommit?.messages.map((message) => ({
+      ...message,
+      insertedExample: generatedMessages.find(
+        ({ contact }) => contact.id === message.contactSuggestionId,
+      )?.outreach.insertedExample ?? null,
+    })) ?? generatedMessages.map(({ contact, outreach }) => ({
       contactSuggestionId: contact.id,
       recipientType: outreachRecipientType(contact.contactType),
       message: outreach.message,
@@ -1893,6 +2078,10 @@ export async function handlePublicProfilePursuitOutreachRequest(
     })),
     event: result.event,
     subscription: enforcement,
+    metering: {
+      pursuitDebited: persistedCommit?.pursuitDebited ?? shouldChargePursuit,
+      outreachDebited: persistedCommit?.outreachDebited ?? drafts.length,
+    },
   });
 }
 
@@ -1992,6 +2181,151 @@ export async function handlePublicProfilePursuitOutreachMessageUpdateRequest(
   });
 }
 
+function atomicPersistenceError(error: unknown, fallback: string) {
+  const message = error instanceof Error ? error.message : "";
+  if (message.includes("idempotency_conflict") || message.includes("already used for a different")) {
+    return json({
+      error: "That request key was already used for different changes.",
+      status: "idempotency_conflict",
+      trackingSaved: false,
+      retryable: false,
+    }, { status: 409 });
+  }
+  return json({
+    error: fallback,
+    status: "persistence_failed",
+    trackingSaved: false,
+    retryable: true,
+  }, { status: 503 });
+}
+
+export async function handlePublicProfilePursuitTrackingRequest(
+  request: Request,
+  pursuitId: string,
+  options: PublicProfilePursuitsHandlerOptions = {},
+) {
+  const session = await sessionForRequest(request, options);
+  if (session.status !== "authenticated") return authErrorResponse(session);
+
+  const repositoryRequest = repositoryRequestForOptions(options);
+  if (!repositoryRequest) return repositoryConfigErrorResponse();
+
+  const trimmedPursuitId = pursuitId.trim();
+  const input = await request.json().catch(() => null) as Record<string, unknown> | null;
+  const parsedChanges = parsePursuitTrackingChanges(input?.changes);
+  const idempotencyKey = parseIdempotencyKey(input?.idempotencyKey);
+  const issues = [...parsedChanges.issues];
+  if (!trimmedPursuitId) {
+    issues.push({ field: "id", message: "id is required." });
+  }
+  if (!idempotencyKey) {
+    issues.push({ field: "idempotencyKey", message: "A non-empty idempotencyKey of at most 200 characters is required." });
+  }
+  if (issues.length > 0) {
+    return json({
+      error: "Invalid tracking request.",
+      status: "validation_error",
+      issues,
+    }, { status: 400 });
+  }
+
+  const loadPursuit = options.loadPursuit ?? loadPursuitByIdForUser;
+  const pursuit = await loadPursuit(repositoryRequest, session.userId, trimmedPursuitId);
+  if (!pursuit) {
+    return json({ error: "Pursuit not found.", status: "not_found" }, { status: 404 });
+  }
+
+  const persist = options.persistTrackingMutation ?? persistPursuitTrackingMutation;
+  let committed: PursuitTrackingCommit;
+  try {
+    committed = await persist(repositoryRequest, {
+      userId: session.userId,
+      pursuitId: pursuit.id,
+      changes: parsedChanges.changes,
+      idempotencyKey: idempotencyKey as string,
+    });
+  } catch (error) {
+    return atomicPersistenceError(error, "Tracking could not be saved. Try again.");
+  }
+
+  return json({
+    status: "tracking_saved",
+    replayed: committed.status === "idempotent_replay",
+    pursuitId: committed.pursuit.id,
+    bucket: pursuitBucket(committed.pursuit),
+    trackingStartedAt: committed.pursuit.trackingStartedAt ?? null,
+    lastActivityAt: committed.pursuit.lastActivityAt,
+    tracking: committed.state,
+    history: committed.history,
+  });
+}
+
+export async function handlePublicProfilePursuitMessageCopyRequest(
+  request: Request,
+  messageId: string,
+  options: PublicProfilePursuitsHandlerOptions = {},
+) {
+  const session = await sessionForRequest(request, options);
+  if (session.status !== "authenticated") return authErrorResponse(session);
+
+  const repositoryRequest = repositoryRequestForOptions(options);
+  if (!repositoryRequest) return repositoryConfigErrorResponse();
+
+  const trimmedMessageId = messageId.trim();
+  const input = await request.json().catch(() => null) as Record<string, unknown> | null;
+  const idempotencyKey = parseIdempotencyKey(input?.idempotencyKey);
+  const issues: { field: string; message: string }[] = [];
+  if (!trimmedMessageId) issues.push({ field: "messageId", message: "messageId is required." });
+  if (!idempotencyKey) {
+    issues.push({ field: "idempotencyKey", message: "A non-empty idempotencyKey of at most 200 characters is required." });
+  }
+  if (issues.length > 0) {
+    return json({
+      error: "Invalid message Copy request.",
+      status: "validation_error",
+      issues,
+    }, { status: 400 });
+  }
+
+  const loadMessage = options.loadOutreachMessage ?? loadOutreachMessageById;
+  const message = await loadMessage(repositoryRequest, trimmedMessageId);
+  if (!message) {
+    return json({ error: "Outreach message not found.", status: "not_found" }, { status: 404 });
+  }
+  const loadPursuit = options.loadPursuit ?? loadPursuitByIdForUser;
+  const pursuit = await loadPursuit(repositoryRequest, session.userId, message.pursuitId);
+  if (!pursuit) {
+    return json({ error: "Outreach message not found.", status: "not_found" }, { status: 404 });
+  }
+
+  const persist = options.persistMessageCopy ?? persistOutreachMessageCopy;
+  let committed: PursuitTrackingCommit;
+  try {
+    committed = await persist(repositoryRequest, {
+      userId: session.userId,
+      outreachMessageId: message.id,
+      idempotencyKey: idempotencyKey as string,
+    });
+  } catch (error) {
+    return atomicPersistenceError(
+      error,
+      "The message was copied, but tracking was not saved. Try saving tracking again.",
+    );
+  }
+
+  return json({
+    status: "copy_tracking_saved",
+    recorded: committed.status === "committed",
+    pursuitId: committed.pursuit.id,
+    messageId: message.id,
+    bucket: pursuitBucket(committed.pursuit),
+    trackingStartedAt: committed.pursuit.trackingStartedAt ?? null,
+    lastActivityAt: committed.pursuit.lastActivityAt,
+    tracking: committed.state,
+    history: committed.history,
+  });
+}
+
 export async function handlePublicProfilePursuitStatusRequest(
   request: Request,
   options: PublicProfilePursuitsHandlerOptions = {},
@@ -2010,7 +2344,7 @@ export async function handlePublicProfilePursuitStatusRequest(
   if (!action) {
     issues.push({
       field: "action",
-      message: "action must be one of outreach_sent, applied, responded, interviewing, offer, rejected.",
+      message: "action must be one of outreach_sent, applied, responded, interviewing, rejected.",
     });
   }
   if (issues.length > 0) {

@@ -73,12 +73,55 @@ export type Pursuit = {
   recommendedWorkExampleIds: string[];
   outreachAngle?: string;
   trackingStartedAt?: string;
+  pursuitMeteredAt?: string;
   notes?: string;
   jobSnapshot?: PursuitJobSnapshot;
   selectionSnapshot?: PursuitSelectionSnapshot;
   lastActivityAt: string;
   createdAt: string;
   updatedAt: string;
+};
+
+export type PursuitHistoryTrackingEntry = {
+  type: "tracking";
+  label: string;
+  change: "marked" | "unmarked";
+  occurredAt: string | null;
+  timestampAvailable: boolean;
+};
+
+export type PursuitHistoryMessageEntry = {
+  type: "message";
+  label: "Sent outreach message";
+  occurredAt: string | null;
+  timestampAvailable: boolean;
+  recipient: {
+    name: string | null;
+    title: string | null;
+    linkedinUrl: string | null;
+    available: boolean;
+  };
+  message: {
+    text: string | null;
+    available: boolean;
+  };
+};
+
+export type PursuitHistoryEntry = PursuitHistoryTrackingEntry | PursuitHistoryMessageEntry;
+
+export type PursuitTrackingCommit = {
+  status: "committed" | "idempotent_replay";
+  pursuit: Pursuit;
+  state: Record<PursuitTrackingAction, boolean>;
+  history: PursuitHistoryEntry[];
+};
+
+export type PursuitInitialOutreachCommit = {
+  status: "committed" | "idempotent_replay";
+  pursuit: Pursuit;
+  messages: OutreachMessageRecord[];
+  pursuitDebited: boolean;
+  outreachDebited: number;
 };
 
 export type PursuitTrackingEvent = {

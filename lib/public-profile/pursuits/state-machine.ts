@@ -124,8 +124,8 @@ export function createPursuit(input: CreatePursuitInput): PursuitTransitionResul
   return {
     ok: true,
     pursuit,
-    event: eventFor(pursuit, "created", undefined, "saved", input.now, {}, "pursuit"),
-    usageEvents: [usageEvent(pursuit, "pursuit", input.now)],
+    event: eventFor(pursuit, "created", undefined, "saved", input.now),
+    usageEvents: [],
   };
 }
 
@@ -189,6 +189,9 @@ export function transitionPursuit(
     ? Math.max(1, Math.round(payload.messageCount))
     : 1;
   const usageEvents = usageType ? [usageEvent(next, usageType, now, quantity)] : [];
+  if (eventType === "outreach_generated" && payload.chargePursuit === true) {
+    usageEvents.unshift(usageEvent(next, "pursuit", now));
+  }
 
   return {
     ok: true,
