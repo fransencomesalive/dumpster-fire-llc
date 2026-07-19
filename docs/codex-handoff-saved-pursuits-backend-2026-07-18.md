@@ -114,7 +114,11 @@ Pre-existing lint warnings:
 4. The first GitHub Actions run passed the disposable migration, then failed because existing
    fixture wrappers emitted compiled files under macOS-only `/private/tmp`. The wrappers now use
    Node's platform temp directory, and the public-jobs test config has a portable relative fallback
-   output. All 28 fixtures pass with the portable paths; the follow-up CI run is the remote proof.
+   output.
+5. The next CI run passed the migration and compiled fixtures, then exposed that seven existing
+   fixtures rely on Node's native TypeScript loading while the new workflow pinned Node 20. Local
+   verification uses Node 24. CI now uses Node 24 plus the current Node-24 action runtimes. All 28
+   fixtures pass locally with that same runtime; the final CI run is the remote proof.
 
 ## Not verified or not completed
 
