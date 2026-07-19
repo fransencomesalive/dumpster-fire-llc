@@ -35,6 +35,14 @@ Saved Pursuits adds no onboarding questions and requires no new Candidate Profil
    through immutable saved snapshots.
 10. Saved Pursuits is a protected full page. Applied cards open the shared Apply Wizard
     Tracking experience in a saved-pursuit context.
+11. Results suppression (Randall 2026-07-18). A posting that becomes inactive, is dismissed,
+    is skipped, expires, or has its source removed disappears from scan/dashboard results. It
+    must also be recorded so it is never surfaced again as a result on a later scan. The
+    suppression record persists independently of whether the user ever saved the posting.
+    Auto-expiring suppression records after 30 days is desirable but conditional: build the
+    30-day TTL only if maintaining that layer of the database is not problematic; otherwise
+    suppression persists indefinitely. This is a backend/data-model requirement, not a design
+    change, and is not yet implemented.
 
 ## Product vocabulary
 
@@ -185,6 +193,13 @@ The intended model contains:
 The existing scalar pursuit status may remain temporarily for migration compatibility, but
 it must not represent the six independent tracking facts. Workflow progress and tracking
 facts are separate concepts.
+
+Results suppression (locked decision 11, not yet implemented) needs its own owned ledger,
+keyed by user and posting identity, that scan/dashboard result queries consult so a
+dismissed, skipped, expired, inactive, or removed-source posting is never re-surfaced. It is
+distinct from `pursuits`: a suppressed posting need not be a saved pursuit. A 30-day TTL /
+cleanup pass on this ledger is optional and should be added only if it does not become a
+maintenance burden; without it, suppression persists indefinitely.
 
 ## API contract
 
