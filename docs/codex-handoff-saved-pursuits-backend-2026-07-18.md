@@ -8,8 +8,9 @@ Product contract: `docs/saved-pursuits-feature-spec-2026-07-18.md`
 ## Completed scope
 
 The approved backend, API, migration-readiness, security, dependency, and automated-QA work is
-implemented locally. This does not include UI/CSS work, production migration execution,
-deployment, or production verification.
+implemented and pushed. Vercel automatically deployed the final `main` commit, and the canonical
+production URL returns HTTP 200. This does not include UI/CSS work, production migration
+execution, or authenticated production workflow verification.
 
 Implemented behavior:
 
@@ -90,6 +91,9 @@ Passed on the final implementation tree:
 - `bash -n scripts/test-saved-pursuits-migration.sh`.
 - JavaScript syntax checks for the aggregate test runners.
 - `git diff --check`.
+- GitHub Actions release gate `29670900270` on implementation/runtime commit `86aa746`.
+- Vercel deployment for implementation/runtime commit `86aa746`.
+- `curl -I https://www.thejobmarketisadumpsterfire.com`: HTTP 200 after final deployment.
 
 Pre-existing lint warnings:
 
@@ -122,10 +126,13 @@ Pre-existing lint warnings:
 
 ## Not verified or not completed
 
-### Production migration and deployment
+### Production migration and authenticated integration
 
 Migrations `20260718000100`, `20260718000200`, and `20260718000300` have not been applied to
-production. No deployment or production HTTP verification was performed.
+production. The application deployment is live and HTTP-healthy, but the new Saved Pursuits
+database paths cannot be called end to end until those migrations are explicitly authorized and
+applied. The existing dashboard Save surface is protected during this window by the narrow
+missing-RPC compatibility fallback.
 
 Required after explicit production authorization:
 
@@ -139,8 +146,8 @@ Required after explicit production authorization:
    snapshot columns, request tables, and reconciliation counts.
 5. Exercise Save/Unsave, tracking/reversal, Copy replay/failure/retry, generation replay, quota
    rollback, and owner isolation with two users.
-6. Deploy the application, run `curl -I <production-url>`, and confirm HTTP 200 before inspecting
-   production content.
+6. Run authenticated production smoke tests, then repeat `curl -I` and confirm HTTP 200 before
+   inspecting production content.
 
 ### UI and design-system parity
 
