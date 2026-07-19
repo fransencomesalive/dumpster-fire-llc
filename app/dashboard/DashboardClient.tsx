@@ -161,7 +161,6 @@ export default function DashboardClient() {
   // Each star tier toggles on/off independently. Every tier starts ON (teal); toggling a
   // tier off (cream) hides that bucket. Matches the legacy /scans default.
   const [fitFilters, setFitFilters] = useState<Set<number>>(() => new Set([5, 4, 3, 2, 1]));
-  const [savedOnly, setSavedOnly] = useState(false);
   const [scanProgress, setScanProgress] = useState<ScanProgress>({ status: "idle" });
   // Company job boards card — the user's private job_sources rows.
   const [boards, setBoards] = useState<PublicJobBoardRecord[]>([]);
@@ -427,15 +426,12 @@ export default function DashboardClient() {
 
   const jobsResponse = jobsState.status === "ready" ? jobsState.response : undefined;
   const jobs = jobsResponse?.jobs ?? [];
-  const savedJobs = jobs.filter((job) => job.saved);
   const searchSettings = jobsResponse?.searchSettings;
   const tierCounts = [5, 4, 3, 2, 1].map((tier) => ({
     tier,
     count: jobs.filter((job) => starsFromScore(job.match?.score ?? 0) === tier).length,
   }));
-  const visibleJobs = savedOnly
-    ? savedJobs
-    : jobs.filter((job) => fitFilters.has(starsFromScore(job.match?.score ?? 0)));
+  const visibleJobs = jobs.filter((job) => fitFilters.has(starsFromScore(job.match?.score ?? 0)));
   const scanFillWidth = scanProgress.status === "running"
     ? (scanProgress.phase === 0 ? "30%" : scanProgress.phase === 1 ? "62%" : "88%")
     : "100%";
@@ -457,7 +453,7 @@ export default function DashboardClient() {
       {guardState.status === "complete" ? (
         <section className={jobsStyles.pageWrap} aria-labelledby="jobs-title">
           <div className={jobsStyles.sectionHead}>
-            <h2 id="jobs-title">{savedOnly ? "Saved jobs" : "Your best matches"}</h2>
+            <h2 id="jobs-title">Your best matches</h2>
             {jobsResponse?.summary.lastScanAt ? (
               <p className={jobsStyles.lastScan}>Last scan {formatJobDate(jobsResponse.summary.lastScanAt)}</p>
             ) : null}
@@ -506,7 +502,7 @@ export default function DashboardClient() {
                 {pursueLinkError ? <p className={jobsStyles.boardErr}>{pursueLinkError}</p> : null}
               </div>
 
-              {!savedOnly && jobs.length > 0 ? (
+              {jobs.length > 0 ? (
                 <div className={jobsStyles.ratingFilterGrid} aria-label="Filter matches by fit">
                   {tierCounts.map(({ tier, count }) => (
                     <button
@@ -533,11 +529,9 @@ export default function DashboardClient() {
 
               {visibleJobs.length === 0 ? (
                 <p className={jobsStyles.empty}>
-                  {savedOnly
-                    ? "No saved jobs yet. Save matches you want to revisit before deciding whether to pursue them."
-                    : jobs.length > 0
-                      ? "Every fit tier is turned off. Turn a star tier back on to see your matches."
-                      : "No active jobs yet. Run a scan once your profile search settings are ready."}
+                  {jobs.length > 0
+                    ? "Every fit tier is turned off. Turn a star tier back on to see your matches."
+                    : "No active jobs yet. Run a scan once your profile search settings are ready."}
                 </p>
               ) : (
                 <div className={jobsStyles.matchList}>
@@ -625,8 +619,8 @@ export default function DashboardClient() {
                 <button className={jobsStyles.scanNowBtn} disabled={jobsBusy} onClick={runScan} type="button">
                   {scanProgress.status === "running" ? "Scanning…" : "Run scan"}
                 </button>
-                <button className={jobsStyles.scanSecondaryBtn} onClick={() => setSavedOnly((current) => !current)} type="button">
-                  {savedOnly ? "Show all jobs" : "View saved jobs"}
+                <button className={jobsStyles.scanSecondaryBtn} onClick={() => router.push("/saved-pursuits")} type="button">
+                  View Saved Pursuits
                 </button>
               </div>
 

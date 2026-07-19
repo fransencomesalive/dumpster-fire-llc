@@ -1835,12 +1835,9 @@ export default function OnboardingClient({
                 Job scan
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12" /><polyline points="12 5 19 12 12 19" /></svg>
               </button>
-              <span className={styles.pursuitsTipWrap}>
-                <span id="saved-pursuits-tip" className={styles.pursuitsTip} role="tooltip">Coming Soon</span>
-                <button type="button" className={styles.btnScan} aria-disabled="true" aria-describedby="saved-pursuits-tip">
-                  Saved Pursuits
-                </button>
-              </span>
+              <button type="button" className={styles.btnScan} onClick={() => router.push("/saved-pursuits")}>
+                Saved Pursuits
+              </button>
             </>
           ) : null}
         </div>
