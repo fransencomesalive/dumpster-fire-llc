@@ -36,6 +36,17 @@
   .ratingFilterBtnActive strong, .ratingFilterBtnActive .ratingCount { color:var(--c-paper); }
 
   .matchList { display:grid; gap:var(--space-4); }
+  /* Skip removal: the card fades and collapses out so the dismissal reads as an action, not a
+     freeze. The list reflows as it goes. Honors reduced-motion (see below). */
+  .cardLeaving { overflow:hidden; pointer-events:none; animation:cardLeave 200ms var(--ease-snap) forwards; }
+  @keyframes cardLeave {
+    from { opacity:1; max-height:1200px; transform:none; }
+    55%  { opacity:0; transform:translateX(14px); }
+    to   { opacity:0; max-height:0; margin-top:0; padding-top:0; padding-bottom:0; border-width:0; transform:translateX(14px); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .cardLeaving { animation-duration:1ms; }
+  }
 
   /* Match card */
   .card { background-color:var(--c-paper-deep); background-image:var(--fiber-img), var(--grain-img);
@@ -117,7 +128,11 @@
   .btnApply { color:var(--role-action-text); background-color:var(--role-action);
     background-image:var(--fiber-img), var(--grain-img); background-blend-mode:normal, soft-light; background-size:170px 170px, 46px 46px;
     border:var(--line-bold) solid var(--c-ink); box-shadow:var(--shadow-card); margin-left:auto; }
-  .btnSave { color:var(--c-ink); background:var(--c-paper); border:var(--line-reg) solid var(--c-ink); }
+  .btnSave { display:inline-flex; align-items:center; gap:6px; color:var(--c-ink); background:var(--c-paper); border:var(--line-reg) solid var(--c-ink); }
+  /* Saved = teal confirmation with a check (teal = on/saved), same language as the wizard
+     "Copied" state. The optimistic flip makes this appear the instant Save is clicked. */
+  .btnSaveOn { color:var(--c-paper); background:var(--c-teal); border-color:var(--c-ink); }
+  .btnSaveOn svg { flex:none; width:14px; height:14px; }
   .btnSkip { color:var(--role-text-muted); background:transparent; border:var(--line-reg) solid transparent; }
   /* Skip = "not interested" — removes the posting from results */
   .skipNote { flex:1 1 0; min-width:110px; font-family:var(--font-body); font-size:0.8rem; font-style:italic; color:var(--role-text-faint); }

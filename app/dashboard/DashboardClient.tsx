@@ -152,11 +152,36 @@ function JobMetaGrid({ job }: { job: PublicJobRecord }) {
   );
 }
 
+// Optimistic list edits: Save/Skip update the displayed list immediately, then reconcile with
+// the authoritative server response (or revert on failure), so there is no dead round-trip on
+// screen. The saved count is kept in step so the Overview total does not lag.
+function withJobSaved(response: PublicJobsResponse, jobId: string, saved: boolean): PublicJobsResponse {
+  let delta = 0;
+  const jobs = response.jobs.map((job) => {
+    if (job.id !== jobId || job.saved === saved) return job;
+    delta = saved ? 1 : -1;
+    return { ...job, saved };
+  });
+  return { ...response, summary: { ...response.summary, savedJobs: Math.max(0, response.summary.savedJobs + delta) }, jobs };
+}
+
+function withJobRemoved(response: PublicJobsResponse, jobId: string): PublicJobsResponse {
+  const removed = response.jobs.find((job) => job.id === jobId);
+  const jobs = response.jobs.filter((job) => job.id !== jobId);
+  const savedDelta = removed?.saved ? -1 : 0;
+  return { ...response, summary: { ...response.summary, savedJobs: Math.max(0, response.summary.savedJobs + savedDelta) }, jobs };
+}
+
 export default function DashboardClient() {
   const router = useRouter();
   const [guardState, setGuardState] = useState<GuardState>({ status: "checking" });
   const [jobsState, setJobsState] = useState<JobsState>({ status: "idle" });
+  // jobsBusy is now scoped to the global scan only; per-job Save requests track their own id so
+  // one action never freezes the whole list.
   const [jobsBusy, setJobsBusy] = useState(false);
+  const [pendingJobIds, setPendingJobIds] = useState<Set<string>>(() => new Set());
+  // Cards mid-skip carry a leave animation before they are removed from the list.
+  const [leavingJobIds, setLeavingJobIds] = useState<Set<string>>(() => new Set());
   const [pursuitContext, setPursuitContext] = useState<{ job: PublicJobRecord; accessToken: string } | null>(null);
   // Each star tier toggles on/off independently. Every tier starts ON (teal); toggling a
   // tier off (cream) hides that bucket. Matches the legacy /scans default.
@@ -262,25 +287,32 @@ export default function DashboardClient() {
       return;
     }
 
-    setJobsBusy(true);
+    // Flip the flag immediately so the button confirms on click; reconcile with the server after.
+    const snapshot = jobsState.status === "ready" ? jobsState.response : null;
+    const confirmation = saved ? "Saved for later." : "Removed from Saved Jobs.";
+    if (snapshot) {
+      setJobsState({ status: "ready", response: withJobSaved(snapshot, job.id, saved), message: confirmation });
+    }
+    setPendingJobIds((prev) => new Set(prev).add(job.id));
     try {
       const response = await requestPublicProfileApi<PublicJobsResponse>("/api/jobs/save", {
         method: "POST",
         accessToken,
         body: { jobId: job.id, saved },
       });
-      setJobsState({
-        status: "ready",
-        response,
-        message: saved ? "Saved for later." : "Removed from Saved Jobs.",
-      });
+      setJobsState({ status: "ready", response, message: confirmation });
     } catch (error) {
-      setJobsState({
-        status: "error",
-        message: error instanceof Error ? error.message : "Saved Jobs update failed.",
-      });
+      // Revert the optimistic flag but keep the list on screen.
+      const message = error instanceof Error ? error.message : "Saved Jobs update failed.";
+      setJobsState(snapshot
+        ? { status: "ready", response: snapshot, message }
+        : { status: "error", message });
     } finally {
-      setJobsBusy(false);
+      setPendingJobIds((prev) => {
+        const next = new Set(prev);
+        next.delete(job.id);
+        return next;
+      });
     }
   }
 
@@ -292,25 +324,35 @@ export default function DashboardClient() {
       return;
     }
 
-    setJobsBusy(true);
+    const snapshot = jobsState.status === "ready" ? jobsState.response : null;
+    const confirmation = `Removed ${job.title} from results.`;
+
+    // Fire the request now, but play the leave animation before pulling the card so the
+    // dismissal is visible rather than an instant vanish or a frozen round-trip.
+    setLeavingJobIds((prev) => new Set(prev).add(job.id));
+    const request = requestPublicProfileApi<PublicJobsResponse>("/api/jobs/skip", {
+      method: "POST",
+      accessToken,
+      body: { jobId: job.id },
+    });
+    await new Promise((resolve) => setTimeout(resolve, 220));
+    if (snapshot) {
+      setJobsState({ status: "ready", response: withJobRemoved(snapshot, job.id), message: confirmation });
+    }
+    setLeavingJobIds((prev) => {
+      const next = new Set(prev);
+      next.delete(job.id);
+      return next;
+    });
     try {
-      const response = await requestPublicProfileApi<PublicJobsResponse>("/api/jobs/skip", {
-        method: "POST",
-        accessToken,
-        body: { jobId: job.id },
-      });
-      setJobsState({
-        status: "ready",
-        response,
-        message: `Removed ${job.title} from results.`,
-      });
+      const response = await request;
+      setJobsState({ status: "ready", response, message: confirmation });
     } catch (error) {
-      setJobsState({
-        status: "error",
-        message: error instanceof Error ? error.message : "Skip failed.",
-      });
-    } finally {
-      setJobsBusy(false);
+      // Put the card back and surface the failure without wiping the list.
+      const message = error instanceof Error ? error.message : "Skip failed.";
+      setJobsState(snapshot
+        ? { status: "ready", response: snapshot, message }
+        : { status: "error", message });
     }
   }
 
@@ -539,7 +581,7 @@ export default function DashboardClient() {
                     const signals = job.match?.signals ?? [];
                     const isWildcard = job.match?.label === "Probably Not Worth Your Time";
                     return (
-                      <article className={`${jobsStyles.card} ${jobsStyles.jobCard}`} key={job.id}>
+                      <article className={`${jobsStyles.card} ${jobsStyles.jobCard} ${leavingJobIds.has(job.id) ? jobsStyles.cardLeaving : ""}`} key={job.id}>
                         {isWildcard ? (
                           <span className={jobsStyles.weirdMatchTag} aria-label="Wildcard match">
                             {"WEIRD".split("").map((letter, index) => <span key={`w${index}`}>{letter}</span>)}
@@ -589,8 +631,13 @@ export default function DashboardClient() {
                         ) : null}
 
                         <div className={jobsStyles.actionRail}>
-                          <button className={jobsStyles.btnSave} disabled={jobsBusy} onClick={() => setJobSaved(job, !job.saved)} type="button">
-                            {job.saved ? "Saved" : "Save"}
+                          <button className={`${jobsStyles.btnSave} ${job.saved ? jobsStyles.btnSaveOn : ""}`} disabled={jobsBusy || pendingJobIds.has(job.id)} onClick={() => setJobSaved(job, !job.saved)} type="button">
+                            {job.saved ? (
+                              <>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12" /></svg>
+                                Saved
+                              </>
+                            ) : "Save"}
                           </button>
                           <button className={jobsStyles.btnSkip} disabled={jobsBusy} onClick={() => skipJob(job)} type="button" title="This job will be removed from results.">Skip</button>
                           <a className={jobsStyles.btnSource} href={job.sourceUrl} rel="noreferrer" target="_blank">Open posting ↗</a>
