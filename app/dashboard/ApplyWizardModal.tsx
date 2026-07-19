@@ -8,36 +8,61 @@ import type {
   HumanPathContactSuggestion,
   OutreachMessageRecord,
   Pursuit,
+  PursuitHistoryEntry,
 } from "@/lib/public-profile/pursuits/types";
+import {
+  PURSUIT_TRACKING_ACTIONS,
+  emptyPursuitTrackingState,
+  pursuitTrackingLabel,
+  type PursuitBucket,
+  type PursuitTrackingState,
+} from "@/lib/public-profile/pursuits/tracking";
 import styles from "./apply-wizard.module.css";
 
 // The Human Path apply wizard: Review → Contacts → Outreach → Track. Markup + CSS are ported
 // 1:1 from the approved DS card (design-system/components/apply-wizard.html); the wiring drives
 // the already-built public pursuit backend, re-reading the pursuit after each step.
+//
+// Two entry modes (design "PRODUCTION COMPONENT MAPPING", Randall 2026-07-18):
+//   · kind:"job"     starts a new pursuit for a job and walks all four steps.
+//   · kind:"pursuit"  re-opens an existing pursuit from the Saved Pursuits page. Applied
+//                     pursuits open straight into Track behind an appliedBar (no stepper, no
+//                     generation); Saved-for-later pursuits resume on the stepper's Track step.
+export type ApplyWizardTarget =
+  | { kind: "job"; job: PublicJobRecord }
+  | { kind: "pursuit"; pursuitId: string };
 
 type WizardStep = 1 | 2 | 3 | 4;
 const STEP_LABELS: Record<WizardStep, string> = { 1: "Review", 2: "Contacts", 3: "Outreach", 4: "Track" };
 
-// The legacy free-text checklist has no public analog; each item maps to one real status
-// transition reachable from an outreach-ready pursuit.
-const TRACK_ACTIONS: { action: string; label: string }[] = [
-  { action: "outreach_sent", label: "Sent outreach message" },
-  { action: "applied", label: "Applied online" },
-  { action: "responded", label: "They responded" },
-  { action: "interviewing", label: "Interviewing" },
-  { action: "offer", label: "Got an offer" },
-  { action: "rejected", label: "Not moving forward" },
-];
-
 type RoleTrackOption = { id: string; name: string };
 type CreateResponse = { status: string; job: PublicJobRecord; match: MatchResult; pursuit: Pursuit };
 type RoleTracksResponse = { status: string; section: { roleTracks: RoleTrackOption[] } };
+type PostingDisplay = {
+  title: string | null;
+  companyName: string | null;
+  location: string | null;
+  remoteType: string | null;
+  compensation: string | null;
+  sourceUrl: string | null;
+};
 type PursuitReadResponse = {
   status: string;
   pursuit: Pursuit;
   job: PublicJobRecord | null;
+  posting: PostingDisplay;
   contacts: HumanPathContactSuggestion[];
   outreachMessages: OutreachMessageRecord[];
+  bucket: PursuitBucket;
+  tracking: PursuitTrackingState;
+  history: PursuitHistoryEntry[];
+};
+type TrackingResponse = {
+  status: string;
+  bucket: PursuitBucket;
+  trackingStartedAt: string | null;
+  tracking: PursuitTrackingState;
+  history: PursuitHistoryEntry[];
 };
 
 function humanizeContactType(type: HumanPathContactSuggestion["contactType"]): string {
@@ -56,23 +81,45 @@ function confidenceStars(confidence: HumanPathContactSuggestion["confidence"]): 
   return "★".repeat(filled) + "☆".repeat(5 - filled);
 }
 
+// A stable-per-message key keeps re-copies and retries idempotent (the backend also guards
+// against recording the same copied message twice); tracking saves use a fresh key per click.
+function newIdempotencyKey(prefix: string): string {
+  const rand = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  return `${prefix}:${rand}`;
+}
+
+function formatHistoryTime(entry: PursuitHistoryEntry): string {
+  if (!entry.timestampAvailable || !entry.occurredAt) return "Date unavailable";
+  const date = new Date(entry.occurredAt);
+  if (Number.isNaN(date.getTime())) return "Date unavailable";
+  const time = date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+  const now = new Date();
+  const sameDay = date.toDateString() === now.toDateString();
+  if (sameDay) return `Today · ${time}`;
+  const day = date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  return `${day} · ${time}`;
+}
+
 const EXTERNAL_LINK_ICON = (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
     <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" />
   </svg>
 );
 
-// The Copied state only appears after the clipboard write resolves; a blocked write
-// leaves the button in its Copy state instead of claiming success.
-function WizardCopyButton({ text }: { text: string }) {
+// The Copied state only appears after the clipboard write resolves; a blocked write leaves the
+// button in its Copy state. On a successful write we record the copy server-side (marks
+// "Sent outreach message" and moves the pursuit to Applied); the parent surfaces a failure.
+function WizardCopyButton({ text, onCopied }: { text: string; onCopied: () => Promise<void> }) {
   const [copied, setCopied] = useState(false);
   async function copyText() {
     try {
       await navigator.clipboard.writeText(text);
       setCopied(true);
     } catch {
-      // Clipboard unavailable or blocked; stay on Copy.
+      // Clipboard unavailable or blocked; stay on Copy and do not claim anything was recorded.
+      return;
     }
+    void onCopied();
   }
   return (
     <button
@@ -104,6 +151,72 @@ function AutosizeTextarea({ value }: { value: string }) {
   return <textarea ref={ref} className={styles.messageTextarea} value={value} readOnly />;
 }
 
+// A designed, human-readable record of the pursuit: dated marks, reversals, and expandable
+// sent-message snapshots (view-only, non-selectable). Never shows event codes or IDs.
+function PursuitHistoryRail({ history, flush }: { history: PursuitHistoryEntry[]; flush?: boolean }) {
+  const className = `${styles.pursuitHistory}${flush ? ` ${styles.pursuitHistoryFlush}` : ""}`;
+  return (
+    <section className={className}>
+      <strong>Pursuit history</strong>
+      {history.length === 0 ? (
+        <p className={styles.dsStateLabel}>Nothing tracked yet. Marks and sent messages will appear here with their dates.</p>
+      ) : (
+        <ol className={styles.historyList}>
+          {history.map((entry, index) => {
+            const time = formatHistoryTime(entry);
+            if (entry.type === "message") {
+              const recipientName = entry.recipient.name;
+              const summaryLabel = recipientName
+                ? `Sent outreach message to ${recipientName}`
+                : "Sent an outreach message";
+              if (!entry.message.available || !entry.message.text) {
+                // Legacy import with no saved message body: nothing to open.
+                return (
+                  <li className={`${styles.historyItem} ${styles.isUnavailable}`} key={index}>
+                    <div className={styles.historyLine}>
+                      <span className={styles.historyLabel}>{summaryLabel}</span>
+                      <span className={styles.historyTime}>{time}</span>
+                    </div>
+                    <span className={styles.historyMeta}>The exact message and recipient were not saved, so there is nothing to open.</span>
+                  </li>
+                );
+              }
+              return (
+                <li className={styles.historyItem} key={index}>
+                  <details className={styles.historyMsg}>
+                    <summary>
+                      <span className={styles.historyLabel}>{summaryLabel}</span>
+                      {entry.recipient.linkedinUrl ? (
+                        <a href={entry.recipient.linkedinUrl} target="_blank" rel="noreferrer" className={styles.seeProfileBtn}>LI Profile{EXTERNAL_LINK_ICON}</a>
+                      ) : null}
+                      <span className={styles.historyTime}>{time}</span>
+                      <span className={styles.msgDisclosure}>Show message</span>
+                    </summary>
+                    <div className={styles.historyMsgBody}><p>{entry.message.text}</p></div>
+                  </details>
+                  {recipientName && !entry.recipient.linkedinUrl ? (
+                    <span className={styles.historyMeta}>A profile link was not saved for this recipient.</span>
+                  ) : null}
+                </li>
+              );
+            }
+            const reversal = entry.change === "unmarked";
+            return (
+              <li className={`${styles.historyItem}${reversal ? ` ${styles.isReversal}` : ""}`} key={index}>
+                <div className={styles.historyLine}>
+                  <span className={styles.historyLabel}>{reversal ? `Unmarked ${entry.label}` : entry.label}</span>
+                  <span className={styles.historyTime}>{time}</span>
+                </div>
+                {reversal ? <span className={styles.historyMeta}>Correction. Earlier marks are kept below.</span> : null}
+              </li>
+            );
+          })}
+        </ol>
+      )}
+    </section>
+  );
+}
+
 function errorMessage(error: unknown, fallback: string): string {
   if (error instanceof PublicProfileApiError) {
     const body = error.body as { error?: string } | null;
@@ -114,20 +227,22 @@ function errorMessage(error: unknown, fallback: string): string {
 }
 
 export default function ApplyWizardModal({
-  job: initialJob,
+  target,
   accessToken,
   onClose,
   onPursuitChanged,
 }: {
-  job: PublicJobRecord;
+  target: ApplyWizardTarget;
   accessToken: string;
   onClose: () => void;
   onPursuitChanged?: (message: string) => void;
 }) {
-  const [step, setStep] = useState<WizardStep>(1);
-  const [pursuitId, setPursuitId] = useState<string | null>(null);
+  const [mode, setMode] = useState<"stepper" | "applied">("stepper");
+  const [step, setStep] = useState<WizardStep>(target.kind === "pursuit" ? 4 : 1);
+  const [pursuitId, setPursuitId] = useState<string | null>(target.kind === "pursuit" ? target.pursuitId : null);
   const [match, setMatch] = useState<MatchResult | null>(null);
-  const [job, setJob] = useState<PublicJobRecord>(initialJob);
+  const [job, setJob] = useState<PublicJobRecord | null>(target.kind === "job" ? target.job : null);
+  const [posting, setPosting] = useState<PostingDisplay | null>(null);
   const [roleTracks, setRoleTracks] = useState<RoleTrackOption[]>([]);
   const [selectedRoleTrackId, setSelectedRoleTrackId] = useState<string | null>(null);
   const [recommendedRoleTrackId, setRecommendedRoleTrackId] = useState<string | null>(null);
@@ -136,9 +251,18 @@ export default function ApplyWizardModal({
   const [providerUnavailable, setProviderUnavailable] = useState(false);
   const [messages, setMessages] = useState<OutreachMessageRecord[]>([]);
   const [regeneratingId, setRegeneratingId] = useState<string | null>(null);
-  const [trackAction, setTrackAction] = useState<string | null>(null);
+  // Tracking: `tracking` is the last committed server state; `draft` is the in-progress
+  // checkbox state. The badge and CTA react to `draft`; the history rail reflects `tracking`.
+  const [tracking, setTracking] = useState<PursuitTrackingState>(emptyPursuitTrackingState);
+  const [draft, setDraft] = useState<PursuitTrackingState>(emptyPursuitTrackingState);
+  const [history, setHistory] = useState<PursuitHistoryEntry[]>([]);
+  const [trackingStartedAt, setTrackingStartedAt] = useState<string | null>(null);
+  const [resumedSavedForLater, setResumedSavedForLater] = useState(false);
+  const [copyError, setCopyError] = useState<string | null>(null);
+  const [copyRetryMessageId, setCopyRetryMessageId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [initError, setInitError] = useState<string | null>(null);
+  const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const api = useCallback(
@@ -147,15 +271,24 @@ export default function ApplyWizardModal({
     [accessToken],
   );
 
+  const applyTracking = useCallback((data: { tracking: PursuitTrackingState; history: PursuitHistoryEntry[]; trackingStartedAt: string | null }) => {
+    setTracking(data.tracking);
+    setDraft(data.tracking);
+    setHistory(data.history);
+    setTrackingStartedAt(data.trackingStartedAt);
+  }, []);
+
   const readPursuit = useCallback(
     async (id: string) => {
       const data = await api<PursuitReadResponse>(`/api/public-profile/pursuits/${id}`, "GET");
       if (data.job) setJob(data.job);
+      setPosting(data.posting);
       setContacts(data.contacts);
       setMessages(data.outreachMessages);
+      applyTracking({ tracking: data.tracking, history: data.history, trackingStartedAt: data.pursuit.trackingStartedAt ?? null });
       return data;
     },
-    [api],
+    [api, applyTracking],
   );
 
   const initRef = useRef(false);
@@ -163,6 +296,46 @@ export default function ApplyWizardModal({
     if (initRef.current) return;
     initRef.current = true;
     (async () => {
+      // Re-entry from the Saved Pursuits page: read the pursuit, then route by bucket.
+      if (target.kind === "pursuit") {
+        try {
+          const data = await readPursuit(target.pursuitId);
+          if (data.bucket === "applied") {
+            setMode("applied");
+            setStep(4);
+          } else {
+            setMode("stepper");
+            setStep(4);
+            setResumedSavedForLater(true);
+            // Best-effort match + role tracks so the stepper can navigate back to Review;
+            // a snapshot-only posting (no live job) degrades to Track-only.
+            if (data.pursuit.jobId) {
+              try {
+                const [tracks, matched] = await Promise.all([
+                  api<RoleTracksResponse>("/api/public-profile/role-tracks", "GET").catch(() => null),
+                  api<{ match: MatchResult }>("/api/public-profile/match", "POST", { jobId: data.pursuit.jobId }).catch(() => null),
+                ]);
+                if (matched) {
+                  setMatch(matched.match);
+                  setRecommendedRoleTrackId(matched.match.recommendations.roleTrack?.roleTrack.id ?? null);
+                }
+                const trackList = tracks?.section.roleTracks ?? [];
+                setRoleTracks(trackList);
+                setSelectedRoleTrackId(data.pursuit.selectedRoleTrackId ?? matched?.match.recommendations.roleTrack?.roleTrack.id ?? trackList[0]?.id ?? null);
+              } catch {
+                // Non-fatal: Track still works without Review context.
+              }
+            }
+          }
+          setReady(true);
+        } catch (err) {
+          setInitError(errorMessage(err, "Could not open this pursuit."));
+        }
+        return;
+      }
+
+      // New pursuit for a dashboard job.
+      const initialJob = target.job;
       try {
         const [created, tracks] = await Promise.all([
           api<CreateResponse>("/api/public-profile/pursuits", "POST", { jobId: initialJob.id }),
@@ -171,15 +344,16 @@ export default function ApplyWizardModal({
         setPursuitId(created.pursuit.id);
         setMatch(created.match);
         setJob(created.job);
+        setTrackingStartedAt(created.pursuit.trackingStartedAt ?? null);
         const recommended = created.match.recommendations.roleTrack?.roleTrack.id ?? null;
         setRecommendedRoleTrackId(recommended);
         const trackList = tracks?.section.roleTracks ?? [];
         setRoleTracks(trackList);
         setSelectedRoleTrackId(recommended ?? trackList[0]?.id ?? null);
+        setReady(true);
       } catch (err) {
         // A pursuit already exists for this job: resume it instead of failing. The 409
-        // carries the existing pursuit; contacts/messages come from the pursuit read and
-        // the match is recomputed so step 1 renders as usual.
+        // carries the existing pursuit; contacts/messages/tracking come from the pursuit read.
         if (err instanceof PublicProfileApiError && err.status === 409) {
           const body = err.body as { status?: string; pursuit?: Pursuit } | null;
           if (body?.status === "already_pursuing" && body.pursuit) {
@@ -191,8 +365,6 @@ export default function ApplyWizardModal({
                 api<RoleTracksResponse>("/api/public-profile/role-tracks", "GET").catch(() => null),
                 api<{ match: MatchResult }>("/api/public-profile/match", "POST", { jobId: initialJob.id }),
               ]);
-              // Pre-select the Human Path already found for this pursuit so a resumed wizard
-              // can advance without re-running the metered contact lookup.
               setSelectedContactIds(new Set(
                 resumed.contacts.filter((contact) => contact.confidence === "high").map((contact) => contact.id),
               ));
@@ -202,6 +374,7 @@ export default function ApplyWizardModal({
               const trackList = tracks?.section.roleTracks ?? [];
               setRoleTracks(trackList);
               setSelectedRoleTrackId(existing.selectedRoleTrackId ?? recommended ?? trackList[0]?.id ?? null);
+              setReady(true);
               return;
             } catch (resumeErr) {
               setInitError(errorMessage(resumeErr, "Could not resume this pursuit."));
@@ -212,7 +385,7 @@ export default function ApplyWizardModal({
         setInitError(errorMessage(err, "Could not start this pursuit."));
       }
     })();
-  }, [api, initialJob.id, readPursuit]);
+  }, [api, target, readPursuit]);
 
   async function run(fn: () => Promise<void>) {
     setBusy(true);
@@ -234,9 +407,6 @@ export default function ApplyWizardModal({
         selectedRoleTrackId: selectedRoleTrackId ?? undefined,
       });
       setStep(2);
-      // A resumed pursuit already carries its Human Path; only run discovery when none
-      // exist yet, so we neither re-charge the metered lookup nor attempt an invalid
-      // re-transition from a further-along pursuit state.
       if (contacts.length === 0) await discoverContacts(pursuitId);
     });
   }
@@ -308,19 +478,73 @@ export default function ApplyWizardModal({
     }).finally(() => setRegeneratingId(null));
   }
 
+  // Copying a message records "Sent outreach message" and promotes the pursuit to Applied.
+  // If the clipboard write succeeded but this server record fails, we surface an honest retry
+  // (design state 7) and never show the action as tracked.
+  const recordMessageCopy = useCallback(async (messageId: string) => {
+    if (!pursuitId) return;
+    try {
+      const data = await api<TrackingResponse>(
+        `/api/public-profile/pursuits/outreach/${messageId}/copy`,
+        "POST",
+        { idempotencyKey: `copy:${messageId}` },
+      );
+      applyTracking({ tracking: data.tracking, history: data.history, trackingStartedAt: data.trackingStartedAt });
+      setCopyError(null);
+      setCopyRetryMessageId(null);
+    } catch {
+      setCopyError("Your message is on the clipboard. We could not record it to this pursuit, so it is not tracked yet.");
+      setCopyRetryMessageId(messageId);
+    }
+  }, [api, pursuitId, applyTracking]);
+
+  function retryCopyRecord() {
+    if (!copyRetryMessageId) return;
+    void run(() => recordMessageCopy(copyRetryMessageId));
+  }
+
+  function toggleDraft(action: (typeof PURSUIT_TRACKING_ACTIONS)[number]) {
+    setDraft((prev) => ({ ...prev, [action]: !prev[action] }));
+  }
+
   function saveTracking() {
-    if (!pursuitId || !trackAction) {
+    if (!pursuitId) {
+      onClose();
+      return;
+    }
+    const changes: Partial<PursuitTrackingState> = {};
+    for (const action of PURSUIT_TRACKING_ACTIONS) {
+      if (draft[action] !== tracking[action]) changes[action] = draft[action];
+    }
+    if (Object.keys(changes).length === 0) {
       onClose();
       return;
     }
     run(async () => {
-      await api(`/api/public-profile/pursuits/status`, "POST", { pursuitId, action: trackAction });
-      onPursuitChanged?.(`Pursuit updated for ${job.title}.`);
+      const data = await api<TrackingResponse>(
+        `/api/public-profile/pursuits/${pursuitId}/tracking`,
+        "PATCH",
+        { changes, idempotencyKey: newIdempotencyKey(`track:${pursuitId}`) },
+      );
+      applyTracking({ tracking: data.tracking, history: data.history, trackingStartedAt: data.trackingStartedAt });
+      onPursuitChanged?.(`Pursuit updated for ${title}.`);
       onClose();
     });
   }
 
-  const jobMetaLine = [job.companyName, job.compensationText, job.location, job.remoteType].filter(Boolean).join(" · ");
+  const title = job?.title ?? posting?.title ?? "Saved posting";
+  const company = job?.companyName ?? posting?.companyName ?? null;
+  const sourceUrl = job?.sourceUrl ?? posting?.sourceUrl ?? null;
+  const jobMetaLine = [company, job?.compensationText ?? posting?.compensation, job?.location ?? posting?.location, job?.remoteType ?? posting?.remoteType]
+    .filter(Boolean)
+    .join(" · ");
+
+  const anyChecked = PURSUIT_TRACKING_ACTIONS.some((action) => draft[action]);
+  const isApplied = Boolean(trackingStartedAt) || anyChecked;
+  const headerTitle = mode === "applied"
+    ? [title, company].filter(Boolean).join(" · ")
+    : `Human Path: ${title}`;
+  const saveLabel = mode === "applied" ? "Save changes" : isApplied ? "Save to Applied" : "Save for later";
 
   const closeButton = (
     <button type="button" className={styles.modalClose} onClick={onClose} aria-label="Close">
@@ -346,44 +570,88 @@ export default function ApplyWizardModal({
     </div>
   );
 
+  const appliedBar = (
+    <div className={styles.appliedBar}>
+      <span className={styles.appliedTag}>Applied</span>
+      <small>Your saved tracking and messages are here.</small>
+    </div>
+  );
+
   const footer = (
     <div className={styles.modalFooter}>
-      <a href={job.sourceUrl} target="_blank" rel="noreferrer" className={`${styles.modalBtnClose} ${styles.footerSpacer}`}>Open job posting{EXTERNAL_LINK_ICON}</a>
-      {step > 1 ? (
+      {sourceUrl ? (
+        <a href={sourceUrl} target="_blank" rel="noreferrer" className={`${styles.modalBtnClose} ${styles.footerSpacer}`}>Open job posting{EXTERNAL_LINK_ICON}</a>
+      ) : <span className={styles.footerSpacer} />}
+      {mode === "stepper" && step > 1 ? (
         <button type="button" className={styles.modalBtnClose} onClick={() => setStep((s) => (s - 1) as WizardStep)} disabled={busy}>Back</button>
       ) : null}
-      {step === 1 ? (
+      {mode === "stepper" && step === 1 ? (
         <button type="button" className={styles.modalBtnSave} onClick={submitReview} disabled={busy}>Continue</button>
-      ) : step === 2 ? (
+      ) : mode === "stepper" && step === 2 ? (
         <button type="button" className={styles.modalBtnSave} onClick={submitContacts} disabled={busy || providerUnavailable}>Continue</button>
-      ) : step === 3 ? (
+      ) : mode === "stepper" && step === 3 ? (
         <button type="button" className={styles.modalBtnSave} onClick={() => setStep(4)} disabled={busy}>Continue</button>
       ) : (
-        <button type="button" className={`${styles.modalBtnSave} ${styles.modalBtnSaveOn}`} onClick={saveTracking} disabled={busy}>Save pursuit</button>
+        <button type="button" className={`${styles.modalBtnSave} ${isApplied ? styles.modalBtnSaveOn : ""}`} onClick={saveTracking} disabled={busy}>{saveLabel}</button>
       )}
     </div>
   );
 
+  const trackStep = (
+    <div className={styles.modalStack}>
+      {copyError ? (
+        <div className={styles.trackAlert}>
+          <p><strong>Copied, but not saved.</strong> {copyError}</p>
+          <button type="button" className={styles.retryBtn} onClick={retryCopyRecord} disabled={busy}>Retry saving</button>
+        </div>
+      ) : null}
+      <section>
+        <div className={styles.trackIntro}>
+          <strong>Pursuit tracking</strong>
+          <span className={`${styles.trackClass} ${isApplied ? "" : styles.isSaved}`}>{isApplied ? "Applied" : "Saved for later"}</span>
+        </div>
+        {resumedSavedForLater && !anyChecked ? (
+          <p className={styles.formSuccess}>Your review, contacts, and draft message are saved. This stays Saved for later until you check an action.</p>
+        ) : (
+          <p>
+            {isApplied
+              ? "Mark as many as apply. The actions are independent, and every change is kept with its date. Unchecking corrects the record but never moves this back to Saved for later."
+              : "Check what has happened. Every mark is kept with its date, and nothing is overwritten. The first check moves this pursuit to Applied."}
+          </p>
+        )}
+      </section>
+      <div className={styles.checklistGrid}>
+        {PURSUIT_TRACKING_ACTIONS.map((action) => (
+          <label key={action}>
+            <input type="checkbox" checked={draft[action]} onChange={() => toggleDraft(action)} />
+            <span>{pursuitTrackingLabel(action)}</span>
+          </label>
+        ))}
+      </div>
+      <PursuitHistoryRail history={history} />
+    </div>
+  );
+
   return (
-    <div className={styles.modalOverlay} role="dialog" aria-modal="true" aria-label={`Human Path: ${job.title}`}>
+    <div className={styles.modalOverlay} role="dialog" aria-modal="true" aria-label={headerTitle}>
       <div className={styles.modalBox}>
         <div className={styles.modalHeader}>
-          <h4 className={styles.modalTitle}>Human Path: {job.title}</h4>
+          <h4 className={styles.modalTitle}>{headerTitle}</h4>
           {closeButton}
         </div>
-        {stepper}
+        {mode === "applied" ? appliedBar : stepper}
 
         {initError ? (
           <div className={styles.modalStack}>
-            <section><strong>Can&apos;t start this pursuit</strong><p>{initError}</p></section>
+            <section><strong>Can&apos;t open this pursuit</strong><p>{initError}</p></section>
           </div>
-        ) : !pursuitId ? (
+        ) : !ready ? (
           <div className={styles.modalStack}>
-            <section><p className={styles.dsStateLabel}>Setting up your Human Path&hellip;</p></section>
+            <section><p className={styles.dsStateLabel}>{mode === "applied" ? "Opening your pursuit…" : "Setting up your Human Path…"}</p></section>
           </div>
         ) : (
           <>
-            {step === 1 && match ? (
+            {mode === "stepper" && step === 1 && match ? (
               <div className={styles.modalStack}>
                 <section className={styles.modeSection}>
                   <div className={styles.modeSelector} aria-label="Choose role track">
@@ -419,7 +687,7 @@ export default function ApplyWizardModal({
               </div>
             ) : null}
 
-            {step === 2 ? (
+            {mode === "stepper" && step === 2 ? (
               <div className={styles.modalStack}>
                 <section>
                   <strong>Human Path</strong>
@@ -460,7 +728,7 @@ export default function ApplyWizardModal({
               </div>
             ) : null}
 
-            {step === 3 ? (
+            {mode === "stepper" && step === 3 ? (
               <div className={styles.modalStack}>
                 {messages.length === 0 ? (
                   busy ? (
@@ -493,7 +761,7 @@ export default function ApplyWizardModal({
                               ) : null}
                             </span>
                             <div className={styles.copyActions}>
-                              <WizardCopyButton key={`${message.id}:${message.regenerationCount ?? 0}`} text={message.message} />
+                              <WizardCopyButton key={`${message.id}:${message.regenerationCount ?? 0}`} text={message.message} onCopied={() => recordMessageCopy(message.id)} />
                               <span className={styles.tipWrap} data-tip={regenerated ? "re-generations used" : "1 re-generation per message"}>
                                 <button type="button" className={`${styles.modalBtnSave} ${styles.generateMessageBtn}`} onClick={() => regenerateOutreach(message)} disabled={busy || regenerated}>Regenerate</button>
                               </span>
@@ -508,26 +776,7 @@ export default function ApplyWizardModal({
               </div>
             ) : null}
 
-            {step === 4 ? (
-              <div className={styles.modalStack}>
-                <section>
-                  <strong>Pursuit tracking</strong>
-                  <p>Check what happened. Saving moves the role into the right pipeline state.</p>
-                </section>
-                <div className={styles.checklistGrid}>
-                  {TRACK_ACTIONS.map((item) => (
-                    <label key={item.action}>
-                      <input
-                        type="checkbox"
-                        checked={trackAction === item.action}
-                        onChange={() => setTrackAction((prev) => (prev === item.action ? null : item.action))}
-                      />
-                      <span>{item.label}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-            ) : null}
+            {step === 4 ? trackStep : null}
 
             {error ? <p className={styles.errorNote}>{error}</p> : null}
           </>

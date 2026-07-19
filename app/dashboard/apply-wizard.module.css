@@ -139,6 +139,80 @@
   border-radius: var(--radius-sm); padding: var(--space-2) var(--space-3); margin: var(--space-1) 0 0; }
 .errorNote { font-family: var(--font-body); font-size: var(--type-small); color: var(--c-tomato); margin: var(--space-2) 0 0; }
 
+/* --- Step 4 · Tracking model (Saved Pursuits) ------------------------------
+   The six actions are independent facts with NO mutual-exclusion gates. Any
+   positive check promotes a never-tracked pursuit to Applied; the CTA reads
+   "Save for later" only while every action is unchecked, and "Save to Applied"
+   after the first positive check. Unchecking never demotes an Applied pursuit. */
+.trackIntro { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--space-2); }
+.trackClass { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.8rem;
+  color: var(--c-paper); background-color: var(--c-teal); border: var(--line-hair) solid var(--c-ink);
+  border-radius: var(--radius-pill); padding: 2px 12px; }
+.trackClass.isSaved { color: var(--c-ink); background-color: var(--c-paper); }
+
+/* Applied context opens straight into Tracking with NO generation. A compact
+   bar replaces the 4-step wizard stepper so no generation step is implied. */
+.appliedBar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3);
+  background-color: var(--c-paper); border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4); margin-bottom: var(--space-5); }
+.appliedBar .appliedTag { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.05em;
+  font-size: 0.82rem; color: var(--c-paper); background-color: var(--c-teal); border: var(--line-reg) solid var(--c-ink);
+  border-radius: var(--radius-pill); padding: 3px 12px; }
+.appliedBar small { font-family: var(--font-body); color: var(--role-text-muted); }
+
+/* Pursuit history = a designed, human-readable record, NOT a system log. A left
+   rail threads dated entries: marks, reversals, and expandable sent-message
+   entries. Never shows event codes, IDs, payloads, or provider internals. */
+.pursuitHistory { border-top: var(--line-hair) solid var(--c-paper-edge); padding-top: var(--space-4); }
+.pursuitHistoryFlush { border-top: none; padding-top: 0; }
+.pursuitHistory > strong { display: block; font-family: var(--font-display); font-size: 1.1rem;
+  color: var(--c-ink); margin-bottom: var(--space-1); }
+.historyList { list-style: none; margin: var(--space-3) 0 0; padding: 0 0 0 var(--space-4);
+  position: relative; display: grid; gap: var(--space-3); }
+.historyList::before { content: ""; position: absolute; left: 4px; top: 7px; bottom: 7px; width: 2px;
+  background-color: var(--c-paper-edge); }
+.historyItem { position: relative; }
+.historyItem::before { content: ""; position: absolute; left: calc(-1 * var(--space-4) + -1px); top: 5px;
+  width: 10px; height: 10px; border-radius: var(--radius-pill);
+  background-color: var(--c-teal); border: var(--line-hair) solid var(--c-ink); }
+.historyItem.isReversal::before { background-color: var(--c-paper-deep); }
+.historyItem.isUnavailable::before { background-color: var(--c-paper); border-style: dashed; }
+.historyLine { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-2) var(--space-3); }
+.historyLabel { font-family: var(--font-body); color: var(--c-ink); }
+.historyItem.isReversal .historyLabel, .historyItem.isUnavailable .historyLabel { color: var(--role-text-muted); }
+.historyTime { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.04em;
+  font-size: 0.76rem; color: var(--role-text-faint); }
+.historyMeta { display: block; font-family: var(--font-body); font-size: var(--type-small);
+  font-style: italic; color: var(--role-text-faint); margin-top: 2px; }
+
+/* Expandable sent-message entry: native <details> reveals the exact saved
+   snapshot. Saved outreach in the history is a VIEW-ONLY record: no copy control,
+   and the text is not selectable, so a sent message cannot be recycled for a new
+   person by swapping the name (Randall 2026-07-18). */
+.historyMsg summary { list-style: none; cursor: pointer; display: flex; flex-wrap: wrap; align-items: baseline;
+  gap: var(--space-2) var(--space-3); }
+.historyMsg summary::-webkit-details-marker { display: none; }
+.msgDisclosure { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.04em;
+  font-size: 0.72rem; color: var(--c-bluebird); }
+.historyMsg[open] .msgDisclosure { color: var(--role-text-faint); }
+.historyMsgBody { font-family: var(--font-body); color: var(--c-ink); background-color: var(--c-paper);
+  border: var(--line-hair) solid var(--c-paper-edge); border-left: var(--line-bold) solid var(--c-teal);
+  border-radius: var(--radius-sm); padding: var(--space-3); margin-top: var(--space-2);
+  -webkit-user-select: none; user-select: none; }
+.historyMsgBody p { margin: 0; }
+
+/* Copy succeeded on the clipboard but server persistence failed: never claim
+   tracking was saved; expose an honest retry. Tomato = a problem to resolve. */
+.trackAlert { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3);
+  font-family: var(--font-body); color: var(--c-ink); background-color: var(--c-paper);
+  border: var(--line-reg) solid var(--c-tomato); border-left: var(--line-bold) solid var(--c-tomato);
+  border-radius: var(--radius-md); padding: var(--space-3) var(--space-4); }
+.trackAlert p { margin: 0; flex: 1 1 14rem; }
+.retryBtn { font-family: var(--font-display); font-size: 0.95rem; color: var(--c-ink); background-color: var(--c-paper);
+  border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-md); box-shadow: var(--shadow-card);
+  padding: var(--space-2) var(--space-4); cursor: pointer; white-space: nowrap; }
+.retryBtn:hover { background-color: color-mix(in srgb, var(--c-teal) 14%, var(--c-paper)); box-shadow: var(--reg-box); }
+
 .modalFooter { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--space-3);
   margin-top: var(--space-6); padding-top: var(--space-4); border-top: var(--line-hair) solid var(--c-paper-edge); }
 .modalBtnClose { font-family: var(--font-display); font-size: 1rem; color: var(--c-ink); background-color: var(--c-paper);

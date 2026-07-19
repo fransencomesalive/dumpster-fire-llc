@@ -7,6 +7,7 @@ import { readPublicProfileAccessToken } from "@/lib/public-profile/browser-sessi
 import { syncPublicProfileSession } from "@/lib/public-auth/supabase-browser";
 import { PublicProfileApiError, requestPublicProfileApi } from "@/lib/public-profile/client";
 import SiteHeader from "../components/SiteHeader";
+import ApplyWizardModal from "../dashboard/ApplyWizardModal";
 import styles from "./saved-pursuits.module.css";
 
 type PursuitBucket = "saved_for_later" | "applied";
@@ -84,14 +85,18 @@ export default function SavedPursuitsClient() {
   const router = useRouter();
   const [view, setView] = useState<ViewState>({ status: "loading" });
   const [bucket, setBucket] = useState<PursuitBucket>("saved_for_later");
+  const [accessToken, setAccessToken] = useState<string | null>(null);
+  const [openPursuitId, setOpenPursuitId] = useState<string | null>(null);
 
+  // `load` opens with the async session read so no state is set synchronously; the view seeds
+  // as "loading" already. Manual triggers use `reload`, which resets to loading first.
   const load = useCallback(async () => {
-    setView({ status: "loading" });
     const accessToken = (await syncPublicProfileSession()) || readPublicProfileAccessToken();
     if (!accessToken) {
       router.replace("/onboarding");
       return;
     }
+    setAccessToken(accessToken);
     try {
       const data = await requestPublicProfileApi<SavedPursuitsResponse>(
         "/api/public-profile/saved-pursuits",
@@ -107,16 +112,26 @@ export default function SavedPursuitsClient() {
     }
   }, [router]);
 
-  useEffect(() => {
+  const reload = useCallback(() => {
+    setView({ status: "loading" });
     void load();
   }, [load]);
 
-  // Resume / Open tracking opens the pursuit in the Apply Wizard's saved-pursuit context.
-  // Wired in the wizard-rewrite step (open-by-pursuit, generation-free for Applied). The page
-  // is not yet linked from nav, so this handler is not user-reachable until that lands.
-  const openPursuit = useCallback((_pursuitId: string) => {
-    // TODO(saved-pursuits): open ApplyWizardModal by pursuitId once the wizard rewrite lands.
+  useEffect(() => {
+    void (async () => { await load(); })();
+  }, [load]);
+
+  // Resume / Open tracking opens the pursuit in the Apply Wizard by pursuitId: Applied opens
+  // straight into Track behind an appliedBar (generation-free), Saved-for-later resumes on the
+  // stepper's Track step. Closing reloads the list so a tracked pursuit moves Saved → Applied.
+  const openPursuit = useCallback((pursuitId: string) => {
+    setOpenPursuitId(pursuitId);
   }, []);
+
+  const closeWizard = useCallback(() => {
+    setOpenPursuitId(null);
+    reload();
+  }, [reload]);
 
   const counts = view.status === "ready"
     ? view.data.counts
@@ -182,7 +197,7 @@ export default function SavedPursuitsClient() {
                 <strong>We could not load your pursuits.</strong> Nothing was lost. Check your
                 connection and try again.
               </p>
-              <button type="button" className={styles.retryBtn} onClick={() => void load()}>Retry</button>
+              <button type="button" className={styles.retryBtn} onClick={reload}>Retry</button>
             </div>
           ) : null}
 
@@ -216,6 +231,13 @@ export default function SavedPursuitsClient() {
           ) : null}
         </section>
       </main>
+      {openPursuitId && accessToken ? (
+        <ApplyWizardModal
+          target={{ kind: "pursuit", pursuitId: openPursuitId }}
+          accessToken={accessToken}
+          onClose={closeWizard}
+        />
+      ) : null}
     </>
   );
 }

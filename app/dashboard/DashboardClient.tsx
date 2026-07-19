@@ -781,7 +781,7 @@ export default function DashboardClient() {
       ) : null}
       {pursuitContext ? (
         <ApplyWizardModal
-          job={pursuitContext.job}
+          target={{ kind: "job", job: pursuitContext.job }}
           accessToken={pursuitContext.accessToken}
           onClose={() => setPursuitContext(null)}
           onPursuitChanged={(message) => { void loadJobs(pursuitContext.accessToken, message); }}
