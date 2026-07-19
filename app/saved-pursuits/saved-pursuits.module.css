@@ -1,0 +1,124 @@
+/* Saved Pursuits — production port of design-system/patterns/saved-pursuits-page.html
+   (approved in Claude Design 2026-07-18). Two buckets, Saved for Later and Applied,
+   shown one at a time through a segmented toggle at every breakpoint. Tokens come from
+   app/globals.css + app/ds.css (loaded globally in layout.tsx). */
+
+.page {
+  margin: 0;
+  background: var(--c-paper);
+  color: var(--c-ink);
+  font-family: var(--font-body);
+  padding: var(--space-6) 0 var(--space-7);
+  min-height: 60vh;
+}
+
+.topBar {
+  width: min(760px, calc(100% - 48px));
+  margin: clamp(20px, 4vw, 32px) auto var(--space-5);
+  padding-bottom: var(--space-4);
+  border-bottom: var(--line-reg) solid var(--c-ink);
+}
+.topTitle { margin: 0; font-family: var(--font-display); font-size: var(--type-h2); color: var(--c-ink); }
+.topLede { margin: 4px 0 0; font-family: var(--font-body); color: var(--role-text-muted); max-width: 52ch; }
+
+.savedShell { width: min(760px, calc(100% - 48px)); margin: 0 auto; }
+
+/* Bucket toggle · the one control that switches buckets, full shell width */
+.bucketToggle {
+  display: flex; width: 100%; box-sizing: border-box;
+  border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-pill);
+  overflow: hidden; box-shadow: var(--shadow-card); background: var(--c-paper);
+  margin-bottom: var(--space-4);
+}
+.bucketToggle button {
+  flex: 1 1 0; min-width: 0; min-height: 46px; display: inline-flex; align-items: center;
+  justify-content: center; gap: 8px; font-family: var(--font-subhead); text-transform: uppercase;
+  letter-spacing: 0.04em; font-size: 0.9rem; color: var(--c-ink); background: transparent;
+  border: none; padding: 0 var(--space-3); cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease-snap);
+}
+.bucketToggle button + button { border-left: var(--line-reg) solid var(--c-ink); }
+.bucketToggle button:hover:not([aria-selected="true"]) { background-color: color-mix(in srgb, var(--c-teal) 12%, var(--c-paper)); }
+.bucketToggle button:active { background-color: color-mix(in srgb, var(--c-teal) 22%, var(--c-paper)); }
+.bucketToggle button[aria-selected="true"] {
+  color: var(--c-paper); background-color: var(--c-teal);
+  background-image: var(--fiber-img), var(--grain-img); background-blend-mode: normal, soft-light;
+  background-size: 170px 170px, 46px 46px;
+}
+.bucketToggle button:focus-visible { outline: 3px solid var(--c-bluebird); outline-offset: -3px; }
+.tCount {
+  display: inline-grid; place-items: center; min-width: 22px; height: 22px; padding: 0 7px;
+  box-sizing: border-box; font-size: 0.78rem; line-height: 1; color: var(--c-ink);
+  background: var(--c-paper); border: var(--line-hair) solid var(--c-ink); border-radius: var(--radius-pill);
+}
+.bucketToggle button[aria-selected="true"] .tCount { color: var(--c-teal); background: var(--c-paper); border-color: var(--c-paper); }
+
+/* Sub-header for the visible bucket (title + sort) */
+.bucketSubHead { display: flex; align-items: baseline; gap: var(--space-3); flex-wrap: wrap; margin-bottom: var(--space-4); }
+.bucketSubTitle { font-family: var(--font-display); font-size: 1.2rem; color: var(--c-ink); }
+.bucketSort { margin-left: auto; font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.04em; font-size: 0.74rem; color: var(--role-text-faint); }
+
+.pursuitList { display: flex; flex-direction: column; gap: var(--space-4); }
+
+/* ---- Pursuit card ---- */
+.pursuitCard {
+  background-color: var(--c-paper-deep); background-image: var(--fiber-img), var(--grain-img);
+  background-blend-mode: normal, soft-light; background-size: 170px 170px, 46px 46px;
+  border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-lg); box-shadow: var(--shadow-card);
+  padding: var(--space-4) var(--space-5); display: flex; flex-direction: column; gap: var(--space-3);
+}
+.pursuitCard.isDim { opacity: 0.92; }
+.pursuitTitle { margin: 0; font-family: var(--font-display); font-size: 1.12rem; line-height: 1.15; color: var(--c-ink); overflow-wrap: anywhere; }
+.titleDivider { display: inline-block; width: 8px; height: 8px; margin: 0 8px; background: var(--c-teal); border: 1px solid var(--c-ink); transform: rotate(45deg); vertical-align: 0.08em; }
+.companyName { font-family: var(--font-body); font-weight: 400; color: var(--c-ink); }
+.pursuitMeta { font-family: var(--font-body); font-size: 0.9rem; color: var(--role-text-muted); margin: 0; }
+
+/* Small informational flags for postings that changed after saving */
+.flagRow2 { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.pursuitFlag {
+  display: inline-flex; align-items: center; gap: 5px; font-family: var(--font-subhead);
+  text-transform: uppercase; letter-spacing: 0.04em; font-size: 0.68rem; color: var(--role-text-muted);
+  background-color: var(--c-paper); border: var(--line-hair) solid var(--c-ink); border-radius: var(--radius-pill); padding: 3px 9px;
+}
+.pursuitFlag.isPasted { color: var(--c-bluebird); border-color: var(--c-bluebird); }
+
+/* Applied bucket: a compact read of the tracked actions */
+.trackChips { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.trackChip {
+  display: inline-flex; align-items: center; gap: 5px; font-family: var(--font-subhead);
+  text-transform: uppercase; letter-spacing: 0.04em; font-size: 0.7rem; color: var(--c-teal);
+  background-color: var(--c-paper); border: var(--line-hair) solid var(--c-teal); border-radius: var(--radius-pill); padding: 3px 10px;
+}
+.trackChip svg { width: 11px; height: 11px; flex: none; }
+.trackChip.isNeg { color: var(--role-text-muted); border-color: var(--c-ink); }
+
+/* Saved-for-later progress hint */
+.savedHint { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-body); font-size: 0.86rem; color: var(--role-text-muted); }
+.savedHint .dot { width: 8px; height: 8px; flex: none; border-radius: var(--radius-pill); background-color: var(--c-mustard); border: 1px solid var(--c-ink); }
+.savedHint.isNone .dot { background-color: var(--c-paper-edge); }
+
+.pursuitFoot { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2) var(--space-3); margin-top: 2px; padding-top: var(--space-3); border-top: var(--line-hair) solid var(--c-paper-edge); }
+.pursuitStamp { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.04em; font-size: 0.72rem; color: var(--role-text-faint); }
+.pursuitActions { display: flex; align-items: center; gap: var(--space-2); margin-left: auto; }
+.pursuitActions button, .pursuitActions a { font-family: var(--font-display); font-size: 0.92rem; border-radius: var(--radius-md); padding: var(--space-2) var(--space-4); cursor: pointer; text-decoration: none; white-space: nowrap; }
+.btnOpen { color: var(--role-action-text); background-color: var(--role-action); border: var(--line-bold) solid var(--c-ink); box-shadow: var(--shadow-card); }
+.btnOpen:hover { background-color: var(--role-info); box-shadow: var(--reg-box); text-shadow: 1px 1px 0 rgba(36, 31, 26, 0.35); }
+.btnQuiet { color: var(--c-ink); background: transparent; border: var(--line-reg) solid transparent; padding-bottom: 3px; }
+.btnQuiet:hover:not(:disabled) { background-color: color-mix(in srgb, var(--c-teal) 14%, var(--c-paper)); }
+.btnQuiet:disabled { color: var(--role-text-faint); cursor: default; }
+
+/* ---- Empty / loading / error ---- */
+.bucketEmpty { background-color: var(--c-paper); border: var(--line-reg) dashed var(--c-ink); border-radius: var(--radius-md); padding: var(--space-6) var(--space-5); text-align: center; }
+.bucketEmpty strong { display: block; font-family: var(--font-display); font-size: 1.1rem; color: var(--c-ink); margin-bottom: var(--space-2); }
+.bucketEmpty p { margin: 0 auto var(--space-3); font-family: var(--font-body); font-size: 0.92rem; color: var(--role-text-muted); max-width: 38ch; }
+.emptyCta { display: inline-block; font-family: var(--font-display); font-size: 0.95rem; color: var(--c-ink); background: var(--c-paper); border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-md); box-shadow: var(--shadow-card); padding: var(--space-2) var(--space-4); text-decoration: none; }
+
+.skelCard { background-color: var(--c-paper-deep); border: var(--line-hair) solid var(--c-paper-edge); border-radius: var(--radius-lg); padding: var(--space-4) var(--space-5); display: grid; gap: var(--space-3); position: relative; overflow: hidden; }
+.skelCard::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(100deg, transparent 25%, rgba(255, 253, 247, 0.6) 50%, transparent 75%); transform: translateX(-100%); animation: skelSheen 1.5s ease-in-out infinite; }
+@keyframes skelSheen { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
+.skelBar { height: 12px; border-radius: var(--radius-sm); background-color: var(--c-paper-edge); }
+.w70 { width: 70%; } .w45 { width: 45%; } .w30 { width: 30%; }
+
+.bucketError { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); font-family: var(--font-body); color: var(--c-ink); background-color: var(--c-paper); border: var(--line-reg) solid var(--c-tomato); border-left: var(--line-bold) solid var(--c-tomato); border-radius: var(--radius-md); padding: var(--space-4); }
+.bucketError p { margin: 0; flex: 1 1 14rem; }
+.retryBtn { font-family: var(--font-display); font-size: 0.95rem; color: var(--c-ink); background: var(--c-paper); border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-md); box-shadow: var(--shadow-card); padding: var(--space-2) var(--space-4); cursor: pointer; white-space: nowrap; }
