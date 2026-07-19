@@ -147,17 +147,37 @@ user"), applied as a two-phase pair around deploy `d74eec3`:
 - Cleanup with the pair: the orphaned 07-15 QA `user_link` row (Reddit posting, owner
   account deleted) was removed; `user_link` rows in prod = 0 at that point.
 
-## NOT yet applied to production
+## Applied 2026-07-18 (confirmed + recorded in schema_migrations)
+
+Saved Pursuits chain, applied in order via the Supabase Management API with Randall's explicit
+authorization (migration-first sequencing), each recorded in `schema_migrations`:
 
 - `20260718000100_saved_pursuits_foundation.sql`
 - `20260718000200_saved_pursuits_atomic_mutations.sql`
 - `20260718000300_saved_pursuits_data_readiness.sql`
 
-Run the read-only `scripts/sql/saved-pursuits-production-preflight.sql` before authorization to
-apply this chain. Apply all three in order and record all three migration versions. Migration
-`180003` performs existing-user conversion and intentionally aborts on duplicate/non-unit pursuit
-debits or failed count reconciliation. None of these migrations, their production preflight, or
-their post-apply verification has been run against production.
+Read-only preflight ran clean beforehand: no duplicate/non-unit pursuit debits, no legacy Offer
+rows (status 0 / event 0), no missing convertible jobs, no note conflicts, no missing profile/job
+references. Prod dataset at apply time: 1 saved_job (already a pursuit — idempotent conversion),
+3 pursuits, 4 outreach drafts.
+
+Post-apply verification (Management API):
+- All three versions present in `schema_migrations`.
+- Plan quotas set: basic 0/0/0, pro 0/0/25, premium 50/150/50, tester 25/75/25
+  (pursuit/humanpath/outreach per month) — matches `lib/public-profile/subscription/rules.ts` and
+  the DUMPSTERFRIENDS→premium full-access model (default no-code = 0 pursuits).
+- `pursuits_without_posting_snapshot` = 0 (backfilled from 3).
+- RPCs present: `mutate_pursuit_tracking`, `record_outreach_message_copy`,
+  `persist_initial_outreach_generation`, `set_canonical_job_saved`.
+- Owner-select RLS policies on `pursuits`, `pursuit_events`, `pursuit_tracking_events`.
+- Write privileges revoked from anon/authenticated on all five pursuit tables — confirmed via
+  `has_table_privilege` (INSERT/UPDATE false) and raw ACL (`anon=rxtm`, `authenticated=rxtm`);
+  `information_schema.role_table_grants` overreports under the postgres superuser context and is
+  NOT authoritative here. service_role retains full DML.
+
+Note (pre-existing Supabase default, not introduced by this chain): `pg_default_acl` for role
+`postgres` still grants `arwdDxtm` to anon/authenticated on FUTURE public tables, so new tables
+auto-grant broad privileges until explicitly revoked. Out of scope for this chain.
 
 (Open, separate decision — NOT a migration: the `job_sources`
   clean-slate reset Randall wants alongside the private-boards feature. Scope TBD;
