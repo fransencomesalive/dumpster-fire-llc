@@ -135,6 +135,7 @@ function outreachOptions({ aggregate, regenerateSpy, capturedMarkdown }: Outreac
     getSession: async () => authed(),
     repositoryRequest,
     loadAggregate: async () => aggregate,
+    loadInitialOutreachCommit: async () => undefined,
     regenerateProfile: async () => {
       regenerateSpy.calls += 1;
       const fresh = completeCandidateProfileAggregate(now);

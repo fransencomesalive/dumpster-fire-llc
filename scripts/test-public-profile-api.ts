@@ -64,6 +64,7 @@ const regenerateRequest = new Request("https://app.example/api/public-profile/re
 const repositoryRequest: PublicProfileRepositoryRequest = async () => {
   throw new Error("repository should not be called by mocked handlers");
 };
+const noInitialOutreachCommit = async () => undefined;
 
 async function body(response: Response) {
   return await response.json() as Record<string, unknown>;
@@ -120,6 +121,7 @@ function trackingEvent(overrides: Partial<PursuitTrackingEvent> = {}): PursuitTr
     recipientLinkedinUrlSnapshot: "https://linkedin.example/dana",
     idempotencyKey: "copy-message-1:outreach_sent",
     occurredAt: now,
+    occurredAtKnown: true,
     createdAt: now,
     ...overrides,
   };
@@ -560,6 +562,15 @@ async function main() {
   const missingJobItems = (await body(pursuitsListMissingJob)).pursuits as Array<Record<string, unknown>>;
   assert.equal(missingJobItems[0].job, null);
 
+  const pursuitsListForeignPrivateJob = await handlePublicProfilePursuitsListRequest(getRequest("pursuits"), {
+    getSession: async () => authed(),
+    repositoryRequest,
+    loadPursuits: async () => [savedPursuit({ jobId: "private-job" })],
+    loadJobs: async () => new Map([["private-job", publicJob({ id: "private-job", ownerUserId: "user-2" })]]),
+  });
+  const foreignPrivateItems = (await body(pursuitsListForeignPrivateJob)).pursuits as Array<Record<string, unknown>>;
+  assert.equal(foreignPrivateItems[0].job, null);
+
   // ---- Saved Pursuits bucket list ----
   let savedListUserId = "";
   const savedPursuitsList = await handlePublicProfileSavedPursuitsListRequest(
@@ -612,6 +623,39 @@ async function main() {
     assert.equal(serializedSavedList.includes(forbidden), false);
   }
 
+  const batchCalls = { jobs: 0, tracking: 0, messages: 0, contacts: 0 };
+  const batchedSavedPursuits = await handlePublicProfileSavedPursuitsListRequest(getRequest("saved-pursuits"), {
+    getSession: async () => authed(),
+    repositoryRequest,
+    loadPursuits: async () => [
+      savedPursuit({ id: "batch-1", jobId: "job-1" }),
+      savedPursuit({ id: "batch-2", jobId: "job-2" }),
+    ],
+    loadJobs: async (_request, ids) => {
+      batchCalls.jobs += 1;
+      assert.deepEqual(ids, ["job-1", "job-2"]);
+      return new Map(ids.map((id) => [id, publicJob({ id })]));
+    },
+    loadPursuitTrackingEventsBatch: async (_request, userId, ids) => {
+      batchCalls.tracking += 1;
+      assert.equal(userId, "user-1");
+      assert.deepEqual(ids, ["batch-1", "batch-2"]);
+      return new Map(ids.map((id) => [id, []]));
+    },
+    loadOutreachMessagesBatch: async (_request, ids) => {
+      batchCalls.messages += 1;
+      assert.deepEqual(ids, ["batch-1", "batch-2"]);
+      return new Map(ids.map((id) => [id, []]));
+    },
+    loadContactSuggestionsBatch: async (_request, ids) => {
+      batchCalls.contacts += 1;
+      assert.deepEqual(ids, ["batch-1", "batch-2"]);
+      return new Map(ids.map((id) => [id, []]));
+    },
+  });
+  assert.equal(batchedSavedPursuits.status, 200);
+  assert.deepEqual(batchCalls, { jobs: 1, tracking: 1, messages: 1, contacts: 1 });
+
   // ---- Pursuit read route ----
   const pursuitReadUnauthorized = await handlePublicProfilePursuitReadRequest(getRequest("pursuits/pursuit-1"), "pursuit-1", {
     getSession: async () => ({ status: "unauthenticated", reason: "Missing bearer token." }),
@@ -653,7 +697,7 @@ async function main() {
     loadJob: async () => publicJob({ id: "job-1" }),
     loadContactSuggestions: async () => [contactSuggestion({ id: "contact-1", selectedForOutreach: true })],
     loadOutreachMessages: async () => [readOutreachMessage],
-    loadPursuitTrackingEvents: async () => [trackingEvent()],
+    loadPursuitTrackingEvents: async () => [trackingEvent({ occurredAtKnown: false })],
     loadAggregate: async () => { throw new Error("Applied detail must not load profile generation context"); },
     humanPathProvider: async () => { throw new Error("Applied detail must not invoke Human Path"); },
     generateOutreachForContact: async () => { throw new Error("Applied detail must not generate outreach"); },
@@ -668,8 +712,68 @@ async function main() {
   assert.equal(pursuitReadJson.bucket, "applied");
   assert.equal((pursuitReadJson.tracking as Record<string, unknown>).outreach_sent, true);
   assert.equal((pursuitReadJson.history as Array<Record<string, unknown>>)[0].type, "message");
+  assert.equal((pursuitReadJson.history as Array<Record<string, unknown>>)[0].occurredAt, null);
+  assert.equal((pursuitReadJson.history as Array<Record<string, unknown>>)[0].timestampAvailable, false);
   assert.equal("events" in pursuitReadJson, false);
   assert.equal(JSON.stringify(pursuitReadJson.history).includes("idempotencyKey"), false);
+
+  const pursuitReadForeignPrivateJob = await handlePublicProfilePursuitReadRequest(
+    getRequest("pursuits/pursuit-private"),
+    "pursuit-private",
+    {
+      getSession: async () => authed(),
+      repositoryRequest,
+      loadPursuit: async () => savedPursuit({
+        id: "pursuit-private",
+        jobId: "private-job",
+        jobSnapshot: {
+          jobId: "private-job",
+          title: "Original private posting",
+          companyName: "Original Co",
+          availability: "expired",
+          sourceState: "user_owned",
+          capturedAt: now,
+        },
+      }),
+      loadJob: async () => publicJob({
+        id: "private-job",
+        ownerUserId: "user-2",
+        title: "Another user's private title",
+      }),
+      loadContactSuggestions: async () => [],
+      loadOutreachMessages: async () => [],
+      loadPursuitTrackingEvents: async () => [],
+    },
+  );
+  const pursuitReadForeignJson = await body(pursuitReadForeignPrivateJob);
+  assert.equal(pursuitReadForeignJson.job, null);
+  assert.equal((pursuitReadForeignJson.posting as Record<string, unknown>).title, "Original private posting");
+  assert.equal((pursuitReadForeignJson.posting as Record<string, unknown>).availability, "snapshot_only");
+  assert.equal((pursuitReadForeignJson.posting as Record<string, unknown>).sourceState, "user_owned");
+  assert.equal(JSON.stringify(pursuitReadForeignJson).includes("Another user's private title"), false);
+
+  const pursuitReadDetachedHistory = await handlePublicProfilePursuitReadRequest(
+    getRequest("pursuits/pursuit-detached"),
+    "pursuit-detached",
+    {
+      getSession: async () => authed(),
+      repositoryRequest,
+      loadPursuit: async () => savedPursuit({
+        id: "pursuit-detached",
+        profileId: null,
+        jobId: null,
+        jobSnapshot: { title: "Historical posting", companyName: "History Co", availability: "expired" },
+      }),
+      loadJob: async () => { throw new Error("detached history must not query a live job"); },
+      loadContactSuggestions: async () => [],
+      loadOutreachMessages: async () => [],
+      loadPursuitTrackingEvents: async () => [],
+    },
+  );
+  assert.equal(pursuitReadDetachedHistory.status, 200);
+  const pursuitReadDetachedJson = await body(pursuitReadDetachedHistory);
+  assert.equal(pursuitReadDetachedJson.job, null);
+  assert.equal((pursuitReadDetachedJson.posting as Record<string, unknown>).title, "Historical posting");
 
   // ---- Pursuit create route ----
   const pursuitValidation = await handlePublicProfilePursuitCreateRequest(postRequest("pursuits", {}), {
@@ -852,6 +956,36 @@ async function main() {
     risks: ["Easy Apply volume"],
     recommendedWorkExampleIds: ["example-1", "example-2"],
     outreachAngle: "Use this Role Track.",
+    jobSnapshot: {
+      jobId: "job-1",
+      source: "fixture",
+      sourceState: "shared",
+      sourceUrl: "https://jobs.example/1",
+      companyName: "Useful Studio",
+      title: "Program Director",
+      description: "Lead stakeholder alignment.",
+      location: undefined,
+      compensation: undefined,
+      remoteType: undefined,
+      employmentType: undefined,
+      responsibilities: [],
+      requiredExperience: [],
+      postedAt: undefined,
+      scrapedAt: now,
+      firstSeenAt: now,
+      lastSeenAt: now,
+      availability: "available",
+      capturedAt: now,
+    },
+    selectionSnapshot: {
+      roleTrackId: "track-1",
+      applyingAs: {
+        id: "track-1",
+        label: "Program Director",
+        narrative: "Turns messy strategic work into shipped systems.",
+      },
+      capturedAt: now,
+    },
   });
   const pursuitJson = await body(pursuitCreated);
   assert.equal(pursuitJson.status, "created");
@@ -1256,7 +1390,7 @@ async function main() {
   // Compile-on-missing (Randall, 2026-07-11): a COMPLETE profile with no compiled profile.md
   // must compile it at the outreach step, not dead-end at profile_incomplete. Here regenerate
   // yields fresh markdown, so the handler moves past the markdown gate (reaching a later 404
-  // for the missing pursuit) instead of 409ing.
+  // for the missing job) instead of 409ing.
   let compiledOnMissing = false;
   const pursuitOutreachCompilesMissingMarkdown = await handlePublicProfilePursuitOutreachRequest(postRequest("pursuits/outreach", { pursuitId: "pursuit-404" }), {
     now: () => now,
@@ -1267,7 +1401,9 @@ async function main() {
       compiledOnMissing = true;
       return regeneratedResult();
     },
-    loadPursuit: async () => undefined,
+    loadPursuit: async () => savedPursuit({ id: "pursuit-404" }),
+    loadInitialOutreachCommit: noInitialOutreachCommit,
+    loadJob: async () => undefined,
   });
   assert.equal(compiledOnMissing, true);
   assert.equal(pursuitOutreachCompilesMissingMarkdown.status, 404);
@@ -1278,6 +1414,8 @@ async function main() {
     now: () => now,
     getSession: async () => authed(),
     repositoryRequest,
+    loadPursuit: async () => savedPursuit(),
+    loadInitialOutreachCommit: noInitialOutreachCommit,
     loadAggregate: async () => noGeneratedProfile,
     regenerateProfile: async () => ({ status: "not_found", userId: "user-1" }),
   });
@@ -1292,11 +1430,67 @@ async function main() {
   });
   assert.equal(pursuitOutreachMissingPursuit.status, 404);
 
+  let replayLookupInput: unknown;
+  const replayedPursuit = savedPursuit({
+    status: "outreach_ready",
+    jobSnapshot: {
+      jobId: "job-1",
+      title: "Original posting",
+      companyName: "Useful Studio",
+      availability: "active",
+      sourceState: "shared",
+      capturedAt: now,
+    },
+  });
+  const pursuitOutreachReplay = await handlePublicProfilePursuitOutreachRequest(
+    postRequest("pursuits/outreach", { pursuitId: "pursuit-1" }),
+    {
+      getSession: async () => authed(),
+      repositoryRequest,
+      loadPursuit: async () => replayedPursuit,
+      loadInitialOutreachCommit: async (_request, input) => {
+        replayLookupInput = input;
+        return {
+          status: "idempotent_replay",
+          pursuit: replayedPursuit,
+          messages: [{
+            id: "message-replayed",
+            pursuitId: "pursuit-1",
+            contactSuggestionId: "contact-before-selection-changed",
+            recipientType: "likely_hiring_manager",
+            channel: "other",
+            message: "Persisted before the response was lost.",
+            status: "draft",
+            createdAt: now,
+            updatedAt: now,
+          }],
+          pursuitDebited: true,
+          outreachDebited: 1,
+        };
+      },
+      loadAggregate: async () => { throw new Error("replay must not load or regenerate the profile"); },
+      loadJob: async () => { throw new Error("replay must not require the live posting"); },
+      loadContactSuggestions: async () => { throw new Error("replay must not depend on the current selection"); },
+      loadOutreachMessages: async () => { throw new Error("replay must use the committed request messages"); },
+      generateOutreachForContact: async () => { throw new Error("replay must not call message generation"); },
+    },
+  );
+  assert.equal(pursuitOutreachReplay.status, 200);
+  assert.deepEqual(replayLookupInput, {
+    userId: "user-1",
+    pursuitId: "pursuit-1",
+    idempotencyKey: undefined,
+  });
+  const pursuitOutreachReplayJson = await body(pursuitOutreachReplay);
+  assert.equal(pursuitOutreachReplayJson.replayed, true);
+  assert.equal((pursuitOutreachReplayJson.messages as Array<Record<string, unknown>>)[0].id, "message-replayed");
+
   const pursuitOutreachMissingJob = await handlePublicProfilePursuitOutreachRequest(postRequest("pursuits/outreach", { pursuitId: "pursuit-1" }), {
     getSession: async () => authed(),
     repositoryRequest,
     loadAggregate: async () => agg,
     loadPursuit: async () => savedPursuit({ status: "outreach_ready" }),
+    loadInitialOutreachCommit: noInitialOutreachCommit,
     loadJob: async () => undefined,
   });
   assert.equal(pursuitOutreachMissingJob.status, 404);
@@ -1306,6 +1500,7 @@ async function main() {
     repositoryRequest,
     loadAggregate: async () => agg,
     loadPursuit: async () => savedPursuit({ status: "outreach_ready" }),
+    loadInitialOutreachCommit: noInitialOutreachCommit,
     loadJob: async () => publicJob(),
     loadContactSuggestions: async () => [contactSuggestion({ selectedForOutreach: false })],
   });
@@ -1319,6 +1514,7 @@ async function main() {
     repositoryRequest,
     loadAggregate: async () => agg,
     loadPursuit: async () => savedPursuit({ status: "outreach_ready" }),
+    loadInitialOutreachCommit: noInitialOutreachCommit,
     loadJob: async () => publicJob(),
     loadContactSuggestions: async () => [contactSuggestion({ selectedForOutreach: true })],
     loadOutreachMessages: async () => [],
@@ -1340,6 +1536,7 @@ async function main() {
     repositoryRequest,
     loadAggregate: async () => agg,
     loadPursuit: async () => savedPursuit({ status: "human_path_generated" }),
+    loadInitialOutreachCommit: noInitialOutreachCommit,
     loadJob: async () => publicJob(),
     loadContactSuggestions: async () => [contactSuggestion({ selectedForOutreach: true })],
     loadOutreachMessages: async () => [],
@@ -1360,6 +1557,7 @@ async function main() {
     repositoryRequest,
     loadAggregate: async () => agg,
     loadPursuit: async () => savedPursuit({ status: "outreach_ready" }),
+    loadInitialOutreachCommit: noInitialOutreachCommit,
     loadJob: async () => publicJob(),
     loadContactSuggestions: async () => [contactSuggestion({ selectedForOutreach: true })],
     loadOutreachMessages: async () => [],
@@ -1387,6 +1585,7 @@ async function main() {
       selectedResumeId: "resume-1",
       selectedWorkExampleId: "example-1",
     }),
+    loadInitialOutreachCommit: noInitialOutreachCommit,
     loadJob: async () => publicJob(),
     loadOutreachMessages: async () => [],
     loadContactSuggestions: async () => [
@@ -1467,6 +1666,7 @@ async function main() {
         status: "outreach_ready",
         pursuitMeteredAt: now,
       }),
+      loadInitialOutreachCommit: noInitialOutreachCommit,
       loadJob: async () => publicJob(),
       loadOutreachMessages: async () => [],
       loadContactSuggestions: async () => [contactSuggestion({ selectedForOutreach: true })],
@@ -1483,6 +1683,39 @@ async function main() {
   assert.equal(initialPersistenceFailureJson.status, "persistence_failed");
   assert.equal(initialPersistenceFailureJson.saved, false);
   assert.equal(initialPersistenceFailureJson.retryable, true);
+
+  const transactionalQuotaRejected = await handlePublicProfilePursuitOutreachRequest(
+    postRequest("pursuits/outreach", { pursuitId: "pursuit-1", idempotencyKey: "quota-race" }),
+    {
+      now: () => now,
+      getSession: async () => authed(),
+      repositoryRequest,
+      loadPursuit: async () => savedPursuit({ status: "outreach_ready", pursuitMeteredAt: now }),
+      loadInitialOutreachCommit: noInitialOutreachCommit,
+      loadAggregate: async () => agg,
+      loadJob: async () => publicJob(),
+      loadOutreachMessages: async () => [],
+      loadContactSuggestions: async () => [contactSuggestion({ selectedForOutreach: true })],
+      loadSubscriptionContext: async () => activeBasicSubscription(),
+      loadUsageEntries: async () => [],
+      enforcePursuitSubscription: () => { throw new Error("metered pursuit must not be enforced again"); },
+      enforceSubscription: () => ({ status: "allowed", feature: "outreach_message", used: 0 }),
+      generateOutreachForContact: async () => ({ message: "Generated before the quota race.", insertedExample: null }),
+      persistOutreach: async () => { throw new Error("outreach_message_limit_reached:150:150"); },
+    },
+  );
+  assert.equal(transactionalQuotaRejected.status, 429);
+  assert.deepEqual(await body(transactionalQuotaRejected), {
+    error: "Outreach limit reached.",
+    status: "limit_reached",
+    subscription: {
+      status: "limit_reached",
+      feature: "outreach_message",
+      used: 150,
+      limit: 150,
+      remaining: 0,
+    },
+  });
 
   // ---- One-time outreach regeneration ----
   const regenerationValidation = await handlePublicProfilePursuitOutreachRequest(postRequest("pursuits/outreach", {

@@ -130,6 +130,7 @@ const jobs: JobRow[] = [
 
 const scanResults: ScanResultRow[] = [];
 const savedJobs: SavedJobRow[] = [];
+const canonicalSaveCalls: Array<Record<string, unknown>> = [];
 const jobSources: JobSourceRow[] = [];
 const unrecognizedBoardSubmissions: Array<{ user_id: string; url: string; reason: string }> = [];
 let failSubmissionLogging = false;
@@ -139,6 +140,30 @@ const request: PublicProfileRepositoryRequest = async <T>(
   options: Parameters<PublicProfileRepositoryRequest>[1],
 ) => {
   const query = decodeURIComponent(options.query ?? "");
+
+  if (table === "rpc/set_canonical_job_saved") {
+    const body = options.body as Record<string, unknown>;
+    canonicalSaveCalls.push(body);
+    const saved = body.p_saved === true;
+    const jobId = body.p_job_id as string;
+    const existingIndex = savedJobs.findIndex((row) => row.user_id === body.p_user_id && row.job_id === jobId);
+    if (saved && existingIndex < 0) {
+      savedJobs.push({
+        user_id: body.p_user_id as string,
+        profile_id: body.p_profile_id as string,
+        job_id: jobId,
+        created_at: body.p_now as string,
+        updated_at: body.p_now as string,
+      });
+    } else if (!saved && existingIndex >= 0) {
+      savedJobs.splice(existingIndex, 1);
+    }
+    return {
+      status: saved ? "saved" : "unsaved",
+      pursuit: { id: "pursuit-canonical" },
+      created: saved && existingIndex < 0,
+    } as T;
+  }
 
   if (table === "candidate_profiles") {
     return [{
@@ -504,12 +529,16 @@ async function main() {
   if ("status" in saved) throw new Error("Expected save response");
   assert.equal(saved.summary.savedJobs, 1);
   assert.equal(saved.jobs[0].saved, true);
+  assert.equal(canonicalSaveCalls[0].p_saved, true);
+  assert.equal((canonicalSaveCalls[0].p_job_snapshot as Record<string, unknown>).title, "Program Director");
+  assert.deepEqual((canonicalSaveCalls[0].p_job_snapshot as Record<string, unknown>).responsibilities, []);
 
   const unsaved = await setPublicJobSavedForUser(request, userId, "job-1", false, now);
   assert.equal("status" in unsaved, false);
   if ("status" in unsaved) throw new Error("Expected unsave response");
   assert.equal(unsaved.summary.savedJobs, 0);
   assert.equal(unsaved.jobs[0].saved, false);
+  assert.equal(canonicalSaveCalls[1].p_saved, false);
 
   const missing = await setPublicJobSavedForUser(request, userId, "job-missing", true, now);
   assert.deepEqual(missing, { status: "not_in_results" });

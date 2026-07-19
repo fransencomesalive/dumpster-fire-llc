@@ -92,7 +92,7 @@ async function main() {
     const upsert = calls.find((call) => call.table === "jobs");
     assert.ok(upsert, "jobs upsert should occur");
     assert.equal(upsert?.method, "POST");
-    assert.equal(upsert?.query, "?on_conflict=source,source_url");
+    assert.equal(upsert?.query, "?on_conflict=source,source_url,owner_user_id");
     const rows = upsert?.body as Array<Record<string, unknown>>;
     assert.equal(rows.length, 1);
     assert.equal(rows[0].source, "greenhouse");

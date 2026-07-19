@@ -21,7 +21,17 @@ import {
   type UserJobSourceRecord,
 } from "../scan/sources/registry";
 import { fetchNormalizedConnectorJobs } from "../scan/sources/runner";
-import type { PublicJobBoardRecord, PublicJobBoardsResponse, PublicJobMatchSummary, PublicJobRecord, PublicJobSearchSettings, PublicJobsResponse, PublicJobsScanResponse, PublicJobsSummary } from "./types";
+import {
+  snapshotPublicJob,
+  type PublicJobBoardRecord,
+  type PublicJobBoardsResponse,
+  type PublicJobMatchSummary,
+  type PublicJobRecord,
+  type PublicJobSearchSettings,
+  type PublicJobsResponse,
+  type PublicJobsScanResponse,
+  type PublicJobsSummary,
+} from "./types";
 
 type JobRow = {
   id: string;
@@ -223,6 +233,22 @@ async function jobsById(request: PublicProfileRepositoryRequest, jobIds: string[
   });
 }
 
+async function jobsByIdForUser(
+  request: PublicProfileRepositoryRequest,
+  userId: string,
+  jobIds: string[],
+) {
+  if (jobIds.length === 0) return [];
+  const rows = await request<JobRow[]>("jobs", {
+    query: qs({
+      id: `in.(${jobIds.join(",")})`,
+      or: `(owner_user_id.is.null,owner_user_id.eq.${userId})`,
+      select: "id,source,source_url,owner_user_id,company_name,title,location,remote_type,employment_type,compensation_text,description,posted_at,scraped_at,created_at,updated_at,responsibilities,required_experience",
+    }),
+  });
+  return rows.filter((row) => !row.owner_user_id || row.owner_user_id === userId);
+}
+
 export async function loadPublicJobById(
   request: PublicProfileRepositoryRequest,
   jobId: string,
@@ -238,6 +264,26 @@ export async function loadPublicJobsByIds(
 ): Promise<Map<string, PublicJobRecord>> {
   const uniqueIds = [...new Set(jobIds)];
   const rows = await jobsById(request, uniqueIds);
+  return new Map(rows.map((row) => [row.id, mapPublicJobRecord(row)]));
+}
+
+export async function loadPublicJobByIdForUser(
+  request: PublicProfileRepositoryRequest,
+  userId: string,
+  jobId: string,
+): Promise<PublicJobRecord | undefined> {
+  const rows = await jobsByIdForUser(request, userId, [jobId]);
+  const row = rows[0];
+  return row ? mapPublicJobRecord(row) : undefined;
+}
+
+export async function loadPublicJobsByIdsForUser(
+  request: PublicProfileRepositoryRequest,
+  userId: string,
+  jobIds: string[],
+): Promise<Map<string, PublicJobRecord>> {
+  const uniqueIds = [...new Set(jobIds)];
+  const rows = await jobsByIdForUser(request, userId, uniqueIds);
   return new Map(rows.map((row) => [row.id, mapPublicJobRecord(row)]));
 }
 
@@ -318,7 +364,7 @@ export async function readPublicJobsForUser(
 
   const results = await activeResultsForUser(request, userId);
   const savedJobIds = await savedJobIdsForUser(request, userId);
-  const rows = await jobsById(request, results.map((result) => result.job_id));
+  const rows = await jobsByIdForUser(request, userId, results.map((result) => result.job_id));
   const rowsById = new Map(rows.map((row) => [row.id, row]));
   const jobs = results
     .map((result) => {
@@ -695,35 +741,39 @@ export async function setPublicJobSavedForUser(
   const readiness = await ensureReadyProfile(request, userId, updatedAt);
   if (readiness.status !== "ready") return readiness;
 
-  const resultRows = await request<JobScanResultRow[]>("job_scan_results", {
-    query: qs({
-      user_id: `eq.${userId}`,
-      job_id: `eq.${jobId}`,
-      status: "eq.active",
-      select: "job_id,first_seen_at,last_seen_at,scan_context",
-      limit: "1",
-    }),
-  });
-  if (resultRows.length === 0) return { status: "not_in_results" };
-
+  const visibleJobs = await jobsByIdForUser(request, userId, [jobId]);
+  const jobRow = visibleJobs[0];
+  if (!jobRow) return { status: "not_in_results" };
+  let job: PublicJobRecord;
   if (saved) {
-    await request("saved_jobs", {
-      method: "POST",
-      query: "?on_conflict=user_id,job_id",
-      headers: { Prefer: "resolution=merge-duplicates" },
-      body: {
-        user_id: userId,
-        profile_id: readiness.aggregate.profile.id,
-        job_id: jobId,
-        updated_at: updatedAt,
-      },
+    const resultRows = await request<JobScanResultRow[]>("job_scan_results", {
+      query: qs({
+        user_id: `eq.${userId}`,
+        job_id: `eq.${jobId}`,
+        status: "eq.active",
+        select: "job_id,first_seen_at,last_seen_at,scan_context",
+        limit: "1",
+      }),
     });
+    if (resultRows.length === 0) return { status: "not_in_results" };
+    job = mapJob(jobRow, resultRows[0], new Set());
   } else {
-    await request("saved_jobs", {
-      method: "DELETE",
-      query: qs({ user_id: `eq.${userId}`, job_id: `eq.${jobId}` }),
-    });
+    // Unsave removes only the compatibility row. It remains possible after the
+    // scan result expires or is dismissed because the canonical pursuit is history.
+    job = mapPublicJobRecord(jobRow);
   }
+
+  await request("rpc/set_canonical_job_saved", {
+    method: "POST",
+    body: {
+      p_user_id: userId,
+      p_profile_id: readiness.aggregate.profile.id,
+      p_job_id: jobId,
+      p_saved: saved,
+      p_job_snapshot: snapshotPublicJob(job, updatedAt),
+      p_now: updatedAt,
+    },
+  });
 
   return readPublicJobsForUser(request, userId, updatedAt);
 }

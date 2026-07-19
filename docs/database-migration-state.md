@@ -56,8 +56,8 @@ re-run a psql-applied migration through the CLI — A4 in particular is non-idem
   `schema_migrations` (`resume_highlights`). Column confirmed present (`data_type ARRAY`,
   default `'{}'::text[]`, NOT NULL).
 
-As of 2026-06-30, **every migration in `supabase/migrations/` is applied and recorded** — prod
-schema matches the repo (reconciled by comparing files to `schema_migrations`).
+As of 2026-07-15, every migration through `20260715000200` is applied and recorded. The three
+`20260718` Saved Pursuits migrations listed below are intentionally not yet applied.
 
 ## How to apply migrations (current method)
 
@@ -149,7 +149,15 @@ user"), applied as a two-phase pair around deploy `d74eec3`:
 
 ## NOT yet applied to production
 
-- None outstanding.
+- `20260718000100_saved_pursuits_foundation.sql`
+- `20260718000200_saved_pursuits_atomic_mutations.sql`
+- `20260718000300_saved_pursuits_data_readiness.sql`
+
+Run the read-only `scripts/sql/saved-pursuits-production-preflight.sql` before authorization to
+apply this chain. Apply all three in order and record all three migration versions. Migration
+`180003` performs existing-user conversion and intentionally aborts on duplicate/non-unit pursuit
+debits or failed count reconciliation. None of these migrations, their production preflight, or
+their post-apply verification has been run against production.
 
 (Open, separate decision — NOT a migration: the `job_sources`
   clean-slate reset Randall wants alongside the private-boards feature. Scope TBD;

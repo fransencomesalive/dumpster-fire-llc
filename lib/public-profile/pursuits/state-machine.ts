@@ -76,10 +76,10 @@ function usageEvent(
 ): PursuitUsageEvent {
   return {
     userId: pursuit.userId,
-    profileId: pursuit.profileId,
+    profileId: pursuit.profileId ?? undefined,
     usageType,
     quantity,
-    relatedJobId: pursuit.jobId,
+    relatedJobId: pursuit.jobId ?? undefined,
     relatedPursuitId: pursuit.id,
     createdAt,
   };
@@ -117,6 +117,8 @@ export function createPursuit(input: CreatePursuitInput): PursuitTransitionResul
     risks: unique(input.risks ?? []),
     recommendedWorkExampleIds: unique(input.recommendedWorkExampleIds ?? []),
     outreachAngle: input.outreachAngle,
+    jobSnapshot: input.jobSnapshot,
+    selectionSnapshot: input.selectionSnapshot,
     lastActivityAt: input.now,
     createdAt: input.now,
     updatedAt: input.now,
@@ -142,6 +144,7 @@ export function completeReview(
     risks: input.risks,
     recommendedWorkExampleIds: input.recommendedWorkExampleIds,
     outreachAngle: input.outreachAngle,
+    selectionSnapshot: input.selectionSnapshot,
   });
 }
 
@@ -177,6 +180,9 @@ export function transitionPursuit(
       ? unique(payload.recommendedWorkExampleIds.filter((id): id is string => typeof id === "string"))
       : pursuit.recommendedWorkExampleIds,
     outreachAngle: typeof payload.outreachAngle === "string" ? payload.outreachAngle : pursuit.outreachAngle,
+    selectionSnapshot: payload.selectionSnapshot && typeof payload.selectionSnapshot === "object"
+      ? payload.selectionSnapshot as Pursuit["selectionSnapshot"]
+      : pursuit.selectionSnapshot,
     lastActivityAt: now,
     updatedAt: now,
   };

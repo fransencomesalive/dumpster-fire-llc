@@ -1,4 +1,5 @@
 import type { MatchLabel } from "../public-profile/matching/types";
+import type { PursuitJobSnapshot } from "../public-profile/pursuits/types";
 
 export type PublicJobMatchSummary = {
   score: number;
@@ -34,6 +35,34 @@ export type PublicJobRecord = {
   // to rank and annotate results. Absent on bare records (e.g. ingestion mapping).
   match?: PublicJobMatchSummary;
 };
+
+export function snapshotPublicJob(
+  job: PublicJobRecord,
+  capturedAt: string,
+  availability: PursuitJobSnapshot["availability"] = "available",
+): PursuitJobSnapshot {
+  return {
+    jobId: job.id,
+    source: job.source,
+    sourceState: job.ownerUserId ? "user_owned" : "shared",
+    sourceUrl: job.sourceUrl,
+    title: job.title,
+    companyName: job.companyName,
+    description: job.description,
+    responsibilities: [...job.responsibilities],
+    requiredExperience: [...job.requiredExperience],
+    location: job.location,
+    remoteType: job.remoteType,
+    employmentType: job.employmentType,
+    compensation: job.compensationText,
+    postedAt: job.postedAt,
+    scrapedAt: job.scrapedAt,
+    firstSeenAt: job.firstSeenAt,
+    lastSeenAt: job.lastSeenAt,
+    availability,
+    capturedAt,
+  };
+}
 
 export type PublicJobsSummary = {
   totalJobs: number;

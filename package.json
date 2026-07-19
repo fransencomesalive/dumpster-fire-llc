@@ -7,6 +7,11 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "typecheck": "tsc --noEmit --incremental false",
+    "test:saved-pursuits": "node scripts/test-fixtures.mjs --saved-pursuits",
+    "test:migrations:saved-pursuits": "bash scripts/test-saved-pursuits-migration.sh",
+    "test:fixtures": "node scripts/test-fixtures.mjs",
+    "release:check": "node scripts/release-check.mjs",
     "test:job-link": "node scripts/test-job-link.mjs",
     "test:matching": "node scripts/test-public-profile-matching.mjs",
     "test:public-jobs": "node scripts/test-public-jobs-repository.mjs",
@@ -20,23 +25,27 @@
     "@anthropic-ai/sdk": "^0.106.0",
     "@supabase/supabase-js": "^2.110.0",
     "@vercel/analytics": "^2.0.1",
-    "@vercel/blob": "^2.3.1",
+    "@vercel/blob": "^2.6.1",
     "@vladmandic/face-api": "^1.7.15",
-    "next": "16.1.6",
-    "nodemailer": "^8.0.7",
+    "next": "16.2.10",
+    "nodemailer": "^9.0.3",
     "openai": "^6.27.0",
-    "react": "19.2.3",
-    "react-dom": "19.2.3"
+    "react": "19.2.7",
+    "react-dom": "19.2.7"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
-    "@types/nodemailer": "^8.0.0",
+    "@types/nodemailer": "^8.0.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.1.6",
+    "eslint-config-next": "16.2.10",
     "tailwindcss": "^4",
     "typescript": "^5"
+  },
+  "overrides": {
+    "postcss": "8.5.19",
+    "undici": "6.27.0"
   }
 }

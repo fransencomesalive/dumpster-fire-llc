@@ -27,8 +27,8 @@ import { derivePursuitTrackingState, pursuitHistory } from "./tracking";
 type PursuitRow = {
   id: string;
   user_id: string;
-  profile_id: string;
-  job_id: string;
+  profile_id: string | null;
+  job_id: string | null;
   selected_role_track_id: string | null;
   selected_resume_id: string | null;
   selected_work_example_id: string | null;
@@ -81,6 +81,7 @@ type PursuitTrackingEventRow = {
   recipient_linkedin_url_snapshot: string | null;
   idempotency_key: string;
   occurred_at: string;
+  occurred_at_known?: boolean | null;
   created_at: string;
 };
 
@@ -130,6 +131,14 @@ type AtomicOutreachGenerationResultRow = {
   messages: OutreachMessageRow[];
   pursuitDebited: boolean;
   outreachDebited: number;
+};
+
+type OutreachGenerationRequestRow = {
+  id: string;
+  pursuit_id: string;
+  user_id: string;
+  pursuit_debit_added: boolean;
+  outreach_debit_quantity: number;
 };
 
 function qs(params: Record<string, string>) {
@@ -338,6 +347,27 @@ export async function loadContactSuggestionsForPursuit(
   return rows.map(mapContactSuggestion);
 }
 
+export async function loadContactSuggestionsForPursuits(
+  request: PublicProfileRepositoryRequest,
+  pursuitIds: string[],
+): Promise<Map<string, HumanPathContactSuggestion[]>> {
+  const uniqueIds = [...new Set(pursuitIds)];
+  if (uniqueIds.length === 0) return new Map();
+  const rows = await request<(ContactSuggestionRow & { pursuit_id: string })[]>("contact_suggestions", {
+    query: qs({
+      pursuit_id: `in.(${uniqueIds.join(",")})`,
+      select: "pursuit_id,id,name,title,company_name,linkedin_url,email,contact_type,confidence,relevance_reason,role_connection,verification_notes,selected_for_outreach,created_at,updated_at",
+      order: "created_at.asc,id.asc",
+    }),
+  });
+  return rows.reduce((grouped, row) => {
+    const current = grouped.get(row.pursuit_id) ?? [];
+    current.push(mapContactSuggestion(row));
+    grouped.set(row.pursuit_id, current);
+    return grouped;
+  }, new Map<string, HumanPathContactSuggestion[]>());
+}
+
 function mapOutreachMessage(row: OutreachMessageRow): OutreachMessageRecord {
   return {
     id: row.id,
@@ -389,8 +419,19 @@ function mapPursuitTrackingEvent(row: PursuitTrackingEventRow): PursuitTrackingE
     recipientLinkedinUrlSnapshot: defined(row.recipient_linkedin_url_snapshot),
     idempotencyKey: row.idempotency_key,
     occurredAt: row.occurred_at,
+    occurredAtKnown: row.occurred_at_known !== false,
     createdAt: row.created_at,
   };
+}
+
+function groupedByPursuit<T extends { pursuitId: string }>(rows: T[]) {
+  const grouped = new Map<string, T[]>();
+  for (const row of rows) {
+    const current = grouped.get(row.pursuitId) ?? [];
+    current.push(row);
+    grouped.set(row.pursuitId, current);
+  }
+  return grouped;
 }
 
 export async function loadPursuitsForUser(
@@ -424,6 +465,22 @@ export async function loadOutreachMessagesForPursuit(
     }),
   });
   return rows.map(mapOutreachMessage);
+}
+
+export async function loadOutreachMessagesForPursuits(
+  request: PublicProfileRepositoryRequest,
+  pursuitIds: string[],
+): Promise<Map<string, OutreachMessageRecord[]>> {
+  const uniqueIds = [...new Set(pursuitIds)];
+  if (uniqueIds.length === 0) return new Map();
+  const rows = await request<OutreachMessageRow[]>("outreach_messages", {
+    query: qs({
+      pursuit_id: `in.(${uniqueIds.join(",")})`,
+      select: OUTREACH_MESSAGE_SELECT,
+      order: "created_at.asc,id.asc",
+    }),
+  });
+  return groupedByPursuit(rows.map(mapOutreachMessage));
 }
 
 export async function loadOutreachMessageById(
@@ -515,11 +572,29 @@ export async function loadPursuitTrackingEventsForUser(
     query: qs({
       pursuit_id: `eq.${pursuitId}`,
       user_id: `eq.${userId}`,
-      select: "id,pursuit_id,user_id,action,checked,source,outreach_message_id,contact_suggestion_id,message_snapshot,recipient_name_snapshot,recipient_title_snapshot,recipient_linkedin_url_snapshot,idempotency_key,occurred_at,created_at",
-      order: "occurred_at.asc,created_at.asc",
+      select: "id,pursuit_id,user_id,action,checked,source,outreach_message_id,contact_suggestion_id,message_snapshot,recipient_name_snapshot,recipient_title_snapshot,recipient_linkedin_url_snapshot,idempotency_key,occurred_at,occurred_at_known,created_at",
+      order: "occurred_at.asc,created_at.asc,id.asc",
     }),
   });
   return rows.map(mapPursuitTrackingEvent);
+}
+
+export async function loadPursuitTrackingEventsForUserAndPursuits(
+  request: PublicProfileRepositoryRequest,
+  userId: string,
+  pursuitIds: string[],
+): Promise<Map<string, PursuitTrackingEvent[]>> {
+  const uniqueIds = [...new Set(pursuitIds)];
+  if (uniqueIds.length === 0) return new Map();
+  const rows = await request<PursuitTrackingEventRow[]>("pursuit_tracking_events", {
+    query: qs({
+      pursuit_id: `in.(${uniqueIds.join(",")})`,
+      user_id: `eq.${userId}`,
+      select: "id,pursuit_id,user_id,action,checked,source,outreach_message_id,contact_suggestion_id,message_snapshot,recipient_name_snapshot,recipient_title_snapshot,recipient_linkedin_url_snapshot,idempotency_key,occurred_at,occurred_at_known,created_at",
+      order: "occurred_at.asc,created_at.asc,id.asc",
+    }),
+  });
+  return groupedByPursuit(rows.map(mapPursuitTrackingEvent));
 }
 
 function mapAtomicTrackingResult(result: AtomicTrackingResultRow): PursuitTrackingCommit {
@@ -705,5 +780,43 @@ export async function persistOutreachGeneration(
     messages: response.messages.map(mapOutreachMessage),
     pursuitDebited: response.pursuitDebited,
     outreachDebited: response.outreachDebited,
+  };
+}
+
+export async function loadInitialOutreachGenerationCommit(
+  request: PublicProfileRepositoryRequest,
+  input: { userId: string; pursuitId: string; idempotencyKey?: string },
+): Promise<PursuitInitialOutreachCommit | undefined> {
+  const filters: Record<string, string> = {
+    pursuit_id: `eq.${input.pursuitId}`,
+    user_id: `eq.${input.userId}`,
+    select: "id,pursuit_id,user_id,pursuit_debit_added,outreach_debit_quantity",
+    order: "persisted_at.desc,id.desc",
+    limit: "1",
+  };
+  if (input.idempotencyKey) filters.idempotency_key = `eq.${input.idempotencyKey}`;
+  const requests = await request<OutreachGenerationRequestRow[]>("pursuit_outreach_generation_requests", {
+    query: qs(filters),
+  });
+  const generation = first(requests);
+  if (!generation) return undefined;
+
+  const [pursuit, messageRows] = await Promise.all([
+    loadPursuitByIdForUser(request, input.userId, input.pursuitId),
+    request<OutreachMessageRow[]>("outreach_messages", {
+      query: qs({
+        generation_request_id: `eq.${generation.id}`,
+        select: OUTREACH_MESSAGE_SELECT,
+        order: "created_at.asc,id.asc",
+      }),
+    }),
+  ]);
+  if (!pursuit || messageRows.length === 0) return undefined;
+  return {
+    status: "idempotent_replay",
+    pursuit,
+    messages: messageRows.map(mapOutreachMessage),
+    pursuitDebited: generation.pursuit_debit_added,
+    outreachDebited: generation.outreach_debit_quantity,
   };
 }

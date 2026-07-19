@@ -7,140 +7,167 @@ Product contract: `docs/saved-pursuits-feature-spec-2026-07-18.md`
 
 ## Completed scope
 
-The approved backend and API slice is implemented. It does not include UI, CSS, production
-migration execution, deployment, or production verification.
+The approved backend, API, migration-readiness, security, dependency, and automated-QA work is
+implemented locally. This does not include UI/CSS work, production migration execution,
+deployment, or production verification.
 
 Implemented behavior:
 
 - Six independent tracking actions with no gates or mutual exclusion.
-- Mark and unmark operations append timestamped events; reversals do not remove history.
-- The first positive action or first successfully persisted message Copy latches Applied.
-- Applied never automatically returns to Saved for Later.
-- Message Copy records immutable message and recipient snapshots from saved server data.
-- Copy persistence failures return a retryable non-success response and do not claim tracking
-  was saved.
-- Applied detail reads load saved records only and do not call Review, Human Path, contact
-  discovery, generation, regeneration, profile generation, or subscription enforcement.
-- Saved Pursuits list results are bucketed only by `tracking_started_at` and return card-level
-  data without message bodies, contact email, LinkedIn URLs, raw events, or provider internals.
-- Pursuit history is structured and human-readable. It does not expose event codes, IDs,
-  payloads, idempotency keys, sources, or provider internals.
-- Saved message history preserves the exact stored message text.
-- Saving or opening a pursuit no longer debits pursuit usage.
-- The first successfully persisted initial outreach generation atomically stores messages,
-  outreach usage, the one-time pursuit debit, the metering latch, and the pursuit event.
-- Database mutation functions perform explicit user ownership checks despite the repository's
-  service-role access.
+- Mark and unmark operations append timestamped events; reversals never remove history or
+  automatically demote an Applied pursuit.
+- First positive tracking or first persisted message Copy latches Applied atomically and
+  idempotently.
+- Applied detail is generation-free. It reads saved posting, contacts, messages, tracking, and
+  structured history without calling Review, Human Path, generation, or regeneration.
+- Message Copy persists immutable message and recipient snapshots. A persist failure remains a
+  retryable non-success and never claims tracking was saved.
+- Saved Pursuits list reads are batched instead of issuing three queries per pursuit, preserve
+  private-job ownership, and return card data without message text, email, LinkedIn URLs, raw
+  events, or provider internals.
+- Pursuit history uses deterministic event ordering and represents migrated unknown timestamps
+  as unavailable rather than displaying an invented date.
+- Original posting and mutable selection context are snapshotted. Profile and job references are
+  nullable and use `ON DELETE SET NULL`, so saved history survives profile/job deletion.
+- Dashboard Save/Unsave now crosses one canonical atomic RPC. Save keeps `saved_jobs` compatible
+  while creating or reusing the canonical pursuit; Unsave removes only the compatibility row.
+- Existing `saved_jobs` rows convert idempotently into canonical unmetered Saved for Later
+  pursuits. Notes and valid legacy facts are preserved; Offer is counted but never mapped.
+- Initial outreach retries replay a prior committed result before profile, job, contact, message,
+  or model dependencies. Transactional quota errors map back to the existing subscription API
+  response.
+- Pursuit and outreach quota enforcement is serialized per user inside the database transaction.
+  The pursuit latch is ledger-authoritative and duplicate pursuit debits are prevented.
+- Anon/authenticated direct mutation privileges were removed from pursuit and tracking tables;
+  atomic RPCs remain service-role-only.
+- Next.js, React, Nodemailer, Vercel Blob, PostCSS, and Undici dependencies were updated to patched
+  versions. `npm audit` reports zero known vulnerabilities.
+- One aggregate fixture runner, one release check, and CI on `main` now cover the disposable
+  database migration, 28 fixture suites, typecheck, lint, and production build.
 
-## Files in the implementation commit
+## Files in this pass
 
+- `lib/public-jobs/repository.ts`
+- `lib/public-jobs/types.ts`
 - `lib/public-profile/api.ts`
 - `lib/public-profile/pursuits/repository.ts`
 - `lib/public-profile/pursuits/state-machine.ts`
 - `lib/public-profile/pursuits/tracking.ts`
 - `lib/public-profile/pursuits/types.ts`
-- `app/api/public-profile/saved-pursuits/route.ts`
-- `app/api/public-profile/pursuits/[id]/tracking/route.ts`
-- `app/api/public-profile/pursuits/outreach/[messageId]/copy/route.ts`
-- `supabase/migrations/20260718000200_saved_pursuits_atomic_mutations.sql`
+- `supabase/migrations/20260718000300_saved_pursuits_data_readiness.sql`
+- `scripts/sql/saved-pursuits-production-preflight.sql`
+- `scripts/test-saved-pursuits-migration.sh`
+- `scripts/test-fixtures.mjs`
+- `scripts/release-check.mjs`
+- `scripts/test-public-jobs-repository.ts`
 - `scripts/test-public-profile-api.ts`
-- `scripts/test-public-profile-pursuits.ts`
+- `scripts/test-public-profile-regeneration.ts`
+- `scripts/test-source-scan.ts`
+- `.github/workflows/ci.yml`
+- `package.json`
+- `package-lock.json`
+- `docs/database-migration-state.md`
 - this handoff document
 
 ## Verification completed
 
-All of these passed against the final implementation tree:
+Passed on the final implementation tree:
 
-- `node scripts/test-public-profile-pursuits.mjs`
-- `node scripts/test-public-profile-api.mjs`
-- `npm run test:public-jobs`
-- `npm run test:public-regeneration`
-- `npx tsc --noEmit --incremental false`
-- `npm run build`
-- `git diff --check`
+- Disposable PostgreSQL 16 clean application of migrations `180001`, `180002`, and `180003`.
+- Full migration-chain idempotent reapplication.
+- Saved-job conversion/count reconciliation, trusted snapshots, known/unknown timestamps, Offer
+  exclusion, client privilege revocation, canonical Save/Unsave, foreign private-job rejection,
+  latch/ledger integrity, quota rollback/replay, and profile/job `SET NULL` durability.
+- All 28 fixture suites through `npm run test:fixtures`.
+- `npm run typecheck`.
+- `npm run lint`: zero errors and four pre-existing warnings listed below.
+- `npm run build` with Next.js 16.2.10.
+- `npm run test:public-jobs` after the final private-job list defense.
+- `npm audit --json`: zero vulnerabilities at every severity.
+- `bash -n scripts/test-saved-pursuits-migration.sh`.
+- JavaScript syntax checks for the aggregate test runners.
+- `git diff --check`.
 
-`npm run lint` completed with zero errors and four pre-existing warnings:
+Pre-existing lint warnings:
 
-- `app/onboarding/OnboardingClient.tsx`: unused `listField`
-- `lib/public-profile/repository.ts`: unused `FitSignals`
-- `lib/public-profile/repository.ts`: unused `VoicePersonality`
-- `scripts/outreach-quality/gen-style-matrix.mjs`: unused `description`
+- `app/onboarding/OnboardingClient.tsx`: unused `listField`.
+- `lib/public-profile/repository.ts`: unused `FitSignals`.
+- `lib/public-profile/repository.ts`: unused `VoicePersonality`.
+- `scripts/outreach-quality/gen-style-matrix.mjs`: unused `description`.
 
-The new migration was also validated in a disposable PostgreSQL 16 database for clean and
-repeated application, all six actions, reversals, Applied latching, Copy snapshots and replay,
-owner isolation, rollback on invalid cross-pursuit contacts, legacy debit backfill, one-time
-pursuit charging, and outreach quantities. The temporary database was stopped afterward.
+## Failed checks and root causes
 
-## Failed attempt and cause
-
-The first sandboxed `npm run build` stalled during Turbopack's optimized-build phase and emitted
-no code diagnostic. The process was stopped. The exact same build run outside the restricted
-sandbox completed successfully, including TypeScript, page-data collection, static generation,
-and registration of all three new routes. The evidence points to the sandbox execution
-environment, but the precise sandbox-level cause was not proven.
+1. The first full fixture run failed in `test-public-profile-regeneration` because its mocked
+   handler intentionally rejected every repository call and had not injected the newly added
+   idempotent-replay lookup. The production path was not failing. The fixture now injects the
+   replay dependency explicitly, and all 28 suites pass.
+2. The first optimized build attempt was blocked by Next.js's build lock. PID 29760 was an
+   orphaned earlier `next build` from the interrupted QA worker and still held `.next/lock`.
+   After confirming the owner with `lsof`, that orphan was stopped; Next removed the lock and the
+   build completed successfully.
+3. The first sandboxed disposable-PostgreSQL attempt could not create PostgreSQL shared memory.
+   The same isolated test run with local shared-memory access passed repeatedly. No production
+   database was contacted.
 
 ## Not verified or not completed
 
 ### Production migration and deployment
 
-The SQL migration has not been applied to production. No deployment or production HTTP check
-was performed.
+Migrations `20260718000100`, `20260718000200`, and `20260718000300` have not been applied to
+production. No deployment or production HTTP verification was performed.
 
-Verification required after explicit production authorization:
+Required after explicit production authorization:
 
-1. Run the existing-user preflight counts required by the product contract.
-2. Apply `20260718000200_saved_pursuits_atomic_mutations.sql` through the normal Supabase
-   migration process.
-3. Confirm `pursuit_metered_at`, request-idempotency tables, constraints, indexes, function
-   signatures, and service-role-only execution permissions.
-4. Exercise tracking, reversal, Copy replay, Copy persistence failure/retry, and first-generation
-   metering with two owner-isolation fixtures.
-5. Reconcile pursuit and usage-ledger counts before and after.
+1. Run `scripts/sql/saved-pursuits-production-preflight.sql` read-only against production.
+2. Stop if it reports duplicate/non-unit pursuit debits, missing convertible jobs, unexpected
+   Offer counts, or another reconciliation problem. Migration `180003` intentionally aborts on
+   duplicate historical pursuit debits.
+3. Apply the three `20260718` migrations in order through the normal Supabase migration process
+   and record all three versions in migration history.
+4. Confirm table grants, RLS policies, RPC execution grants, indexes, triggers, nullable FKs,
+   snapshot columns, request tables, and reconciliation counts.
+5. Exercise Save/Unsave, tracking/reversal, Copy replay/failure/retry, generation replay, quota
+   rollback, and owner isolation with two users.
 6. Deploy the application, run `curl -I <production-url>`, and confirm HTTP 200 before inspecting
    production content.
 
-### Existing-user conversion
-
-The product contract's broader existing-user conversion remains outstanding. This commit does
-not convert legacy `saved_jobs` rows into canonical pursuits or complete the full legacy-status,
-snapshot, inactive-result, and Offer preflight/reconciliation work. The migration only handles
-the atomic mutations, idempotency infrastructure, metering latch, and legacy pursuit-debit
-backfill needed by this approved slice.
-
 ### UI and design-system parity
 
-No UI, CSS, design-system card, or public-copy file was edited. Therefore these approved designs
-are not yet wired into production:
+No UI, CSS, design-system card, or public-copy file was edited. The next design/production pass
+still owns:
 
-- Saved Pursuits bucket toggle at all breakpoints.
-- Shared Apply Wizard and Applied Tracking component.
-- View-only, non-selectable saved-message history without Copy or regenerate controls.
-- Honest Copy-persist-failure retry state.
-- Retirement of the separate Application Details surface.
-- Saved Pursuits entry points and vocabulary changes.
-
-No mobile or desktop visual verification was performed because this pass was backend-only.
+- Saved Pursuits bucket toggle at every breakpoint, one bucket at a time.
+- Shared Apply Wizard and Applied Tracking component using the six independent actions.
+- Applied opening directly into generation-free Tracking.
+- View-only, non-selectable saved-message history with no Copy or regenerate control.
+- Honest clipboard-succeeded/persist-failed retry state.
+- Retirement of the separate Application Details surface, including the stale `detail.html`
+  design-index link discovered by the audit.
+- Saved Pursuits entry points and approved vocabulary.
+- Full design-system to production parity and mobile/desktop visual verification.
 
 ### Compatibility surface
 
-The legacy scalar pursuit status and old status/list endpoints remain temporarily for migration
-and current-client compatibility. New Saved Pursuits tracking uses only the six-action endpoint;
-Offer is rejected by the new tracking contract. Retire the compatibility surface only as part
-of an explicitly approved UI/data cutover.
+`saved_jobs` remains as a compatibility table and the legacy scalar pursuit status/endpoints remain
+temporarily. New Save writes are canonical and atomic, and migration `180003` converts existing
+rows, but retiring legacy reads/writes requires the approved UI/data cutover and verified
+production reconciliation.
+
+Initial outreach clients should send a stable idempotency key for each distinct generation intent.
+A repeated key replays the exact committed request; a new key allows a later distinct generation
+for additional selected contacts.
 
 ## Next immediate starting point
 
-At the next session:
+1. Pull `main` and run `git status --short --branch`.
+2. Read this handoff, `docs/project-operating-state.md`, the Saved Pursuits product contract, and
+   the Claude design brief.
+3. For the approved design pass, map each production surface to the exact approved Claude Design
+   card/primitive and list every production plus `design-system/` file before editing.
+4. Start with the shared Saved Pursuits/Tracking component contract. Do not create gates and do
+   not rebuild Application Details as a separate surface.
+5. Keep production migration/deployment as a separate authorization step using the preflight and
+   verification sequence above.
 
-1. Run `git pull` and `git status --short --branch`; remain on `main`.
-2. Read this handoff, `docs/project-operating-state.md`, the Saved Pursuits product contract,
-   and the Claude design brief.
-3. Ask Randall which independent scope is approved next:
-   - production UI wiring from the approved cards, or
-   - existing-user preflight/backfill migration work.
-4. For UI wiring, identify the exact approved card/component mapping and exact production and
-   design-system files, then wait for explicit scoped approval before editing.
-5. For migration work, perform read-only preflight design first. Do not write to production or
-   delete legacy Offer data without explicit production authorization.
-
-No further scope should be inferred from this handoff document.
+No other backend implementation gap is known before the design pass. Production migration and UI
+integration remain intentionally unexecuted.

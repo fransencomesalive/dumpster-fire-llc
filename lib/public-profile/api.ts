@@ -2,8 +2,11 @@ import {
   getPublicAuthSession,
   type PublicAuthSession,
 } from "../public-auth/session";
-import { loadPublicJobById, loadPublicJobsByIds } from "../public-jobs/repository";
-import type { PublicJobRecord } from "../public-jobs/types";
+import {
+  loadPublicJobByIdForUser,
+  loadPublicJobsByIdsForUser,
+} from "../public-jobs/repository";
+import { snapshotPublicJob, type PublicJobRecord } from "../public-jobs/types";
 import {
   searchIndustries,
   searchLocations,
@@ -24,11 +27,15 @@ import { generateResumeParse, type ResumeParseVerdict } from "./resume-parse";
 import {
   createPursuitForJob,
   loadContactSuggestionsForPursuit,
+  loadContactSuggestionsForPursuits,
+  loadInitialOutreachGenerationCommit,
   loadOutreachMessageById,
   loadOutreachMessagesForPursuit,
+  loadOutreachMessagesForPursuits,
   loadPursuitByIdForUser,
   loadPursuitByJobForUser,
   loadPursuitTrackingEventsForUser,
+  loadPursuitTrackingEventsForUserAndPursuits,
   loadPursuitsForUser,
   persistContactSelection,
   persistHumanPathGeneration,
@@ -72,6 +79,7 @@ import type {
   PursuitTrackingCommit,
   PursuitTrackingEvent,
   PursuitInitialOutreachCommit,
+  PursuitSelectionSnapshot,
 } from "./pursuits/types";
 import { enforceSubscriptionFeature } from "./subscription/enforcement";
 import {
@@ -465,6 +473,10 @@ export type PublicProfilePursuitsHandlerOptions = PublicProfileMatchHandlerOptio
     request: PublicProfileRepositoryRequest,
     pursuitId: string,
   ) => Promise<OutreachMessageRecord[]>;
+  loadOutreachMessagesBatch?: (
+    request: PublicProfileRepositoryRequest,
+    pursuitIds: string[],
+  ) => Promise<Map<string, OutreachMessageRecord[]>>;
   loadOutreachMessage?: (
     request: PublicProfileRepositoryRequest,
     messageId: string,
@@ -482,6 +494,11 @@ export type PublicProfilePursuitsHandlerOptions = PublicProfileMatchHandlerOptio
     userId: string,
     pursuitId: string,
   ) => Promise<PursuitTrackingEvent[]>;
+  loadPursuitTrackingEventsBatch?: (
+    request: PublicProfileRepositoryRequest,
+    userId: string,
+    pursuitIds: string[],
+  ) => Promise<Map<string, PursuitTrackingEvent[]>>;
   persistTrackingMutation?: (
     request: PublicProfileRepositoryRequest,
     input: {
@@ -513,6 +530,10 @@ export type PublicProfilePursuitsHandlerOptions = PublicProfileMatchHandlerOptio
     request: PublicProfileRepositoryRequest,
     pursuitId: string,
   ) => Promise<HumanPathContactSuggestion[]>;
+  loadContactSuggestionsBatch?: (
+    request: PublicProfileRepositoryRequest,
+    pursuitIds: string[],
+  ) => Promise<Map<string, HumanPathContactSuggestion[]>>;
   recordExportUsage?: (
     request: PublicProfileRepositoryRequest,
     input: { userId: string; createdAt: string; quantity?: number },
@@ -540,6 +561,10 @@ export type PublicProfilePursuitsHandlerOptions = PublicProfileMatchHandlerOptio
     drafts: GeneratedOutreachDraft[],
     input: { idempotencyKey: string },
   ) => Promise<PursuitInitialOutreachCommit | void>;
+  loadInitialOutreachCommit?: (
+    request: PublicProfileRepositoryRequest,
+    input: { userId: string; pursuitId: string; idempotencyKey?: string },
+  ) => Promise<PursuitInitialOutreachCommit | undefined>;
   persistOutreachRegeneration?: (
     request: PublicProfileRepositoryRequest,
     result: Extract<PursuitTransitionResult, { ok: true }>,
@@ -662,6 +687,45 @@ function uniqueStringArray(value: unknown) {
 
 function optionalString(value: unknown) {
   return typeof value === "string" && value.trim() ? value.trim() : undefined;
+}
+
+function publicJobVisibleToUser(job: PublicJobRecord | undefined, userId: string) {
+  return job && (!job.ownerUserId || job.ownerUserId === userId) ? job : undefined;
+}
+
+function selectionSnapshotForReview(
+  aggregate: CandidateProfileAggregate,
+  input: CompleteReviewInput,
+  capturedAt: string,
+): PursuitSelectionSnapshot {
+  const roleTrack = input.selectedRoleTrackId
+    ? aggregate.roleTracks.find((candidate) => candidate.id === input.selectedRoleTrackId)
+    : undefined;
+  const resume = input.selectedResumeId
+    ? aggregate.resumes.find((candidate) => candidate.id === input.selectedResumeId)
+    : undefined;
+  const workExample = input.selectedWorkExampleId
+    ? aggregate.workExamples.find((candidate) => candidate.id === input.selectedWorkExampleId)
+    : undefined;
+  return {
+    roleTrackId: roleTrack?.id,
+    resumeId: resume?.id,
+    workExampleId: workExample?.id,
+    applyingAs: roleTrack ? {
+      id: roleTrack.id,
+      label: roleTrack.name,
+      narrative: roleTrack.corePositioning || roleTrack.description || roleTrack.outreachAngle,
+    } : undefined,
+    resume: resume ? { id: resume.id, label: resume.name } : undefined,
+    workExample: workExample ? {
+      id: workExample.id,
+      label: workExample.title,
+      oneHitter: workExample.oneHitter,
+      link: workExample.link,
+      context: workExample.context,
+    } : undefined,
+    capturedAt,
+  };
 }
 
 function parseCompleteReviewInput(input: Record<string, unknown>): CompleteReviewInput {
@@ -964,8 +1028,10 @@ export async function handlePublicProfileMatchRequest(
     return profileIncompleteResponse(aggregate, profileQuality, "matching jobs");
   }
 
-  const loadJob = options.loadJob ?? loadPublicJobById;
-  const job = await loadJob(repositoryRequest, jobId);
+  const loadedJob = options.loadJob
+    ? await options.loadJob(repositoryRequest, jobId)
+    : await loadPublicJobByIdForUser(repositoryRequest, session.userId, jobId);
+  const job = publicJobVisibleToUser(loadedJob, session.userId);
   // Another user's pasted job is invisible here — indistinguishable from nonexistent.
   if (!job || (job.ownerUserId && job.ownerUserId !== session.userId)) {
     return json({ error: "Job not found.", status: "not_found" }, { status: 404 });
@@ -977,7 +1043,6 @@ export async function handlePublicProfileMatchRequest(
     job: matchJobFromPublicJob(job),
     evaluatedAt,
   });
-
   return json({
     status: "matched",
     profileId: aggregate.profile.id,
@@ -1035,12 +1100,16 @@ export async function handlePublicProfilePursuitsListRequest(
     includeDeleted,
   });
 
-  const loadJobs = options.loadJobs ?? loadPublicJobsByIds;
-  const jobsById = await loadJobs(repositoryRequest, pursuits.map((pursuit) => pursuit.jobId));
+  const jobIds = pursuits.flatMap((pursuit) => pursuit.jobId ? [pursuit.jobId] : []);
+  const jobsById = options.loadJobs
+    ? await options.loadJobs(repositoryRequest, jobIds)
+    : await loadPublicJobsByIdsForUser(repositoryRequest, session.userId, jobIds);
 
   const items = pursuits.map((pursuit) => ({
     pursuit,
-    job: jobsById.get(pursuit.jobId) ?? null,
+    job: pursuit.jobId
+      ? publicJobVisibleToUser(jobsById.get(pursuit.jobId), session.userId) ?? null
+      : null,
   }));
 
   const counts = pursuits.reduce<Record<string, number>>((accumulator, pursuit) => {
@@ -1068,19 +1137,48 @@ export async function handlePublicProfileSavedPursuitsListRequest(
 
   const loadPursuits = options.loadPursuits ?? loadPursuitsForUser;
   const pursuits = await loadPursuits(repositoryRequest, session.userId, {});
-  const loadJobs = options.loadJobs ?? loadPublicJobsByIds;
-  const jobsById = await loadJobs(repositoryRequest, pursuits.map((pursuit) => pursuit.jobId));
-  const loadTrackingEvents = options.loadPursuitTrackingEvents ?? loadPursuitTrackingEventsForUser;
-  const loadOutreachMessages = options.loadOutreachMessages ?? loadOutreachMessagesForPursuit;
-  const loadContacts = options.loadContactSuggestions ?? loadContactSuggestionsForPursuit;
+  const pursuitIds = pursuits.map((pursuit) => pursuit.id);
+  const jobIds = pursuits.flatMap((pursuit) => pursuit.jobId ? [pursuit.jobId] : []);
+  const trackingPromise = options.loadPursuitTrackingEventsBatch
+    ? options.loadPursuitTrackingEventsBatch(repositoryRequest, session.userId, pursuitIds)
+    : options.loadPursuitTrackingEvents
+      ? Promise.all(pursuits.map(async (pursuit) => [
+          pursuit.id,
+          await options.loadPursuitTrackingEvents!(repositoryRequest, session.userId, pursuit.id),
+        ] as const)).then((entries) => new Map(entries))
+      : loadPursuitTrackingEventsForUserAndPursuits(repositoryRequest, session.userId, pursuitIds);
+  const messagesPromise = options.loadOutreachMessagesBatch
+    ? options.loadOutreachMessagesBatch(repositoryRequest, pursuitIds)
+    : options.loadOutreachMessages
+      ? Promise.all(pursuits.map(async (pursuit) => [
+          pursuit.id,
+          await options.loadOutreachMessages!(repositoryRequest, pursuit.id),
+        ] as const)).then((entries) => new Map(entries))
+      : loadOutreachMessagesForPursuits(repositoryRequest, pursuitIds);
+  const contactsPromise = options.loadContactSuggestionsBatch
+    ? options.loadContactSuggestionsBatch(repositoryRequest, pursuitIds)
+    : options.loadContactSuggestions
+      ? Promise.all(pursuits.map(async (pursuit) => [
+          pursuit.id,
+          await options.loadContactSuggestions!(repositoryRequest, pursuit.id),
+        ] as const)).then((entries) => new Map(entries))
+      : loadContactSuggestionsForPursuits(repositoryRequest, pursuitIds);
+  const [jobsById, trackingByPursuit, messagesByPursuit, contactsByPursuit] = await Promise.all([
+    options.loadJobs
+      ? options.loadJobs(repositoryRequest, jobIds)
+      : loadPublicJobsByIdsForUser(repositoryRequest, session.userId, jobIds),
+    trackingPromise,
+    messagesPromise,
+    contactsPromise,
+  ]);
 
-  const items = await Promise.all(pursuits.map(async (pursuit) => {
-    const [trackingEvents, messages, contacts] = await Promise.all([
-      loadTrackingEvents(repositoryRequest, session.userId, pursuit.id),
-      loadOutreachMessages(repositoryRequest, pursuit.id),
-      loadContacts(repositoryRequest, pursuit.id),
-    ]);
-    const job = jobsById.get(pursuit.jobId);
+  const items = pursuits.map((pursuit) => {
+    const trackingEvents = trackingByPursuit.get(pursuit.id) ?? [];
+    const messages = messagesByPursuit.get(pursuit.id) ?? [];
+    const contacts = contactsByPursuit.get(pursuit.id) ?? [];
+    const job = pursuit.jobId
+      ? publicJobVisibleToUser(jobsById.get(pursuit.jobId), session.userId)
+      : undefined;
     const snapshot = pursuit.jobSnapshot;
     return {
       id: pursuit.id,
@@ -1091,7 +1189,8 @@ export async function handlePublicProfileSavedPursuitsListRequest(
         location: snapshot?.location ?? job?.location ?? null,
         compensation: snapshot?.compensation ?? job?.compensationText ?? null,
         sourceUrl: snapshot?.sourceUrl ?? job?.sourceUrl ?? null,
-        availability: job ? "available" : snapshot ? "snapshot_only" : "unavailable",
+        sourceState: snapshot?.sourceState ?? (job ? (job.ownerUserId ? "user_owned" : "shared") : null),
+        availability: job ? (snapshot?.availability ?? "available") : snapshot ? "snapshot_only" : "unavailable",
       },
       savedContext: {
         selectedContactCount: contacts.filter((contact) => contact.selectedForOutreach).length,
@@ -1101,7 +1200,7 @@ export async function handlePublicProfileSavedPursuitsListRequest(
       createdAt: pursuit.createdAt,
       lastActivityAt: pursuit.lastActivityAt,
     };
-  }));
+  });
 
   const byLatestActivity = (left: typeof items[number], right: typeof items[number]) => (
     right.lastActivityAt.localeCompare(left.lastActivityAt)
@@ -1255,8 +1354,10 @@ export async function handlePublicProfilePursuedJobsExportRequest(
   const loadPursuits = options.loadPursuits ?? loadPursuitsForUser;
   const pursuits = await loadPursuits(repositoryRequest, session.userId, {});
 
-  const loadJobs = options.loadJobs ?? loadPublicJobsByIds;
-  const jobsById = await loadJobs(repositoryRequest, pursuits.map((pursuit) => pursuit.jobId));
+  const jobIds = pursuits.flatMap((pursuit) => pursuit.jobId ? [pursuit.jobId] : []);
+  const jobsById = options.loadJobs
+    ? await options.loadJobs(repositoryRequest, jobIds)
+    : await loadPublicJobsByIdsForUser(repositoryRequest, session.userId, jobIds);
 
   const loadOutreachMessages = options.loadOutreachMessages ?? loadOutreachMessagesForPursuit;
   const loadContactSuggestions = options.loadContactSuggestions ?? loadContactSuggestionsForPursuit;
@@ -1271,7 +1372,10 @@ export async function handlePublicProfilePursuedJobsExportRequest(
     const roleTrack = pursuit.selectedRoleTrackId
       ? roleTracksById.get(pursuit.selectedRoleTrackId)
       : undefined;
-    const job = jobsById.get(pursuit.jobId);
+    const job = pursuit.jobId
+      ? publicJobVisibleToUser(jobsById.get(pursuit.jobId), session.userId)
+      : undefined;
+    const snapshot = pursuit.jobSnapshot;
 
     const outreach: PursuedJobOutreachEntry[] = messages
       .filter((message) => message.status === "sent")
@@ -1294,13 +1398,13 @@ export async function handlePublicProfilePursuedJobsExportRequest(
     return {
       pursuitId: pursuit.id,
       status: pursuit.status,
-      job: job
+      job: job || snapshot
         ? {
-            id: job.id,
-            title: job.title,
-            companyName: job.companyName,
-            location: job.location ?? null,
-            sourceUrl: job.sourceUrl ?? null,
+            id: job?.id ?? snapshot?.jobId ?? pursuit.jobId ?? pursuit.id,
+            title: snapshot?.title ?? job?.title ?? "",
+            companyName: snapshot?.companyName ?? job?.companyName ?? "",
+            location: snapshot?.location ?? job?.location ?? null,
+            sourceUrl: snapshot?.sourceUrl ?? job?.sourceUrl ?? null,
           }
         : null,
       applyingAs: {
@@ -1362,22 +1466,48 @@ export async function handlePublicProfilePursuitReadRequest(
     return json({ error: "Pursuit not found.", status: "not_found" }, { status: 404 });
   }
 
-  const loadJob = options.loadJob ?? loadPublicJobById;
   const loadContactSuggestions = options.loadContactSuggestions ?? loadContactSuggestionsForPursuit;
   const loadOutreachMessages = options.loadOutreachMessages ?? loadOutreachMessagesForPursuit;
   const loadTrackingEvents = options.loadPursuitTrackingEvents ?? loadPursuitTrackingEventsForUser;
 
-  const [job, contacts, outreachMessages, trackingEvents] = await Promise.all([
-    loadJob(repositoryRequest, pursuit.jobId),
+  const [loadedJob, contacts, outreachMessages, trackingEvents] = await Promise.all([
+    pursuit.jobId
+      ? (options.loadJob
+          ? options.loadJob(repositoryRequest, pursuit.jobId)
+          : loadPublicJobByIdForUser(repositoryRequest, session.userId, pursuit.jobId))
+      : Promise.resolve(undefined),
     loadContactSuggestions(repositoryRequest, pursuit.id),
     loadOutreachMessages(repositoryRequest, pursuit.id),
     loadTrackingEvents(repositoryRequest, session.userId, pursuit.id),
   ]);
+  const job = publicJobVisibleToUser(loadedJob, session.userId);
+  const snapshot = pursuit.jobSnapshot;
 
   return json({
     status: "ok",
     pursuit,
     job: job ?? null,
+    posting: {
+      id: pursuit.jobId ?? snapshot?.jobId ?? null,
+      source: snapshot?.source ?? job?.source ?? null,
+      sourceState: snapshot?.sourceState ?? (job ? (job.ownerUserId ? "user_owned" : "shared") : null),
+      sourceUrl: snapshot?.sourceUrl ?? job?.sourceUrl ?? null,
+      title: snapshot?.title ?? job?.title ?? null,
+      companyName: snapshot?.companyName ?? job?.companyName ?? null,
+      location: snapshot?.location ?? job?.location ?? null,
+      remoteType: snapshot?.remoteType ?? job?.remoteType ?? null,
+      employmentType: snapshot?.employmentType ?? job?.employmentType ?? null,
+      compensation: snapshot?.compensation ?? job?.compensationText ?? null,
+      description: snapshot?.description ?? job?.description ?? null,
+      responsibilities: snapshot?.responsibilities ?? job?.responsibilities ?? [],
+      requiredExperience: snapshot?.requiredExperience ?? job?.requiredExperience ?? [],
+      postedAt: snapshot?.postedAt ?? job?.postedAt ?? null,
+      scrapedAt: snapshot?.scrapedAt ?? job?.scrapedAt ?? null,
+      firstSeenAt: snapshot?.firstSeenAt ?? job?.firstSeenAt ?? null,
+      lastSeenAt: snapshot?.lastSeenAt ?? job?.lastSeenAt ?? null,
+      availability: job ? (snapshot?.availability ?? "available") : snapshot ? "snapshot_only" : "unavailable",
+      capturedAt: snapshot?.capturedAt ?? null,
+    },
     contacts: contacts.map((contact) => ({
       id: contact.id,
       name: contact.name,
@@ -1432,8 +1562,10 @@ export async function handlePublicProfilePursuitCreateRequest(
     return profileIncompleteResponse(aggregate, profileQuality, "creating pursuits");
   }
 
-  const loadJob = options.loadJob ?? loadPublicJobById;
-  const job = await loadJob(repositoryRequest, jobId);
+  const loadedJob = options.loadJob
+    ? await options.loadJob(repositoryRequest, jobId)
+    : await loadPublicJobByIdForUser(repositoryRequest, session.userId, jobId);
+  const job = publicJobVisibleToUser(loadedJob, session.userId);
   // Another user's pasted job is invisible here — indistinguishable from nonexistent.
   if (!job || (job.ownerUserId && job.ownerUserId !== session.userId)) {
     return json({ error: "Job not found.", status: "not_found" }, { status: 404 });
@@ -1445,6 +1577,9 @@ export async function handlePublicProfilePursuitCreateRequest(
     job: matchJobFromPublicJob(job),
     evaluatedAt: createdAt,
   });
+  const recommendedRoleTrack = match.recommendations.roleTrack
+    ? aggregate.roleTracks.find((track) => track.id === match.recommendations.roleTrack?.roleTrack.id)
+    : undefined;
 
   // Pursuits are unique per (user, job); answering with the existing pursuit keeps a
   // duplicate create from colliding with pursuits_user_id_job_id_key.
@@ -1469,6 +1604,18 @@ export async function handlePublicProfilePursuitCreateRequest(
     risks: match.risks,
     recommendedWorkExampleIds: workExampleRecommendationIds(match),
     outreachAngle: match.recommendations.roleTrack?.reason,
+    jobSnapshot: snapshotPublicJob(job, createdAt),
+    selectionSnapshot: {
+      applyingAs: recommendedRoleTrack ? {
+        id: recommendedRoleTrack.id,
+        label: recommendedRoleTrack.name,
+        narrative: recommendedRoleTrack.corePositioning
+          || recommendedRoleTrack.description
+          || recommendedRoleTrack.outreachAngle,
+      } : undefined,
+      roleTrackId: match.recommendations.roleTrack?.roleTrack.id,
+      capturedAt: createdAt,
+    },
   });
 
   if (result.ok === false) {
@@ -1535,6 +1682,7 @@ export async function handlePublicProfilePursuitReviewRequest(
       issues,
     }, { status: 400 });
   }
+  reviewInput.selectionSnapshot = selectionSnapshotForReview(aggregate, reviewInput, reviewedAt);
 
   const result = completeReview(pursuit, reviewInput, reviewedAt);
   if (result.ok === false) {
@@ -1594,8 +1742,12 @@ export async function handlePublicProfilePursuitHumanPathRequest(
     return json({ error: "Pursuit not found.", status: "not_found" }, { status: 404 });
   }
 
-  const loadJob = options.loadJob ?? loadPublicJobById;
-  const job = await loadJob(repositoryRequest, pursuit.jobId);
+  const loadedJob = pursuit.jobId
+    ? (options.loadJob
+        ? await options.loadJob(repositoryRequest, pursuit.jobId)
+        : await loadPublicJobByIdForUser(repositoryRequest, session.userId, pursuit.jobId))
+    : undefined;
+  const job = publicJobVisibleToUser(loadedJob, session.userId);
   if (!job) {
     return json({ error: "Job not found.", status: "not_found" }, { status: 404 });
   }
@@ -1718,6 +1870,20 @@ export async function handlePublicProfilePursuitContactSelectionRequest(
   const result = transitionPursuit(pursuit, "contacts_selected", selectedAt, {
     contactIds,
     contactCount: contactIds.length,
+    selectionSnapshot: {
+      ...pursuit.selectionSnapshot,
+      contactSuggestionIds: contactIds,
+      contacts: contacts
+        .filter((contact) => contactIds.includes(contact.id))
+        .map((contact) => ({
+          id: contact.id,
+          name: contact.name,
+          title: contact.title,
+          companyName: contact.companyName,
+          linkedinUrl: contact.linkedinUrl,
+        })),
+      capturedAt: selectedAt,
+    },
   });
   if (result.ok === false) {
     return json({
@@ -1754,6 +1920,7 @@ export async function handlePublicProfilePursuitOutreachRequest(
   const pursuitId = optionalString(input?.pursuitId);
   const regenerate = input?.regenerate === true;
   const previousMessageId = optionalString(input?.previousMessageId);
+  const requestedIdempotencyKey = parseIdempotencyKey(input?.idempotencyKey);
   const issues: { field: string; message: string }[] = [];
   if (!pursuitId) {
     issues.push({ field: "pursuitId", message: "pursuitId is required." });
@@ -1767,6 +1934,9 @@ export async function handlePublicProfilePursuitOutreachRequest(
   if (!regenerate && previousMessageId) {
     issues.push({ field: "regenerate", message: "regenerate must be true when previousMessageId is provided." });
   }
+  if (input?.idempotencyKey !== undefined && !requestedIdempotencyKey) {
+    issues.push({ field: "idempotencyKey", message: "idempotencyKey must contain 1 to 200 characters when provided." });
+  }
   if (issues.length > 0) {
     return json({
       error: "Invalid outreach request.",
@@ -1776,13 +1946,49 @@ export async function handlePublicProfilePursuitOutreachRequest(
   }
   const validatedPursuitId = pursuitId as string;
 
+  const generatedAt = options.now?.() ?? new Date().toISOString();
+  const loadPursuit = options.loadPursuit ?? loadPursuitByIdForUser;
+  const pursuit = await loadPursuit(repositoryRequest, session.userId, validatedPursuitId);
+  if (!pursuit) {
+    return json({ error: "Pursuit not found.", status: "not_found" }, { status: 404 });
+  }
+
+  // A client retry after a committed response was lost must not depend on the
+  // candidate profile, live posting, selected-contact set, or model being unchanged.
+  // With an explicit key we replay that request; without one we replay the latest
+  // committed initial generation for this owned pursuit.
+  if (!regenerate) {
+    const loadInitialCommit = options.loadInitialOutreachCommit ?? loadInitialOutreachGenerationCommit;
+    const existingCommit = await loadInitialCommit(repositoryRequest, {
+      userId: session.userId,
+      pursuitId: pursuit.id,
+      idempotencyKey: requestedIdempotencyKey,
+    });
+    if (existingCommit) {
+      return json({
+        status: "outreach_generated",
+        replayed: true,
+        profileId: existingCommit.pursuit.profileId,
+        job: null,
+        pursuit: existingCommit.pursuit,
+        messages: existingCommit.messages.map((message) => ({
+          ...message,
+          insertedExample: null,
+        })),
+        metering: {
+          pursuitDebited: existingCommit.pursuitDebited,
+          outreachDebited: existingCommit.outreachDebited,
+        },
+      });
+    }
+  }
+
   const loadAggregate = options.loadAggregate ?? loadCandidateProfileAggregate;
   const aggregate = await loadAggregate(repositoryRequest, session.userId);
   if (!aggregate) {
     return json({ error: "Candidate profile not found.", status: "not_found" }, { status: 404 });
   }
 
-  const generatedAt = options.now?.() ?? new Date().toISOString();
   const profileQuality = aggregate.profileQuality ?? evaluateCandidateProfileQuality(aggregate, generatedAt);
   if (profileQuality.status !== "complete") {
     return profileIncompleteResponse(aggregate, profileQuality, "generating outreach");
@@ -1817,14 +2023,16 @@ export async function handlePublicProfilePursuitOutreachRequest(
     }, { status: 409 });
   }
 
-  const loadPursuit = options.loadPursuit ?? loadPursuitByIdForUser;
-  const pursuit = await loadPursuit(repositoryRequest, session.userId, validatedPursuitId);
-  if (!pursuit || pursuit.profileId !== aggregate.profile.id) {
+  if (pursuit.profileId !== aggregate.profile.id) {
     return json({ error: "Pursuit not found.", status: "not_found" }, { status: 404 });
   }
 
-  const loadJob = options.loadJob ?? loadPublicJobById;
-  const job = await loadJob(repositoryRequest, pursuit.jobId);
+  const loadedJob = pursuit.jobId
+    ? (options.loadJob
+        ? await options.loadJob(repositoryRequest, pursuit.jobId)
+        : await loadPublicJobByIdForUser(repositoryRequest, session.userId, pursuit.jobId))
+    : undefined;
+  const job = publicJobVisibleToUser(loadedJob, session.userId);
   if (!job) {
     return json({ error: "Job not found.", status: "not_found" }, { status: 404 });
   }
@@ -1949,6 +2157,11 @@ export async function handlePublicProfilePursuitOutreachRequest(
       .filter((id): id is string => Boolean(id)),
   );
   const contactsToGenerate = selectedContacts.filter((contact) => !alreadyGenerated.has(contact.id));
+  const generationIdempotencyKey = requestedIdempotencyKey ?? [
+    "initial-outreach",
+    pursuit.id,
+    ...selectedContacts.map((contact) => contact.id).sort(),
+  ].join(":");
   if (contactsToGenerate.length === 0) {
     return json({
       error: "Outreach was already generated for every selected contact. Edit the existing drafts instead.",
@@ -2040,17 +2253,14 @@ export async function handlePublicProfilePursuitOutreachRequest(
     createdAt: generatedAt,
   }));
   const persistOutreach = options.persistOutreach ?? persistOutreachGeneration;
-  const generationIdempotencyKey = [
-    "initial-outreach",
-    pursuit.id,
-    ...contactsToGenerate.map((contact) => contact.id).sort(),
-  ].join(":");
   let persisted: PursuitInitialOutreachCommit | void;
   try {
     persisted = await persistOutreach(repositoryRequest, result, drafts, {
       idempotencyKey: generationIdempotencyKey,
     });
-  } catch {
+  } catch (error) {
+    const blocked = transactionalSubscriptionError(error);
+    if (blocked) return blocked;
     return json({
       error: "The messages were generated but could not be saved. Try again.",
       status: "persistence_failed",
@@ -2197,6 +2407,27 @@ function atomicPersistenceError(error: unknown, fallback: string) {
     trackingSaved: false,
     retryable: true,
   }, { status: 503 });
+}
+
+function transactionalSubscriptionError(error: unknown) {
+  const message = error instanceof Error ? error.message : "";
+  const inactive = message.match(/subscription_inactive:(past_due|canceled)/);
+  if (inactive) {
+    return subscriptionBlockedResponse({
+      status: "subscription_inactive",
+      feature: "outreach_message",
+      subscriptionStatus: inactive[1] as "past_due" | "canceled",
+    });
+  }
+  const limit = message.match(/(pursuit|outreach_message)_limit_reached:(\d+):(\d+)/);
+  if (!limit) return undefined;
+  return subscriptionBlockedResponse({
+    status: "limit_reached",
+    feature: limit[1] as "pursuit" | "outreach_message",
+    used: Number.parseInt(limit[2], 10),
+    limit: Number.parseInt(limit[3], 10),
+    remaining: 0,
+  });
 }
 
 export async function handlePublicProfilePursuitTrackingRequest(

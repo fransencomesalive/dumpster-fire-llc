@@ -26,16 +26,52 @@ export type PursuitTrackingAction =
 export type PursuitTrackingSource = "manual" | "message_copy" | "migration";
 
 export type PursuitJobSnapshot = {
+  jobId?: string;
+  source?: string;
+  sourceState?: "shared" | "user_owned";
   title?: string;
   companyName?: string;
   location?: string;
+  remoteType?: string;
+  employmentType?: string;
   compensation?: string;
   sourceUrl?: string;
   description?: string;
+  responsibilities?: string[];
+  requiredExperience?: string[];
+  postedAt?: string;
+  scrapedAt?: string;
+  firstSeenAt?: string;
+  lastSeenAt?: string;
+  availability?: "active" | "actioned" | "expired" | "dismissed" | "available" | "snapshot_only" | "unavailable";
   capturedAt?: string;
 };
 
 export type PursuitSelectionSnapshot = {
+  applyingAs?: {
+    id?: string;
+    label?: string;
+    narrative?: string;
+  };
+  resume?: {
+    id?: string;
+    label?: string;
+  };
+  workExample?: {
+    id?: string;
+    label?: string;
+    oneHitter?: string;
+    link?: string;
+    context?: string;
+  };
+  contacts?: Array<{
+    id?: string;
+    name?: string;
+    title?: string;
+    companyName?: string;
+    linkedinUrl?: string;
+  }>;
+  // Legacy flat identifiers remain readable while existing rows are converted.
   roleTrackId?: string;
   resumeId?: string;
   workExampleId?: string;
@@ -62,8 +98,8 @@ export type PursuitEventType =
 export type Pursuit = {
   id: string;
   userId: string;
-  profileId: string;
-  jobId: string;
+  profileId: string | null;
+  jobId: string | null;
   selectedRoleTrackId?: string;
   selectedResumeId?: string;
   selectedWorkExampleId?: string;
@@ -139,6 +175,7 @@ export type PursuitTrackingEvent = {
   recipientLinkedinUrlSnapshot?: string;
   idempotencyKey: string;
   occurredAt: string;
+  occurredAtKnown: boolean;
   createdAt: string;
 };
 
@@ -178,6 +215,8 @@ export type CreatePursuitInput = {
   risks?: string[];
   recommendedWorkExampleIds?: string[];
   outreachAngle?: string;
+  jobSnapshot?: PursuitJobSnapshot;
+  selectionSnapshot?: PursuitSelectionSnapshot;
 };
 
 export type CompleteReviewInput = {
@@ -188,6 +227,7 @@ export type CompleteReviewInput = {
   risks?: string[];
   recommendedWorkExampleIds?: string[];
   outreachAngle?: string;
+  selectionSnapshot?: PursuitSelectionSnapshot;
 };
 
 export type HumanPathContact = {

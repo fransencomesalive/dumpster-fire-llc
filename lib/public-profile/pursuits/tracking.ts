@@ -72,7 +72,9 @@ export function derivePursuitTrackingState(events: PursuitTrackingEvent[]): Purs
   const chronologicalEvents = [...events].sort((left, right) => {
     const occurrenceOrder = left.occurredAt.localeCompare(right.occurredAt);
     if (occurrenceOrder !== 0) return occurrenceOrder;
-    return left.createdAt.localeCompare(right.createdAt);
+    const creationOrder = left.createdAt.localeCompare(right.createdAt);
+    if (creationOrder !== 0) return creationOrder;
+    return (left.id ?? "").localeCompare(right.id ?? "");
   });
 
   for (const event of chronologicalEvents) {
@@ -91,10 +93,13 @@ export function pursuitHistory(events: PursuitTrackingEvent[]): PursuitHistoryEn
     .sort((left, right) => {
       const occurrenceOrder = right.occurredAt.localeCompare(left.occurredAt);
       if (occurrenceOrder !== 0) return occurrenceOrder;
-      return right.createdAt.localeCompare(left.createdAt);
+      const creationOrder = right.createdAt.localeCompare(left.createdAt);
+      if (creationOrder !== 0) return creationOrder;
+      return (right.id ?? "").localeCompare(left.id ?? "");
     })
     .map((event): PursuitHistoryEntry => {
-      const occurredAt = event.occurredAt || event.createdAt || null;
+      const timestampAvailable = event.occurredAtKnown;
+      const occurredAt = timestampAvailable ? (event.occurredAt || event.createdAt || null) : null;
       if (event.source === "message_copy" && event.action === "outreach_sent" && event.checked) {
         const recipientName = event.recipientNameSnapshot?.trim() || null;
         const recipientTitle = event.recipientTitleSnapshot?.trim() || null;
@@ -104,7 +109,7 @@ export function pursuitHistory(events: PursuitTrackingEvent[]): PursuitHistoryEn
           type: "message",
           label: "Sent outreach message",
           occurredAt,
-          timestampAvailable: Boolean(occurredAt),
+          timestampAvailable,
           recipient: {
             name: recipientName,
             title: recipientTitle,
@@ -123,7 +128,7 @@ export function pursuitHistory(events: PursuitTrackingEvent[]): PursuitHistoryEn
         label: pursuitTrackingLabel(event.action),
         change: event.checked ? "marked" : "unmarked",
         occurredAt,
-        timestampAvailable: Boolean(occurredAt),
+        timestampAvailable,
       };
     });
 }
@@ -198,6 +203,7 @@ export function planPursuitTrackingChanges(
       source: input.source,
       idempotencyKey: actionIdempotencyKey,
       occurredAt: input.occurredAt,
+      occurredAtKnown: true,
       createdAt,
     };
     if (input.outreachMessageId) event.outreachMessageId = input.outreachMessageId;
