@@ -59,6 +59,8 @@ Implemented behavior:
 - `scripts/sql/saved-pursuits-production-preflight.sql`
 - `scripts/test-saved-pursuits-migration.sh`
 - `scripts/test-fixtures.mjs`
+- `scripts/test-*.mjs` fixture wrappers that previously hardcoded macOS `/private/tmp`
+- `scripts/tsconfig.public-jobs-test.json`
 - `scripts/release-check.mjs`
 - `scripts/test-public-jobs-repository.ts`
 - `scripts/test-public-profile-api.ts`
@@ -109,6 +111,10 @@ Pre-existing lint warnings:
 3. The first sandboxed disposable-PostgreSQL attempt could not create PostgreSQL shared memory.
    The same isolated test run with local shared-memory access passed repeatedly. No production
    database was contacted.
+4. The first GitHub Actions run passed the disposable migration, then failed because existing
+   fixture wrappers emitted compiled files under macOS-only `/private/tmp`. The wrappers now use
+   Node's platform temp directory, and the public-jobs test config has a portable relative fallback
+   output. All 28 fixtures pass with the portable paths; the follow-up CI run is the remote proof.
 
 ## Not verified or not completed
 

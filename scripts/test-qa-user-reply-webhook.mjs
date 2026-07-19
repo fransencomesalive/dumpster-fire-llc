@@ -1,7 +1,8 @@
 import { spawnSync } from "node:child_process";
+import { tmpdir } from "node:os";
 import path from "node:path";
 
-const outDir = "/private/tmp/qa-user-reply-webhook-test-build";
+const outDir = path.join(tmpdir(), "qa-user-reply-webhook-test-build");
 const result = spawnSync("npx", [
   "tsc",
   "--target", "ES2022",

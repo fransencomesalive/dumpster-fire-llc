@@ -1,9 +1,10 @@
 import { cpSync } from "node:fs";
 import { spawnSync } from "node:child_process";
+import { tmpdir } from "node:os";
 import path from "node:path";
 
 const rootDir = process.cwd();
-const outDir = "/private/tmp/public-profile-catalogues-test-build";
+const outDir = path.join(tmpdir(), "public-profile-catalogues-test-build");
 const compileArgs = [
   "tsc",
   "--target",

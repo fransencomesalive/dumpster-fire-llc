@@ -1,12 +1,15 @@
 import { spawnSync } from "node:child_process";
+import { tmpdir } from "node:os";
 import path from "node:path";
 
 const rootDir = process.cwd();
-const outDir = "/private/tmp/public-jobs-repository-test-build";
+const outDir = path.join(tmpdir(), "public-jobs-repository-test-build");
 const compileArgs = [
   "tsc",
   "--project",
   "scripts/tsconfig.public-jobs-test.json",
+  "--outDir",
+  outDir,
 ];
 
 function run(command, args) {

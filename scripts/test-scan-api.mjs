@@ -1,8 +1,9 @@
 import { spawnSync } from "node:child_process";
+import { tmpdir } from "node:os";
 import path from "node:path";
 
 const rootDir = process.cwd();
-const outDir = "/private/tmp/scan-api-test-build";
+const outDir = path.join(tmpdir(), "scan-api-test-build");
 const compileArgs = [
   "tsc",
   "--target",

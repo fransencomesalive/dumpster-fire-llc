@@ -9,7 +9,7 @@
     },
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "outDir": "/private/tmp/public-jobs-repository-test-build"
+    "outDir": "../node_modules/.cache/dumpster-fire-tests/public-jobs-repository"
   },
   "files": [
     "test-public-jobs-repository.ts",

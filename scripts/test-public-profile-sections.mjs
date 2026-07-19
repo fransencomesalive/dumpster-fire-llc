@@ -1,8 +1,9 @@
 import { spawnSync } from "node:child_process";
+import { tmpdir } from "node:os";
 import path from "node:path";
 
 const rootDir = process.cwd();
-const outDir = "/private/tmp/public-profile-sections-test-build";
+const outDir = path.join(tmpdir(), "public-profile-sections-test-build");
 const compileArgs = [
   "tsc",
   "--target",

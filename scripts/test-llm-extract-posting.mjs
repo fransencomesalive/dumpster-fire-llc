@@ -1,8 +1,9 @@
 import { spawnSync } from "node:child_process";
+import { tmpdir } from "node:os";
 import path from "node:path";
 
 const rootDir = process.cwd();
-const outDir = "/private/tmp/llm-extract-posting-test-build";
+const outDir = path.join(tmpdir(), "llm-extract-posting-test-build");
 const compileArgs = [
   "tsc",
   "--target",

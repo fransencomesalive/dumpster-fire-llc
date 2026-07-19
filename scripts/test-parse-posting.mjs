@@ -1,8 +1,9 @@
 import { spawnSync } from "node:child_process";
+import { tmpdir } from "node:os";
 import path from "node:path";
 
 const rootDir = process.cwd();
-const outDir = "/private/tmp/parse-posting-test-build";
+const outDir = path.join(tmpdir(), "parse-posting-test-build");
 const compileArgs = [
   "tsc",
   "--target",
