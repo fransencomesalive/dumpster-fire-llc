@@ -13,6 +13,10 @@ binding, async race handling, modal accessibility, retained feedback evidence, m
 idempotency, and the mobile checkbox/input layout. Full detail and exact release sequence are in
 `docs/feedback-feature-handoff-2026-07-19.md`.
 
+The consolidated production QA record, corrected browser-harness evidence, current deployment
+validation, and broader design-parity findings are in
+`docs/production-qa-parity-report-2026-07-20.md`.
+
 The implementation commits are `2f6d6c4`, `d902bff`, and `ec86803`, all pushed to `origin/main`.
 Production preflight passed and `20260719000100_feedback_capture.sql` is applied, recorded, and
 postflight-verified, including PostgREST visibility. Vercel completed the `ec86803` deployment;

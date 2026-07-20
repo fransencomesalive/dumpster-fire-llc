@@ -4,6 +4,8 @@ Date: 2026-07-20
 Status: **production release complete; Claude Design, migration, deployment, authenticated saves,
 and cleanup all verified.**
 
+Consolidated QA report: `docs/production-qa-parity-report-2026-07-20.md`
+
 ## Completed release sequence
 
 1. Committed the corrected release tree on `main`.
