@@ -286,7 +286,7 @@ export async function generateOutreachMessage(
 
   // Validate-and-retry loop over the hard-rule contract. Unparseable responses retry too;
   // a missing response (no key / call failed after the SDK's own retries) does not.
-  let best: { outreach: OutreachMessage; violations: string[] } | undefined;
+  let lastViolations: string[] | undefined;
   for (let attempt = 1; attempt <= MAX_GENERATION_ATTEMPTS; attempt += 1) {
     const raw = await callModel({ system: systemPrompt, user: tail, cachePrefix });
     if (!raw) break;
@@ -294,11 +294,10 @@ export async function generateOutreachMessage(
     if (!outreach) continue;
     const violations = outreachHardRuleViolations(outreach, input.profileMarkdown);
     if (violations.length === 0) return outreach;
-    if (!best || violations.length < best.violations.length) best = { outreach, violations };
+    lastViolations = violations;
   }
-  if (best) {
-    console.warn("[llm:outreach] hard-rule violations unresolved after retries", { violations: best.violations });
-    return best.outreach;
+  if (lastViolations) {
+    console.warn("[llm:outreach] hard-rule violations unresolved after retries", { violations: lastViolations });
   }
   return undefined;
 }

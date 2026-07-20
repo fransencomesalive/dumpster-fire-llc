@@ -28,8 +28,8 @@
   .publicLandingNavLeft { display:flex; flex-wrap:wrap; align-items:center; gap:12px 20px; }
   .publicLandingNavActions { display:flex; align-items:center; gap:12px; margin-left:auto; }
   .publicLandingNavBrand { display:inline-flex; align-items:center; gap:10px; color:var(--c-ink);
-    font-family:var(--font-display); font-weight:900; font-size:17px; line-height:1;
-    letter-spacing:0.02em; text-transform:uppercase; text-decoration:none; }
+    font-family:var(--font-subhead); font-weight:900; font-size:17px; line-height:1;
+    letter-spacing:var(--tracking-subhead); text-transform:uppercase; text-decoration:none; }
   .publicLandingNavMark { width:auto; height:34px; object-fit:contain; }
   .publicLandingNavLinks { display:flex; flex-wrap:wrap; align-items:center; gap:8px 18px;
     padding-left:20px; border-left:var(--line-reg) solid var(--c-ink-faint); }
@@ -43,7 +43,7 @@
   .publicLandingNavSignIn, .publicLandingNavCta { display:inline-flex; align-items:center;
     justify-content:center; min-height:34px; border:var(--line-reg) solid var(--c-ink);
     border-radius:var(--radius-pill); background:var(--c-teal); color:var(--c-paper);
-    font-family:var(--font-display); line-height:1; text-decoration:none; }
+    line-height:1; text-decoration:none; }
   .publicLandingNavSignIn { padding:0 14px; font-weight:800; font-size:13px; }
   .publicLandingNavCta { padding:0 15px; font-weight:900; font-size:13px; }
   .publicLandingNavSignIn:hover, .publicLandingNavCta:hover { background:var(--role-info); }
@@ -61,16 +61,6 @@
     .publicLandingNavActions { order:2; margin-left:auto; }
     .publicLandingNavLinks { order:3; flex-basis:100%; min-width:0; padding-left:0;
       border-left:0; gap:8px 16px; }
-  }
-  @container (max-width:360px) {
-    .publicLandingNav { padding:var(--space-3); }
-    .publicLandingNavBrand { font-size:15px; }
-    .publicLandingNavMark { height:32px; }
-    .publicLandingNavActions { gap:6px; }
-    .publicLandingNavSignIn { padding:0 10px; }
-    .publicLandingNavCta { padding:0 11px; }
-    .publicLandingNavLinks { gap:8px 12px; }
-    .publicLandingNavLinks a { font-size:0.9rem; }
   }
 </style>
 </head>

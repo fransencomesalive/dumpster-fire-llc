@@ -77,7 +77,7 @@ const cleanJson = JSON.stringify({ message: "Hi Dana, direct note about the role
   assert.equal(retried.message.includes("—"), false);
 }
 
-// 4c. Hard-rule contract: after exhausting attempts, the best near-miss is returned.
+// 4c. Hard-rule contract: after exhausting attempts, no violating near-miss is returned.
 {
   let calls = 0;
   const stubborn = await generateOutreachMessage(
@@ -85,8 +85,7 @@ const cleanJson = JSON.stringify({ message: "Hi Dana, direct note about the role
     { callModel: async () => { calls += 1; return emDashJson; } },
   );
   assert.equal(calls, 3, "retries are bounded");
-  assert.ok(stubborn, "a near-miss beats returning nothing");
-  assert.match(stubborn.message, /direct note/);
+  assert.equal(stubborn, undefined, "hard-rule violations must never reach persistence or an API response");
 }
 
 // 4d. Violation detection: cap, em dash, missing example link, ungrounded numbers.
