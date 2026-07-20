@@ -16,6 +16,7 @@ import {
   handlePublicProfilePursuitLifecycleRequest,
   handlePublicProfilePursuitOutreachRequest,
   handlePublicProfilePursuitOutreachMessageUpdateRequest,
+  handlePublicProfilePursuitOutreachMessageFeedbackRequest,
   handlePublicProfilePursuitMessageCopyRequest,
   handlePublicProfilePursuitReadRequest,
   handlePublicProfilePursuitReviewRequest,
@@ -40,7 +41,7 @@ import {
   handleWritingSamplesSectionPatchRequest,
 } from "../lib/public-profile/api";
 import type { PublicProfileRepositoryRequest } from "../lib/public-profile/repository";
-import type { GeneratedOutreachDraft, HumanPathContact, HumanPathContactSuggestion, OutreachMessageRecord, Pursuit, PursuitTrackingCommit, PursuitTrackingEvent } from "../lib/public-profile/pursuits/types";
+import type { GeneratedOutreachDraft, HumanPathContact, HumanPathContactSuggestion, OutreachMessageFeedback, OutreachMessageRecord, Pursuit, PursuitTrackingCommit, PursuitTrackingEvent, SaveOutreachMessageFeedbackInput } from "../lib/public-profile/pursuits/types";
 import type { PublicJobRecord } from "../lib/public-jobs/types";
 import type { SubscriptionContext, UsageLedgerEntry } from "../lib/public-profile/subscription/types";
 import type { PublicProfileRegenerationResult } from "../lib/public-profile/service";
@@ -1920,6 +1921,140 @@ async function main() {
   assert.equal(messageUpdateApprovedJson.status, "outreach_message_updated");
   assert.equal((messageUpdateApprovedJson.message as OutreachMessageRecord).status, "approved");
   assert.equal(persistedMessage?.status, "approved");
+
+  // ---- Generated-message feedback route ----
+  const messageFeedbackValidation = await handlePublicProfilePursuitOutreachMessageFeedbackRequest(
+    postRequest("pursuits/outreach/message-1/feedback", { reasonCodes: [] }),
+    "message-1",
+    {
+      getSession: async () => authed(),
+      repositoryRequest,
+      loadOutreachMessage: async () => { throw new Error("should not load message on validation error"); },
+    },
+  );
+  assert.equal(messageFeedbackValidation.status, 400);
+  assert.equal((await body(messageFeedbackValidation)).status, "validation_error");
+
+  const messageFeedbackInvalidReason = await handlePublicProfilePursuitOutreachMessageFeedbackRequest(
+    postRequest("pursuits/outreach/message-1/feedback", { reasonCodes: ["too_generic"] }),
+    "message-1",
+    { getSession: async () => authed(), repositoryRequest },
+  );
+  assert.equal(messageFeedbackInvalidReason.status, 400);
+
+  const messageFeedbackLongNote = await handlePublicProfilePursuitOutreachMessageFeedbackRequest(
+    postRequest("pursuits/outreach/message-1/feedback", {
+      reasonCodes: ["other"],
+      notes: "x".repeat(501),
+    }),
+    "message-1",
+    { getSession: async () => authed(), repositoryRequest },
+  );
+  assert.equal(messageFeedbackLongNote.status, 400);
+
+  const messageFeedbackUnauthorized = await handlePublicProfilePursuitOutreachMessageFeedbackRequest(
+    postRequest("pursuits/outreach/message-1/feedback", { reasonCodes: ["would_not_send"] }),
+    "message-1",
+    { getSession: async () => ({ status: "unauthenticated", reason: "Missing bearer token." }) },
+  );
+  assert.equal(messageFeedbackUnauthorized.status, 401);
+
+  const messageFeedbackNotFound = await handlePublicProfilePursuitOutreachMessageFeedbackRequest(
+    postRequest("pursuits/outreach/message-404/feedback", { reasonCodes: ["would_not_send"] }),
+    "message-404",
+    {
+      getSession: async () => authed(),
+      repositoryRequest,
+      loadOutreachMessage: async () => undefined,
+    },
+  );
+  assert.equal(messageFeedbackNotFound.status, 404);
+
+  const regeneratedDraft = {
+    ...draftMessage,
+    message: "Exact regenerated draft.\n\nKeep spacing.",
+    regenerationCount: 1 as const,
+    generationRequestId: "generation-1",
+  };
+  const messageFeedbackNotOwned = await handlePublicProfilePursuitOutreachMessageFeedbackRequest(
+    postRequest("pursuits/outreach/message-1/feedback", { reasonCodes: ["would_not_send"] }),
+    "message-1",
+    {
+      getSession: async () => authed(),
+      repositoryRequest,
+      loadOutreachMessage: async () => regeneratedDraft,
+      loadPursuit: async () => undefined,
+      persistOutreachMessageFeedback: async () => { throw new Error("should not persist feedback for a foreign pursuit"); },
+    },
+  );
+  assert.equal(messageFeedbackNotOwned.status, 404);
+
+  let persistedFeedbackInput: SaveOutreachMessageFeedbackInput | undefined;
+  const savedFeedback: OutreachMessageFeedback = {
+    id: "feedback-1",
+    outreachMessageId: "message-1",
+    userId: "user-1",
+    feedbackType: "needs_work",
+    reasonCodes: ["personal_voice_mismatch", "awkward_to_read"],
+    notes: "Opening feels stiff.",
+    messageSnapshot: regeneratedDraft.message,
+    messageRevision: 1,
+    createdAt: now,
+    updatedAt: now,
+  };
+  const messageFeedbackSaved = await handlePublicProfilePursuitOutreachMessageFeedbackRequest(
+    postRequest("pursuits/outreach/message-1/feedback", {
+      reasonCodes: ["personal_voice_mismatch", "awkward_to_read", "personal_voice_mismatch"],
+      notes: "  Opening feels stiff.  ",
+    }),
+    "message-1",
+    {
+      now: () => now,
+      getSession: async () => authed(),
+      repositoryRequest,
+      loadOutreachMessage: async () => regeneratedDraft,
+      loadPursuit: async () => savedPursuit({ status: "outreach_ready" }),
+      persistOutreachMessageFeedback: async (_request, input) => {
+        persistedFeedbackInput = input;
+        return savedFeedback;
+      },
+    },
+  );
+  assert.equal(messageFeedbackSaved.status, 200);
+  const messageFeedbackSavedJson = await body(messageFeedbackSaved);
+  assert.equal(messageFeedbackSavedJson.status, "message_feedback_saved");
+  assert.equal(messageFeedbackSavedJson.saved, true);
+  assert.deepEqual(persistedFeedbackInput, {
+    outreachMessageId: "message-1",
+    userId: "user-1",
+    reasonCodes: ["personal_voice_mismatch", "awkward_to_read"],
+    notes: "Opening feels stiff.",
+    messageSnapshot: "Exact regenerated draft.\n\nKeep spacing.",
+    messageRevision: 1,
+    updatedAt: now,
+  });
+  assert.deepEqual(messageFeedbackSavedJson.context, {
+    pursuitId: "pursuit-1",
+    profileId: "profile-1",
+    generationRequestId: "generation-1",
+  });
+  assert.equal(regeneratedDraft.status, "draft");
+  assert.equal(regeneratedDraft.regenerationCount, 1);
+  assert.equal(regeneratedDraft.message, "Exact regenerated draft.\n\nKeep spacing.");
+
+  const messageFeedbackPersistenceFailed = await handlePublicProfilePursuitOutreachMessageFeedbackRequest(
+    postRequest("pursuits/outreach/message-1/feedback", { reasonCodes: ["other"] }),
+    "message-1",
+    {
+      getSession: async () => authed(),
+      repositoryRequest,
+      loadOutreachMessage: async () => regeneratedDraft,
+      loadPursuit: async () => savedPursuit({ status: "outreach_ready" }),
+      persistOutreachMessageFeedback: async () => { throw new Error("database unavailable"); },
+    },
+  );
+  assert.equal(messageFeedbackPersistenceFailed.status, 503);
+  assert.equal((await body(messageFeedbackPersistenceFailed)).saved, false);
 
   // ---- Saved Pursuits tracking mutation ----
   const committedTracking: PursuitTrackingCommit = {

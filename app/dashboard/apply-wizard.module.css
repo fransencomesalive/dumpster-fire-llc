@@ -228,6 +228,69 @@
 .modalBtnSave:disabled, .modalBtnClose:disabled, .copyButton:disabled { opacity: 0.55; cursor: default; }
 .footerSpacer { margin-right: auto; }
 
+/* ===== Message feedback flip · the whole modal flips to a chip picker. Both faces share one
+   grid cell so the modal keeps its footprint and does not jump. Reduced-motion cross-fades. */
+.msgTrigger { display: flex; align-items: center; gap: var(--space-3); margin-top: var(--space-2); }
+.linkNotMatch { font-family: var(--font-ui, Inter, system-ui, sans-serif); font-size: 0.9rem; color: var(--c-tomato);
+  background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+.linkNotMatch:hover { color: color-mix(in srgb, var(--c-tomato) 78%, var(--c-ink)); }
+.linkNotMatch:focus-visible { outline: none; border-radius: var(--radius-sm); box-shadow: 0 0 0 3px color-mix(in srgb, var(--c-teal) 40%, transparent); }
+.savedAck { display: inline-flex; align-items: center; gap: 5px; font-family: var(--font-subhead);
+  text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.72rem; color: var(--c-teal); }
+.savedAck svg { flex: none; width: 12px; height: 12px; }
+
+.flipCard { position: relative; display: grid; grid-template-columns: minmax(0, 1fr); width: min(720px, 100%); transform-style: preserve-3d;
+  transition: transform var(--dur-base) var(--ease-snap); }
+.flipCardFlipped { transform: rotateY(180deg); }
+.flipFace { grid-area: 1 / 1; -webkit-backface-visibility: hidden; backface-visibility: hidden; min-width: 0; }
+.flipFace.flipBack { transform: rotateY(180deg); }
+@media (prefers-reduced-motion: reduce) {
+  .flipCard, .flipFace { transition: opacity var(--dur-base) ease; transform: none !important; }
+  .flipFace.flipBack { transform: none; }
+  .flipCard:not(.flipCardFlipped) .flipBack { opacity: 0; }
+  .flipCardFlipped .flipFront { opacity: 0; }
+}
+
+.feedbackFace { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-3); align-content: start; }
+.feedbackSub { font-family: var(--font-body); font-size: 0.9rem; color: var(--role-text-muted); margin: 0; }
+.chipSet { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.chip { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-ui, Inter, system-ui, sans-serif);
+  font-size: 0.9rem; line-height: 1; color: var(--c-ink); background-color: var(--c-paper); border: var(--line-reg) solid var(--c-ink);
+  border-radius: var(--radius-pill); padding: 8px 14px; cursor: pointer;
+  transition: box-shadow var(--dur-fast) var(--ease-snap), background-color var(--dur-fast) var(--ease-snap), color var(--dur-fast) var(--ease-snap); }
+.chipCheck { display: inline-flex; align-items: center; }
+.chipCheck svg { flex: none; width: 13px; height: 13px; }
+.chip:hover { box-shadow: 2px 2px 0 var(--c-ink); }
+.chip:focus-visible { outline: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--c-teal) 40%, transparent); }
+.chipOn { color: var(--c-paper); background-color: var(--c-teal); box-shadow: var(--reg-box); }
+@media (prefers-reduced-motion: reduce) { .chip { transition: none; } }
+.seRow { display: flex; align-items: center; gap: var(--space-2); }
+.seRow input[type="checkbox"] { accent-color: var(--c-teal); width: 18px; height: 18px; flex: none; cursor: pointer; }
+.seRow label { font-family: var(--font-ui, Inter, system-ui, sans-serif); font-size: 0.9rem; white-space: nowrap; cursor: pointer; }
+.seInput { flex: 1 1 auto; min-width: 0; box-sizing: border-box; font-family: var(--font-ui, Inter, system-ui, sans-serif);
+  font-size: 0.9rem; color: var(--c-ink); background-color: var(--c-paper); border: var(--line-reg) solid var(--c-ink);
+  border-radius: var(--radius-md); padding: 8px var(--space-3); }
+.seInput:focus { outline: none; border-color: var(--c-teal); box-shadow: 0 0 0 3px color-mix(in srgb, var(--c-teal) 28%, transparent); }
+.seInput:disabled { opacity: 0.5; }
+.seCount { flex: none; font-family: var(--font-ui, Inter, system-ui, sans-serif); font-size: 0.74rem; color: var(--role-text-faint); }
+.feedbackAlert { display: flex; align-items: flex-start; gap: var(--space-2); font-family: var(--font-body); font-size: 0.88rem;
+  color: var(--c-ink); background-color: var(--c-paper); border: var(--line-reg) solid var(--c-tomato);
+  border-left: var(--line-bold) solid var(--c-tomato); border-radius: var(--radius-md); padding: var(--space-2) var(--space-3); }
+.feedbackAlert svg { flex: none; width: 16px; height: 16px; color: var(--c-tomato); margin-top: 1px; }
+.feedbackAlert p { margin: 0; }
+.feedbackFooter { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--space-2);
+  margin-top: var(--space-2); }
+.btnGhost { font-family: var(--font-display); font-size: 1rem; color: var(--c-ink); background-color: var(--c-paper);
+  border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-md); box-shadow: var(--shadow-card);
+  padding: var(--space-2) var(--space-5); cursor: pointer; }
+.btnGhost:hover { box-shadow: var(--reg-box); }
+.btnPrimary { font-family: var(--font-display); font-size: 1rem; color: var(--c-paper); background-color: var(--c-teal);
+  background-image: var(--fiber-img), var(--grain-img); background-blend-mode: normal, soft-light; background-size: 170px 170px, 46px 46px;
+  border: var(--line-bold) solid var(--c-ink); border-radius: var(--radius-md); box-shadow: var(--shadow-card);
+  padding: var(--space-2) var(--space-5); cursor: pointer; }
+.btnPrimary:hover:not(:disabled) { box-shadow: var(--reg-box); text-shadow: 1px 1px 0 rgba(36, 31, 26, 0.35); }
+.btnPrimary:disabled { opacity: 0.5; cursor: default; }
+
 @media (max-width: 560px) {
   .modalOverlay { padding: var(--space-3); gap: var(--space-6); }
   .modalBox { padding: var(--space-5); }

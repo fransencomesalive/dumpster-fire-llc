@@ -1,12 +1,44 @@
 import type { MatchLabel } from "../public-profile/matching/types";
 import type { PursuitJobSnapshot } from "../public-profile/pursuits/types";
 
+export const PUBLIC_JOB_MATCHER_VERSION = "public-job-matcher-v1" as const;
+
+export const PUBLIC_JOB_FEEDBACK_REASON_CODES = [
+  "wrong_role_title",
+  "wrong_location_preference",
+  "wrong_comp",
+  "wrong_industry",
+  "other",
+] as const;
+
+export type PublicJobFeedbackReasonCode = typeof PUBLIC_JOB_FEEDBACK_REASON_CODES[number];
+
 export type PublicJobMatchSummary = {
   score: number;
   label: MatchLabel;
   // Distinctive profile signals that matched this posting — used to highlight terms in the
   // responsibilities / required-experience lists.
   signals: string[];
+  matcherVersion: typeof PUBLIC_JOB_MATCHER_VERSION;
+  evaluatedAt: string;
+};
+
+export type PublicJobMatchFeedbackInput = {
+  jobId: string;
+  reasonCodes: PublicJobFeedbackReasonCode[];
+  note?: string;
+};
+
+export type PublicJobMatchFeedbackResponse = {
+  feedback: {
+    jobId: string;
+    reasonCodes: PublicJobFeedbackReasonCode[];
+    note?: string;
+    profileId: string;
+    profileVersion: number;
+    match: PublicJobMatchSummary;
+    updatedAt: string;
+  };
 };
 
 export type PublicJobRecord = {

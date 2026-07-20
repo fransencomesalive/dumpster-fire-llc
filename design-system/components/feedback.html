@@ -4,101 +4,580 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Components · Match Feedback</title>
+<title>Components · Feedback Flip (job + message)</title>
 <link rel="stylesheet" href="../tokens/tokens.css" />
 <link rel="stylesheet" href="../lib/base.css" />
 <style>
-  /* No page background: the app grain ground owns that layer. Demos sit on a
-     .card surface, which supplies the paper ground. Mirrors MatchFeedbackControl
-     in DashboardClient.tsx; class names match so it ports back wholesale. */
-  body { margin: 0; color: var(--c-ink); font-family: var(--font-ui); }
-  .wrap { max-width: 640px; margin: 0 auto; padding: var(--space-6) var(--space-5); display: grid; gap: var(--space-5); }
+  /* ============================================================
+     FEEDBACK FLIP · canonical spec (rev 2026-07-19b)
+     Two full-surface flips share one contract:
+       A · Job card flips as one complete card.
+       B · Apply Wizard flips as one complete modal.
+     Reasons are multi-select chips shown in full and static. The
+     free-text lives in the "Something else" row (checkbox + inline
+     input), never a separate note field. No teal-tint hovers. No
+     dividers or dead space. Save is disabled until at least one
+     chip is on or Something else is checked. Saving records
+     evidence only; it never skips, saves, pursues, sends, edits,
+     or regenerates anything.
+     ============================================================ */
+  body { margin: 0; color: var(--c-ink); font-family: var(--font-ui); background: var(--c-paper); }
+  .wrap { max-width: 760px; margin: 0 auto; padding: var(--space-6) var(--space-5); display: grid; gap: var(--space-6); }
   h1.page { font-family: var(--font-display); font-size: var(--type-h1); margin: 0 0 var(--space-2); }
-  .lede { font-family: var(--font-body); color: var(--role-text-muted); margin: 0; }
+  .lede { font-family: var(--font-body); color: var(--role-text-muted); margin: 0; max-width: 62ch; }
+  h2.sec { font-family: var(--font-display); font-size: var(--type-h2); margin: var(--space-4) 0 var(--space-1); }
+  .secNote { font-family: var(--font-body); color: var(--role-text-muted); margin: 0 0 var(--space-4); max-width: 64ch; }
   .stateLabel { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: var(--tracking-subhead);
     font-size: 0.82rem; color: var(--c-teal); margin: 0 0 var(--space-2); }
 
+  /* ===== card shell ===== */
   .card { background-color: var(--c-paper-deep); background-image: var(--fiber-img), var(--grain-img);
     background-blend-mode: normal, soft-light; background-size: 170px 170px, 46px 46px;
     border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-lg);
     box-shadow: var(--shadow-card); padding: var(--space-5); }
+  .jobCard { position: relative; }
 
-  /* ===== feedbackBox · inset panel on the card ===== */
-  .feedbackBox { display: grid; gap: var(--space-3); padding: var(--space-3) var(--space-4);
-    background-color: var(--c-paper); background-image: var(--fiber-img), var(--grain-img);
+  /* ===== FLIP MECHANICS · both faces share one grid cell so height
+     is the taller face and nothing jumps. Reduced-motion cross-fades. */
+  .flipScene { perspective: 1800px; }
+  .flipCard { position: relative; display: grid; grid-template-columns: minmax(0, 1fr); transform-style: preserve-3d;
+    transition: transform var(--dur-base) var(--ease-snap); }
+  .flipCard.isFlipped { transform: rotateY(180deg); }
+  .flipFace { grid-area: 1 / 1; -webkit-backface-visibility: hidden; backface-visibility: hidden; min-width: 0; }
+  .flipFace.flipBack { transform: rotateY(180deg); }
+  .flipFace[aria-hidden="true"] { pointer-events: none; }
+  @media (prefers-reduced-motion: reduce) {
+    .flipCard, .flipFace { transition: opacity var(--dur-base) ease; transform: none !important; }
+    .flipFace.flipBack { transform: none; }
+    .flipCard:not(.isFlipped) .flipBack { opacity: 0; }
+    .flipCard.isFlipped .flipFront { opacity: 0; }
+  }
+
+  /* ===== JOB CARD FRONT ===== */
+  .jobCardHeader { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-4); }
+  .jobNumberTitle { display: flex; align-items: center; gap: var(--space-3); min-width: 0; }
+  .jobNumber { position: relative; flex: none; display: grid; place-items: center; width: 30px; height: 30px;
+    border-radius: var(--radius-pill); background-color: var(--c-teal);
+    background-image: var(--fiber-img), var(--grain-img); background-blend-mode: normal, soft-light; background-size: 170px 170px, 46px 46px;
+    font-family: var(--font-subhead); font-size: 1.1rem; line-height: 1; color: var(--c-paper-deep); }
+  .jobNumber::after { content: ""; position: absolute; inset: 0; border-radius: var(--radius-pill);
+    border: var(--line-reg) solid var(--c-mustard); transform: translate(calc(-1 * var(--reg-shift-x)), calc(-1 * var(--reg-shift-y))); }
+  .jobTitle { font-family: var(--font-display); font-size: 1.25rem; line-height: 1.15; color: var(--c-ink); margin: 0; min-width: 0; overflow-wrap: anywhere; }
+  .titleDivider { display: inline-block; width: 9px; height: 9px; margin: 0 9px; background: var(--c-teal);
+    border: 1px solid var(--c-ink); transform: rotate(45deg); vertical-align: 0.1em; }
+  .companyName { font-family: var(--font-body); font-weight: 400; color: var(--c-ink); }
+  .stars { display: flex; align-items: center; gap: var(--space-3); margin: var(--space-4) 0; flex-wrap: wrap; }
+  .starLabel { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.9rem; color: var(--c-teal); }
+  .starScore { font-family: var(--font-display); font-size: 1.05rem; color: var(--c-ink); }
+  .starScore small { font-family: var(--font-body); font-size: 0.85rem; color: var(--role-text-muted); }
+  .starIconRow { display: inline-flex; gap: 3px; color: var(--c-teal); }
+  .jobMetaGrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-3); margin: 0 0 var(--space-4);
+    padding: var(--space-3) 0; border-top: var(--line-reg) solid var(--c-ink); border-bottom: var(--line-reg) solid var(--c-ink); }
+  .jobMetaGrid > div { min-width: 0; }
+  .jobMetaGrid dt { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.04em; font-size: 0.85rem; color: var(--c-teal); margin-bottom: 3px; }
+  .jobMetaGrid dd { margin: 0; font-family: var(--font-body); font-size: 0.95rem; color: var(--c-ink); overflow-wrap: anywhere; }
+  .descriptionBox { background-color: var(--c-paper); background-image: var(--fiber-img), var(--grain-img);
     background-blend-mode: normal, soft-light; background-size: 170px 170px, 46px 46px;
-    border: var(--line-hair) solid var(--c-paper-edge); border-radius: var(--radius-md); }
-  .feedbackHeader { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3);
-    font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.05em;
-    font-size: 0.92rem; color: var(--c-teal); }
-  .feedbackHeader small { font-family: var(--font-ui); text-transform: none; letter-spacing: 0;
-    font-size: 0.78rem; color: var(--role-text-faint); }
+    border: var(--line-hair) solid var(--c-paper-edge); border-radius: var(--radius-md); padding: var(--space-4); margin-bottom: var(--space-4); }
+  .descriptionText { margin: 0; font-family: var(--font-body); font-size: 0.95rem; color: var(--role-text-muted); }
 
-  .feedbackStars { display: inline-flex; align-items: center; gap: var(--space-2); justify-self: start; }
-  .feedbackStar { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px;
-    padding: 0; cursor: pointer; color: var(--c-ink-faint);
-    background-color: var(--c-paper); border: var(--line-reg) solid var(--c-ink);
-    border-radius: var(--radius-sm); box-shadow: 2px 2px 0 var(--c-ink);
-    transition: background-color var(--dur-fast) var(--ease-snap), color var(--dur-fast) var(--ease-snap),
-      box-shadow var(--dur-fast) var(--ease-snap); }
-  .feedbackStar svg { width: 16px; height: 16px; }
-  .feedbackStar:hover:not(:disabled), .feedbackStarActive {
-    background-color: var(--c-teal); color: var(--c-paper); box-shadow: var(--reg-box); }
-  .feedbackStar:disabled { opacity: 0.58; cursor: wait; }
+  /* ===== ACTION ROW · centered. Save (teal) + Skip (tomato) buttons,
+     then a stacked [Open posting / Not a match] link group. ===== */
+  .actionRow { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: var(--space-4); }
+  /* All filled action buttons carry the grain/ink texture (the design-system standard for
+     solid fills). Color is the only difference: Save/Pursue teal, Skip tomato. */
+  .btnAct { font-family: var(--font-display); font-size: 0.95rem; border-radius: var(--radius-md);
+    padding: var(--space-2) var(--space-5); cursor: pointer; border: var(--line-bold) solid var(--c-ink);
+    box-shadow: var(--shadow-card); color: var(--c-paper);
+    background-image: var(--fiber-img), var(--grain-img); background-blend-mode: normal, soft-light; background-size: 170px 170px, 46px 46px;
+    transition: box-shadow var(--dur-fast) var(--ease-snap), text-shadow var(--dur-fast) var(--ease-snap); }
+  .btnSave, .btnPursue { background-color: var(--c-teal); }
+  .btnSkip { background-color: var(--c-tomato); }
+  .btnAct:hover { box-shadow: var(--reg-box); text-shadow: 1px 1px 0 rgba(36,31,26,0.35); }
+  .btnAct:focus-visible { outline: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--c-teal) 40%, transparent); }
+  .linkStack { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+  .linkAct { font-family: var(--font-ui); font-size: 0.9rem; background: none; border: 0; padding: 0; cursor: pointer;
+    text-decoration: underline; text-underline-offset: 3px; display: inline-flex; align-items: center; gap: 5px; }
+  .extIcon { flex: none; width: 13px; height: 13px; }
+  .linkOpen { color: var(--c-ink); }
+  .linkOpen:hover { color: var(--c-bluebird); }
+  .linkNotMatch { color: var(--c-tomato); }
+  .linkNotMatch:hover { color: color-mix(in srgb, var(--c-tomato) 78%, var(--c-ink)); }
+  .linkAct:focus-visible { outline: none; border-radius: var(--radius-sm); box-shadow: 0 0 0 3px color-mix(in srgb, var(--c-teal) 40%, transparent); }
+  /* saved acknowledgement · brief, self-dismissing, inline after the links */
+  .savedAck { display: inline-flex; align-items: center; gap: 5px; font-family: var(--font-subhead);
+    text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.72rem; color: var(--c-teal);
+    opacity: 0; transition: opacity var(--dur-base) var(--ease-snap); }
+  .savedAck.isVisible { opacity: 1; }
+  .savedAck svg { flex: none; width: 12px; height: 12px; }
 
-  .feedbackReason { display: grid; gap: var(--space-2); }
-  .feedbackReason span { font-family: var(--font-ui); font-size: 0.85rem; line-height: 1.4; color: var(--role-text-muted); }
-  .feedbackReason textarea { width: 100%; box-sizing: border-box; min-height: 64px; resize: vertical;
-    padding: var(--space-3); font: inherit; font-family: var(--font-ui); font-size: 0.9rem; line-height: 1.45;
-    color: var(--c-ink); background-color: var(--c-paper);
-    border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-md); }
-  .feedbackReason textarea:focus { outline: none; border-color: var(--c-teal);
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--c-teal) 28%, transparent); }
-  .feedbackReason small { justify-self: end; font-family: var(--font-ui); font-size: 0.78rem; color: var(--role-text-faint); }
+  /* ===== FEEDBACK FACE (shared) · tight grid, no dividers ===== */
+  .feedbackFace { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-3); align-content: start; }
+  .feedbackHead { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-3); }
+  .feedbackTitle { font-family: var(--font-display); font-size: 1.15rem; line-height: 1.1; color: var(--c-ink); margin: 0; }
+  .feedbackTitle small { font-family: var(--font-body); font-size: 0.85rem; color: var(--role-text-muted); }
+  .feedbackClose { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 30px; height: 30px;
+    color: var(--c-ink); background-color: var(--c-paper); border: var(--line-reg) solid var(--c-ink);
+    border-radius: var(--radius-md); box-shadow: 2px 2px 0 var(--c-ink); cursor: pointer; }
+  .feedbackClose:hover { box-shadow: var(--reg-box); }
+  .feedbackClose:focus-visible { outline: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--c-teal) 40%, transparent); }
+
+  /* Reason chips · off = paper + ink outline; on = teal fill + check. Hover = printed
+     lift, never a paper tint. */
+  .chipSet { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+  .chip { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-ui); font-size: 0.9rem; line-height: 1;
+    color: var(--c-ink); background-color: var(--c-paper); border: var(--line-reg) solid var(--c-ink);
+    border-radius: var(--radius-pill); padding: 8px 14px; cursor: pointer;
+    transition: box-shadow var(--dur-fast) var(--ease-snap), background-color var(--dur-fast) var(--ease-snap), color var(--dur-fast) var(--ease-snap); }
+  .chip .chipCheck { width: 0; height: 13px; overflow: hidden; display: inline-flex; align-items: center; transition: width var(--dur-fast) var(--ease-snap); }
+  .chip .chipCheck svg { flex: none; width: 13px; height: 13px; }
+  .chip:hover { box-shadow: 2px 2px 0 var(--c-ink); }
+  .chip:focus-visible { outline: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--c-teal) 40%, transparent); }
+  .chip[aria-pressed="true"] { color: var(--c-paper); background-color: var(--c-teal); box-shadow: var(--reg-box); }
+  .chip[aria-pressed="true"] .chipCheck { width: 17px; }
+  @media (prefers-reduced-motion: reduce) { .chip, .chip .chipCheck { transition: none; } }
+
+  /* Something else · checkbox + inline input filling the rest of the line, right edge
+     aligned to the chip rows. The input IS the free text (max 500). */
+  .seRow { display: flex; align-items: center; gap: var(--space-2); }
+  .seRow input[type="checkbox"] { accent-color: var(--c-teal); width: 18px; height: 18px; flex: none; cursor: pointer; }
+  .seRow label { font-family: var(--font-ui); font-size: 0.9rem; white-space: nowrap; cursor: pointer; }
+  .seInput { flex: 1 1 auto; min-width: 0; box-sizing: border-box; font: inherit; font-family: var(--font-ui); font-size: 0.9rem;
+    color: var(--c-ink); background-color: var(--c-paper); border: var(--line-reg) solid var(--c-ink);
+    border-radius: var(--radius-md); padding: 8px var(--space-3); }
+  .seInput:focus { outline: none; border-color: var(--c-teal); box-shadow: 0 0 0 3px color-mix(in srgb, var(--c-teal) 28%, transparent); }
+  .seInput:disabled { opacity: 0.5; }
+  .seCount { flex: none; font-family: var(--font-ui); font-size: 0.74rem; color: var(--role-text-faint); }
+
+  /* Error · tomato, keeps selections; Save retries */
+  .feedbackAlert { display: flex; align-items: flex-start; gap: var(--space-2); font-family: var(--font-body); font-size: 0.88rem;
+    color: var(--c-ink); background-color: var(--c-paper); border: var(--line-reg) solid var(--c-tomato);
+    border-left: var(--line-bold) solid var(--c-tomato); border-radius: var(--radius-md); padding: var(--space-2) var(--space-3); }
+  .feedbackAlert svg { flex: none; width: 16px; height: 16px; color: var(--c-tomato); margin-top: 1px; }
+  .feedbackAlert p { margin: 0; }
+
+  /* Footer · Close (ghost) + Save (teal). No divider. */
+  .feedbackFooter { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--space-2); }
+  .btnGhost { font-family: var(--font-display); font-size: 0.95rem; color: var(--c-ink); background-color: var(--c-paper);
+    border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-md); box-shadow: var(--shadow-card);
+    padding: var(--space-2) var(--space-4); cursor: pointer; transition: box-shadow var(--dur-fast) var(--ease-snap); }
+  .btnGhost:hover:not(:disabled) { box-shadow: var(--reg-box); }
+  .btnPrimary { font-family: var(--font-display); font-size: 0.95rem; color: var(--c-paper); background-color: var(--c-teal);
+    background-image: var(--fiber-img), var(--grain-img); background-blend-mode: normal, soft-light; background-size: 170px 170px, 46px 46px;
+    border: var(--line-bold) solid var(--c-ink); border-radius: var(--radius-md); box-shadow: var(--shadow-card);
+    padding: var(--space-2) var(--space-5); cursor: pointer; display: inline-flex; align-items: center; gap: 7px;
+    transition: box-shadow var(--dur-fast) var(--ease-snap), text-shadow var(--dur-fast) var(--ease-snap); }
+  .btnPrimary:hover:not(:disabled) { box-shadow: var(--reg-box); text-shadow: 1px 1px 0 rgba(36,31,26,0.35); }
+  .btnGhost:focus-visible, .btnPrimary:focus-visible { outline: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--c-teal) 40%, transparent); }
+  .btnPrimary:disabled { opacity: 0.5; cursor: default; }
+  .btnPrimary .spin { flex: none; width: 14px; height: 14px; animation: fbSpin 0.7s linear infinite; }
+  @keyframes fbSpin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .btnPrimary .spin { animation: none; } }
+
+  /* ===== MODAL (Section B) ===== */
+  .modalOverlay { position: relative; z-index: 200; background: rgba(36, 31, 26, 0.62);
+    display: flex; justify-content: center; padding: var(--space-6); border-radius: var(--radius-lg); }
+  .modalBox { width: min(560px, 100%); box-sizing: border-box;
+    background-color: var(--c-paper-deep); background-image: var(--fiber-img), var(--grain-img);
+    background-blend-mode: normal, soft-light; background-size: 170px 170px, 46px 46px;
+    border: var(--line-bold) solid var(--c-ink); border-radius: var(--radius-lg);
+    box-shadow: 6px 6px 0 rgba(36, 31, 26, 0.55); padding: var(--space-5); display: grid; gap: var(--space-3); }
+  .modalHeader { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-4); }
+  .modalTitle { font-family: var(--font-display); font-size: 1.25rem; line-height: 1.05; color: var(--c-ink); margin: 0; }
+  .modalClose { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 32px; height: 32px;
+    color: var(--c-ink); background-color: var(--c-paper); border: var(--line-reg) solid var(--c-ink);
+    border-radius: var(--radius-md); box-shadow: 2px 2px 0 var(--c-ink); cursor: pointer; }
+  .modalClose:hover { box-shadow: var(--reg-box); }
+  .copyHeader { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2); }
+  .copyHeader strong { font-family: var(--font-display); font-size: 1.05rem; color: var(--c-ink); }
+  .copyActions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+  .copyButton { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-display); font-size: 0.95rem;
+    color: var(--c-paper); background-color: var(--c-teal); border: var(--line-bold) solid var(--c-ink);
+    border-radius: var(--radius-md); box-shadow: var(--shadow-card); padding: var(--space-2) var(--space-4); cursor: pointer; }
+  .copyButton svg { flex: none; width: 14px; height: 14px; }
+  .regenButton { font-family: var(--font-display); font-size: 0.95rem; color: var(--c-paper); background-color: var(--c-tomato);
+    border: var(--line-bold) solid var(--c-ink); border-radius: var(--radius-md); box-shadow: var(--shadow-card);
+    padding: var(--space-2) var(--space-4); cursor: pointer; }
+  .messageTextarea { width: 100%; box-sizing: border-box; font-family: var(--font-body); font-size: 0.98rem; color: var(--c-ink);
+    background-color: var(--c-paper); border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-md);
+    padding: var(--space-3); min-height: 116px; resize: vertical; }
+  .msgTrigger { display: flex; justify-content: flex-start; align-items: center; gap: var(--space-3); }
+  .modalFooter { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--space-2); }
+  .modalBtnClose { font-family: var(--font-display); font-size: 0.95rem; color: var(--c-ink); background-color: var(--c-paper);
+    border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-md); box-shadow: var(--shadow-card);
+    padding: var(--space-2) var(--space-4); cursor: pointer; }
+  .modalBtnSave { font-family: var(--font-display); font-size: 0.95rem; color: var(--role-action-text); background-color: var(--role-action);
+    border: var(--line-bold) solid var(--c-ink); border-radius: var(--radius-md); box-shadow: var(--shadow-card);
+    padding: var(--space-2) var(--space-5); cursor: pointer; }
+  .footerSpacer { margin-right: auto; text-decoration: underline; text-underline-offset: 3px; color: var(--c-ink); background: none; border: 0; font-family: var(--font-ui); font-size: 0.9rem; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; }
+
+  .demoControls { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-3); }
+  .demoBtn { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.72rem;
+    color: var(--c-ink); background: var(--c-paper); border: var(--line-hair) solid var(--c-ink);
+    border-radius: var(--radius-sm); padding: 5px 10px; cursor: pointer; }
+
+  .demoGrid { display: grid; gap: var(--space-4); }
+
+  @media (max-width: 560px) {
+    .jobMetaGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: var(--space-3); }
+    .modalOverlay { padding: var(--space-3); }
+    .modalBox { padding: var(--space-4); }
+  }
 </style>
 </head>
 <body>
 <div class="wrap">
   <div>
-    <h1 class="page">Match Feedback</h1>
-    <p class="lede">Per-match rating that feeds the learning loop. Stars use the teal positive accent (not
-    mustard). When a rating lands, a reason field appears to capture what felt off.</p>
+    <h1 class="page">Feedback flip</h1>
+    <p class="lede">A job card and the Apply Wizard each carry a quiet red feedback link. It flips the
+    whole surface to a chip picker. Pick the reasons, or check Something else and type. Saving records
+    what was off and flips back. It never skips, saves, pursues, sends, edits, or regenerates anything.</p>
   </div>
 
-  <!-- Collapsed · awaiting rating -->
-  <section class="card">
-    <p class="stateLabel">No rating yet</p>
-    <div class="feedbackBox">
-      <div class="feedbackHeader"><span>Rate this match for learning</span></div>
-      <div class="feedbackStars" aria-label="Rate this match">
-        <button type="button" class="feedbackStar" aria-label="1 star"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></button>
-        <button type="button" class="feedbackStar" aria-label="2 stars"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></button>
-        <button type="button" class="feedbackStar" aria-label="3 stars"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></button>
-        <button type="button" class="feedbackStar" aria-label="4 stars"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></button>
-        <button type="button" class="feedbackStar" aria-label="5 stars"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></button>
+  <!-- ============================================================
+       SECTION A · JOB CARD FLIP
+       ============================================================ -->
+  <section>
+    <h2 class="sec">A · Job card flip</h2>
+    <p class="secNote">Actions are centered: <b>Save</b> (teal), <b>Skip</b> (tomato), then a stacked
+    group of <b>Open posting</b> and <b>Not a match</b> (red link). "Not a match" flips the card. The card
+    does not grow to fit it.</p>
+
+    <div class="flipScene">
+      <div class="flipCard" id="jobFlip">
+        <!-- FRONT -->
+        <article class="card jobCard flipFace flipFront" id="jobFront">
+          <div class="jobCardHeader">
+            <div class="jobNumberTitle">
+              <span class="jobNumber" aria-hidden="true">1</span>
+              <h3 class="jobTitle">Senior Product Designer<span class="titleDivider" aria-hidden="true"></span><span class="companyName">Northbeam Labs</span></h3>
+            </div>
+          </div>
+          <div class="stars">
+            <span class="starLabel">Fit</span>
+            <span class="starScore">84<small>/100</small></span>
+            <span class="starIconRow" title="84/100" aria-hidden="true">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5"><polygon points="12 2 15 9 22 9.3 16.5 14 18.5 21 12 17 5.5 21 7.5 14 2 9.3 9 9"/></svg>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5"><polygon points="12 2 15 9 22 9.3 16.5 14 18.5 21 12 17 5.5 21 7.5 14 2 9.3 9 9"/></svg>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5"><polygon points="12 2 15 9 22 9.3 16.5 14 18.5 21 12 17 5.5 21 7.5 14 2 9.3 9 9"/></svg>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5"><polygon points="12 2 15 9 22 9.3 16.5 14 18.5 21 12 17 5.5 21 7.5 14 2 9.3 9 9"/></svg>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="12 2 15 9 22 9.3 16.5 14 18.5 21 12 17 5.5 21 7.5 14 2 9.3 9 9"/></svg>
+            </span>
+          </div>
+          <dl class="jobMetaGrid">
+            <div><dt>Source</dt><dd>Greenhouse</dd></div>
+            <div><dt>Salary</dt><dd>$140k – $165k</dd></div>
+            <div><dt>Remote</dt><dd>Remote (US)</dd></div>
+            <div><dt>Location</dt><dd>Denver, CO</dd></div>
+          </dl>
+          <div class="descriptionBox">
+            <p class="descriptionText">Lead end-to-end design for a new B2B analytics product, partnering
+            with PM and engineering from discovery through ship.</p>
+          </div>
+          <div class="actionRow">
+            <button type="button" class="btnAct btnSave">Save</button>
+            <button type="button" class="btnAct btnSkip">Skip</button>
+            <span class="linkStack">
+              <a href="#" target="_blank" rel="noopener" class="linkAct linkOpen">Open posting <svg class="extIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>
+              <button type="button" class="linkAct linkNotMatch" data-flip-open="jobFlip" aria-expanded="false" aria-controls="jobBack">Not a match</button>
+            </span>
+            <button type="button" class="btnAct btnPursue">Pursue</button>
+            <span class="savedAck" id="jobAck" role="status" aria-live="polite">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>Noted
+            </span>
+          </div>
+        </article>
+
+        <!-- BACK · feedback face -->
+        <div class="card flipFace flipBack" id="jobBack" role="group" aria-labelledby="jobFbTitle">
+          <div class="feedbackFace">
+            <div class="feedbackHead">
+              <h3 class="feedbackTitle" id="jobFbTitle" tabindex="-1">What's off about this match? <small>Pick all that apply.</small></h3>
+              <button type="button" class="feedbackClose" data-flip-close="jobFlip" aria-label="Back to job">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+            <div class="chipSet" role="group" aria-label="What's off about this match" data-chipset>
+              <button type="button" class="chip" aria-pressed="false" data-code="wrong_role_title"><span class="chipCheck"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg></span>Wrong role/title</button>
+              <button type="button" class="chip" aria-pressed="false" data-code="wrong_location_preference"><span class="chipCheck"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg></span>Wrong location preference</button>
+              <button type="button" class="chip" aria-pressed="false" data-code="wrong_comp"><span class="chipCheck"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg></span>Wrong Comp</button>
+              <button type="button" class="chip" aria-pressed="false" data-code="wrong_industry"><span class="chipCheck"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg></span>Wrong Industry</button>
+            </div>
+            <div class="seRow">
+              <input type="checkbox" id="jobSe" data-se-check />
+              <label for="jobSe">Something Else</label>
+              <input type="text" class="seInput" maxlength="500" placeholder="Tell us what missed" data-se-input disabled />
+              <span class="seCount" data-se-count>0/500</span>
+            </div>
+            <div class="feedbackAlert" data-alert hidden>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              <p>That didn't save. Your selections are still here, give it another go.</p>
+            </div>
+            <div class="feedbackFooter">
+              <button type="button" class="btnGhost" data-flip-close="jobFlip">Close</button>
+              <button type="button" class="btnPrimary" data-save disabled>Save feedback</button>
+            </div>
+          </div>
+        </div>
       </div>
+    </div>
+    <div class="demoControls"><button type="button" class="demoBtn" data-demo-error="jobFlip">Toggle error on next save</button></div>
+  </section>
+
+  <!-- ============================================================
+       SECTION B · APPLY WIZARD MODAL FLIP
+       ============================================================ -->
+  <section>
+    <h2 class="sec">B · Apply Wizard modal flip</h2>
+    <p class="secNote">Trigger <b>This message is not great</b> (red link) sits right under the message.
+    The whole modal flips. The feedback face is dense: chips, then Something else on a grid, no dividers.</p>
+
+    <div class="flipScene">
+      <div class="modalOverlay">
+        <div class="flipCard" id="msgFlip" style="width: min(560px, 100%);">
+          <!-- FRONT · outreach -->
+          <div class="modalBox flipFace flipFront" id="msgFront">
+            <div class="modalHeader">
+              <h4 class="modalTitle">Human Path: Senior Producer</h4>
+              <button type="button" class="modalClose" aria-label="Close">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+            <div class="copyHeader">
+              <strong>Sam Lewis</strong>
+              <div class="copyActions">
+                <button type="button" class="copyButton"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><span>Copy</span></button>
+                <button type="button" class="regenButton">Regenerate</button>
+              </div>
+            </div>
+            <textarea class="messageTextarea" readonly>Hi Sam, I produced Topo Chico's launch end to end and shipped it across 40+ SKUs in a quarter. Liquid Death's Senior Producer role looks like the same problem at a louder volume. Worth a short conversation?</textarea>
+            <div class="msgTrigger">
+              <button type="button" class="linkAct linkNotMatch" data-flip-open="msgFlip" aria-expanded="false" aria-controls="msgBack">This message is not great</button>
+              <span class="savedAck" id="msgAck" role="status" aria-live="polite">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>Noted
+              </span>
+            </div>
+            <div class="modalFooter">
+              <a href="#" target="_blank" rel="noopener" class="footerSpacer">Open job posting <svg class="extIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>
+              <button type="button" class="modalBtnSave">Continue</button>
+            </div>
+          </div>
+
+          <!-- BACK · feedback face -->
+          <div class="modalBox flipFace flipBack" id="msgBack" role="group" aria-labelledby="msgFbTitle">
+            <div class="modalHeader">
+              <h4 class="modalTitle" id="msgFbTitle" tabindex="-1">What's off about this message?</h4>
+              <button type="button" class="modalClose" data-flip-close="msgFlip" aria-label="Back to message">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+            <div class="chipSet" role="group" aria-label="What's off about this message" data-chipset>
+              <button type="button" class="chip" aria-pressed="false" data-code="wrong_skills_title_applied"><span class="chipCheck"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg></span>Wrong skills/title applied</button>
+              <button type="button" class="chip" aria-pressed="false" data-code="personal_voice_mismatch"><span class="chipCheck"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg></span>Doesn't sound like Me</button>
+              <button type="button" class="chip" aria-pressed="false" data-code="selected_tone_mismatch"><span class="chipCheck"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg></span>Doesn't sound like selected tone</button>
+              <button type="button" class="chip" aria-pressed="false" data-code="awkward_to_read"><span class="chipCheck"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg></span>Awkward to read</button>
+              <button type="button" class="chip" aria-pressed="false" data-code="would_not_send"><span class="chipCheck"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg></span>I wouldn't send this</button>
+            </div>
+            <div class="seRow">
+              <input type="checkbox" id="msgSe" data-se-check />
+              <label for="msgSe">something else</label>
+              <input type="text" class="seInput" maxlength="500" placeholder="Tell us what missed" data-se-input disabled />
+              <span class="seCount" data-se-count>0/500</span>
+            </div>
+            <div class="feedbackAlert" data-alert hidden>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              <p>That didn't save. Your selections are still here, give it another go.</p>
+            </div>
+            <div class="feedbackFooter">
+              <button type="button" class="btnGhost" data-flip-close="msgFlip">Close</button>
+              <button type="button" class="btnPrimary" data-save disabled>Save feedback</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="demoControls"><button type="button" class="demoBtn" data-demo-error="msgFlip">Toggle error on next save</button></div>
+  </section>
+
+  <!-- ============================================================
+       STATES · full chip set, static
+       ============================================================ -->
+  <section>
+    <h2 class="sec">States</h2>
+    <p class="secNote">All chips shown, always. Save is off until one chip is on or Something else is checked.</p>
+    <div class="demoGrid">
+
+      <div>
+        <p class="stateLabel">1 · No selection, Save disabled</p>
+        <div class="card"><div class="feedbackFace">
+          <div class="chipSet">
+            <span class="chip" aria-pressed="false">Wrong role/title</span>
+            <span class="chip" aria-pressed="false">Wrong location preference</span>
+            <span class="chip" aria-pressed="false">Wrong Comp</span>
+            <span class="chip" aria-pressed="false">Wrong Industry</span>
+          </div>
+          <div class="seRow"><input type="checkbox" disabled /><label>Something Else</label><input type="text" class="seInput" placeholder="Tell us what missed" disabled /><span class="seCount">0/500</span></div>
+          <div class="feedbackFooter"><span class="btnGhost">Close</span><span class="btnPrimary" style="opacity:.5">Save feedback</span></div>
+        </div></div>
+      </div>
+
+      <div>
+        <p class="stateLabel">2 · Two chips on, Save enabled</p>
+        <div class="card"><div class="feedbackFace">
+          <div class="chipSet">
+            <span class="chip" aria-pressed="true"><span class="chipCheck"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>Wrong role/title</span>
+            <span class="chip" aria-pressed="false">Wrong location preference</span>
+            <span class="chip" aria-pressed="true"><span class="chipCheck"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>Wrong Comp</span>
+            <span class="chip" aria-pressed="false">Wrong Industry</span>
+          </div>
+          <div class="seRow"><input type="checkbox" disabled /><label>Something Else</label><input type="text" class="seInput" placeholder="Tell us what missed" disabled /><span class="seCount">0/500</span></div>
+          <div class="feedbackFooter"><span class="btnGhost">Close</span><span class="btnPrimary">Save feedback</span></div>
+        </div></div>
+      </div>
+
+      <div>
+        <p class="stateLabel">3 · Something else checked + typed (free text lives here)</p>
+        <div class="card"><div class="feedbackFace">
+          <div class="chipSet">
+            <span class="chip" aria-pressed="false">Wrong role/title</span>
+            <span class="chip" aria-pressed="false">Wrong location preference</span>
+            <span class="chip" aria-pressed="false">Wrong Comp</span>
+            <span class="chip" aria-pressed="false">Wrong Industry</span>
+          </div>
+          <div class="seRow"><input type="checkbox" checked /><label>Something Else</label><input type="text" class="seInput" value="Team is mostly contract and the band reads a tier low." /><span class="seCount">52/500</span></div>
+          <div class="feedbackFooter"><span class="btnGhost">Close</span><span class="btnPrimary">Save feedback</span></div>
+        </div></div>
+      </div>
+
+      <div>
+        <p class="stateLabel">4 · Saving (Close still available)</p>
+        <div class="card"><div class="feedbackFace">
+          <div class="chipSet">
+            <span class="chip" aria-pressed="true"><span class="chipCheck"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>Wrong Industry</span>
+            <span class="chip" aria-pressed="false">Wrong role/title</span>
+            <span class="chip" aria-pressed="false">Wrong location preference</span>
+            <span class="chip" aria-pressed="false">Wrong Comp</span>
+          </div>
+          <div class="seRow"><input type="checkbox" disabled /><label>Something Else</label><input type="text" class="seInput" placeholder="Tell us what missed" disabled /><span class="seCount">0/500</span></div>
+          <div class="feedbackFooter"><span class="btnGhost">Close</span><span class="btnPrimary" style="opacity:.5"><svg class="spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-6.2-8.5"/></svg>Saving…</span></div>
+        </div></div>
+      </div>
+
+      <div>
+        <p class="stateLabel">5 · Error, selections kept, retry</p>
+        <div class="card"><div class="feedbackFace">
+          <div class="chipSet">
+            <span class="chip" aria-pressed="true"><span class="chipCheck"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>Wrong role/title</span>
+            <span class="chip" aria-pressed="false">Wrong location preference</span>
+            <span class="chip" aria-pressed="false">Wrong Comp</span>
+            <span class="chip" aria-pressed="false">Wrong Industry</span>
+          </div>
+          <div class="seRow"><input type="checkbox" disabled /><label>Something Else</label><input type="text" class="seInput" placeholder="Tell us what missed" disabled /><span class="seCount">0/500</span></div>
+          <div class="feedbackAlert"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><p>That didn't save. Your selections are still here, give it another go.</p></div>
+          <div class="feedbackFooter"><span class="btnGhost">Close</span><span class="btnPrimary">Save feedback</span></div>
+        </div></div>
+      </div>
+
     </div>
   </section>
 
-  <!-- Rated · reason captured -->
-  <section class="card">
-    <p class="stateLabel">Rated, reason open</p>
-    <div class="feedbackBox">
-      <div class="feedbackHeader"><span>Rate this match for learning</span><small>Feedback saved</small></div>
-      <div class="feedbackStars" aria-label="Rate this match">
-        <button type="button" class="feedbackStar feedbackStarActive" aria-label="1 star"><svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></button>
-        <button type="button" class="feedbackStar feedbackStarActive" aria-label="2 stars"><svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></button>
-        <button type="button" class="feedbackStar feedbackStarActive" aria-label="3 stars"><svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></button>
-        <button type="button" class="feedbackStar feedbackStarActive" aria-label="4 stars"><svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></button>
-        <button type="button" class="feedbackStar" aria-label="5 stars"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></button>
-      </div>
-      <label class="feedbackReason">
-        <span>What felt off?</span>
-        <textarea rows="2" maxlength="200" placeholder="Too legal. Not enough creative ops. Sounds junior.">Title leans senior IC, but the team is mostly contract. Salary band reads a tier low.</textarea>
-        <small>84/200</small>
-      </label>
-    </div>
-  </section>
+  <div>
+    <p class="secNote"><b>Reduced motion:</b> the rotate becomes a cross-fade, no rotation. <b>Keyboard:</b>
+    trigger, chips, Something-else checkbox, note input, Close, and Save are all real controls. On flip,
+    focus moves to the feedback heading; on Close or a successful Save it returns to the trigger. Only the
+    visible face is in the tab order (hidden face is <code>inert</code>). <b>Escape / backdrop</b> on the
+    feedback face flip back to the front, they do not close the whole wizard.</p>
+  </div>
 </div>
+
+<script>
+(function () {
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function setInert(el, on) {
+    if (!el) return;
+    if (on) { el.setAttribute('inert', ''); el.setAttribute('aria-hidden', 'true'); }
+    else { el.removeAttribute('inert'); el.removeAttribute('aria-hidden'); }
+  }
+
+  ['jobFlip', 'msgFlip'].forEach(function (id) {
+    var scene = document.getElementById(id);
+    if (!scene) return;
+    var front = scene.querySelector('.flipFront');
+    var back = scene.querySelector('.flipBack');
+    var trigger = front.querySelector('[data-flip-open]');
+    var heading = back.querySelector('[tabindex="-1"]');
+    var saveBtn = back.querySelector('[data-save]');
+    var alert = back.querySelector('[data-alert]');
+    var ack = front.querySelector('.savedAck');
+    var chips = back.querySelectorAll('[data-chipset] .chip');
+    var seCheck = back.querySelector('[data-se-check]');
+    var seInput = back.querySelector('[data-se-input]');
+    var seCount = back.querySelector('[data-se-count]');
+    var forceError = false;
+    setInert(back, true);
+
+    function hasSelection() {
+      var anyChip = Array.prototype.some.call(chips, function (c) { return c.getAttribute('aria-pressed') === 'true'; });
+      return anyChip || (seCheck && seCheck.checked);
+    }
+    function refreshSave() { saveBtn.disabled = !hasSelection(); }
+    function open() {
+      scene.classList.add('isFlipped');
+      setInert(front, true); setInert(back, false);
+      trigger.setAttribute('aria-expanded', 'true');
+      if (alert) alert.hidden = true;
+      setTimeout(function () { if (heading) heading.focus(); }, reduce ? 0 : 200);
+    }
+    function close() {
+      scene.classList.remove('isFlipped');
+      setInert(back, true); setInert(front, false);
+      trigger.setAttribute('aria-expanded', 'false');
+      trigger.focus();
+    }
+    function reset() {
+      chips.forEach(function (c) { c.setAttribute('aria-pressed', 'false'); });
+      if (seCheck) seCheck.checked = false;
+      if (seInput) { seInput.value = ''; seInput.disabled = true; }
+      if (seCount) seCount.textContent = '0/500';
+      if (alert) alert.hidden = true;
+      refreshSave();
+    }
+    function showAck() { if (!ack) return; ack.classList.add('isVisible'); setTimeout(function () { ack.classList.remove('isVisible'); }, 2400); }
+
+    trigger.addEventListener('click', open);
+    back.querySelectorAll('[data-flip-close]').forEach(function (b) { b.addEventListener('click', function () { close(); reset(); }); });
+    chips.forEach(function (chip) {
+      chip.addEventListener('click', function () {
+        chip.setAttribute('aria-pressed', chip.getAttribute('aria-pressed') === 'true' ? 'false' : 'true');
+        refreshSave();
+      });
+    });
+    if (seCheck) seCheck.addEventListener('change', function () {
+      seInput.disabled = !seCheck.checked;
+      if (seCheck.checked) seInput.focus();
+      refreshSave();
+    });
+    if (seInput) seInput.addEventListener('input', function () { seCount.textContent = seInput.value.length + '/500'; });
+
+    saveBtn.addEventListener('click', function () {
+      if (saveBtn.disabled) return;
+      saveBtn.disabled = true;
+      var original = saveBtn.innerHTML;
+      saveBtn.innerHTML = '<svg class="spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-6.2-8.5"/></svg>Saving…';
+      if (alert) alert.hidden = true;
+      setTimeout(function () {
+        if (forceError) { forceError = false; saveBtn.innerHTML = original; saveBtn.disabled = false; if (alert) alert.hidden = false; return; }
+        saveBtn.innerHTML = original; close(); reset(); showAck();
+      }, 850);
+    });
+
+    var errBtn = document.querySelector('[data-demo-error="' + id + '"]');
+    if (errBtn) errBtn.addEventListener('click', function () {
+      forceError = !forceError;
+      errBtn.textContent = forceError ? 'Error armed (next save fails)' : 'Toggle error on next save';
+    });
+  });
+})();
+</script>
 </body>
 </html>

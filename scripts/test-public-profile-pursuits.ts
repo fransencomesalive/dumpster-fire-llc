@@ -26,6 +26,7 @@ import {
   persistContactSelection,
   persistHumanPathGeneration,
   persistOutreachGeneration,
+  persistOutreachMessageFeedback,
   persistOutreachMessageCopy,
   persistOutreachRegeneration,
   persistPursuitTransition,
@@ -780,6 +781,7 @@ async function main() {
     selected_role_track_id: "track-1",
     selected_resume_id: null,
     selected_work_example_id: "example-1",
+    generation_request_id: "generation-1",
     created_at: now,
     updated_at: now,
   }] as T;
@@ -788,6 +790,7 @@ async function main() {
   assert.equal(loadedMessage?.status, "draft");
   assert.equal(loadedMessage?.regenerationCount, 0);
   assert.equal(loadedMessage?.selectedWorkExampleId, "example-1");
+  assert.equal(loadedMessage?.generationRequestId, "generation-1");
   assert.equal(loadedMessage?.rejectionReason, undefined);
 
   // Repository: persist a message update via PATCH.
@@ -809,6 +812,53 @@ async function main() {
     message: "Original draft.",
     status: "rejected",
     rejection_reason: "Too formal",
+    updated_at: later,
+  });
+
+  // Repository: feedback upserts one record per user/message/revision and snapshots
+  // the exact message without mutating the outreach row.
+  const feedbackCalls: Array<{ table: string; method?: string; query?: string; headers?: Record<string, string>; body?: unknown }> = [];
+  const feedbackRequest: PublicProfileRepositoryRequest = async <T>(table: string, init?: { method?: string; query?: string; headers?: Record<string, string>; body?: unknown }) => {
+    feedbackCalls.push({ table, method: init?.method, query: init?.query, headers: init?.headers, body: init?.body });
+    return [{
+      id: "feedback-1",
+      outreach_message_id: "message-1",
+      user_id: "user-1",
+      feedback_type: "needs_work",
+      reason_codes: ["personal_voice_mismatch", "awkward_to_read"],
+      notes: "Opening feels stiff.",
+      message_snapshot: "Original draft.",
+      message_revision: 0,
+      created_at: now,
+      updated_at: later,
+    }] as T;
+  };
+  const feedback = await persistOutreachMessageFeedback(feedbackRequest, {
+    outreachMessageId: "message-1",
+    userId: "user-1",
+    reasonCodes: ["personal_voice_mismatch", "awkward_to_read"],
+    notes: "Opening feels stiff.",
+    messageSnapshot: "Original draft.",
+    messageRevision: 0,
+    updatedAt: later,
+  });
+  assert.equal(feedback.id, "feedback-1");
+  assert.equal(feedback.feedbackType, "needs_work");
+  assert.deepEqual(feedback.reasonCodes, ["personal_voice_mismatch", "awkward_to_read"]);
+  assert.equal(feedback.messageSnapshot, "Original draft.");
+  assert.equal(feedback.messageRevision, 0);
+  assert.equal(feedbackCalls[0].table, "saved_message_feedback");
+  assert.equal(feedbackCalls[0].method, "POST");
+  assert.equal(feedbackCalls[0].query, "?on_conflict=user_id,outreach_message_id,message_revision,feedback_type");
+  assert.deepEqual(feedbackCalls[0].headers, { Prefer: "resolution=merge-duplicates,return=representation" });
+  assert.deepEqual(feedbackCalls[0].body, {
+    outreach_message_id: "message-1",
+    user_id: "user-1",
+    feedback_type: "needs_work",
+    reason_codes: ["personal_voice_mismatch", "awkward_to_read"],
+    notes: "Opening feels stiff.",
+    message_snapshot: "Original draft.",
+    message_revision: 0,
     updated_at: later,
   });
 

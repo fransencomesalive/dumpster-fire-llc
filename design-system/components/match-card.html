@@ -11,7 +11,9 @@
   /* MATCH CARD · production parity with app/dashboard (DashboardClient.tsx +
      dashboard.module.css), reconciled 2026-07-10. Fit = label + numeric score + stars;
      meta = Source/Salary/Remote/Location; actions = Save / Open posting / Pursue.
-     Plain paper — no halftone (rejected pattern, Randall 2026-07-04). */
+     Plain paper — no halftone (rejected pattern, Randall 2026-07-04).
+     2026-07-19: added the "This job isn't a good match" feedback trigger (quiet row under
+     the action rail). Full flip interaction lives in feedback.html. */
   body { margin: 0; padding: var(--space-6); background: var(--c-paper); color: var(--c-ink); font-family: var(--font-body); }
   .wrap { max-width: 720px; margin: 0 auto; }
 
@@ -86,24 +88,36 @@
   .matchHighlight::before { content:""; position:absolute; z-index:-1; inset:-0.14em -0.24em -0.02em -0.2em;
     background:var(--c-mustard); border-radius:0.6em 0.95em 0.5em 0.85em / 0.9em 0.5em 0.95em 0.55em; transform:rotate(var(--rot, -1.4deg)); }
 
-  .actionRail { display:flex; flex-wrap:wrap; gap:var(--space-3); align-items:center; }
-  .actionRail button, .actionRail a { font-family:var(--font-display); font-size:0.95rem; border-radius:var(--radius-md);
-    padding:var(--space-2) var(--space-4); cursor:pointer; text-decoration:none; }
-  .btnApply { color:var(--role-action-text); background-color:var(--role-action);
+  /* ===== Action row (2026-07-19) · centered. Save (teal) + Skip (tomato) buttons,
+     then a stacked [Open posting / Not a match] link group. "Not a match" is the
+     feedback trigger (red link); it flips the whole card (see feedback.html).
+     No teal-tint hovers anywhere (no longer approved, Randall 2026-07-19). ===== */
+  .actionRow { display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:var(--space-4); }
+  /* All filled action buttons carry the grain/ink texture (the design-system standard for
+     solid fills). Color is the only difference: Save/Pursue teal, Skip tomato. */
+  .btnAct { font-family:var(--font-display); font-size:0.95rem; border-radius:var(--radius-md);
+    padding:var(--space-2) var(--space-5); cursor:pointer; border:var(--line-bold) solid var(--c-ink);
+    box-shadow:var(--shadow-card); color:var(--c-paper);
     background-image:var(--fiber-img), var(--grain-img); background-blend-mode:normal, soft-light; background-size:170px 170px, 46px 46px;
-    border:var(--line-bold) solid var(--c-ink); box-shadow:var(--shadow-card); margin-left:auto; }
-  .btnSave { color:var(--c-ink); background:var(--c-paper); border:var(--line-reg) solid var(--c-ink); }
-  /* Skip = "not interested" — removes the posting from results (Randall, 2026-07-10) */
-  .btnSkip { color:var(--role-text-muted); background:transparent; border:var(--line-reg) solid transparent; }
-  .skipNote { flex:1 1 0; min-width:110px; font-family:var(--font-body); font-size:0.8rem; font-style:italic; color:var(--role-text-faint); }
-  .btnSource { position:relative; color:var(--c-ink); background:transparent; padding-bottom:3px; }
-  /* Text-styled rail actions show their full footprint on hover — same teal
-     tint the profile-editor nav uses (Randall, 2026-07-16, option 2). */
-  .btnSkip:hover, .btnSource:hover { background-color:color-mix(in srgb, var(--c-teal) 14%, var(--c-paper)); }
+    transition:box-shadow var(--dur-fast) var(--ease-snap), text-shadow var(--dur-fast) var(--ease-snap); }
+  .btnSave, .btnPursue { background-color:var(--c-teal); }
+  .btnSkip { background-color:var(--c-tomato); }
+  .btnAct:hover { box-shadow:var(--reg-box); text-shadow:1px 1px 0 rgba(36,31,26,0.35); }
+  .linkStack { display:flex; flex-direction:column; align-items:flex-start; gap:4px; }
+  .linkAct { font-family:var(--font-ui), Inter, system-ui, sans-serif; font-size:0.9rem; background:none; border:0;
+    padding:0; cursor:pointer; text-decoration:underline; text-underline-offset:3px; display:inline-flex; align-items:center; gap:5px; }
+  .extIcon { flex:none; width:13px; height:13px; }
+  .linkOpen { color:var(--c-ink); }
+  .linkOpen:hover { color:var(--c-bluebird); }
+  .linkNotMatch { color:var(--c-tomato); }
+  .linkNotMatch:hover { color:color-mix(in srgb, var(--c-tomato) 78%, var(--c-ink)); }
+  .savedAck { display:inline-flex; align-items:center; gap:5px; font-family:var(--font-subhead);
+    text-transform:uppercase; letter-spacing:0.05em; font-size:0.72rem; color:var(--c-teal); }
+  .savedAck svg { flex:none; width:12px; height:12px; }
 
   @media (max-width:560px){
     .matchSections { grid-template-columns:minmax(0,1fr); }
-    .jobMetaGrid { grid-template-columns:repeat(2,minmax(0,1fr)); row-gap:var(--space-3); }
+    .jobMetaGrid { grid-template-columns:repeat(2,minmax(0,1fr)); }
   }
 </style>
 </head>
@@ -169,16 +183,18 @@
           </ul>
         </div>
       </div>
-      <div class="actionRail">
-        <button type="button" class="btnSave">Save</button>
-        <button type="button" class="btnSkip">Skip</button>
-        <span class="skipNote">This job will be removed from results.</span>
-        <a href="#" class="btnSource">Open posting ↗</a>
-        <button type="button" class="btnApply">Pursue</button>
+      <div class="actionRow">
+        <button type="button" class="btnAct btnSave">Save</button>
+        <button type="button" class="btnAct btnSkip">Skip</button>
+        <span class="linkStack">
+          <a href="#" target="_blank" rel="noopener" class="linkAct linkOpen">Open posting <svg class="extIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>
+          <button type="button" class="linkAct linkNotMatch" aria-expanded="false">Not a match</button>
+        </span>
+        <button type="button" class="btnAct btnPursue">Pursue</button>
       </div>
     </article>
 
-    <!-- Off-target surfaced with context · weird-match tag -->
+    <!-- Off-target surfaced with context · weird-match tag · shows the saved acknowledgement -->
     <article class="card jobCard">
       <span class="weirdMatchTag" aria-label="Weird match">
         <span>W</span><span>E</span><span>I</span><span>R</span><span>D</span>
@@ -235,12 +251,18 @@
           </ul>
         </div>
       </div>
-      <div class="actionRail">
-        <button type="button" class="btnSave">Save</button>
-        <button type="button" class="btnSkip">Skip</button>
-        <span class="skipNote">This job will be removed from results.</span>
-        <a href="#" class="btnSource">Open posting ↗</a>
-        <button type="button" class="btnApply">Pursue</button>
+      <div class="actionRow">
+        <button type="button" class="btnAct btnSave">Save</button>
+        <button type="button" class="btnAct btnSkip">Skip</button>
+        <span class="linkStack">
+          <a href="#" target="_blank" rel="noopener" class="linkAct linkOpen">Open posting <svg class="extIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>
+          <button type="button" class="linkAct linkNotMatch" aria-expanded="false">Not a match</button>
+        </span>
+        <button type="button" class="btnAct btnPursue">Pursue</button>
+        <span class="savedAck">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+          Noted
+        </span>
       </div>
     </article>
   </div>

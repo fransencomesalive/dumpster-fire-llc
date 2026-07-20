@@ -10,7 +10,9 @@
 <style>
   /* Mirrors the one-time regeneration treatment in ApplyWizardModal.tsx.
      Regenerate = tomato; Copy = teal (teal = positive; Randall 2026-07-17) with a
-     clipboard-confirmed Copied state. */
+     clipboard-confirmed Copied state.
+     2026-07-19: added the "This message is not great" feedback trigger below the message
+     (quiet row, apart from Copy/Regenerate). Full modal flip lives in feedback.html. */
   body { margin: 0; color: var(--c-ink); font-family: var(--font-ui); }
   .wrap { max-width: 680px; margin: 0 auto; padding: var(--space-6) var(--space-5); display: grid; gap: var(--space-5); }
   h1.page { font-family: var(--font-display); font-size: var(--type-h1); margin: 0 0 var(--space-2); }
@@ -71,6 +73,75 @@
   .generateMessageBtn:hover:not(:disabled) { background-color: var(--role-info); box-shadow: var(--reg-box);
     text-shadow: 1px 1px 0 rgba(36,31,26,0.35); }
   .generateMessageBtn:disabled { opacity: 0.55; cursor: default; }
+
+  /* ===== Feedback trigger (2026-07-19) · plain red link under the message =====
+     Separate from Copy/Regenerate so it never reads as an edit or send. No icon, no teal-tint,
+     no bordered row. Activating it flips the whole Apply Wizard modal to its feedback face
+     (see feedback.html and apply-wizard.html). */
+  .msgTrigger { display:flex; align-items:center; gap:var(--space-3); margin-top:var(--space-2); }
+  .linkNotMatch { font-family:var(--font-ui); font-size:0.9rem; color:var(--c-tomato); background:none; border:0; padding:0;
+    cursor:pointer; text-decoration:underline; text-underline-offset:3px; }
+  .linkNotMatch:hover { color:color-mix(in srgb, var(--c-tomato) 78%, var(--c-ink)); }
+  .savedAck { display:inline-flex; align-items:center; gap:5px; font-family:var(--font-subhead);
+    text-transform:uppercase; letter-spacing:0.05em; font-size:0.72rem; color:var(--c-teal); opacity:0; transition:opacity var(--dur-base) var(--ease-snap); }
+  .savedAck.isVisible { opacity:1; }
+  .savedAck svg { flex:none; width:12px; height:12px; }
+
+  /* ===== Feedback flip · the message card flips to its feedback face (chips + Something-else
+     input). Both faces share one grid cell so height is the taller face. Reduced-motion
+     cross-fades. In production this is the whole Apply Wizard modal (see apply-wizard.html). ===== */
+  .flipScene { perspective:1800px; }
+  .flipCard { position:relative; display:grid; grid-template-columns:minmax(0, 1fr); transform-style:preserve-3d; transition:transform var(--dur-base) var(--ease-snap); }
+  .flipCard.isFlipped { transform:rotateY(180deg); }
+  .flipFace { grid-area:1 / 1; -webkit-backface-visibility:hidden; backface-visibility:hidden; min-width:0; }
+  .flipFace.flipBack { transform:rotateY(180deg); }
+  .flipFace[aria-hidden="true"] { pointer-events:none; }
+  @media (prefers-reduced-motion: reduce) {
+    .flipCard, .flipFace { transition:opacity var(--dur-base) ease; transform:none !important; }
+    .flipFace.flipBack { transform:none; }
+    .flipCard:not(.isFlipped) .flipBack { opacity:0; }
+    .flipCard.isFlipped .flipFront { opacity:0; }
+  }
+  .feedbackFace { display:grid; grid-template-columns:minmax(0, 1fr); gap:var(--space-3); align-content:start; }
+  .feedbackHead { display:flex; align-items:baseline; justify-content:space-between; gap:var(--space-3); }
+  .feedbackTitle { font-family:var(--font-display); font-size:1.15rem; line-height:1.1; color:var(--c-ink); margin:0; }
+  .feedbackTitle small { font-family:var(--font-body); font-size:0.85rem; color:var(--role-text-muted); }
+  .feedbackClose { display:inline-flex; align-items:center; justify-content:center; flex:none; width:30px; height:30px;
+    color:var(--c-ink); background-color:var(--c-paper); border:var(--line-reg) solid var(--c-ink);
+    border-radius:var(--radius-md); box-shadow:2px 2px 0 var(--c-ink); cursor:pointer; }
+  .feedbackClose:hover { box-shadow:var(--reg-box); }
+  .chipSet { display:flex; flex-wrap:wrap; gap:var(--space-2); }
+  .chip { display:inline-flex; align-items:center; gap:6px; font-family:var(--font-ui); font-size:0.9rem; line-height:1;
+    color:var(--c-ink); background-color:var(--c-paper); border:var(--line-reg) solid var(--c-ink);
+    border-radius:var(--radius-pill); padding:8px 14px; cursor:pointer;
+    transition:box-shadow var(--dur-fast) var(--ease-snap), background-color var(--dur-fast) var(--ease-snap), color var(--dur-fast) var(--ease-snap); }
+  .chip .chipCheck { width:0; height:13px; overflow:hidden; display:inline-flex; align-items:center; transition:width var(--dur-fast) var(--ease-snap); }
+  .chip .chipCheck svg { flex:none; width:13px; height:13px; }
+  .chip:hover { box-shadow:2px 2px 0 var(--c-ink); }
+  .chip[aria-pressed="true"] { color:var(--c-paper); background-color:var(--c-teal); box-shadow:var(--reg-box); }
+  .chip[aria-pressed="true"] .chipCheck { width:17px; }
+  @media (prefers-reduced-motion: reduce) { .chip, .chip .chipCheck { transition:none; } }
+  .seRow { display:flex; align-items:center; gap:var(--space-2); }
+  .seRow input[type="checkbox"] { accent-color:var(--c-teal); width:18px; height:18px; flex:none; cursor:pointer; }
+  .seRow label { font-family:var(--font-ui); font-size:0.9rem; white-space:nowrap; cursor:pointer; }
+  .seInput { flex:1 1 auto; min-width:0; box-sizing:border-box; font:inherit; font-family:var(--font-ui); font-size:0.9rem;
+    color:var(--c-ink); background-color:var(--c-paper); border:var(--line-reg) solid var(--c-ink);
+    border-radius:var(--radius-md); padding:8px var(--space-3); }
+  .seInput:focus { outline:none; border-color:var(--c-teal); box-shadow:0 0 0 3px color-mix(in srgb, var(--c-teal) 28%, transparent); }
+  .seInput:disabled { opacity:0.5; }
+  .seCount { flex:none; font-family:var(--font-ui); font-size:0.74rem; color:var(--role-text-faint); }
+  .feedbackFooter { display:flex; flex-wrap:wrap; align-items:center; justify-content:flex-end; gap:var(--space-2); }
+  .btnGhost { font-family:var(--font-display); font-size:0.95rem; color:var(--c-ink); background-color:var(--c-paper);
+    border:var(--line-reg) solid var(--c-ink); border-radius:var(--radius-md); box-shadow:var(--shadow-card);
+    padding:var(--space-2) var(--space-4); cursor:pointer; }
+  .btnGhost:hover { box-shadow:var(--reg-box); }
+  .btnPrimary { font-family:var(--font-display); font-size:0.95rem; color:var(--c-paper); background-color:var(--c-teal);
+    background-image:var(--fiber-img), var(--grain-img); background-blend-mode:normal, soft-light; background-size:170px 170px, 46px 46px;
+    border:var(--line-bold) solid var(--c-ink); border-radius:var(--radius-md); box-shadow:var(--shadow-card);
+    padding:var(--space-2) var(--space-5); cursor:pointer; }
+  .btnPrimary:hover:not(:disabled) { box-shadow:var(--reg-box); text-shadow:1px 1px 0 rgba(36,31,26,0.35); }
+  .btnPrimary:disabled { opacity:0.5; cursor:default; }
+
   .contactsLoading { display: grid; gap: var(--space-3); background-color: var(--c-paper);
     border: var(--line-reg) dashed var(--c-ink); border-radius: var(--radius-md); padding: var(--space-4); }
   .progressLine { display: flex; align-items: center; gap: var(--space-2); font-family: var(--font-display);
@@ -96,31 +167,60 @@
     <p class="lede">Drafts an outreach message in your voice from the role and your profile. The result is read-only, with Copy and one backup regeneration.</p>
   </div>
 
-  <section class="card copyGenerationPanel">
-    <div class="copyHeader">
-      <strong>Outreach to the hiring manager</strong>
-      <div class="headerActions">
-        <button type="button" class="copyBtn">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-          <span>Copy</span>
-        </button>
-        <span class="tipWrap" data-tip="1 re-generation per message">
-          <button type="button" class="generateMessageBtn">Regenerate</button>
-        </span>
-      </div>
+  <div class="flipScene">
+    <div class="flipCard" id="msgFlip">
+      <section class="card copyGenerationPanel flipFace flipFront" id="msgFront">
+        <div class="copyHeader">
+          <strong>Outreach to the hiring manager</strong>
+          <div class="headerActions">
+            <button type="button" class="copyBtn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              <span>Copy</span>
+            </button>
+            <span class="tipWrap" data-tip="1 re-generation per message">
+              <button type="button" class="generateMessageBtn">Regenerate</button>
+            </span>
+          </div>
+        </div>
+        <p>Written for Maya Chen, Head of Design. References your design-systems and 0→1 work.</p>
+        <textarea class="messageTextarea" readonly>Hi Maya, I saw Northbeam is hiring a Senior Product Designer to own the design system through a 0→1 analytics launch. That's the exact shape of work I did at Atlas: built the system from scratch and partnered with PM/eng from discovery to ship. Would love to compare notes on how you're scoping the role. Open to a short call this week?</textarea>
+        <div class="msgTrigger">
+          <button type="button" class="linkNotMatch" data-flip-open="msgFlip" aria-expanded="false" aria-controls="msgBack">This message is not great</button>
+          <span class="savedAck" role="status" aria-live="polite">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>Noted
+          </span>
+        </div>
+      </section>
+
+      <section class="card flipFace flipBack" id="msgBack" role="group" aria-labelledby="msgFbTitle">
+        <div class="feedbackFace">
+          <div class="feedbackHead">
+            <h3 class="feedbackTitle" id="msgFbTitle" tabindex="-1">What's off about this message? <small>Pick all that apply.</small></h3>
+            <button type="button" class="feedbackClose" data-flip-close="msgFlip" aria-label="Back to message">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+          <div class="chipSet" role="group" aria-label="What's off about this message" data-chipset>
+            <button type="button" class="chip" aria-pressed="false" data-code="wrong_skills_title_applied"><span class="chipCheck"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg></span>Wrong skills/title applied</button>
+            <button type="button" class="chip" aria-pressed="false" data-code="personal_voice_mismatch"><span class="chipCheck"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg></span>Doesn't sound like Me</button>
+            <button type="button" class="chip" aria-pressed="false" data-code="selected_tone_mismatch"><span class="chipCheck"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg></span>Doesn't sound like selected tone</button>
+            <button type="button" class="chip" aria-pressed="false" data-code="awkward_to_read"><span class="chipCheck"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg></span>Awkward to read</button>
+            <button type="button" class="chip" aria-pressed="false" data-code="would_not_send"><span class="chipCheck"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg></span>I wouldn't send this</button>
+          </div>
+          <div class="seRow">
+            <input type="checkbox" id="msgSe" data-se-check />
+            <label for="msgSe">something else</label>
+            <input type="text" class="seInput" maxlength="500" placeholder="Tell us what missed" data-se-input disabled />
+            <span class="seCount" data-se-count>0/500</span>
+          </div>
+          <div class="feedbackFooter">
+            <button type="button" class="btnGhost" data-flip-close="msgFlip">Close</button>
+            <button type="button" class="btnPrimary" data-save disabled>Save feedback</button>
+          </div>
+        </div>
+      </section>
     </div>
-    <p>Written for Maya Chen, Head of Design. References your design-systems and 0→1 work.</p>
-    <div class="headerActions" style="margin-top: var(--space-3);">
-      <button type="button" class="copyBtn copyBtnCopied">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
-        <span>Copied</span>
-      </button>
-      <span class="tipWrap" data-tip="re-generations used">
-        <button type="button" class="generateMessageBtn" disabled>Regenerate</button>
-      </span>
-    </div>
-    <textarea class="messageTextarea" readonly>Hi Maya, I saw Northbeam is hiring a Senior Product Designer to own the design system through a 0→1 analytics launch. That's the exact shape of work I did at Atlas: built the system from scratch and partnered with PM/eng from discovery to ship. Would love to compare notes on how you're scoping the role. Open to a short call this week?</textarea>
-  </section>
+  </div>
 
   <section class="card contactsLoading">
     <div class="progressLine"><span class="progressDot"></span>Writing your message&hellip;</div>
@@ -128,5 +228,76 @@
     <div class="skeletonCard"><span class="skeletonBar w50"></span><span class="skeletonBar w35"></span><span class="skeletonBar w80"></span></div>
   </section>
 </div>
+<script>
+(function () {
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function setInert(el, on) {
+    if (!el) return;
+    if (on) { el.setAttribute('inert', ''); el.setAttribute('aria-hidden', 'true'); }
+    else { el.removeAttribute('inert'); el.removeAttribute('aria-hidden'); }
+  }
+  var scene = document.getElementById('msgFlip');
+  if (!scene) return;
+  var front = scene.querySelector('.flipFront');
+  var back = scene.querySelector('.flipBack');
+  var trigger = front.querySelector('[data-flip-open]');
+  var heading = back.querySelector('[tabindex="-1"]');
+  var saveBtn = back.querySelector('[data-save]');
+  var ack = front.querySelector('.savedAck');
+  var chips = back.querySelectorAll('[data-chipset] .chip');
+  var seCheck = back.querySelector('[data-se-check]');
+  var seInput = back.querySelector('[data-se-input]');
+  var seCount = back.querySelector('[data-se-count]');
+  setInert(back, true);
+
+  function hasSelection() {
+    var anyChip = Array.prototype.some.call(chips, function (c) { return c.getAttribute('aria-pressed') === 'true'; });
+    return anyChip || (seCheck && seCheck.checked);
+  }
+  function refreshSave() { saveBtn.disabled = !hasSelection(); }
+  function open() {
+    scene.classList.add('isFlipped');
+    setInert(front, true); setInert(back, false);
+    trigger.setAttribute('aria-expanded', 'true');
+    setTimeout(function () { if (heading) heading.focus(); }, reduce ? 0 : 200);
+  }
+  function close() {
+    scene.classList.remove('isFlipped');
+    setInert(back, true); setInert(front, false);
+    trigger.setAttribute('aria-expanded', 'false');
+    trigger.focus();
+  }
+  function reset() {
+    chips.forEach(function (c) { c.setAttribute('aria-pressed', 'false'); });
+    if (seCheck) seCheck.checked = false;
+    if (seInput) { seInput.value = ''; seInput.disabled = true; }
+    if (seCount) seCount.textContent = '0/500';
+    refreshSave();
+  }
+  function showAck() { if (!ack) return; ack.classList.add('isVisible'); setTimeout(function () { ack.classList.remove('isVisible'); }, 2400); }
+
+  trigger.addEventListener('click', open);
+  back.querySelectorAll('[data-flip-close]').forEach(function (b) { b.addEventListener('click', function () { close(); reset(); }); });
+  chips.forEach(function (chip) {
+    chip.addEventListener('click', function () {
+      chip.setAttribute('aria-pressed', chip.getAttribute('aria-pressed') === 'true' ? 'false' : 'true');
+      refreshSave();
+    });
+  });
+  if (seCheck) seCheck.addEventListener('change', function () {
+    seInput.disabled = !seCheck.checked;
+    if (seCheck.checked) seInput.focus();
+    refreshSave();
+  });
+  if (seInput) seInput.addEventListener('input', function () { seCount.textContent = seInput.value.length + '/500'; });
+  saveBtn.addEventListener('click', function () {
+    if (saveBtn.disabled) return;
+    saveBtn.disabled = true;
+    var original = saveBtn.textContent;
+    saveBtn.textContent = 'Saving…';
+    setTimeout(function () { saveBtn.textContent = original; close(); reset(); showAck(); }, 850);
+  });
+})();
+</script>
 </body>
 </html>

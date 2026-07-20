@@ -269,6 +269,37 @@ export type GeneratedOutreachDraft = {
 
 export type OutreachMessageStatus = "draft" | "approved" | "sent" | "rejected";
 
+export type OutreachMessageFeedbackReason =
+  | "wrong_skills_title_applied"
+  | "personal_voice_mismatch"
+  | "selected_tone_mismatch"
+  | "awkward_to_read"
+  | "would_not_send"
+  | "other";
+
+export type OutreachMessageFeedback = {
+  id: string;
+  outreachMessageId: string;
+  userId: string;
+  feedbackType: "needs_work";
+  reasonCodes: OutreachMessageFeedbackReason[];
+  notes?: string;
+  messageSnapshot: string;
+  messageRevision: 0 | 1;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type SaveOutreachMessageFeedbackInput = {
+  outreachMessageId: string;
+  userId: string;
+  reasonCodes: OutreachMessageFeedbackReason[];
+  notes?: string;
+  messageSnapshot: string;
+  messageRevision: 0 | 1;
+  updatedAt: string;
+};
+
 export type OutreachMessageRecord = {
   id: string;
   pursuitId: string;
@@ -283,6 +314,7 @@ export type OutreachMessageRecord = {
   selectedRoleTrackId?: string;
   selectedResumeId?: string;
   selectedWorkExampleId?: string;
+  generationRequestId?: string;
   sentAt?: string;
   createdAt: string;
   updatedAt: string;

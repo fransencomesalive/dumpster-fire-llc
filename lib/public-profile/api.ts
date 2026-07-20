@@ -40,6 +40,7 @@ import {
   persistContactSelection,
   persistHumanPathGeneration,
   persistOutreachGeneration,
+  persistOutreachMessageFeedback,
   persistOutreachMessageCopy,
   persistOutreachRegeneration,
   persistPursuitTrackingMutation,
@@ -69,6 +70,8 @@ import type {
   HumanPathContactSuggestion,
   HumanPathProvider,
   OutreachMessageRecord,
+  OutreachMessageFeedback,
+  OutreachMessageFeedbackReason,
   OutreachRecipientType,
   Pursuit,
   PursuitEvent,
@@ -80,6 +83,7 @@ import type {
   PursuitTrackingEvent,
   PursuitInitialOutreachCommit,
   PursuitSelectionSnapshot,
+  SaveOutreachMessageFeedbackInput,
 } from "./pursuits/types";
 import { enforceSubscriptionFeature } from "./subscription/enforcement";
 import {
@@ -485,6 +489,10 @@ export type PublicProfilePursuitsHandlerOptions = PublicProfileMatchHandlerOptio
     request: PublicProfileRepositoryRequest,
     message: OutreachMessageRecord,
   ) => Promise<void>;
+  persistOutreachMessageFeedback?: (
+    request: PublicProfileRepositoryRequest,
+    input: SaveOutreachMessageFeedbackInput,
+  ) => Promise<OutreachMessageFeedback>;
   loadPursuitEvents?: (
     request: PublicProfileRepositoryRequest,
     pursuitId: string,
@@ -2388,6 +2396,126 @@ export async function handlePublicProfilePursuitOutreachMessageUpdateRequest(
     status: "outreach_message_updated",
     pursuitId: pursuit.id,
     message: transition.message,
+  });
+}
+
+const OUTREACH_MESSAGE_FEEDBACK_REASONS = new Set<OutreachMessageFeedbackReason>([
+  "wrong_skills_title_applied",
+  "personal_voice_mismatch",
+  "selected_tone_mismatch",
+  "awkward_to_read",
+  "would_not_send",
+  "other",
+]);
+
+function parseOutreachMessageFeedback(input: Record<string, unknown> | null) {
+  const issues: { field: string; message: string }[] = [];
+  const rawReasons = input?.reasonCodes;
+  let reasonCodes: OutreachMessageFeedbackReason[] = [];
+
+  if (!Array.isArray(rawReasons) || rawReasons.length === 0) {
+    issues.push({ field: "reasonCodes", message: "Select at least one feedback reason." });
+  } else {
+    const normalizedReasons = rawReasons.map((value) => (
+      typeof value === "string" ? value.trim() : value
+    ));
+    if (normalizedReasons.some((value) => (
+      typeof value !== "string" || !OUTREACH_MESSAGE_FEEDBACK_REASONS.has(value as OutreachMessageFeedbackReason)
+    ))) {
+      issues.push({ field: "reasonCodes", message: "reasonCodes contains an unsupported feedback reason." });
+    } else {
+      reasonCodes = [...new Set(normalizedReasons)] as OutreachMessageFeedbackReason[];
+    }
+  }
+
+  const rawNotes = input?.notes;
+  let notes: string | undefined;
+  if (rawNotes !== undefined && rawNotes !== null && typeof rawNotes !== "string") {
+    issues.push({ field: "notes", message: "notes must be a string." });
+  } else if (typeof rawNotes === "string") {
+    notes = rawNotes.trim() || undefined;
+    if (notes && notes.length > 500) {
+      issues.push({ field: "notes", message: "notes must be 500 characters or fewer." });
+    }
+  }
+
+  return { issues, reasonCodes, notes };
+}
+
+// Feedback is intentionally observational. Saving it snapshots the exact current draft and
+// revision without changing the outreach message, pursuit, regeneration allowance, or usage.
+export async function handlePublicProfilePursuitOutreachMessageFeedbackRequest(
+  request: Request,
+  messageId: string,
+  options: PublicProfilePursuitsHandlerOptions = {},
+) {
+  const session = await sessionForRequest(request, options);
+  if (session.status !== "authenticated") return authErrorResponse(session);
+
+  const repositoryRequest = repositoryRequestForOptions(options);
+  if (!repositoryRequest) return repositoryConfigErrorResponse();
+
+  const trimmedMessageId = messageId?.trim();
+  if (!trimmedMessageId) {
+    return json({
+      error: "Could not save message feedback.",
+      status: "validation_error",
+      issues: [{ field: "messageId", message: "messageId is required." }],
+    }, { status: 400 });
+  }
+
+  const input = await request.json().catch(() => null) as Record<string, unknown> | null;
+  const parsed = parseOutreachMessageFeedback(input);
+  if (parsed.issues.length > 0) {
+    return json({
+      error: "Could not save message feedback.",
+      status: "validation_error",
+      issues: parsed.issues,
+    }, { status: 400 });
+  }
+
+  const loadMessage = options.loadOutreachMessage ?? loadOutreachMessageById;
+  const message = await loadMessage(repositoryRequest, trimmedMessageId);
+  if (!message) {
+    return json({ error: "Outreach message not found.", status: "not_found" }, { status: 404 });
+  }
+
+  const loadPursuit = options.loadPursuit ?? loadPursuitByIdForUser;
+  const pursuit = await loadPursuit(repositoryRequest, session.userId, message.pursuitId);
+  if (!pursuit) {
+    return json({ error: "Outreach message not found.", status: "not_found" }, { status: 404 });
+  }
+
+  const persist = options.persistOutreachMessageFeedback ?? persistOutreachMessageFeedback;
+  let feedback: OutreachMessageFeedback;
+  try {
+    feedback = await persist(repositoryRequest, {
+      outreachMessageId: message.id,
+      userId: session.userId,
+      reasonCodes: parsed.reasonCodes,
+      notes: parsed.notes,
+      messageSnapshot: message.message,
+      messageRevision: message.regenerationCount ?? 0,
+      updatedAt: options.now?.() ?? new Date().toISOString(),
+    });
+  } catch {
+    return json({
+      error: "Message feedback could not be saved. Try again.",
+      status: "persistence_failed",
+      retryable: true,
+      saved: false,
+    }, { status: 503 });
+  }
+
+  return json({
+    status: "message_feedback_saved",
+    saved: true,
+    feedback,
+    context: {
+      pursuitId: pursuit.id,
+      profileId: pursuit.profileId,
+      generationRequestId: message.generationRequestId ?? null,
+    },
   });
 }
 

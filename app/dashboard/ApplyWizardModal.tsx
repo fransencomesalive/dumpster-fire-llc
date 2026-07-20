@@ -6,6 +6,7 @@ import type { PublicJobRecord } from "@/lib/public-jobs/types";
 import type { MatchResult } from "@/lib/public-profile/matching/types";
 import type {
   HumanPathContactSuggestion,
+  OutreachMessageFeedbackReason,
   OutreachMessageRecord,
   Pursuit,
   PursuitHistoryEntry,
@@ -34,6 +35,17 @@ export type ApplyWizardTarget =
 
 type WizardStep = 1 | 2 | 3 | 4;
 const STEP_LABELS: Record<WizardStep, string> = { 1: "Review", 2: "Contacts", 3: "Outreach", 4: "Track" };
+
+// Message feedback flips the whole modal to a chip picker. Saving records evidence only
+// (POST .../outreach/[messageId]/feedback) — it never edits, regenerates, sends, or changes the
+// message or pursuit. The free text lives in the "something else" row (maps to the `other` code).
+const MESSAGE_FEEDBACK_REASONS: { code: OutreachMessageFeedbackReason; label: string }[] = [
+  { code: "wrong_skills_title_applied", label: "Wrong skills/title applied" },
+  { code: "personal_voice_mismatch", label: "Doesn't sound like Me" },
+  { code: "selected_tone_mismatch", label: "Doesn't sound like selected tone" },
+  { code: "awkward_to_read", label: "Awkward to read" },
+  { code: "would_not_send", label: "I wouldn't send this" },
+];
 
 type RoleTrackOption = { id: string; name: string };
 type CreateResponse = { status: string; job: PublicJobRecord; match: MatchResult; pursuit: Pursuit };
@@ -265,11 +277,82 @@ export default function ApplyWizardModal({
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Message feedback: flips the whole modal to a chip picker tied to one message.
+  const [feedbackMessageId, setFeedbackMessageId] = useState<string | null>(null);
+  const [fbCodes, setFbCodes] = useState<Set<OutreachMessageFeedbackReason>>(new Set());
+  const [fbSeChecked, setFbSeChecked] = useState(false);
+  const [fbNote, setFbNote] = useState("");
+  const [fbSaving, setFbSaving] = useState(false);
+  const [fbError, setFbError] = useState(false);
+  const [ackedMessageId, setAckedMessageId] = useState<string | null>(null);
+  const fbFrontRef = useRef<HTMLDivElement>(null);
+  const fbBackRef = useRef<HTMLDivElement>(null);
+  const fbHeadingRef = useRef<HTMLHeadingElement>(null);
+  const fbTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const fbSeInputRef = useRef<HTMLInputElement>(null);
+  const feedbackOpen = feedbackMessageId !== null;
+  const fbHasSelection = fbCodes.size > 0 || fbSeChecked;
+
+  // Only the visible face stays focusable / in the a11y tree.
+  useEffect(() => {
+    if (fbFrontRef.current) fbFrontRef.current.inert = feedbackOpen;
+    if (fbBackRef.current) fbBackRef.current.inert = !feedbackOpen;
+  }, [feedbackOpen]);
+
   const api = useCallback(
     <T,>(path: string, method: string, body?: unknown) =>
       requestPublicProfileApi<T>(path, { method, accessToken, body }),
     [accessToken],
   );
+
+  function openMessageFeedback(id: string, triggerEl: HTMLButtonElement) {
+    fbTriggerRef.current = triggerEl;
+    setFbError(false);
+    setFeedbackMessageId(id);
+    const reduce = typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    window.setTimeout(() => fbHeadingRef.current?.focus(), reduce ? 0 : 200);
+  }
+
+  function closeMessageFeedback() {
+    setFeedbackMessageId(null);
+    setFbSaving(false);
+    setFbError(false);
+    setFbCodes(new Set());
+    setFbSeChecked(false);
+    setFbNote("");
+    window.setTimeout(() => fbTriggerRef.current?.focus(), 0);
+  }
+
+  function toggleFbCode(code: OutreachMessageFeedbackReason) {
+    setFbCodes((prev) => {
+      const next = new Set(prev);
+      if (next.has(code)) next.delete(code); else next.add(code);
+      return next;
+    });
+  }
+
+  async function saveMessageFeedback() {
+    if (!feedbackMessageId || !fbHasSelection || fbSaving) return;
+    const reasonCodes = [...fbCodes];
+    if (fbSeChecked) reasonCodes.push("other");
+    const trimmed = fbNote.trim();
+    setFbSaving(true);
+    setFbError(false);
+    try {
+      await api<unknown>(
+        `/api/public-profile/pursuits/outreach/${feedbackMessageId}/feedback`,
+        "POST",
+        { reasonCodes, ...(fbSeChecked && trimmed ? { notes: trimmed } : {}) },
+      );
+      const savedId = feedbackMessageId;
+      closeMessageFeedback();
+      setAckedMessageId(savedId);
+      window.setTimeout(() => setAckedMessageId((cur) => (cur === savedId ? null : cur)), 2600);
+    } catch {
+      setFbError(true);
+      setFbSaving(false);
+    }
+  }
 
   const applyTracking = useCallback((data: { tracking: PursuitTrackingState; history: PursuitHistoryEntry[]; trackingStartedAt: string | null }) => {
     setTracking(data.tracking);
@@ -632,9 +715,61 @@ export default function ApplyWizardModal({
     </div>
   );
 
+  const messageFeedbackFace = (
+    <>
+      <div className={styles.modalHeader}>
+        <h4 ref={fbHeadingRef} tabIndex={-1} id="wizard-msg-fb-title" className={styles.modalTitle}>What&apos;s off about this message?</h4>
+        <button type="button" className={styles.modalClose} onClick={closeMessageFeedback} aria-label="Back to message">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+        </button>
+      </div>
+      <div className={styles.feedbackFace}>
+        <p className={styles.feedbackSub}>Pick all that apply. This won&apos;t edit, regenerate, or send the message.</p>
+        <div className={styles.chipSet} role="group" aria-label="What's off about this message">
+          {MESSAGE_FEEDBACK_REASONS.map((reason) => {
+            const on = fbCodes.has(reason.code);
+            return (
+              <button key={reason.code} type="button" className={`${styles.chip} ${on ? styles.chipOn : ""}`} aria-pressed={on} onClick={() => toggleFbCode(reason.code)}>
+                {on ? (
+                  <span className={styles.chipCheck}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12" /></svg></span>
+                ) : null}
+                {reason.label}
+              </button>
+            );
+          })}
+        </div>
+        <div className={styles.seRow}>
+          <input
+            type="checkbox"
+            id="wizard-msg-fb-se"
+            checked={fbSeChecked}
+            onChange={(event) => {
+              setFbSeChecked(event.target.checked);
+              if (event.target.checked) window.setTimeout(() => fbSeInputRef.current?.focus(), 0);
+            }}
+          />
+          <label htmlFor="wizard-msg-fb-se">something else</label>
+          <input ref={fbSeInputRef} type="text" className={styles.seInput} maxLength={500} placeholder="Tell us what missed" value={fbNote} disabled={!fbSeChecked} onChange={(event) => setFbNote(event.target.value)} />
+          <span className={styles.seCount}>{fbNote.length}/500</span>
+        </div>
+        {fbError ? (
+          <div className={styles.feedbackAlert}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
+            <p>That didn&apos;t save. Your selections are still here, give it another go.</p>
+          </div>
+        ) : null}
+        <div className={styles.feedbackFooter}>
+          <button type="button" className={styles.btnGhost} onClick={closeMessageFeedback}>Close</button>
+          <button type="button" className={styles.btnPrimary} disabled={!fbHasSelection || fbSaving} onClick={saveMessageFeedback}>{fbSaving ? "Saving…" : "Save feedback"}</button>
+        </div>
+      </div>
+    </>
+  );
+
   return (
     <div className={styles.modalOverlay} role="dialog" aria-modal="true" aria-label={headerTitle}>
-      <div className={styles.modalBox}>
+      <div className={`${styles.flipCard} ${feedbackOpen ? styles.flipCardFlipped : ""}`}>
+      <div ref={fbFrontRef} className={`${styles.modalBox} ${styles.flipFace} ${styles.flipFront}`}>
         <div className={styles.modalHeader}>
           <h4 className={styles.modalTitle}>{headerTitle}</h4>
           {closeButton}
@@ -768,6 +903,14 @@ export default function ApplyWizardModal({
                             </div>
                           </div>
                           <AutosizeTextarea value={message.message} />
+                          <div className={styles.msgTrigger}>
+                            <button type="button" className={styles.linkNotMatch} onClick={(event) => openMessageFeedback(message.id, event.currentTarget)} aria-expanded={feedbackMessageId === message.id} aria-controls="wizard-message-feedback">This message is not great</button>
+                            {ackedMessageId === message.id ? (
+                              <span className={styles.savedAck} role="status" aria-live="polite">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12" /></svg>Noted
+                              </span>
+                            ) : null}
+                          </div>
                         </>
                       )}
                     </section>
@@ -782,6 +925,17 @@ export default function ApplyWizardModal({
           </>
         )}
         {footer}
+      </div>
+      <div
+        ref={fbBackRef}
+        id="wizard-message-feedback"
+        className={`${styles.modalBox} ${styles.flipFace} ${styles.flipBack}`}
+        role="group"
+        aria-labelledby="wizard-msg-fb-title"
+        onKeyDown={(event) => { if (event.key === "Escape") { event.stopPropagation(); closeMessageFeedback(); } }}
+      >
+        {messageFeedbackFace}
+      </div>
       </div>
     </div>
   );

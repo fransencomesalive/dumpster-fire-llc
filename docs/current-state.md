@@ -1,5 +1,33 @@
 # Current State
 
+## 2026-07-19 (evening) - Feedback flips SHIPPED to the working tree (committed, not pushed)
+
+The job + message feedback flips are designed (approved in Claude Design), implemented in
+production UI, wired to the backend endpoints, and verified (tsc/lint/webpack build clean;
+0 overflow + working flips at 320/375/390/1280/1440). Committed on `main`. **Next: Codex
+pushes; then Randall applies `supabase/migrations/20260719000100_feedback_capture.sql` and
+deploys.** Full detail + endpoint contracts in `docs/feedback-feature-handoff-2026-07-19.md`.
+
+The feature does NOT persist in prod until that migration runs. Live authenticated save
+round-trip is the one thing not yet exercised (needs a real session + prod DB).
+
+## 2026-07-19 - CLAUDE DESIGN TASK (DONE): job and message feedback flips
+
+The approved product behavior, current backend contract, exact chip labels/codes, Claude Design
+grounding sources, required interaction states, accessibility and responsive requirements, file
+ownership, review format, and first action are consolidated in:
+
+`docs/claude-design-feedback-brief-2026-07-19.md`
+
+Claude should begin in DesignSync against project
+`3af2f1ea-428c-49b3-8b02-c066ec0c7452`, ground with `get_file`, and build the job-card and full
+Apply Wizard modal flip states in Claude Design. Do not start with local design-system or production
+UI edits. Randall must approve the Claude Design result before production implementation.
+
+The feedback backend is present only in the current shared dirty worktree. It is verified locally
+but not committed, pushed, deployed, or migrated in production. Re-check git status before work and
+do not overwrite the backend files listed in the brief.
+
 ## 2026-07-17 - Human Path wizard UI pass: buttons + copy + regenerate + LI Profile (Claude)
 
 Session focus was the production Human Path (apply wizard). Randall gave a 5-item UI list;

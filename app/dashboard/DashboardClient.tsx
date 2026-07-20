@@ -10,7 +10,7 @@ import ApplyWizardModal from "./ApplyWizardModal";
 import SiteHeader from "../components/SiteHeader";
 import styles from "../site.module.css";
 import jobsStyles from "./dashboard.module.css";
-import type { PublicJobBoardRecord, PublicJobBoardsResponse, PublicJobRecord, PublicJobsResponse, PublicJobsScanResponse } from "@/lib/public-jobs/types";
+import type { PublicJobBoardRecord, PublicJobBoardsResponse, PublicJobFeedbackReasonCode, PublicJobRecord, PublicJobsResponse, PublicJobsScanResponse } from "@/lib/public-jobs/types";
 
 type BootstrapResponse = {
   profileStatus: "incomplete" | "complete";
@@ -170,6 +170,246 @@ function withJobRemoved(response: PublicJobsResponse, jobId: string): PublicJobs
   const jobs = response.jobs.filter((job) => job.id !== jobId);
   const savedDelta = removed?.saved ? -1 : 0;
   return { ...response, summary: { ...response.summary, savedJobs: Math.max(0, response.summary.savedJobs + savedDelta) }, jobs };
+}
+
+const JOB_FEEDBACK_REASONS: { code: PublicJobFeedbackReasonCode; label: string }[] = [
+  { code: "wrong_role_title", label: "Wrong role/title" },
+  { code: "wrong_location_preference", label: "Wrong location preference" },
+  { code: "wrong_comp", label: "Wrong Comp" },
+  { code: "wrong_industry", label: "Wrong Industry" },
+];
+
+const OPEN_LINK_ICON = (
+  <svg className={jobsStyles.extIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" />
+  </svg>
+);
+
+// The job card flips as one complete card to a feedback face. Saving records evidence only
+// (POST /api/jobs/feedback) — it does not skip, save, pursue, or change the job. The free text
+// lives in the "Something Else" row (checkbox + inline input), which maps to the `other` code.
+function JobCard({
+  job, number, leaving, jobsBusy, pending, onToggleSave, onSkip, onPursue,
+}: {
+  job: PublicJobRecord;
+  number: number;
+  leaving: boolean;
+  jobsBusy: boolean;
+  pending: boolean;
+  onToggleSave: () => void;
+  onSkip: () => void;
+  onPursue: () => void;
+}) {
+  const signals = job.match?.signals ?? [];
+  const isWildcard = job.match?.label === "Probably Not Worth Your Time";
+
+  const [flipped, setFlipped] = useState(false);
+  const [codes, setCodes] = useState<Set<PublicJobFeedbackReasonCode>>(new Set());
+  const [seChecked, setSeChecked] = useState(false);
+  const [note, setNote] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [errored, setErrored] = useState(false);
+  const [acked, setAcked] = useState(false);
+  const frontRef = useRef<HTMLElement>(null);
+  const backRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const seInputRef = useRef<HTMLInputElement>(null);
+
+  const backId = `job-feedback-${job.id}`;
+  const titleId = `job-feedback-title-${job.id}`;
+  const seId = `job-feedback-se-${job.id}`;
+  const hasSelection = codes.size > 0 || seChecked;
+
+  // Only the visible face stays focusable / in the a11y tree.
+  useEffect(() => {
+    if (frontRef.current) frontRef.current.inert = flipped;
+    if (backRef.current) backRef.current.inert = !flipped;
+  }, [flipped]);
+
+  function openFeedback() {
+    setErrored(false);
+    setFlipped(true);
+    const reduce = typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    window.setTimeout(() => headingRef.current?.focus(), reduce ? 0 : 200);
+  }
+
+  function closeFeedback() {
+    setFlipped(false);
+    setSaving(false);
+    setErrored(false);
+    setCodes(new Set());
+    setSeChecked(false);
+    setNote("");
+    window.setTimeout(() => triggerRef.current?.focus(), 0);
+  }
+
+  function toggleCode(code: PublicJobFeedbackReasonCode) {
+    setCodes((prev) => {
+      const next = new Set(prev);
+      if (next.has(code)) next.delete(code); else next.add(code);
+      return next;
+    });
+  }
+
+  async function saveFeedback() {
+    if (!hasSelection || saving) return;
+    const accessToken = readPublicProfileAccessToken();
+    if (!accessToken) return;
+    const reasonCodes = [...codes];
+    if (seChecked) reasonCodes.push("other");
+    const trimmed = note.trim();
+    setSaving(true);
+    setErrored(false);
+    try {
+      await requestPublicProfileApi<unknown>("/api/jobs/feedback", {
+        method: "POST",
+        accessToken,
+        body: { jobId: job.id, reasonCodes, ...(seChecked && trimmed ? { note: trimmed } : {}) },
+      });
+      closeFeedback();
+      setAcked(true);
+      window.setTimeout(() => setAcked(false), 2600);
+    } catch {
+      setErrored(true);
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className={`${jobsStyles.flipScene} ${leaving ? jobsStyles.cardLeaving : ""}`}>
+      <div className={`${jobsStyles.flipCard} ${flipped ? jobsStyles.flipCardFlipped : ""}`}>
+        <article ref={frontRef} className={`${jobsStyles.card} ${jobsStyles.jobCard} ${jobsStyles.flipFace} ${jobsStyles.flipFront}`}>
+          {isWildcard ? (
+            <span className={jobsStyles.weirdMatchTag} aria-label="Wildcard match">
+              {"WEIRD".split("").map((letter, index) => <span key={`w${index}`}>{letter}</span>)}
+              <span className={jobsStyles.sp} />
+              {"MATCH".split("").map((letter, index) => <span key={`m${index}`}>{letter}</span>)}
+            </span>
+          ) : null}
+          <div className={jobsStyles.jobCardHeader}>
+            <div className={jobsStyles.jobNumberTitle}>
+              <span className={jobsStyles.jobNumber} aria-hidden="true">{number}</span>
+              <h3 className={jobsStyles.jobTitle}>
+                {job.title}
+                <span className={jobsStyles.titleDivider} aria-hidden="true" />
+                <span className={jobsStyles.companyName}>{job.companyName}</span>
+              </h3>
+            </div>
+          </div>
+
+          {job.match ? (
+            <div className={jobsStyles.stars}>
+              <span className={jobsStyles.starLabel}>Fit</span>
+              <span className={jobsStyles.starScore}>{job.match.score}<small>/100</small></span>
+              <StarRow score={job.match.score} />
+            </div>
+          ) : null}
+
+          <JobMetaGrid job={job} />
+
+          {job.description ? (
+            <div className={jobsStyles.descriptionBox}>
+              <p className={jobsStyles.descriptionText}>{truncateText(job.description)}</p>
+              {signals.length > 0 ? (
+                <div className={jobsStyles.keywordPills}>
+                  {signals.slice(0, 5).map((signal) => (
+                    <span className={jobsStyles.keywordPill} key={signal}>{signal}</span>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+
+          {job.responsibilities.length > 0 || job.requiredExperience.length > 0 ? (
+            <div className={jobsStyles.matchSections}>
+              <MatchSection label="Responsibilities" items={job.responsibilities} signals={signals} />
+              <MatchSection label="Required experience" items={job.requiredExperience} signals={signals} />
+            </div>
+          ) : null}
+
+          <div className={jobsStyles.actionRow}>
+            <button className={`${jobsStyles.btnAct} ${jobsStyles.btnSave} ${job.saved ? jobsStyles.btnSaveOn : ""}`} disabled={jobsBusy || pending} onClick={onToggleSave} type="button">
+              {job.saved ? (
+                <>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12" /></svg>
+                  Saved
+                </>
+              ) : "Save"}
+            </button>
+            <button className={`${jobsStyles.btnAct} ${jobsStyles.btnSkip}`} disabled={jobsBusy} onClick={onSkip} type="button" title="This job will be removed from results.">Skip</button>
+            <span className={jobsStyles.linkStack}>
+              <a className={`${jobsStyles.linkAct} ${jobsStyles.linkOpen}`} href={job.sourceUrl} rel="noreferrer" target="_blank">Open posting {OPEN_LINK_ICON}</a>
+              <button ref={triggerRef} className={`${jobsStyles.linkAct} ${jobsStyles.linkNotMatch}`} type="button" onClick={openFeedback} aria-expanded={flipped} aria-controls={backId}>Not a match</button>
+            </span>
+            <button className={`${jobsStyles.btnAct} ${jobsStyles.btnPursue}`} disabled={jobsBusy} onClick={onPursue} type="button">Pursue</button>
+            {acked ? (
+              <span className={jobsStyles.savedAck} role="status" aria-live="polite">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12" /></svg>Noted
+              </span>
+            ) : null}
+          </div>
+        </article>
+
+        <div
+          ref={backRef}
+          id={backId}
+          className={`${jobsStyles.card} ${jobsStyles.jobCard} ${jobsStyles.flipFace} ${jobsStyles.flipBack}`}
+          role="group"
+          aria-labelledby={titleId}
+          onKeyDown={(event) => { if (event.key === "Escape") { event.stopPropagation(); closeFeedback(); } }}
+        >
+          <div className={jobsStyles.feedbackFace}>
+            <div className={jobsStyles.feedbackHead}>
+              <h3 ref={headingRef} tabIndex={-1} id={titleId} className={jobsStyles.feedbackTitle}>
+                What&apos;s off about this match? <small>Pick all that apply.</small>
+              </h3>
+              <button className={jobsStyles.feedbackClose} onClick={closeFeedback} type="button" aria-label="Back to job">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+              </button>
+            </div>
+            <div className={jobsStyles.chipSet} role="group" aria-label="What's off about this match">
+              {JOB_FEEDBACK_REASONS.map((reason) => {
+                const on = codes.has(reason.code);
+                return (
+                  <button key={reason.code} type="button" className={`${jobsStyles.chip} ${on ? jobsStyles.chipOn : ""}`} aria-pressed={on} onClick={() => toggleCode(reason.code)}>
+                    {on ? (
+                      <span className={jobsStyles.chipCheck}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12" /></svg></span>
+                    ) : null}
+                    {reason.label}
+                  </button>
+                );
+              })}
+            </div>
+            <div className={jobsStyles.seRow}>
+              <input
+                type="checkbox"
+                id={seId}
+                checked={seChecked}
+                onChange={(event) => {
+                  setSeChecked(event.target.checked);
+                  if (event.target.checked) window.setTimeout(() => seInputRef.current?.focus(), 0);
+                }}
+              />
+              <label htmlFor={seId}>Something Else</label>
+              <input ref={seInputRef} type="text" className={jobsStyles.seInput} maxLength={500} placeholder="Tell us what missed" value={note} disabled={!seChecked} onChange={(event) => setNote(event.target.value)} />
+              <span className={jobsStyles.seCount}>{note.length}/500</span>
+            </div>
+            {errored ? (
+              <div className={jobsStyles.feedbackAlert}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
+                <p>That didn&apos;t save. Your selections are still here, give it another go.</p>
+              </div>
+            ) : null}
+            <div className={jobsStyles.feedbackFooter}>
+              <button className={jobsStyles.btnGhost} type="button" onClick={closeFeedback}>Close</button>
+              <button className={jobsStyles.btnPrimary} type="button" disabled={!hasSelection || saving} onClick={saveFeedback}>{saving ? "Saving…" : "Save feedback"}</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export default function DashboardClient() {
@@ -577,75 +817,19 @@ export default function DashboardClient() {
                 </p>
               ) : (
                 <div className={jobsStyles.matchList}>
-                  {visibleJobs.map((job) => {
-                    const signals = job.match?.signals ?? [];
-                    const isWildcard = job.match?.label === "Probably Not Worth Your Time";
-                    return (
-                      <article className={`${jobsStyles.card} ${jobsStyles.jobCard} ${leavingJobIds.has(job.id) ? jobsStyles.cardLeaving : ""}`} key={job.id}>
-                        {isWildcard ? (
-                          <span className={jobsStyles.weirdMatchTag} aria-label="Wildcard match">
-                            {"WEIRD".split("").map((letter, index) => <span key={`w${index}`}>{letter}</span>)}
-                            <span className={jobsStyles.sp} />
-                            {"MATCH".split("").map((letter, index) => <span key={`m${index}`}>{letter}</span>)}
-                          </span>
-                        ) : null}
-                        <div className={jobsStyles.jobCardHeader}>
-                          <div className={jobsStyles.jobNumberTitle}>
-                            <span className={jobsStyles.jobNumber} aria-hidden="true">{jobs.indexOf(job) + 1}</span>
-                            <h3 className={jobsStyles.jobTitle}>
-                              {job.title}
-                              <span className={jobsStyles.titleDivider} aria-hidden="true" />
-                              <span className={jobsStyles.companyName}>{job.companyName}</span>
-                            </h3>
-                          </div>
-                        </div>
-
-                        {job.match ? (
-                          <div className={jobsStyles.stars}>
-                            <span className={jobsStyles.starLabel}>Fit</span>
-                            <span className={jobsStyles.starScore}>{job.match.score}<small>/100</small></span>
-                            <StarRow score={job.match.score} />
-                          </div>
-                        ) : null}
-
-                        <JobMetaGrid job={job} />
-
-                        {job.description ? (
-                          <div className={jobsStyles.descriptionBox}>
-                            <p className={jobsStyles.descriptionText}>{truncateText(job.description)}</p>
-                            {signals.length > 0 ? (
-                              <div className={jobsStyles.keywordPills}>
-                                {signals.slice(0, 5).map((signal) => (
-                                  <span className={jobsStyles.keywordPill} key={signal}>{signal}</span>
-                                ))}
-                              </div>
-                            ) : null}
-                          </div>
-                        ) : null}
-
-                        {job.responsibilities.length > 0 || job.requiredExperience.length > 0 ? (
-                          <div className={jobsStyles.matchSections}>
-                            <MatchSection label="Responsibilities" items={job.responsibilities} signals={signals} />
-                            <MatchSection label="Required experience" items={job.requiredExperience} signals={signals} />
-                          </div>
-                        ) : null}
-
-                        <div className={jobsStyles.actionRail}>
-                          <button className={`${jobsStyles.btnSave} ${job.saved ? jobsStyles.btnSaveOn : ""}`} disabled={jobsBusy || pendingJobIds.has(job.id)} onClick={() => setJobSaved(job, !job.saved)} type="button">
-                            {job.saved ? (
-                              <>
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12" /></svg>
-                                Saved
-                              </>
-                            ) : "Save"}
-                          </button>
-                          <button className={jobsStyles.btnSkip} disabled={jobsBusy} onClick={() => skipJob(job)} type="button" title="This job will be removed from results.">Skip</button>
-                          <a className={jobsStyles.btnSource} href={job.sourceUrl} rel="noreferrer" target="_blank">Open posting ↗</a>
-                          <button className={jobsStyles.btnApply} disabled={jobsBusy} onClick={() => startPursuit(job)} type="button">Pursue</button>
-                        </div>
-                      </article>
-                    );
-                  })}
+                  {visibleJobs.map((job) => (
+                    <JobCard
+                      key={job.id}
+                      job={job}
+                      number={jobs.indexOf(job) + 1}
+                      leaving={leavingJobIds.has(job.id)}
+                      jobsBusy={jobsBusy}
+                      pending={pendingJobIds.has(job.id)}
+                      onToggleSave={() => setJobSaved(job, !job.saved)}
+                      onSkip={() => skipJob(job)}
+                      onPursue={() => startPursuit(job)}
+                    />
+                  ))}
                 </div>
               )}
             </div>

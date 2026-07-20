@@ -16,10 +16,15 @@ import {
   readPublicJobsForUser,
   removePublicJobBoardForUser,
   runPublicJobsScanForUser,
+  savePublicJobMatchFeedbackForUser,
   setPublicJobDismissedForUser,
   setPublicJobSavedForUser,
   type PublicJobsScanOptions,
 } from "./repository";
+import {
+  PUBLIC_JOB_FEEDBACK_REASON_CODES,
+  type PublicJobFeedbackReasonCode,
+} from "./types";
 
 export type PublicJobsHandlerOptions = {
   env?: NodeJS.ProcessEnv;
@@ -239,6 +244,66 @@ export async function handlePublicJobSkipRequest(
 
   const updatedAt = options.now?.() ?? new Date().toISOString();
   const result = await setPublicJobDismissedForUser(repositoryRequest, session.userId, body.jobId, updatedAt);
+  if ("status" in result) {
+    if (result.status === "not_in_results") {
+      return json({
+        error: "Job is not in this user's active scan results.",
+        status: result.status,
+      }, { status: 404 });
+    }
+    return readinessResponse(result);
+  }
+
+  return json(result);
+}
+
+export async function handlePublicJobMatchFeedbackRequest(
+  request: Request,
+  options: PublicJobsHandlerOptions = {},
+) {
+  const session = await sessionForRequest(request, options);
+  if (session.status !== "authenticated") return authErrorResponse(session);
+
+  const repositoryRequest = repositoryRequestForOptions(options);
+  if (!repositoryRequest) return repositoryConfigErrorResponse();
+
+  const body = await request.json().catch(() => null) as {
+    jobId?: unknown;
+    reasonCodes?: unknown;
+    note?: unknown;
+  } | null;
+  if (!body || typeof body.jobId !== "string" || !body.jobId.trim()) {
+    return json({ error: "Expected jobId." }, { status: 400 });
+  }
+
+  const allowedReasonCodes = new Set<string>(PUBLIC_JOB_FEEDBACK_REASON_CODES);
+  if (
+    !Array.isArray(body.reasonCodes)
+    || body.reasonCodes.length === 0
+    || body.reasonCodes.some((code) => typeof code !== "string" || !allowedReasonCodes.has(code))
+  ) {
+    return json({
+      error: "Expected at least one valid feedback reason.",
+      allowedReasonCodes: PUBLIC_JOB_FEEDBACK_REASON_CODES,
+    }, { status: 400 });
+  }
+
+  if (body.note !== undefined && body.note !== null && typeof body.note !== "string") {
+    return json({ error: "Feedback note must be a string." }, { status: 400 });
+  }
+  if (typeof body.note === "string" && body.note.length > 500) {
+    return json({ error: "Feedback note must be 500 characters or fewer." }, { status: 400 });
+  }
+
+  const reasonCodes = [...new Set(body.reasonCodes)] as PublicJobFeedbackReasonCode[];
+  const note = typeof body.note === "string" ? body.note.trim() : "";
+  const submittedAt = options.now?.() ?? new Date().toISOString();
+  const result = await savePublicJobMatchFeedbackForUser(repositoryRequest, session.userId, {
+    jobId: body.jobId.trim(),
+    reasonCodes,
+    ...(note ? { note } : {}),
+  }, submittedAt);
+
   if ("status" in result) {
     if (result.status === "not_in_results") {
       return json({

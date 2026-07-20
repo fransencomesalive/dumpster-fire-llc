@@ -5,9 +5,12 @@ import {
   readPublicJobsForUser,
   removePublicJobBoardForUser,
   runPublicJobsScanForUser,
+  savePublicJobMatchFeedbackForUser,
   setPublicJobDismissedForUser,
   setPublicJobSavedForUser,
 } from "../lib/public-jobs/repository";
+import { handlePublicJobMatchFeedbackRequest } from "../lib/public-jobs/api";
+import { PUBLIC_JOB_MATCHER_VERSION } from "../lib/public-jobs/types";
 import type { PublicProfileRepositoryRequest } from "../lib/public-profile/repository";
 import type { NormalizedConnectorJob } from "../lib/scan/sources/types";
 import { parseHtmlJobs } from "../lib/scan/sources/connectors";
@@ -72,6 +75,21 @@ type SavedJobRow = {
   updated_at: string;
 };
 
+type JobMatchFeedbackRow = {
+  user_id: string;
+  profile_id: string;
+  job_id: string;
+  reason_codes: string[];
+  note: string | null;
+  match_score: number;
+  match_label: string;
+  match_signals: string[];
+  matcher_version: string;
+  match_evaluated_at: string;
+  profile_version: number;
+  updated_at: string;
+};
+
 const jobs: JobRow[] = [
   {
     id: "job-1",
@@ -132,6 +150,12 @@ const scanResults: ScanResultRow[] = [];
 const savedJobs: SavedJobRow[] = [];
 const canonicalSaveCalls: Array<Record<string, unknown>> = [];
 let canonicalSaveRpcAvailable = true;
+const jobMatchFeedback: JobMatchFeedbackRow[] = [];
+const jobMatchFeedbackWrites: Array<{
+  query?: string;
+  headers?: Record<string, string>;
+  body: JobMatchFeedbackRow;
+}> = [];
 const jobSources: JobSourceRow[] = [];
 const unrecognizedBoardSubmissions: Array<{ user_id: string; url: string; reason: string }> = [];
 let failSubmissionLogging = false;
@@ -419,6 +443,20 @@ const request: PublicProfileRepositoryRequest = async <T>(
     return rows as T;
   }
 
+  if (table === "job_match_feedback" && options.method === "POST") {
+    const body = options.body as JobMatchFeedbackRow;
+    jobMatchFeedbackWrites.push({ query: options.query, headers: options.headers, body });
+    const existing = jobMatchFeedback.find((row) => (
+      row.user_id === body.user_id
+      && row.job_id === body.job_id
+      && row.matcher_version === body.matcher_version
+      && row.profile_version === body.profile_version
+    ));
+    if (existing) Object.assign(existing, body);
+    else jobMatchFeedback.push({ ...body });
+    return {} as T;
+  }
+
   if (table === "saved_jobs") {
     if (options.method === "POST") {
       const row = options.body as Partial<SavedJobRow> & { job_id: string };
@@ -527,6 +565,102 @@ async function main() {
   // Scan results are annotated with a profile-driven match score + label for ranking.
   assert.equal(typeof scan.jobs[0].match?.score, "number");
   assert.equal(typeof scan.jobs[0].match?.label, "string");
+  assert.equal(scan.jobs[0].match?.matcherVersion, PUBLIC_JOB_MATCHER_VERSION);
+  assert.equal(scan.jobs[0].match?.evaluatedAt, now);
+
+  const feedback = await savePublicJobMatchFeedbackForUser(request, userId, {
+    jobId: "job-1",
+    reasonCodes: ["wrong_role_title", "wrong_comp"],
+    note: "The role is much more junior than the title suggests.",
+  }, now);
+  assert.equal("status" in feedback, false);
+  if ("status" in feedback) throw new Error("Expected feedback response");
+  assert.equal(feedback.feedback.jobId, "job-1");
+  assert.equal(feedback.feedback.profileId, profileId);
+  assert.equal(feedback.feedback.profileVersion, 1);
+  assert.equal(feedback.feedback.match.matcherVersion, PUBLIC_JOB_MATCHER_VERSION);
+  assert.equal(feedback.feedback.match.evaluatedAt, now);
+  assert.equal(jobMatchFeedback.length, 1);
+  assert.equal(jobMatchFeedback[0].user_id, userId);
+  assert.equal(jobMatchFeedback[0].profile_id, profileId);
+  assert.equal(jobMatchFeedback[0].job_id, "job-1");
+  assert.deepEqual(jobMatchFeedback[0].reason_codes, ["wrong_role_title", "wrong_comp"]);
+  assert.equal(jobMatchFeedback[0].note, "The role is much more junior than the title suggests.");
+  assert.equal(typeof jobMatchFeedback[0].match_score, "number");
+  assert.equal(typeof jobMatchFeedback[0].match_label, "string");
+  assert.ok(Array.isArray(jobMatchFeedback[0].match_signals));
+  assert.equal(jobMatchFeedback[0].matcher_version, PUBLIC_JOB_MATCHER_VERSION);
+  assert.equal(jobMatchFeedback[0].match_evaluated_at, now);
+  assert.equal(jobMatchFeedback[0].profile_version, 1);
+  assert.equal(jobMatchFeedbackWrites[0].query, "?on_conflict=user_id,job_id,matcher_version,profile_version");
+  assert.equal(jobMatchFeedbackWrites[0].headers?.Prefer, "resolution=merge-duplicates");
+  assert.equal(scanResults.find((row) => row.job_id === "job-1")?.status, "active");
+  assert.equal(savedJobs.length, 0);
+
+  const feedbackRequest = (body: unknown) => new Request("https://app.example/api/jobs/feedback", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const feedbackOptions = {
+    repositoryRequest: request,
+    getSession: async () => ({
+      status: "authenticated" as const,
+      userId,
+      email: "avery@example.com",
+    }),
+    now: () => now,
+  };
+
+  const unauthorizedFeedback = await handlePublicJobMatchFeedbackRequest(feedbackRequest({
+    jobId: "job-1",
+    reasonCodes: ["other"],
+  }), {
+    repositoryRequest: request,
+    getSession: async () => ({ status: "unauthenticated" as const, reason: "Missing bearer token." }),
+  });
+  assert.equal(unauthorizedFeedback.status, 401);
+
+  const missingReasons = await handlePublicJobMatchFeedbackRequest(feedbackRequest({
+    jobId: "job-1",
+    reasonCodes: [],
+  }), feedbackOptions);
+  assert.equal(missingReasons.status, 400);
+
+  const unknownReason = await handlePublicJobMatchFeedbackRequest(feedbackRequest({
+    jobId: "job-1",
+    reasonCodes: ["wrong_role_title", "not_a_reason"],
+  }), feedbackOptions);
+  assert.equal(unknownReason.status, 400);
+
+  const longNote = await handlePublicJobMatchFeedbackRequest(feedbackRequest({
+    jobId: "job-1",
+    reasonCodes: ["other"],
+    note: "x".repeat(501),
+  }), feedbackOptions);
+  assert.equal(longNote.status, 400);
+  assert.equal(jobMatchFeedbackWrites.length, 1);
+
+  const apiFeedback = await handlePublicJobMatchFeedbackRequest(feedbackRequest({
+    jobId: " job-1 ",
+    reasonCodes: ["wrong_industry", "wrong_industry", "other"],
+    note: "  The posting describes a different industry.  ",
+  }), feedbackOptions);
+  assert.equal(apiFeedback.status, 200);
+  const apiFeedbackBody = await apiFeedback.json() as {
+    feedback: { reasonCodes: string[]; note?: string };
+  };
+  assert.deepEqual(apiFeedbackBody.feedback.reasonCodes, ["wrong_industry", "other"]);
+  assert.equal(apiFeedbackBody.feedback.note, "The posting describes a different industry.");
+  assert.equal(jobMatchFeedback.length, 1);
+  assert.deepEqual(jobMatchFeedback[0].reason_codes, ["wrong_industry", "other"]);
+
+  const inactiveFeedback = await handlePublicJobMatchFeedbackRequest(feedbackRequest({
+    jobId: "job-missing",
+    reasonCodes: ["other"],
+  }), feedbackOptions);
+  assert.equal(inactiveFeedback.status, 404);
+  assert.equal(jobMatchFeedback.length, 1);
 
   const saved = await setPublicJobSavedForUser(request, userId, "job-1", true, now);
   assert.equal("status" in saved, false);

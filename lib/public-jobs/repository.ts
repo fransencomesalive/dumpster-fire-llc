@@ -22,9 +22,12 @@ import {
 } from "../scan/sources/registry";
 import { fetchNormalizedConnectorJobs } from "../scan/sources/runner";
 import {
+  PUBLIC_JOB_MATCHER_VERSION,
   snapshotPublicJob,
   type PublicJobBoardRecord,
   type PublicJobBoardsResponse,
+  type PublicJobMatchFeedbackInput,
+  type PublicJobMatchFeedbackResponse,
   type PublicJobMatchSummary,
   type PublicJobRecord,
   type PublicJobSearchSettings,
@@ -54,6 +57,7 @@ type JobRow = {
 };
 
 type JobScanResultRow = {
+  profile_id: string;
   job_id: string;
   first_seen_at: string;
   last_seen_at: string;
@@ -217,7 +221,7 @@ async function activeResultsForUser(request: PublicProfileRepositoryRequest, use
     query: qs({
       user_id: `eq.${userId}`,
       status: "eq.active",
-      select: "job_id,first_seen_at,last_seen_at,scan_context",
+      select: "profile_id,job_id,first_seen_at,last_seen_at,scan_context",
       order: "last_seen_at.desc",
     }),
   });
@@ -318,6 +322,21 @@ function matchJobFromRecord(job: PublicJobRecord): MatchJob {
   };
 }
 
+function matchSummaryForJob(
+  job: PublicJobRecord,
+  aggregate: CandidateProfileAggregate,
+  evaluatedAt: string,
+): PublicJobMatchSummary {
+  const result = evaluateMatch({ profile: aggregate, job: matchJobFromRecord(job), evaluatedAt });
+  return {
+    score: result.internalScore,
+    label: result.label,
+    signals: unique(result.categoryFits.flatMap((fit) => fit.matchedSignals)).slice(0, 12),
+    matcherVersion: PUBLIC_JOB_MATCHER_VERSION,
+    evaluatedAt,
+  };
+}
+
 // Score each result against the candidate profile, annotate it, and rank best-first. Scoring is a
 // spectrum — poor-fit jobs are still returned (with their score/label), never hard-filtered out.
 // Duplicate postings of the same role (same company + title, distinct req ids) collapse to one
@@ -328,9 +347,7 @@ function rankJobsForProfile(
   evaluatedAt: string,
 ): PublicJobRecord[] {
   const annotated = jobs.map((job): PublicJobRecord => {
-    const result = evaluateMatch({ profile: aggregate, job: matchJobFromRecord(job), evaluatedAt });
-    const signals = unique(result.categoryFits.flatMap((fit) => fit.matchedSignals)).slice(0, 12);
-    const match: PublicJobMatchSummary = { score: result.internalScore, label: result.label, signals };
+    const match = matchSummaryForJob(job, aggregate, evaluatedAt);
     return { ...job, match };
   });
   annotated.sort((a, b) => (b.match?.score ?? 0) - (a.match?.score ?? 0));
@@ -716,7 +733,7 @@ export async function setPublicJobDismissedForUser(
       user_id: `eq.${userId}`,
       job_id: `eq.${jobId}`,
       status: "eq.active",
-      select: "job_id,first_seen_at,last_seen_at,scan_context",
+      select: "profile_id,job_id,first_seen_at,last_seen_at,scan_context",
       limit: "1",
     }),
   });
@@ -751,7 +768,7 @@ export async function setPublicJobSavedForUser(
         user_id: `eq.${userId}`,
         job_id: `eq.${jobId}`,
         status: "eq.active",
-        select: "job_id,first_seen_at,last_seen_at,scan_context",
+        select: "profile_id,job_id,first_seen_at,last_seen_at,scan_context",
         limit: "1",
       }),
     });
@@ -805,4 +822,66 @@ export async function setPublicJobSavedForUser(
   }
 
   return readPublicJobsForUser(request, userId, updatedAt);
+}
+
+export type SavePublicJobMatchFeedbackResult =
+  | PublicJobMatchFeedbackResponse
+  | PublicJobsReadiness
+  | { status: "not_in_results" };
+
+export async function savePublicJobMatchFeedbackForUser(
+  request: PublicProfileRepositoryRequest,
+  userId: string,
+  input: PublicJobMatchFeedbackInput,
+  submittedAt: string,
+): Promise<SavePublicJobMatchFeedbackResult> {
+  const readiness = await ensureReadyProfile(request, userId, submittedAt);
+  if (readiness.status !== "ready") return readiness;
+
+  const resultRows = await request<JobScanResultRow[]>("job_scan_results", {
+    query: qs({
+      user_id: `eq.${userId}`,
+      job_id: `eq.${input.jobId}`,
+      status: "eq.active",
+      select: "profile_id,job_id,first_seen_at,last_seen_at,scan_context",
+      limit: "1",
+    }),
+  });
+  if (resultRows.length === 0) return { status: "not_in_results" };
+
+  const jobRow = (await jobsByIdForUser(request, userId, [input.jobId]))[0];
+  if (!jobRow) return { status: "not_in_results" };
+
+  const match = matchSummaryForJob(mapPublicJobRecord(jobRow), readiness.aggregate, submittedAt);
+  await request("job_match_feedback", {
+    method: "POST",
+    query: "?on_conflict=user_id,job_id,matcher_version,profile_version",
+    headers: { Prefer: "resolution=merge-duplicates" },
+    body: {
+      user_id: userId,
+      profile_id: readiness.aggregate.profile.id,
+      job_id: input.jobId,
+      reason_codes: input.reasonCodes,
+      note: input.note ?? null,
+      match_score: match.score,
+      match_label: match.label,
+      match_signals: match.signals,
+      matcher_version: match.matcherVersion,
+      match_evaluated_at: match.evaluatedAt,
+      profile_version: readiness.aggregate.profile.version,
+      updated_at: submittedAt,
+    },
+  });
+
+  return {
+    feedback: {
+      jobId: input.jobId,
+      reasonCodes: input.reasonCodes,
+      ...(input.note ? { note: input.note } : {}),
+      profileId: readiness.aggregate.profile.id,
+      profileVersion: readiness.aggregate.profile.version,
+      match,
+      updatedAt: submittedAt,
+    },
+  };
 }

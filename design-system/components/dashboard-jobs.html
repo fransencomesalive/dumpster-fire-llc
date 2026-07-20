@@ -9,39 +9,28 @@
 <link rel="stylesheet" href="../lib/base.css" />
 <style>
   /* Public dashboard Jobs surface — adapts the scan-page pattern: match-card stack (main)
-     + a 300px Overview/Search-settings sidebar. Curated for the public app (no internal
-     matcher/rules/tuning). Class names mirror DashboardClient.tsx so CSS ports back. */
-  /* Plain paper — no halftone (rejected pattern, Randall 2026-07-04). */
+     + a 300px Overview/Search-settings sidebar. Class names mirror DashboardClient.tsx so CSS
+     ports back. Plain paper — no halftone (rejected pattern, Randall 2026-07-04).
+     2026-07-19: action row corrected (Save teal / Skip tomato / Pursue teal primary; Open
+     posting + Not a match stacked links); "Not a match" flips the whole card to a feedback
+     face (chips + Something-else input). No teal-tint hovers. */
   body { margin:0; background:var(--c-paper); color:var(--c-ink); font-family:var(--font-body); padding:var(--space-6) 0; }
   .pageWrap { width:min(1080px, calc(100% - 48px)); margin:0 auto; }
 
-  /* Section header · headline first, scan line + badge beneath. No eyebrow. */
-  /* Page title bar above the section (production topBar, added 2026-07-12; card
-     parity 2026-07-16). Top margin matches onboarding's first block below the
-     sticky header. */
   .topBar { width:min(1080px, calc(100% - 48px)); margin:clamp(20px, 4vw, 32px) auto var(--space-5);
     display:flex; align-items:center; justify-content:space-between; gap:var(--space-4); flex-wrap:wrap;
     padding-bottom:var(--space-4); border-bottom:var(--line-reg) solid var(--c-ink); }
   .topTitle { margin:0; font-family:var(--font-display); font-size:var(--type-h2); color:var(--c-ink); }
 
-  /* 1.5rem (low end of the h2 clamp): the page title above carries --type-h2,
-     so the section heading steps down (Randall, 2026-07-16). */
   .sectionHead { display:flex; align-items:baseline; flex-wrap:wrap; gap:var(--space-3) var(--space-4); margin-bottom:var(--space-5); }
   .sectionHead h2 { font-family:var(--font-display); font-size:1.5rem; color:var(--c-ink); margin:0; }
   .lastScan { font-family:var(--font-subhead); text-transform:uppercase; letter-spacing:var(--tracking-subhead);
     font-size:1.1rem; color:var(--c-tomato); margin:0; }
-  .scanBadge { font-family:var(--font-subhead); text-transform:uppercase; letter-spacing:0.05em;
-    font-size:0.8rem; line-height:1; color:var(--c-paper); background-color:var(--c-teal);
-    border:var(--line-reg) solid var(--c-ink); border-radius:var(--radius-pill); padding:5px 12px;
-    background-image:var(--fiber-img), var(--grain-img); background-blend-mode:normal, soft-light; background-size:170px 170px, 46px 46px; }
 
-  /* Grid shell · main + 300px sidebar */
   .dashboardGrid { display:grid; grid-template-columns:minmax(0,1.4fr) 300px; gap:var(--space-5); align-items:start; }
   .dashboardMain { min-width:0; }
 
-  /* Rating-filter tabs · paper chips, teal stars; active = teal fill */
   .ratingFilterGrid { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:var(--space-2); margin-bottom:var(--space-4); }
-  /* Condensed 2026-07-10 (Randall review #3): −20% height, "roles" +10% */
   .ratingFilterBtn { display:flex; flex-direction:column; align-items:center; gap:3px; min-width:0;
     padding:6px var(--space-2); font:inherit; cursor:pointer;
     background-color:var(--c-paper); border:var(--line-reg) solid var(--c-ink); border-radius:var(--radius-md); box-shadow:var(--shadow-card); }
@@ -56,17 +45,7 @@
   .ratingFilterBtnActive strong, .ratingFilterBtnActive .ratingCount { color:var(--c-paper); }
 
   .matchList { display:grid; gap:var(--space-4); }
-  /* Skip removal: the card fades and collapses out so the dismissal reads as an action, not a
-     freeze (optimistic — the request runs in the background). Honors reduced-motion. */
-  .cardLeaving { overflow:hidden; pointer-events:none; animation:cardLeave 200ms var(--ease-snap) forwards; }
-  @keyframes cardLeave {
-    from { opacity:1; max-height:1200px; transform:none; }
-    55%  { opacity:0; transform:translateX(14px); }
-    to   { opacity:0; max-height:0; margin-top:0; padding-top:0; padding-bottom:0; border-width:0; transform:translateX(14px); }
-  }
-  @media (prefers-reduced-motion: reduce) { .cardLeaving { animation-duration:1ms; } }
 
-  /* Match card */
   .card { background-color:var(--c-paper-deep); background-image:var(--fiber-img), var(--grain-img);
     background-blend-mode:normal, soft-light; background-size:170px 170px, 46px 46px;
     border:var(--line-reg) solid var(--c-ink); border-radius:var(--radius-lg); box-shadow:var(--shadow-card); padding:var(--space-5); }
@@ -126,31 +105,93 @@
   .matchHighlight::before { content:""; position:absolute; z-index:-1; inset:-0.14em -0.24em -0.02em -0.2em;
     background:var(--c-mustard); border-radius:0.6em 0.95em 0.5em 0.85em / 0.9em 0.5em 0.95em 0.55em; transform:rotate(var(--rot, -1.4deg)); }
 
-  .fitSummary { font-family:var(--font-body); font-style:italic; color:var(--c-ink); margin:var(--space-4) 0; }
-  .flagRow { display:flex; align-items:center; gap:var(--space-3); background:var(--c-paper);
-    border:var(--line-hair) solid var(--c-paper-edge); border-left:var(--line-bold) solid var(--c-bluebird);
-    border-radius:var(--radius-sm); padding:var(--space-3) var(--space-4); margin-bottom:var(--space-4); }
-  .flagRow::before { content:"Note"; flex:none; font-family:var(--font-subhead); text-transform:uppercase; letter-spacing:0.05em; font-size:0.72rem; color:var(--c-bluebird); }
-  .flagText { font-family:var(--font-body); font-size:0.9rem; color:var(--c-ink-soft); }
-
-  .actionRail { display:flex; flex-wrap:wrap; gap:var(--space-3); align-items:center; }
-  .actionRail button, .actionRail a { font-family:var(--font-display); font-size:0.95rem; border-radius:var(--radius-md);
-    padding:var(--space-2) var(--space-4); cursor:pointer; text-decoration:none; }
-  .btnApply { color:var(--role-action-text); background-color:var(--role-action);
+  /* ===== Action row (2026-07-19) · centered. Save (teal) + Skip (tomato) + Pursue (teal
+     primary, grain). Open posting + Not a match stacked links. "Not a match" (red link) flips
+     the whole card. Save flips to a teal "Saved" check (same teal, like Copy/Copied).
+     No teal-tint hovers (no longer approved, Randall 2026-07-19). ===== */
+  .actionRow { display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:var(--space-4); }
+  /* All filled action buttons carry the grain/ink texture (the design-system standard for
+     solid fills). Color is the only difference: Save/Pursue teal, Skip tomato. */
+  .btnAct { font-family:var(--font-display); font-size:0.95rem; border-radius:var(--radius-md);
+    padding:var(--space-2) var(--space-5); cursor:pointer; border:var(--line-bold) solid var(--c-ink);
+    box-shadow:var(--shadow-card); color:var(--c-paper); display:inline-flex; align-items:center; gap:6px;
     background-image:var(--fiber-img), var(--grain-img); background-blend-mode:normal, soft-light; background-size:170px 170px, 46px 46px;
-    border:var(--line-bold) solid var(--c-ink); box-shadow:var(--shadow-card); margin-left:auto; }
-  .btnSave { display:inline-flex; align-items:center; gap:6px; color:var(--c-ink); background:var(--c-paper); border:var(--line-reg) solid var(--c-ink); }
-  /* Saved = teal confirmation with a check (teal = on/saved), same language as the wizard
-     "Copied" state. The optimistic flip makes this appear the instant Save is clicked. */
-  .btnSaveOn { color:var(--c-paper); background:var(--c-teal); border-color:var(--c-ink); }
+    transition:box-shadow var(--dur-fast) var(--ease-snap), text-shadow var(--dur-fast) var(--ease-snap); }
+  .btnSave, .btnPursue { background-color:var(--c-teal); }
+  .btnSkip { background-color:var(--c-tomato); }
   .btnSaveOn svg { flex:none; width:14px; height:14px; }
-  /* Skip = "not interested" — removes the posting from results (Randall, 2026-07-10) */
-  .btnSkip { color:var(--role-text-muted); background:transparent; border:var(--line-reg) solid transparent; }
-  .skipNote { flex:1 1 0; min-width:110px; font-family:var(--font-body); font-size:0.8rem; font-style:italic; color:var(--role-text-faint); }
-  .btnSource { position:relative; color:var(--c-ink); background:transparent; padding-bottom:3px; }
-  /* Text-styled rail actions show their full footprint on hover — same teal
-     tint the profile-editor nav uses (Randall, 2026-07-16, option 2). */
-  .btnSkip:hover, .btnSource:hover { background-color:color-mix(in srgb, var(--c-teal) 14%, var(--c-paper)); }
+  .btnAct:hover { box-shadow:var(--reg-box); text-shadow:1px 1px 0 rgba(36,31,26,0.35); }
+  .linkStack { display:flex; flex-direction:column; align-items:flex-start; gap:4px; }
+  .linkAct { font-family:var(--font-ui), Inter, system-ui, sans-serif; font-size:0.9rem; background:none; border:0;
+    padding:0; cursor:pointer; text-decoration:underline; text-underline-offset:3px; display:inline-flex; align-items:center; gap:5px; }
+  .linkOpen { color:var(--c-ink); }
+  .linkOpen:hover { color:var(--c-bluebird); }
+  .linkNotMatch { color:var(--c-tomato); }
+  .linkNotMatch:hover { color:color-mix(in srgb, var(--c-tomato) 78%, var(--c-ink)); }
+  .extIcon { flex:none; width:13px; height:13px; }
+
+  /* ===== Feedback flip · whole card flips. Both faces share one grid cell so height is the
+     taller face (no jump). Reduced-motion cross-fades. ===== */
+  .flipScene { perspective:1800px; }
+  .flipCard { position:relative; display:grid; grid-template-columns:minmax(0, 1fr); transform-style:preserve-3d; transition:transform var(--dur-base) var(--ease-snap); }
+  .flipCard.isFlipped { transform:rotateY(180deg); }
+  .flipFace { grid-area:1 / 1; -webkit-backface-visibility:hidden; backface-visibility:hidden; min-width:0; }
+  .flipFace.flipBack { transform:rotateY(180deg); }
+  .flipFace[aria-hidden="true"] { pointer-events:none; }
+  @media (prefers-reduced-motion: reduce) {
+    .flipCard, .flipFace { transition:opacity var(--dur-base) ease; transform:none !important; }
+    .flipFace.flipBack { transform:none; }
+    .flipCard:not(.isFlipped) .flipBack { opacity:0; }
+    .flipCard.isFlipped .flipFront { opacity:0; }
+  }
+  .feedbackFace { display:grid; grid-template-columns:minmax(0, 1fr); gap:var(--space-3); align-content:start; }
+  .feedbackHead { display:flex; align-items:baseline; justify-content:space-between; gap:var(--space-3); }
+  .feedbackTitle { font-family:var(--font-display); font-size:1.15rem; line-height:1.1; color:var(--c-ink); margin:0; }
+  .feedbackTitle small { font-family:var(--font-body); font-size:0.85rem; color:var(--role-text-muted); }
+  .feedbackClose { display:inline-flex; align-items:center; justify-content:center; flex:none; width:30px; height:30px;
+    color:var(--c-ink); background-color:var(--c-paper); border:var(--line-reg) solid var(--c-ink);
+    border-radius:var(--radius-md); box-shadow:2px 2px 0 var(--c-ink); cursor:pointer; }
+  .feedbackClose:hover { box-shadow:var(--reg-box); }
+  .chipSet { display:flex; flex-wrap:wrap; gap:var(--space-2); }
+  .chip { display:inline-flex; align-items:center; gap:6px; font-family:var(--font-ui), Inter, system-ui, sans-serif;
+    font-size:0.9rem; line-height:1; color:var(--c-ink); background-color:var(--c-paper); border:var(--line-reg) solid var(--c-ink);
+    border-radius:var(--radius-pill); padding:8px 14px; cursor:pointer;
+    transition:box-shadow var(--dur-fast) var(--ease-snap), background-color var(--dur-fast) var(--ease-snap), color var(--dur-fast) var(--ease-snap); }
+  .chip .chipCheck { width:0; height:13px; overflow:hidden; display:inline-flex; align-items:center; transition:width var(--dur-fast) var(--ease-snap); }
+  .chip .chipCheck svg { flex:none; width:13px; height:13px; }
+  .chip:hover { box-shadow:2px 2px 0 var(--c-ink); }
+  .chip[aria-pressed="true"] { color:var(--c-paper); background-color:var(--c-teal); box-shadow:var(--reg-box); }
+  .chip[aria-pressed="true"] .chipCheck { width:17px; }
+  @media (prefers-reduced-motion: reduce) { .chip, .chip .chipCheck { transition:none; } }
+  .seRow { display:flex; align-items:center; gap:var(--space-2); }
+  .seRow input[type="checkbox"] { accent-color:var(--c-teal); width:18px; height:18px; flex:none; cursor:pointer; }
+  .seRow label { font-family:var(--font-ui), Inter, system-ui, sans-serif; font-size:0.9rem; white-space:nowrap; cursor:pointer; }
+  .seInput { flex:1 1 auto; min-width:0; box-sizing:border-box; font:inherit; font-family:var(--font-ui), Inter, system-ui, sans-serif;
+    font-size:0.9rem; color:var(--c-ink); background-color:var(--c-paper); border:var(--line-reg) solid var(--c-ink);
+    border-radius:var(--radius-md); padding:8px var(--space-3); }
+  .seInput:focus { outline:none; border-color:var(--c-teal); box-shadow:0 0 0 3px color-mix(in srgb, var(--c-teal) 28%, transparent); }
+  .seInput:disabled { opacity:0.5; }
+  .seCount { flex:none; font-family:var(--font-ui), Inter, system-ui, sans-serif; font-size:0.74rem; color:var(--role-text-faint); }
+  .feedbackAlert { display:flex; align-items:flex-start; gap:var(--space-2); font-family:var(--font-body); font-size:0.88rem;
+    color:var(--c-ink); background-color:var(--c-paper); border:var(--line-reg) solid var(--c-tomato);
+    border-left:var(--line-bold) solid var(--c-tomato); border-radius:var(--radius-md); padding:var(--space-2) var(--space-3); }
+  .feedbackAlert svg { flex:none; width:16px; height:16px; color:var(--c-tomato); margin-top:1px; }
+  .feedbackAlert p { margin:0; }
+  .feedbackFooter { display:flex; flex-wrap:wrap; align-items:center; justify-content:flex-end; gap:var(--space-2); }
+  .btnGhost { font-family:var(--font-display); font-size:0.95rem; color:var(--c-ink); background-color:var(--c-paper);
+    border:var(--line-reg) solid var(--c-ink); border-radius:var(--radius-md); box-shadow:var(--shadow-card);
+    padding:var(--space-2) var(--space-4); cursor:pointer; }
+  .btnGhost:hover { box-shadow:var(--reg-box); }
+  .btnPrimary { font-family:var(--font-display); font-size:0.95rem; color:var(--c-paper); background-color:var(--c-teal);
+    background-image:var(--fiber-img), var(--grain-img); background-blend-mode:normal, soft-light; background-size:170px 170px, 46px 46px;
+    border:var(--line-bold) solid var(--c-ink); border-radius:var(--radius-md); box-shadow:var(--shadow-card);
+    padding:var(--space-2) var(--space-5); cursor:pointer; }
+  .btnPrimary:hover:not(:disabled) { box-shadow:var(--reg-box); text-shadow:1px 1px 0 rgba(36,31,26,0.35); }
+  .btnPrimary:disabled { opacity:0.5; cursor:default; }
+  .savedAck { display:inline-flex; align-items:center; gap:5px; font-family:var(--font-subhead);
+    text-transform:uppercase; letter-spacing:0.05em; font-size:0.72rem; color:var(--c-teal); opacity:0; transition:opacity var(--dur-base) var(--ease-snap); }
+  .savedAck.isVisible { opacity:1; }
+  .savedAck svg { flex:none; width:12px; height:12px; }
 
   /* Sidebar */
   .dashboardSidebar { position:sticky; top:var(--space-5); display:flex; flex-direction:column; gap:var(--space-4); }
@@ -178,8 +219,6 @@
   .metaLabel { font-family:var(--font-subhead); text-transform:uppercase; letter-spacing:0.04em; font-size:0.78rem; color:var(--c-teal); }
   .metaValue { font-family:var(--font-display); font-size:1.05rem; color:var(--c-ink); }
 
-  /* NEW sidebar cards (2026-07-10) · Job titles in this scan + Company job boards —
-     see components/scan-controls.html for the focused card. */
   .titleChips { display:flex; flex-wrap:wrap; gap:var(--space-2); }
   .titleChip { display:inline-flex; align-items:center; font-family:var(--font-ui), Inter, system-ui, sans-serif;
     font-size:var(--type-small); color:var(--c-paper); background:var(--c-teal);
@@ -207,10 +246,6 @@
     border:var(--line-hair) solid var(--c-ink); cursor:pointer; font-size:13px; line-height:1; }
   .boardRemove:hover { color:var(--c-paper); background:var(--c-tomato); border-color:var(--c-ink); }
 
-  /* NEW (2026-07-15) · Pursue a job link — single-value action input (input + button,
-     Enter also commits) at the top of the results column. Feeds the pasted posting into
-     the existing Pursue flow. Reuses boardInput/boardAddBtn primitives from the
-     Company job boards card; only the placement spacing is new. */
   .pursueLinkCard { margin-bottom:var(--space-4); }
   .pursueLinkCard .boardInputRow { margin-bottom:0; }
 
@@ -238,13 +273,11 @@
 
   <div class="dashboardGrid">
     <div class="dashboardMain">
-      <!-- NEW (2026-07-15) · Pursue a job link — the direct entry to the pursuit flow for
-           postings our scans never saw. Single URL in, then the normal Pursue path. -->
       <div class="card pursueLinkCard">
         <div class="panelHeaderRow">
           <h3 class="sidebarHeading">Found a job somewhere else?</h3>
         </div>
-        <p class="boardHint">Paste the posting link and pursue it like any match. We pull the details, find the right person, and draft outreach that sounds like you.</p>
+        <p class="boardHint">Paste the posting link and pursue it like any match. We pull the details, find the right person, and draft outreach that sounds like you.</p>
         <div class="boardInputRow">
           <input class="boardInput" placeholder="Paste a job posting link" />
           <button type="button" class="boardAddBtn">Pursue</button>
@@ -270,68 +303,108 @@
       </div>
 
       <div class="matchList">
-        <!-- Strong match · full card -->
-        <article class="card jobCard">
-          <div class="jobCardHeader">
-            <div class="jobNumberTitle">
-              <span class="jobNumber" aria-hidden="true">1</span>
-              <h3 class="jobTitle">Senior Product Designer<span class="titleDivider" aria-hidden="true"></span><span class="companyName">Stripe</span></h3>
-            </div>
-          </div>
-          <div class="stars">
-            <span class="starLabel">Fit</span>
-            <span class="starScore">84<small>/100</small></span>
-            <span class="starIconRow" title="84/100" aria-hidden="true">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5"><polygon points="12 2 15 9 22 9.3 16.5 14 18.5 21 12 17 5.5 21 7.5 14 2 9.3 9 9"/></svg>
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5"><polygon points="12 2 15 9 22 9.3 16.5 14 18.5 21 12 17 5.5 21 7.5 14 2 9.3 9 9"/></svg>
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5"><polygon points="12 2 15 9 22 9.3 16.5 14 18.5 21 12 17 5.5 21 7.5 14 2 9.3 9 9"/></svg>
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5"><polygon points="12 2 15 9 22 9.3 16.5 14 18.5 21 12 17 5.5 21 7.5 14 2 9.3 9 9"/></svg>
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="12 2 15 9 22 9.3 16.5 14 18.5 21 12 17 5.5 21 7.5 14 2 9.3 9 9"/></svg>
-            </span>
-          </div>
-          <dl class="jobMetaGrid">
-            <div><dt>Source</dt><dd>Greenhouse</dd></div>
-            <div><dt>Salary</dt><dd>$140k – $165k</dd></div>
-            <div><dt>Remote</dt><dd>Remote (US)</dd></div>
-            <div><dt>Location</dt><dd>Remote</dd></div>
-          </dl>
-          <div class="descriptionBox">
-            <p class="descriptionText">Lead end-to-end design for a new B2B analytics product, partnering with PM and engineering from discovery through ship. Own the design system and mentor two designers.</p>
-            <div class="keywordPills">
-              <span class="keywordPill">Design systems</span>
-              <span class="keywordPill">B2B</span>
-              <span class="keywordPill">0→1</span>
-              <span class="keywordPill">Mentorship</span>
-            </div>
-          </div>
-          <div class="matchSections">
-            <div class="matchSection">
-              <span class="matchSectionLabel">Responsibilities</span>
-              <ul class="matchSectionList">
-                <li>Own the <mark class="matchHighlight" style="--rot:-1.8deg">design system</mark> across web and mobile.</li>
-                <li>Drive <mark class="matchHighlight" style="--rot:1.3deg">0→1</mark> product discovery with PM and research.</li>
-                <li>Partner with engineering from concept through ship.</li>
-              </ul>
-            </div>
-            <div class="matchSection">
-              <span class="matchSectionLabel">Required experience</span>
-              <ul class="matchSectionList">
-                <li>7+ years in <mark class="matchHighlight" style="--rot:-1deg">B2B</mark> product design.</li>
-                <li>Proven <mark class="matchHighlight" style="--rot:1.7deg">design systems</mark> ownership at scale.</li>
-                <li>Comfortable with <mark class="matchHighlight" style="--rot:-2.1deg">0→1</mark> ambiguity.</li>
-              </ul>
-            </div>
-          </div>
-          <div class="actionRail">
-            <button type="button" class="btnSave">Save</button>
-            <button type="button" class="btnSkip">Skip</button>
-            <span class="skipNote">This job will be removed from results.</span>
-            <a href="#" class="btnSource">Open posting ↗</a>
-            <button type="button" class="btnApply">Pursue</button>
-          </div>
-        </article>
+        <!-- Strong match · full card · live flip to feedback face -->
+        <div class="flipScene">
+          <div class="flipCard" id="jobFlip">
+            <article class="card jobCard flipFace flipFront" id="jobFront">
+              <div class="jobCardHeader">
+                <div class="jobNumberTitle">
+                  <span class="jobNumber" aria-hidden="true">1</span>
+                  <h3 class="jobTitle">Senior Product Designer<span class="titleDivider" aria-hidden="true"></span><span class="companyName">Stripe</span></h3>
+                </div>
+              </div>
+              <div class="stars">
+                <span class="starLabel">Fit</span>
+                <span class="starScore">84<small>/100</small></span>
+                <span class="starIconRow" title="84/100" aria-hidden="true">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5"><polygon points="12 2 15 9 22 9.3 16.5 14 18.5 21 12 17 5.5 21 7.5 14 2 9.3 9 9"/></svg>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5"><polygon points="12 2 15 9 22 9.3 16.5 14 18.5 21 12 17 5.5 21 7.5 14 2 9.3 9 9"/></svg>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5"><polygon points="12 2 15 9 22 9.3 16.5 14 18.5 21 12 17 5.5 21 7.5 14 2 9.3 9 9"/></svg>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5"><polygon points="12 2 15 9 22 9.3 16.5 14 18.5 21 12 17 5.5 21 7.5 14 2 9.3 9 9"/></svg>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="12 2 15 9 22 9.3 16.5 14 18.5 21 12 17 5.5 21 7.5 14 2 9.3 9 9"/></svg>
+                </span>
+              </div>
+              <dl class="jobMetaGrid">
+                <div><dt>Source</dt><dd>Greenhouse</dd></div>
+                <div><dt>Salary</dt><dd>$140k – $165k</dd></div>
+                <div><dt>Remote</dt><dd>Remote (US)</dd></div>
+                <div><dt>Location</dt><dd>Remote</dd></div>
+              </dl>
+              <div class="descriptionBox">
+                <p class="descriptionText">Lead end-to-end design for a new B2B analytics product, partnering with PM and engineering from discovery through ship. Own the design system and mentor two designers.</p>
+                <div class="keywordPills">
+                  <span class="keywordPill">Design systems</span>
+                  <span class="keywordPill">B2B</span>
+                  <span class="keywordPill">0→1</span>
+                  <span class="keywordPill">Mentorship</span>
+                </div>
+              </div>
+              <div class="matchSections">
+                <div class="matchSection">
+                  <span class="matchSectionLabel">Responsibilities</span>
+                  <ul class="matchSectionList">
+                    <li>Own the <mark class="matchHighlight" style="--rot:-1.8deg">design system</mark> across web and mobile.</li>
+                    <li>Drive <mark class="matchHighlight" style="--rot:1.3deg">0→1</mark> product discovery with PM and research.</li>
+                    <li>Partner with engineering from concept through ship.</li>
+                  </ul>
+                </div>
+                <div class="matchSection">
+                  <span class="matchSectionLabel">Required experience</span>
+                  <ul class="matchSectionList">
+                    <li>7+ years in <mark class="matchHighlight" style="--rot:-1deg">B2B</mark> product design.</li>
+                    <li>Proven <mark class="matchHighlight" style="--rot:1.7deg">design systems</mark> ownership at scale.</li>
+                    <li>Comfortable with <mark class="matchHighlight" style="--rot:-2.1deg">0→1</mark> ambiguity.</li>
+                  </ul>
+                </div>
+              </div>
+              <div class="actionRow">
+                <button type="button" class="btnAct btnSave">Save</button>
+                <button type="button" class="btnAct btnSkip">Skip</button>
+                <span class="linkStack">
+                  <a href="#" target="_blank" rel="noopener" class="linkAct linkOpen">Open posting <svg class="extIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>
+                  <button type="button" class="linkAct linkNotMatch" data-flip-open="jobFlip" aria-expanded="false" aria-controls="jobBack">Not a match</button>
+                </span>
+                <button type="button" class="btnAct btnPursue">Pursue</button>
+                <span class="savedAck" id="jobAck" role="status" aria-live="polite">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>Noted
+                </span>
+              </div>
+            </article>
 
-        <!-- Off-target surfaced with context · weird-match flag -->
+            <div class="card jobCard flipFace flipBack" id="jobBack" role="group" aria-labelledby="jobFbTitle">
+              <div class="feedbackFace">
+                <div class="feedbackHead">
+                  <h3 class="feedbackTitle" id="jobFbTitle" tabindex="-1">What's off about this match? <small>Pick all that apply.</small></h3>
+                  <button type="button" class="feedbackClose" data-flip-close="jobFlip" aria-label="Back to job">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  </button>
+                </div>
+                <div class="chipSet" role="group" aria-label="What's off about this match" data-chipset>
+                  <button type="button" class="chip" aria-pressed="false" data-code="wrong_role_title"><span class="chipCheck"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg></span>Wrong role/title</button>
+                  <button type="button" class="chip" aria-pressed="false" data-code="wrong_location_preference"><span class="chipCheck"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg></span>Wrong location preference</button>
+                  <button type="button" class="chip" aria-pressed="false" data-code="wrong_comp"><span class="chipCheck"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg></span>Wrong Comp</button>
+                  <button type="button" class="chip" aria-pressed="false" data-code="wrong_industry"><span class="chipCheck"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg></span>Wrong Industry</button>
+                </div>
+                <div class="seRow">
+                  <input type="checkbox" id="jobSe" data-se-check />
+                  <label for="jobSe">Something Else</label>
+                  <input type="text" class="seInput" maxlength="500" placeholder="Tell us what missed" data-se-input disabled />
+                  <span class="seCount" data-se-count>0/500</span>
+                </div>
+                <div class="feedbackAlert" data-alert hidden>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                  <p>That didn't save. Your selections are still here, give it another go.</p>
+                </div>
+                <div class="feedbackFooter">
+                  <button type="button" class="btnGhost" data-flip-close="jobFlip">Close</button>
+                  <button type="button" class="btnPrimary" data-save disabled>Save feedback</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Off-target surfaced with context · weird-match flag · Saved state shown -->
         <article class="card jobCard">
           <span class="weirdMatchTag" aria-label="Weird match">
             <span>W</span><span>E</span><span>I</span><span>R</span><span>D</span><span class="sp"></span><span>M</span><span>A</span><span>T</span><span>C</span><span>H</span>
@@ -385,18 +458,19 @@
               </ul>
             </div>
           </div>
-          <div class="actionRail">
-            <button type="button" class="btnSave btnSaveOn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>Saved</button>
-            <button type="button" class="btnSkip">Skip</button>
-            <span class="skipNote">This job will be removed from results.</span>
-            <a href="#" class="btnSource">Open posting ↗</a>
-            <button type="button" class="btnApply">Pursue</button>
+          <div class="actionRow">
+            <button type="button" class="btnAct btnSave btnSaveOn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>Saved</button>
+            <button type="button" class="btnAct btnSkip">Skip</button>
+            <span class="linkStack">
+              <a href="#" target="_blank" rel="noopener" class="linkAct linkOpen">Open posting <svg class="extIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>
+              <button type="button" class="linkAct linkNotMatch" aria-expanded="false">Not a match</button>
+            </span>
+            <button type="button" class="btnAct btnPursue">Pursue</button>
           </div>
         </article>
       </div>
     </div>
 
-    <!-- SIDEBAR · Overview + Search settings (public-curated) -->
     <aside class="dashboardSidebar">
       <div class="card">
         <div class="panelHeaderRow">
@@ -414,8 +488,6 @@
         <button type="button" class="scanSecondaryBtn">View Saved Pursuits</button>
       </div>
 
-      <!-- NEW (2026-07-10) · Job titles in this scan — read-only reveal of the title
-           parameters, fed by each Role Track's job-title chips from Card 1. -->
       <div class="card">
         <div class="panelHeaderRow">
           <h3 class="sidebarHeading">Job titles in this scan</h3>
@@ -441,8 +513,6 @@
         </div>
       </div>
 
-      <!-- NEW (2026-07-10) · Company job boards — user adds a careers page; every scan
-           checks that board directly. Ships with the job_sources clean-slate reset. -->
       <div class="card">
         <div class="panelHeaderRow">
           <h3 class="sidebarHeading">Company job boards</h3>
@@ -472,5 +542,85 @@
     </aside>
   </div>
 </section>
+
+<script>
+(function () {
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function setInert(el, on) {
+    if (!el) return;
+    if (on) { el.setAttribute('inert', ''); el.setAttribute('aria-hidden', 'true'); }
+    else { el.removeAttribute('inert'); el.removeAttribute('aria-hidden'); }
+  }
+  var scene = document.getElementById('jobFlip');
+  if (!scene) return;
+  var front = scene.querySelector('.flipFront');
+  var back = scene.querySelector('.flipBack');
+  var trigger = front.querySelector('[data-flip-open]');
+  var heading = back.querySelector('[tabindex="-1"]');
+  var saveBtn = back.querySelector('[data-save]');
+  var alert = back.querySelector('[data-alert]');
+  var ack = front.querySelector('.savedAck');
+  var chips = back.querySelectorAll('[data-chipset] .chip');
+  var seCheck = back.querySelector('[data-se-check]');
+  var seInput = back.querySelector('[data-se-input]');
+  var seCount = back.querySelector('[data-se-count]');
+  var forceError = false;
+  setInert(back, true);
+
+  function hasSelection() {
+    var anyChip = Array.prototype.some.call(chips, function (c) { return c.getAttribute('aria-pressed') === 'true'; });
+    return anyChip || (seCheck && seCheck.checked);
+  }
+  function refreshSave() { saveBtn.disabled = !hasSelection(); }
+  function open() {
+    scene.classList.add('isFlipped');
+    setInert(front, true); setInert(back, false);
+    trigger.setAttribute('aria-expanded', 'true');
+    if (alert) alert.hidden = true;
+    setTimeout(function () { if (heading) heading.focus(); }, reduce ? 0 : 200);
+  }
+  function close() {
+    scene.classList.remove('isFlipped');
+    setInert(back, true); setInert(front, false);
+    trigger.setAttribute('aria-expanded', 'false');
+    trigger.focus();
+  }
+  function reset() {
+    chips.forEach(function (c) { c.setAttribute('aria-pressed', 'false'); });
+    if (seCheck) seCheck.checked = false;
+    if (seInput) { seInput.value = ''; seInput.disabled = true; }
+    if (seCount) seCount.textContent = '0/500';
+    if (alert) alert.hidden = true;
+    refreshSave();
+  }
+  function showAck() { if (!ack) return; ack.classList.add('isVisible'); setTimeout(function () { ack.classList.remove('isVisible'); }, 2400); }
+
+  trigger.addEventListener('click', open);
+  back.querySelectorAll('[data-flip-close]').forEach(function (b) { b.addEventListener('click', function () { close(); reset(); }); });
+  chips.forEach(function (chip) {
+    chip.addEventListener('click', function () {
+      chip.setAttribute('aria-pressed', chip.getAttribute('aria-pressed') === 'true' ? 'false' : 'true');
+      refreshSave();
+    });
+  });
+  if (seCheck) seCheck.addEventListener('change', function () {
+    seInput.disabled = !seCheck.checked;
+    if (seCheck.checked) seInput.focus();
+    refreshSave();
+  });
+  if (seInput) seInput.addEventListener('input', function () { seCount.textContent = seInput.value.length + '/500'; });
+  saveBtn.addEventListener('click', function () {
+    if (saveBtn.disabled) return;
+    saveBtn.disabled = true;
+    var original = saveBtn.textContent;
+    saveBtn.textContent = 'Saving…';
+    if (alert) alert.hidden = true;
+    setTimeout(function () {
+      if (forceError) { forceError = false; saveBtn.textContent = original; saveBtn.disabled = false; if (alert) alert.hidden = false; return; }
+      saveBtn.textContent = original; close(); reset(); showAck();
+    }, 850);
+  });
+})();
+</script>
 </body>
 </html>

@@ -5,6 +5,7 @@ import type {
   HumanPathContact,
   HumanPathContactSuggestion,
   OutreachMessageRecord,
+  OutreachMessageFeedback,
   OutreachRecipientType,
   Pursuit,
   PursuitEvent,
@@ -20,6 +21,7 @@ import type {
   PursuitTransitionResult,
   PursuitUsageEvent,
   PursuitUsageType,
+  SaveOutreachMessageFeedbackInput,
 } from "./types";
 import { createPursuit } from "./state-machine";
 import { derivePursuitTrackingState, pursuitHistory } from "./tracking";
@@ -61,6 +63,7 @@ type OutreachMessageRow = {
   selected_role_track_id: string | null;
   selected_resume_id: string | null;
   selected_work_example_id: string | null;
+  generation_request_id?: string | null;
   sent_at?: string | null;
   created_at: string;
   updated_at: string;
@@ -86,7 +89,20 @@ type PursuitTrackingEventRow = {
 };
 
 const PURSUIT_SELECT = "id,user_id,profile_id,job_id,selected_role_track_id,selected_resume_id,selected_work_example_id,status,fit_summary,risks,recommended_work_example_ids,outreach_angle,tracking_started_at,pursuit_metered_at,notes,job_snapshot,selection_snapshot,last_activity_at,created_at,updated_at";
-const OUTREACH_MESSAGE_SELECT = "id,pursuit_id,contact_suggestion_id,recipient_type,channel,message,previous_message,regeneration_count,status,rejection_reason,selected_role_track_id,selected_resume_id,selected_work_example_id,sent_at,created_at,updated_at";
+const OUTREACH_MESSAGE_SELECT = "id,pursuit_id,contact_suggestion_id,recipient_type,channel,message,previous_message,regeneration_count,status,rejection_reason,selected_role_track_id,selected_resume_id,selected_work_example_id,generation_request_id,sent_at,created_at,updated_at";
+
+type OutreachMessageFeedbackRow = {
+  id: string;
+  outreach_message_id: string;
+  user_id: string;
+  feedback_type: "needs_work";
+  reason_codes: OutreachMessageFeedback["reasonCodes"];
+  notes: string | null;
+  message_snapshot: string;
+  message_revision: 0 | 1;
+  created_at: string;
+  updated_at: string;
+};
 
 type PursuitEventRow = {
   id: string;
@@ -383,7 +399,23 @@ function mapOutreachMessage(row: OutreachMessageRow): OutreachMessageRecord {
     selectedRoleTrackId: defined(row.selected_role_track_id),
     selectedResumeId: defined(row.selected_resume_id),
     selectedWorkExampleId: defined(row.selected_work_example_id),
+    generationRequestId: defined(row.generation_request_id),
     sentAt: defined(row.sent_at),
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+function mapOutreachMessageFeedback(row: OutreachMessageFeedbackRow): OutreachMessageFeedback {
+  return {
+    id: row.id,
+    outreachMessageId: row.outreach_message_id,
+    userId: row.user_id,
+    feedbackType: row.feedback_type,
+    reasonCodes: row.reason_codes,
+    notes: defined(row.notes),
+    messageSnapshot: row.message_snapshot,
+    messageRevision: row.message_revision,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -512,6 +544,30 @@ export async function updateOutreachMessage(
       updated_at: message.updatedAt,
     },
   });
+}
+
+export async function persistOutreachMessageFeedback(
+  request: PublicProfileRepositoryRequest,
+  input: SaveOutreachMessageFeedbackInput,
+): Promise<OutreachMessageFeedback> {
+  const rows = await request<OutreachMessageFeedbackRow[]>("saved_message_feedback", {
+    method: "POST",
+    query: "?on_conflict=user_id,outreach_message_id,message_revision,feedback_type",
+    headers: { Prefer: "resolution=merge-duplicates,return=representation" },
+    body: {
+      outreach_message_id: input.outreachMessageId,
+      user_id: input.userId,
+      feedback_type: "needs_work",
+      reason_codes: input.reasonCodes,
+      notes: input.notes ?? null,
+      message_snapshot: input.messageSnapshot,
+      message_revision: input.messageRevision,
+      updated_at: input.updatedAt,
+    },
+  });
+  const row = first(rows);
+  if (!row) throw new Error("message_feedback_not_persisted");
+  return mapOutreachMessageFeedback(row);
 }
 
 export async function persistOutreachRegeneration(

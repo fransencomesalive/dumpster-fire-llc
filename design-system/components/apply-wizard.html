@@ -264,6 +264,44 @@
   /* Open-job-posting link sits left of the primary pair */
   .footerSpacer { margin-right: auto; }
 
+  /* ===== Message feedback flip · "This message is not great" (red link under the message)
+     flips the whole modal to this face. Chips multi-select; free text in the "something else"
+     row; no dividers or dead space. ===== */
+  .msgTrigger { display: flex; align-items: center; gap: var(--space-3); margin-top: var(--space-2); }
+  .linkNotMatch { font-family: var(--font-ui, Inter, system-ui, sans-serif); font-size: 0.9rem; color: var(--c-tomato);
+    background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+  .linkNotMatch:hover { color: color-mix(in srgb, var(--c-tomato) 78%, var(--c-ink)); }
+  .feedbackFace { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-3); align-content: start; }
+  .feedbackSub { font-family: var(--font-body); font-size: 0.9rem; color: var(--role-text-muted); margin: 0; }
+  .chipSet { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+  .chip { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-ui, Inter, system-ui, sans-serif);
+    font-size: 0.9rem; line-height: 1; color: var(--c-ink); background-color: var(--c-paper); border: var(--line-reg) solid var(--c-ink);
+    border-radius: var(--radius-pill); padding: 8px 14px; cursor: pointer;
+    transition: box-shadow var(--dur-fast) var(--ease-snap), background-color var(--dur-fast) var(--ease-snap), color var(--dur-fast) var(--ease-snap); }
+  .chipCheck { display: inline-flex; align-items: center; }
+  .chipCheck svg { flex: none; width: 13px; height: 13px; }
+  .chip:hover { box-shadow: 2px 2px 0 var(--c-ink); }
+  .chipOn { color: var(--c-paper); background-color: var(--c-teal); box-shadow: var(--reg-box); }
+  @media (prefers-reduced-motion: reduce) { .chip { transition: none; } }
+  .seRow { display: flex; align-items: center; gap: var(--space-2); }
+  .seRow input[type="checkbox"] { accent-color: var(--c-teal); width: 18px; height: 18px; flex: none; cursor: pointer; }
+  .seRow label { font-family: var(--font-ui, Inter, system-ui, sans-serif); font-size: 0.9rem; white-space: nowrap; cursor: pointer; }
+  .seInput { flex: 1 1 auto; min-width: 0; box-sizing: border-box; font-family: var(--font-ui, Inter, system-ui, sans-serif);
+    font-size: 0.9rem; color: var(--c-ink); background-color: var(--c-paper); border: var(--line-reg) solid var(--c-ink);
+    border-radius: var(--radius-md); padding: 8px var(--space-3); }
+  .seInput:disabled { opacity: 0.5; }
+  .seCount { flex: none; font-family: var(--font-ui, Inter, system-ui, sans-serif); font-size: 0.74rem; color: var(--role-text-faint); }
+  .feedbackFooter { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--space-2); margin-top: var(--space-2); }
+  .btnGhost { font-family: var(--font-display); font-size: 1rem; color: var(--c-ink); background-color: var(--c-paper);
+    border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-md); box-shadow: var(--shadow-card);
+    padding: var(--space-2) var(--space-5); cursor: pointer; }
+  .btnGhost:hover { box-shadow: var(--reg-box); }
+  .btnPrimary { font-family: var(--font-display); font-size: 1rem; color: var(--c-paper); background-color: var(--c-teal);
+    background-image: var(--fiber-img), var(--grain-img); background-blend-mode: normal, soft-light; background-size: 170px 170px, 46px 46px;
+    border: var(--line-bold) solid var(--c-ink); border-radius: var(--radius-md); box-shadow: var(--shadow-card);
+    padding: var(--space-2) var(--space-5); cursor: pointer; }
+  .btnPrimary:hover { box-shadow: var(--reg-box); text-shadow: 1px 1px 0 rgba(36, 31, 26, 0.35); }
+
   /* Demo scaffold only (labels each step state; not part of the ported component) */
   .dsStepLabel { width: min(720px, 100%); font-family: var(--font-subhead); text-transform: uppercase;
     letter-spacing: 0.05em; font-size: 0.82rem; color: var(--c-paper); opacity: 0.85; margin: 0 0 calc(var(--space-5) * -1); }
@@ -424,6 +462,9 @@
             </div>
           </div>
           <textarea class="messageTextarea" readonly>Hi Sam, I produced Topo Chico's launch end to end and shipped it across 40+ SKUs in a quarter. Liquid Death's Senior Producer role looks like the same problem at a louder volume. Worth a short conversation?</textarea>
+          <div class="msgTrigger">
+            <button type="button" class="linkNotMatch">This message is not great</button>
+          </div>
         </section>
         <section>
           <p class="dsStateLabel">After Copy lands on the clipboard and the one regeneration is used:</p>
@@ -456,6 +497,40 @@
         <a href="#" class="modalBtnClose footerSpacer">Open job posting
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" /></svg></a>
         <button type="button" class="modalBtnSave">Continue</button>
+      </div>
+    </div>
+
+    <!-- ===== MESSAGE FEEDBACK · the whole modal flips to this face =====
+         "This message is not great" (red link under the message) flips the entire modal.
+         Chips are multi-select; the free text lives in the "something else" row. Saving records
+         evidence only (never edits/regenerates/sends). Close or Escape flips back to Outreach. -->
+    <p class="dsStepLabel">Message feedback · full-modal flip</p>
+    <div class="modalBox">
+      <div class="modalHeader">
+        <h4 class="modalTitle">What's off about this message?</h4>
+        <button type="button" class="modalClose" aria-label="Back to message">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+        </button>
+      </div>
+      <div class="feedbackFace">
+        <p class="feedbackSub">Pick all that apply. This won't edit, regenerate, or send the message.</p>
+        <div class="chipSet" role="group" aria-label="What's off about this message">
+          <button type="button" class="chip chipOn" aria-pressed="true"><span class="chipCheck"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12" /></svg></span>Wrong skills/title applied</button>
+          <button type="button" class="chip" aria-pressed="false">Doesn't sound like Me</button>
+          <button type="button" class="chip" aria-pressed="false">Doesn't sound like selected tone</button>
+          <button type="button" class="chip" aria-pressed="false">Awkward to read</button>
+          <button type="button" class="chip" aria-pressed="false">I wouldn't send this</button>
+        </div>
+        <div class="seRow">
+          <input type="checkbox" id="wiz-fb-se" />
+          <label for="wiz-fb-se">something else</label>
+          <input type="text" class="seInput" maxlength="500" placeholder="Tell us what missed" disabled />
+          <span class="seCount">0/500</span>
+        </div>
+        <div class="feedbackFooter">
+          <button type="button" class="btnGhost">Close</button>
+          <button type="button" class="btnPrimary">Save feedback</button>
+        </div>
       </div>
     </div>
 
