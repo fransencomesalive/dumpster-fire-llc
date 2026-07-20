@@ -1,6 +1,6 @@
 # Current State
 
-## 2026-07-20 - Feedback release audit complete; Claude Design synced
+## 2026-07-20 - Feedback feature production release verified
 
 The job + message feedback flips are approved, implemented, release-audited, and synchronized to
 Claude Design project `3af2f1ea-428c-49b3-8b02-c066ec0c7452` under plan
@@ -13,10 +13,18 @@ binding, async race handling, modal accessibility, retained feedback evidence, m
 idempotency, and the mobile checkbox/input layout. Full detail and exact release sequence are in
 `docs/feedback-feature-handoff-2026-07-19.md`.
 
-The corrected release is committed at `d902bff`. Production preflight passed and
-`20260719000100_feedback_capture.sql` is applied, recorded, and postflight-verified, including
-PostgREST visibility. Current next action: commit this migration-state receipt, push `main`, and
-verify Vercel plus both production aliases. Authenticated production saves remain unverified.
+The implementation commits are `2f6d6c4`, `d902bff`, and `ec86803`, all pushed to `origin/main`.
+Production preflight passed and `20260719000100_feedback_capture.sql` is applied, recorded, and
+postflight-verified, including PostgREST visibility. Vercel completed the `ec86803` deployment;
+both production hosts returned 200 at the root and the protected feedback routes returned the
+expected 401 without a session.
+
+A disposable confirmed production user then saved one job-feedback report and one message-feedback
+report through the authenticated production APIs. Both returned 200 and produced exactly one row
+with the expected immutable match/generation context. The active scan, outreach message body,
+message revision/timestamp, and existing usage rows were unchanged. The disposable Auth user and
+all related application rows were deleted; the final orphan audit returned zero across every
+fixture and feedback table. No known release work remains for this feature.
 
 ## 2026-07-19 - CLAUDE DESIGN TASK (DONE): job and message feedback flips
 

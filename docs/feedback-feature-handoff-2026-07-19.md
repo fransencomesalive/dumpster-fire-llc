@@ -1,18 +1,18 @@
 # Handoff: Job + Message Feedback Flips (for Codex)
 
 Date: 2026-07-20
-Status: **release audit complete; Claude Design synced and verified; corrected release committed;
-production migration applied and postflight-verified; push and deployment verification pending.**
+Status: **production release complete; Claude Design, migration, deployment, authenticated saves,
+and cleanup all verified.**
 
-## Release sequence
+## Completed release sequence
 
-1. Commit the corrected release tree on `main`.
-2. Run `scripts/sql/feedback-production-preflight.sql` against production.
-3. Apply `supabase/migrations/20260719000100_feedback_capture.sql` and immediately record it
+1. Committed the corrected release tree on `main`.
+2. Ran `scripts/sql/feedback-production-preflight.sql` against production.
+3. Applied `supabase/migrations/20260719000100_feedback_capture.sql` and recorded it
    in `supabase_migrations.schema_migrations`.
-4. Verify the new schema, constraints, indexes, policies, privileges, and PostgREST visibility.
-5. Push `main`, verify the Vercel deployment and both production aliases, then exercise one
-   authenticated save for each feedback surface when a QA session is available.
+4. Verified the new schema, constraints, indexes, policies, privileges, and PostgREST visibility.
+5. Pushed `main`, verified the Vercel deployment and both production aliases, then exercised one
+   authenticated save for each feedback surface with a disposable production account.
 
 The migration must run before the application deployment because the corrected code reads and
 writes its new context columns.
@@ -70,9 +70,20 @@ writes its new context columns.
 - Headless Chrome at 320 / 375 / 390 / 1280 / 1440 on both full-card flips: zero
   horizontal overflow; real flips, selection gate, labeled checkbox/input, close/reset,
   focus state, and reduced-motion fallback all pass.
+- Production preflight confirmed the migration was not yet applied and existing feedback data had
+  no duplicate, oversized-note, or ownership problems. Migration `20260719000100` was applied and
+  recorded. Postflight confirmed all expected columns, indexes, policies, constraints, privileges,
+  and PostgREST visibility.
+- Vercel completed the deployment for `ec86803`. Both production hosts returned 200 at the root;
+  both protected feedback routes returned the expected 401 without a session.
+- A disposable confirmed Auth user completed one authenticated job-feedback save and one
+  authenticated message-feedback save through the production API. Both returned 200. The database
+  contained exactly one correctly contextualized row for each feedback type while the active scan,
+  message body/revision/timestamp, and two existing usage rows remained unchanged.
+- The disposable user and all profile, subscription, job, scan, pursuit, contact, generation,
+  message, usage, and feedback rows were deleted. The final orphan audit returned zero for every
+  checked table and Auth.
 
 ## Remaining
-- Commit the production migration-state receipt.
-- Push `main` and complete Vercel and production-route verification.
-- Exercise one authenticated production save on each feedback surface and confirm the related
-  job, message, pursuit, profile, and usage records are unchanged.
+
+No known release work remains for this feedback feature.
