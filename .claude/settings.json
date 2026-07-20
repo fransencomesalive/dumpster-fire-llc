@@ -10,6 +10,16 @@
             "timeout": 10
           }
         ]
+      },
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "f=$(jq -r '.tool_input.file_path // empty'); echo \"$f\" | grep -qE '(\\.module\\.css|/app/(ds|globals)\\.css|/app/.*\\.tsx|/design-system/.*\\.css)$' && printf '%s' '{\"hookSpecificOutput\": {\"hookEventName\": \"PreToolUse\", \"additionalContext\": \"DESIGN CANON PRE-FLIGHT: you are about to edit a design-bearing file. Before writing, load docs/design-canon.md and hold this change to it. Hard checks: (1) TOKENS ONLY - no raw hex, px type sizes, ad-hoc spacing, or hand-rolled shadows; every value is a var(--...) token. (2) NEVER introduce a new color, element, card, panel, or interaction pattern; if one seems needed, STOP and flag it to Randall by name, do not invent it. (3) BANNED: teal-tint paper hover (color-mix teal %, paper), halftone/dot backgrounds, eyebrow/kicker headlines, em dashes in copy. For hover use --reg-box, a hard ink offset, or ds-link. (4) GRID: every margin/padding/gap is a --space-* step. (5) REUSE existing ds-* classes before writing new CSS. (6) This must implement an APPROVED Claude Design card - if none exists for this UI, STOP and ask for design direction. Nothing reaches Randall until it clears the Definition of Ready (canon Section 10).\"}}' || true",
+            "timeout": 10
+          }
+        ]
       }
     ]
   }
