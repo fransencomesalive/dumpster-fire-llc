@@ -560,7 +560,7 @@ export default function DashboardClient() {
 
     // Flip the flag immediately so the button confirms on click; reconcile with the server after.
     const snapshot = jobsState.status === "ready" ? jobsState.response : null;
-    const confirmation = saved ? "Saved for later." : "Removed from Saved Jobs.";
+    const confirmation = saved ? "Saved for later." : "Removed from Saved Pursuits.";
     if (snapshot) {
       setJobsState({ status: "ready", response: withJobSaved(snapshot, job.id, saved), message: confirmation });
     }
@@ -574,7 +574,7 @@ export default function DashboardClient() {
       setJobsState({ status: "ready", response, message: confirmation });
     } catch (error) {
       // Revert the optimistic flag but keep the list on screen.
-      const message = error instanceof Error ? error.message : "Saved Jobs update failed.";
+      const message = error instanceof Error ? error.message : "Saved Pursuits update failed.";
       setJobsState(snapshot
         ? { status: "ready", response: snapshot, message }
         : { status: "error", message });

@@ -906,25 +906,6 @@
   height: 15px;
 }
 
-/* Coming Soon marker · teal pill (card r3) */
-.publicLandingHumanComingSoon {
-  display: inline-flex;
-  align-items: center;
-  font-family: var(--font-subhead);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  font-size: 0.8rem;
-  line-height: 1;
-  color: var(--c-paper);
-  background-color: var(--c-teal);
-  border: var(--line-reg) solid var(--c-ink);
-  border-radius: var(--radius-pill);
-  padding: 5px 12px;
-  background-image: var(--fiber-img), var(--grain-img);
-  background-blend-mode: normal, soft-light;
-  background-size: 170px 170px, 46px 46px;
-}
-
 /* Step 2 · contact cards (wizard contactSuggestion + formSuccess) */
 .publicLandingHumanSuccess {
   font-family: var(--font-body);

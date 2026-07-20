@@ -258,7 +258,6 @@ export default function HomePage() {
                 <div className={styles.publicLandingHumanPanel}>
                   <div className={styles.publicLandingHumanPanelHeader}>
                     <h3>Save it for your records</h3>
-                    <span className={styles.publicLandingHumanComingSoon}>Coming Soon</span>
                   </div>
                   <div className={styles.publicLandingHumanWizardSteps} aria-label="How Dumpster Fire works steps">
                     {humanPathSteps.map((label, index) => (
@@ -273,10 +272,10 @@ export default function HomePage() {
                       <p>Every pursuit keeps its own paper trail: who you messaged, what you sent, what happened next. When the recruiter finally calls back in three weeks, you will know exactly where you left off.</p>
                     </section>
                     <div className={styles.publicLandingHumanChecklist}>
-                      <label><input defaultChecked type="checkbox" /><span>Messaged Sam Lewis</span></label>
+                      <label><input defaultChecked type="checkbox" /><span>Sent outreach message</span></label>
                       <label><input defaultChecked type="checkbox" /><span>Applied online</span></label>
-                      <label><input type="checkbox" /><span>Heard back</span></label>
-                      <label><input type="checkbox" /><span>Saved for follow-up</span></label>
+                      <label><input type="checkbox" /><span>Received response</span></label>
+                      <label><input type="checkbox" /><span>Interviewing</span></label>
                     </div>
                   </div>
                 </div>

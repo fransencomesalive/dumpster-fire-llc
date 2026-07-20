@@ -17,24 +17,22 @@
   .scroller { overflow-x: auto; }
   .frame { container-type: inline-size; width: 100%; min-width: 820px; display: grid; gap: var(--space-4); }
 
-  /* ======================= SITE HEADER (from header.html, verbatim spec) ======================= */
+  /* ======================= SITE HEADER (current shared production primitive) ======================= */
   .siteHeader { position: relative; background-color: var(--c-paper);
     background-image: var(--fiber-img), var(--grain-img); background-blend-mode: normal, soft-light;
     background-size: 170px 170px, 46px 46px;
     border: var(--line-reg) solid var(--c-ink); border-bottom-width: var(--line-bold);
     border-radius: var(--radius-md); box-shadow: var(--shadow-card); }
-  .headerInner { display: flex; align-items: center; gap: var(--space-5); padding: var(--space-3) var(--space-5); }
-  .brand { display: inline-flex; align-items: center; gap: var(--space-3); text-decoration: none; color: var(--c-ink); flex: none; }
-  .brand img { width: 38px; height: 38px; object-fit: contain; filter: drop-shadow(2px 2px 0 rgba(36,31,26,0.28)); }
-  .brandWord { display: flex; flex-direction: column; line-height: 1; }
-  .brandWord .top { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.05em;
-    font-size: 0.72rem; color: var(--c-tomato); }
-  .brandWord .name { font-family: var(--font-display); font-size: 1.2rem; letter-spacing: var(--tracking-display); color: var(--c-ink); }
-  .navPrimary { display: flex; align-items: center; gap: var(--space-5); margin-left: var(--space-4); flex: none; }
+  .headerInner { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 24px; padding: var(--space-3) var(--space-5); }
+  .brand { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; color: var(--c-ink); flex: none;
+    font-family: var(--font-display); font-weight: 900; font-size: 17px; line-height: 1; letter-spacing: 0.02em; text-transform: uppercase; }
+  .brand img { width: auto; height: 34px; object-fit: contain; }
+  .brandWord { color: var(--c-ink); }
+  .navPrimary { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; margin-left: 10px;
+    padding-left: 20px; border-left: var(--line-reg) solid var(--c-ink-faint); }
   .navLink { font-family: var(--font-display); font-size: 1rem; white-space: nowrap; }
-  .headerActions { margin-left: auto; display: flex; align-items: center; gap: var(--space-4); flex: none; }
-  .linkAction { font-family: var(--font-display); font-size: 1rem; white-space: nowrap; }
-  .btnSm { font-size: 0.76rem; padding: var(--space-2) var(--space-4); }
+  .headerActions { margin-left: auto; display: flex; align-items: center; gap: 12px; flex: none; }
+  .btnSm { font-size: 13px; min-height: 34px; padding: 0 14px; }
 
   /* Teal action button — nav CTA (teal = positive; Randall 2026-07-04).
      Sized down 20% globally per round-3 (the CTA read as enormous). */
@@ -111,12 +109,13 @@
       <div class="headerInner">
         <a class="brand" href="#" aria-label="Dumpster Fire, home">
           <img src="../dumpsterfireguy.png" alt="" aria-hidden="true" />
-          <span class="brandWord"><span class="top">The Job Market Is A</span><span class="name">Dumpster Fire</span></span>
+          <span class="brandWord">Home</span>
         </a>
         <nav class="navPrimary" aria-label="Primary">
           <a class="ds-link navLink" href="#">Features</a>
           <a class="ds-link navLink" href="#">Human Path</a>
           <a class="ds-link navLink" href="#">Pricing</a>
+          <a class="ds-link navLink" href="#">Contact</a>
         </nav>
         <div class="headerActions">
           <a class="btnTeal btnSm" href="#">Sign in</a>

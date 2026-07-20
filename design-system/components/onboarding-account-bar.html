@@ -78,17 +78,19 @@
   /* On phones the actions wrap and Job scan drops to its own line. Hide the dangling divider. */
   @container (max-width: 640px) { .actionDivider { display: none; } }
 
-  /* Header stub for the in-context view; carries the profile-icon link (→ onboarding). */
+  /* Current shared signed-in header for the in-context view. */
   .siteHeader { position: relative; background-color: var(--c-paper);
     background-image: var(--fiber-img), var(--grain-img); background-blend-mode: normal, soft-light;
     background-size: 170px 170px, 46px 46px; border: var(--line-reg) solid var(--c-ink);
     border-bottom-width: var(--line-bold); border-radius: var(--radius-md); box-shadow: var(--shadow-card); }
-  .headerInner { display: flex; align-items: center; gap: var(--space-5); padding: var(--space-3) var(--space-5); }
-  .brand { display: inline-flex; align-items: center; gap: var(--space-3); text-decoration: none; color: var(--c-ink); flex: none; }
-  .brand img { width: 34px; height: 34px; object-fit: contain; filter: drop-shadow(2px 2px 0 rgba(36,31,26,0.28)); }
-  .brandWord { display: flex; flex-direction: column; line-height: 1; }
-  .brandWord .top { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.68rem; color: var(--c-tomato); }
-  .brandWord .name { font-family: var(--font-display); font-size: 1.12rem; letter-spacing: var(--tracking-display); color: var(--c-ink); }
+  .headerInner { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 24px; padding: var(--space-3) var(--space-5); }
+  .brand { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; color: var(--c-ink); flex: none;
+    font-family: var(--font-display); font-weight: 900; font-size: 17px; line-height: 1; letter-spacing: 0.02em; text-transform: uppercase; }
+  .brand img { width: auto; height: 34px; object-fit: contain; }
+  .brandWord { color: var(--c-ink); }
+  .navPrimary { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; margin-left: 10px;
+    padding-left: 20px; border-left: var(--line-reg) solid var(--c-ink-faint); }
+  .navPrimary a { font-family: var(--font-display); font-size: 1rem; white-space: nowrap; }
   .headerActions { margin-left: auto; display: inline-flex; align-items: center; gap: var(--space-3); }
   .profileLink { display: inline-flex; align-items: center; justify-content: center; width: 38px; height: 38px;
     border-radius: var(--radius-pill); background-color: var(--c-paper); border: var(--line-reg) solid var(--c-ink);
@@ -106,7 +108,8 @@
     Left is the identity group: the silhouette photo (a placeholder until photo storage lands), the account
     email in body copy, and <strong>Sign out</strong> below it (red, filling to a red button on hover). Right
     are the actions: <strong>Job scan</strong> and <strong>Saved Pursuits</strong> (now active, linking to the Saved
-    Pursuits page), then <strong>Plan</strong> and <strong>Billing</strong>. In the global header, the matching profile icon links back here.</p>
+    Pursuits page even if the profile later becomes incomplete), then <strong>Plan</strong> and <strong>Billing</strong>.
+    In the global header, the matching profile icon links back here.</p>
   </div>
 
   <!-- Isolated element -->
@@ -145,8 +148,11 @@
         <div class="headerInner">
           <a class="brand" href="#" aria-label="Dumpster Fire, home">
             <img src="../dumpsterfireguy.png" alt="" aria-hidden="true" />
-            <span class="brandWord"><span class="top">The Job Market Is A</span><span class="name">Dumpster Fire</span></span>
+            <span class="brandWord">Home</span>
           </a>
+          <nav class="navPrimary" aria-label="Page sections">
+            <a class="ds-link" href="#">Features</a><a class="ds-link" href="#">Human Path</a><a class="ds-link" href="#">Pricing</a><a class="ds-link" href="#">Contact</a>
+          </nav>
           <span class="headerActions">
             <a class="profileLink" href="#" aria-label="Your profile">
               <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M12 14c-5 0-8 2.7-8 6v0h16v0c0-3.3-3-6-8-6z"/></svg>

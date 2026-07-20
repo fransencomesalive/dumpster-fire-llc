@@ -142,7 +142,7 @@ export default function SavedPursuitsClient() {
 
   return (
     <>
-      <SiteHeader />
+      <SiteHeader profileHref="/onboarding" />
       <main className={styles.page}>
         <header className={styles.topBar}>
           <h1 className={styles.topTitle}>Saved Pursuits</h1>

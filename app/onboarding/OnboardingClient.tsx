@@ -1811,9 +1811,9 @@ export default function OnboardingClient({
     (section) => section.required && readinessBySection.get(section.key)?.status === "incomplete",
   );
 
-  // Profile card — a compact full-width bar in every signed-in state (onboarding-account-bar
-  // DS card). Identity group left (photo/email/sign out); actions right (Plan, Billing, Job scan,
-  // and the Saved Pursuits availability affordance once the profile is complete).
+  // Profile card - a compact full-width bar in every signed-in state (onboarding-account-bar
+  // DS card). Saved Pursuits stays available even if the current profile later becomes incomplete;
+  // only Job scan remains gated on profile completion.
   const accountPanel = (
     <section className={styles.accountPanel} aria-label="Profile">
       <div className={styles.accountHead}><span className={styles.accountTitle}>Profile</span></div>
@@ -1828,18 +1828,16 @@ export default function OnboardingClient({
         <div className={styles.profileActions}>
           <button type="button" className={styles.btnGhost} onClick={() => setAccountPopup("plan")}>Plan</button>
           <button type="button" className={styles.btnGhost} onClick={() => setAccountPopup("billing")}>Billing</button>
+          <span className={styles.actionDivider} aria-hidden="true" />
           {profileStatus === "complete" ? (
-            <>
-              <span className={styles.actionDivider} aria-hidden="true" />
               <button type="button" className={styles.btnScan} onClick={() => router.push("/dashboard")}>
                 Job scan
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12" /><polyline points="12 5 19 12 12 19" /></svg>
               </button>
-              <button type="button" className={styles.btnScan} onClick={() => router.push("/saved-pursuits")}>
-                Saved Pursuits
-              </button>
-            </>
           ) : null}
+          <button type="button" className={styles.btnScan} onClick={() => router.push("/saved-pursuits")}>
+            Saved Pursuits
+          </button>
         </div>
       </div>
     </section>
