@@ -80,6 +80,11 @@ writes its new context columns.
   authenticated message-feedback save through the production API. Both returned 200. The database
   contained exactly one correctly contextualized row for each feedback type while the active scan,
   message body/revision/timestamp, and two existing usage rows remained unchanged.
+- The first disposable QA seed stopped before either endpoint because its `outreach_messages`
+  insert supplied one more timestamp value than its target columns. The seed transaction rolled
+  back, emergency cleanup removed the temporary Auth user, and a pre-retry audit confirmed zero
+  fixture rows and zero Auth rows. Removing the extra value corrected the fixture; the second run
+  completed both saves and every invariant check.
 - The disposable user and all profile, subscription, job, scan, pursuit, contact, generation,
   message, usage, and feedback rows were deleted. The final orphan audit returned zero for every
   checked table and Auth.
