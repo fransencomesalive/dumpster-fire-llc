@@ -1,8 +1,8 @@
 # Handoff: Job + Message Feedback Flips (for Codex)
 
 Date: 2026-07-20
-Status: **release audit complete; Claude Design synced and verified; corrected release pending
-commit, production migration, push, and deployment verification.**
+Status: **release audit complete; Claude Design synced and verified; corrected release committed;
+production migration applied and postflight-verified; push and deployment verification pending.**
 
 ## Release sequence
 
@@ -72,7 +72,7 @@ writes its new context columns.
   focus state, and reduced-motion fallback all pass.
 
 ## Remaining
-- Commit the audit corrections.
-- Complete the production preflight, migration, postflight, push, and Vercel verification.
+- Commit the production migration-state receipt.
+- Push `main` and complete Vercel and production-route verification.
 - Exercise one authenticated production save on each feedback surface and confirm the related
   job, message, pursuit, profile, and usage records are unchanged.

@@ -13,9 +13,10 @@ binding, async race handling, modal accessibility, retained feedback evidence, m
 idempotency, and the mobile checkbox/input layout. Full detail and exact release sequence are in
 `docs/feedback-feature-handoff-2026-07-19.md`.
 
-Current next action: commit the corrected release, run the read-only production preflight, apply
-and verify `20260719000100_feedback_capture.sql`, then push `main` and verify Vercel. The feature is
-not yet migrated or deployed. Authenticated production saves remain unverified.
+The corrected release is committed at `d902bff`. Production preflight passed and
+`20260719000100_feedback_capture.sql` is applied, recorded, and postflight-verified, including
+PostgREST visibility. Current next action: commit this migration-state receipt, push `main`, and
+verify Vercel plus both production aliases. Authenticated production saves remain unverified.
 
 ## 2026-07-19 - CLAUDE DESIGN TASK (DONE): job and message feedback flips
 

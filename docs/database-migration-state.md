@@ -56,8 +56,8 @@ re-run a psql-applied migration through the CLI — A4 in particular is non-idem
   `schema_migrations` (`resume_highlights`). Column confirmed present (`data_type ARRAY`,
   default `'{}'::text[]`, NOT NULL).
 
-As of 2026-07-15, every migration through `20260715000200` is applied and recorded. The three
-`20260718` Saved Pursuits migrations listed below are intentionally not yet applied.
+Every migration through `20260719000100` is applied and recorded. The most recent production
+apply is the feedback-capture migration documented below.
 
 ## How to apply migrations (current method)
 
@@ -178,6 +178,24 @@ Post-apply verification (Management API):
 Note (pre-existing Supabase default, not introduced by this chain): `pg_default_acl` for role
 `postgres` still grants `arwdDxtm` to anon/authenticated on FUTURE public tables, so new tables
 auto-grant broad privileges until explicitly revoked. Out of scope for this chain.
+
+## Applied 2026-07-20 (confirmed + recorded in schema_migrations)
+
+- `20260719000100_feedback_capture.sql` - job-match and outreach-message feedback capture.
+  Applied via the Supabase Management API before the application deployment and recorded as
+  `feedback_capture` immediately afterward.
+- Read-only preflight: all three `20260718` prerequisites present; feedback migration absent;
+  `job_match_feedback` absent; `saved_message_feedback` rows 0; duplicate groups 0; notes over
+  500 characters 0; ownership mismatches 0; generation-request table present.
+- Postflight: migration-history row present; nine expected new/context columns visible;
+  28 feedback-related constraints present; all five expected indexes present; owner policies
+  present on both feedback tables.
+- Privileges: authenticated SELECT true and INSERT false for both feedback tables; service-role
+  INSERT true for both tables.
+- PostgREST returned HTTP 200 for the new job feedback columns, message feedback generation
+  columns, and outreach regeneration context.
+- The migration retains job-feedback evidence after job deletion through a nullable FK with
+  `on delete set null`; immutable job/profile/match snapshots remain on the feedback row.
 
 (Open, separate decision — NOT a migration: the `job_sources`
   clean-slate reset Randall wants alongside the private-boards feature. Scope TBD;
