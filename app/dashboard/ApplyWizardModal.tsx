@@ -1,6 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type MouseEvent as ReactMouseEvent,
+} from "react";
 import { PublicProfileApiError, requestPublicProfileApi } from "@/lib/public-profile/client";
 import type { PublicJobRecord } from "@/lib/public-jobs/types";
 import type { MatchResult } from "@/lib/public-profile/matching/types";
@@ -76,6 +84,10 @@ type TrackingResponse = {
   tracking: PursuitTrackingState;
   history: PursuitHistoryEntry[];
 };
+type MessageFeedbackTarget = Pick<
+  OutreachMessageRecord,
+  "id" | "regenerationCount" | "updatedAt"
+>;
 
 function humanizeContactType(type: HumanPathContactSuggestion["contactType"]): string {
   switch (type) {
@@ -278,19 +290,23 @@ export default function ApplyWizardModal({
   const [error, setError] = useState<string | null>(null);
 
   // Message feedback: flips the whole modal to a chip picker tied to one message.
-  const [feedbackMessageId, setFeedbackMessageId] = useState<string | null>(null);
+  const [feedbackTarget, setFeedbackTarget] = useState<MessageFeedbackTarget | null>(null);
   const [fbCodes, setFbCodes] = useState<Set<OutreachMessageFeedbackReason>>(new Set());
   const [fbSeChecked, setFbSeChecked] = useState(false);
   const [fbNote, setFbNote] = useState("");
   const [fbSaving, setFbSaving] = useState(false);
-  const [fbError, setFbError] = useState(false);
+  const [fbError, setFbError] = useState<string | null>(null);
   const [ackedMessageId, setAckedMessageId] = useState<string | null>(null);
   const fbFrontRef = useRef<HTMLDivElement>(null);
   const fbBackRef = useRef<HTMLDivElement>(null);
   const fbHeadingRef = useRef<HTMLHeadingElement>(null);
   const fbTriggerRef = useRef<HTMLButtonElement | null>(null);
   const fbSeInputRef = useRef<HTMLInputElement>(null);
-  const feedbackOpen = feedbackMessageId !== null;
+  const modalOverlayRef = useRef<HTMLDivElement>(null);
+  const feedbackSessionRef = useRef(0);
+  const fbFocusTimerRef = useRef<number | null>(null);
+  const fbAckTimerRef = useRef<number | null>(null);
+  const feedbackOpen = feedbackTarget !== null;
   const fbHasSelection = fbCodes.size > 0 || fbSeChecked;
 
   // Only the visible face stays focusable / in the a11y tree.
@@ -299,28 +315,50 @@ export default function ApplyWizardModal({
     if (fbBackRef.current) fbBackRef.current.inert = !feedbackOpen;
   }, [feedbackOpen]);
 
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      feedbackSessionRef.current += 1;
+      if (fbFocusTimerRef.current !== null) window.clearTimeout(fbFocusTimerRef.current);
+      if (fbAckTimerRef.current !== null) window.clearTimeout(fbAckTimerRef.current);
+    };
+  }, []);
+
   const api = useCallback(
     <T,>(path: string, method: string, body?: unknown) =>
       requestPublicProfileApi<T>(path, { method, accessToken, body }),
     [accessToken],
   );
 
-  function openMessageFeedback(id: string, triggerEl: HTMLButtonElement) {
+  function openMessageFeedback(message: OutreachMessageRecord, triggerEl: HTMLButtonElement) {
+    const session = feedbackSessionRef.current + 1;
+    feedbackSessionRef.current = session;
+    if (fbFocusTimerRef.current !== null) window.clearTimeout(fbFocusTimerRef.current);
     fbTriggerRef.current = triggerEl;
-    setFbError(false);
-    setFeedbackMessageId(id);
+    setFbError(null);
+    setFeedbackTarget({
+      id: message.id,
+      regenerationCount: message.regenerationCount ?? 0,
+      updatedAt: message.updatedAt,
+    });
     const reduce = typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    window.setTimeout(() => fbHeadingRef.current?.focus(), reduce ? 0 : 200);
+    fbFocusTimerRef.current = window.setTimeout(() => {
+      if (feedbackSessionRef.current === session) fbHeadingRef.current?.focus();
+    }, reduce ? 0 : 200);
   }
 
   function closeMessageFeedback() {
-    setFeedbackMessageId(null);
+    feedbackSessionRef.current += 1;
+    if (fbFocusTimerRef.current !== null) window.clearTimeout(fbFocusTimerRef.current);
+    setFeedbackTarget(null);
     setFbSaving(false);
-    setFbError(false);
+    setFbError(null);
     setFbCodes(new Set());
     setFbSeChecked(false);
     setFbNote("");
-    window.setTimeout(() => fbTriggerRef.current?.focus(), 0);
+    fbFocusTimerRef.current = window.setTimeout(() => fbTriggerRef.current?.focus(), 0);
   }
 
   function toggleFbCode(code: OutreachMessageFeedbackReason) {
@@ -332,26 +370,65 @@ export default function ApplyWizardModal({
   }
 
   async function saveMessageFeedback() {
-    if (!feedbackMessageId || !fbHasSelection || fbSaving) return;
+    if (!feedbackTarget || !fbHasSelection || fbSaving) return;
+    const session = feedbackSessionRef.current;
+    const targetSnapshot = feedbackTarget;
     const reasonCodes = [...fbCodes];
     if (fbSeChecked) reasonCodes.push("other");
     const trimmed = fbNote.trim();
     setFbSaving(true);
-    setFbError(false);
+    setFbError(null);
     try {
       await api<unknown>(
-        `/api/public-profile/pursuits/outreach/${feedbackMessageId}/feedback`,
+        `/api/public-profile/pursuits/outreach/${targetSnapshot.id}/feedback`,
         "POST",
-        { reasonCodes, ...(fbSeChecked && trimmed ? { notes: trimmed } : {}) },
+        {
+          reasonCodes,
+          expectedMessageRevision: targetSnapshot.regenerationCount ?? 0,
+          expectedMessageUpdatedAt: targetSnapshot.updatedAt,
+          ...(fbSeChecked && trimmed ? { notes: trimmed } : {}),
+        },
       );
-      const savedId = feedbackMessageId;
+      if (feedbackSessionRef.current !== session) return;
+      const savedId = targetSnapshot.id;
       closeMessageFeedback();
       setAckedMessageId(savedId);
-      window.setTimeout(() => setAckedMessageId((cur) => (cur === savedId ? null : cur)), 2600);
-    } catch {
-      setFbError(true);
+      if (fbAckTimerRef.current !== null) window.clearTimeout(fbAckTimerRef.current);
+      fbAckTimerRef.current = window.setTimeout(() => setAckedMessageId((cur) => (cur === savedId ? null : cur)), 2600);
+    } catch (err) {
+      if (feedbackSessionRef.current !== session) return;
+      setFbError(errorMessage(err, "That didn't save. Your selections are still here, give it another go."));
       setFbSaving(false);
     }
+  }
+
+  function handleModalKeyDown(event: ReactKeyboardEvent<HTMLDivElement>) {
+    if (event.key === "Escape" && feedbackOpen) {
+      event.stopPropagation();
+      closeMessageFeedback();
+      return;
+    }
+    if (event.key !== "Tab") return;
+    const visibleFace = feedbackOpen ? fbBackRef.current : fbFrontRef.current;
+    if (!visibleFace) return;
+    const focusable = [...visibleFace.querySelectorAll<HTMLElement>(
+      'a[href],button:not([disabled]),input:not([disabled]),textarea:not([disabled]),select:not([disabled]),[tabindex]:not([tabindex="-1"])',
+    )].filter((element) => !element.hidden && element.getAttribute("aria-hidden") !== "true");
+    if (focusable.length === 0) return;
+    const first = focusable[0];
+    const last = focusable.at(-1)!;
+    const active = document.activeElement;
+    if (event.shiftKey && (active === first || !visibleFace.contains(active))) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && (active === last || !visibleFace.contains(active))) {
+      event.preventDefault();
+      first.focus();
+    }
+  }
+
+  function handleBackdropMouseDown(event: ReactMouseEvent<HTMLDivElement>) {
+    if (event.target === event.currentTarget && feedbackOpen) closeMessageFeedback();
   }
 
   const applyTracking = useCallback((data: { tracking: PursuitTrackingState; history: PursuitHistoryEntry[]; trackingStartedAt: string | null }) => {
@@ -729,7 +806,7 @@ export default function ApplyWizardModal({
           {MESSAGE_FEEDBACK_REASONS.map((reason) => {
             const on = fbCodes.has(reason.code);
             return (
-              <button key={reason.code} type="button" className={`${styles.chip} ${on ? styles.chipOn : ""}`} aria-pressed={on} onClick={() => toggleFbCode(reason.code)}>
+              <button key={reason.code} type="button" disabled={fbSaving} className={`${styles.chip} ${on ? styles.chipOn : ""}`} aria-pressed={on} onClick={() => toggleFbCode(reason.code)}>
                 {on ? (
                   <span className={styles.chipCheck}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12" /></svg></span>
                 ) : null}
@@ -743,19 +820,26 @@ export default function ApplyWizardModal({
             type="checkbox"
             id="wizard-msg-fb-se"
             checked={fbSeChecked}
+            disabled={fbSaving}
             onChange={(event) => {
               setFbSeChecked(event.target.checked);
-              if (event.target.checked) window.setTimeout(() => fbSeInputRef.current?.focus(), 0);
+              if (event.target.checked) {
+                const session = feedbackSessionRef.current;
+                if (fbFocusTimerRef.current !== null) window.clearTimeout(fbFocusTimerRef.current);
+                fbFocusTimerRef.current = window.setTimeout(() => {
+                  if (feedbackSessionRef.current === session) fbSeInputRef.current?.focus();
+                }, 0);
+              }
             }}
           />
           <label htmlFor="wizard-msg-fb-se">something else</label>
-          <input ref={fbSeInputRef} type="text" className={styles.seInput} maxLength={500} placeholder="Tell us what missed" value={fbNote} disabled={!fbSeChecked} onChange={(event) => setFbNote(event.target.value)} />
+          <input ref={fbSeInputRef} type="text" className={styles.seInput} maxLength={500} placeholder="Tell us what missed" value={fbNote} disabled={!fbSeChecked || fbSaving} onChange={(event) => setFbNote(event.target.value)} />
           <span className={styles.seCount}>{fbNote.length}/500</span>
         </div>
         {fbError ? (
-          <div className={styles.feedbackAlert}>
+          <div className={styles.feedbackAlert} role="alert">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
-            <p>That didn&apos;t save. Your selections are still here, give it another go.</p>
+            <p>{fbError}</p>
           </div>
         ) : null}
         <div className={styles.feedbackFooter}>
@@ -767,11 +851,19 @@ export default function ApplyWizardModal({
   );
 
   return (
-    <div className={styles.modalOverlay} role="dialog" aria-modal="true" aria-label={headerTitle}>
+    <div
+      ref={modalOverlayRef}
+      className={styles.modalOverlay}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={feedbackOpen ? "wizard-msg-fb-title" : "apply-wizard-title"}
+      onKeyDown={handleModalKeyDown}
+      onMouseDown={handleBackdropMouseDown}
+    >
       <div className={`${styles.flipCard} ${feedbackOpen ? styles.flipCardFlipped : ""}`}>
-      <div ref={fbFrontRef} className={`${styles.modalBox} ${styles.flipFace} ${styles.flipFront}`}>
+      <div ref={fbFrontRef} aria-hidden={feedbackOpen} className={`${styles.modalBox} ${styles.flipFace} ${styles.flipFront}`}>
         <div className={styles.modalHeader}>
-          <h4 className={styles.modalTitle}>{headerTitle}</h4>
+          <h4 id="apply-wizard-title" className={styles.modalTitle}>{headerTitle}</h4>
           {closeButton}
         </div>
         {mode === "applied" ? appliedBar : stepper}
@@ -904,7 +996,7 @@ export default function ApplyWizardModal({
                           </div>
                           <AutosizeTextarea value={message.message} />
                           <div className={styles.msgTrigger}>
-                            <button type="button" className={styles.linkNotMatch} onClick={(event) => openMessageFeedback(message.id, event.currentTarget)} aria-expanded={feedbackMessageId === message.id} aria-controls="wizard-message-feedback">This message is not great</button>
+                            <button type="button" className={styles.linkNotMatch} onClick={(event) => openMessageFeedback(message, event.currentTarget)} aria-expanded={feedbackTarget?.id === message.id} aria-controls="wizard-message-feedback">This message is not great</button>
                             {ackedMessageId === message.id ? (
                               <span className={styles.savedAck} role="status" aria-live="polite">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12" /></svg>Noted
@@ -932,7 +1024,7 @@ export default function ApplyWizardModal({
         className={`${styles.modalBox} ${styles.flipFace} ${styles.flipBack}`}
         role="group"
         aria-labelledby="wizard-msg-fb-title"
-        onKeyDown={(event) => { if (event.key === "Escape") { event.stopPropagation(); closeMessageFeedback(); } }}
+        aria-hidden={!feedbackOpen}
       >
         {messageFeedbackFace}
       </div>

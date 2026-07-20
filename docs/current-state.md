@@ -1,15 +1,21 @@
 # Current State
 
-## 2026-07-19 (evening) - Feedback flips SHIPPED to the working tree (committed, not pushed)
+## 2026-07-20 - Feedback release audit complete; Claude Design synced
 
-The job + message feedback flips are designed (approved in Claude Design), implemented in
-production UI, wired to the backend endpoints, and verified (tsc/lint/webpack build clean;
-0 overflow + working flips at 320/375/390/1280/1440). Committed on `main`. **Next: Codex
-pushes; then Randall applies `supabase/migrations/20260719000100_feedback_capture.sql` and
-deploys.** Full detail + endpoint contracts in `docs/feedback-feature-handoff-2026-07-19.md`.
+The job + message feedback flips are approved, implemented, release-audited, and synchronized to
+Claude Design project `3af2f1ea-428c-49b3-8b02-c066ec0c7452` under plan
+`plan_3af2f1ea428c49b3_da8bd4049e9f`. Six remote files were read back and exactly match the local
+design-system mirror. TypeScript, lint, 28 fixture suites, production build, twice-applied migration
+tests, and browser checks at 320/375/390/1280/1440 are green.
 
-The feature does NOT persist in prod until that migration runs. Live authenticated save
-round-trip is the one thing not yet exercised (needs a real session + prod DB).
+The audit hardened immutable job matching context, message generation context and exact revision
+binding, async race handling, modal accessibility, retained feedback evidence, migration
+idempotency, and the mobile checkbox/input layout. Full detail and exact release sequence are in
+`docs/feedback-feature-handoff-2026-07-19.md`.
+
+Current next action: commit the corrected release, run the read-only production preflight, apply
+and verify `20260719000100_feedback_capture.sql`, then push `main` and verify Vercel. The feature is
+not yet migrated or deployed. Authenticated production saves remain unverified.
 
 ## 2026-07-19 - CLAUDE DESIGN TASK (DONE): job and message feedback flips
 

@@ -159,13 +159,20 @@
     transition:box-shadow var(--dur-fast) var(--ease-snap), background-color var(--dur-fast) var(--ease-snap), color var(--dur-fast) var(--ease-snap); }
   .chip .chipCheck { width:0; height:13px; overflow:hidden; display:inline-flex; align-items:center; transition:width var(--dur-fast) var(--ease-snap); }
   .chip .chipCheck svg { flex:none; width:13px; height:13px; }
-  .chip:hover { box-shadow:2px 2px 0 var(--c-ink); }
+  .chip:hover:not(:disabled) { box-shadow:2px 2px 0 var(--c-ink); }
+  .chip:disabled { cursor:default; }
   .chip[aria-pressed="true"] { color:var(--c-paper); background-color:var(--c-teal); box-shadow:var(--reg-box); }
   .chip[aria-pressed="true"] .chipCheck { width:17px; }
   @media (prefers-reduced-motion: reduce) { .chip, .chip .chipCheck { transition:none; } }
   .seRow { display:flex; align-items:center; gap:var(--space-2); }
   .seRow input[type="checkbox"] { accent-color:var(--c-teal); width:18px; height:18px; flex:none; cursor:pointer; }
   .seRow label { font-family:var(--font-ui), Inter, system-ui, sans-serif; font-size:0.9rem; white-space:nowrap; cursor:pointer; }
+  @media (max-width:420px) {
+    .seRow { display:grid; grid-template-columns:18px minmax(0, 1fr) auto; align-items:center; }
+    .seRow label { grid-column:2 / 4; }
+    .seInput { grid-column:2; width:100%; }
+    .seCount { grid-column:3; }
+  }
   .seInput { flex:1 1 auto; min-width:0; box-sizing:border-box; font:inherit; font-family:var(--font-ui), Inter, system-ui, sans-serif;
     font-size:0.9rem; color:var(--c-ink); background-color:var(--c-paper); border:var(--line-reg) solid var(--c-ink);
     border-radius:var(--radius-md); padding:8px var(--space-3); }

@@ -271,6 +271,14 @@
   .linkNotMatch { font-family: var(--font-ui, Inter, system-ui, sans-serif); font-size: 0.9rem; color: var(--c-tomato);
     background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
   .linkNotMatch:hover { color: color-mix(in srgb, var(--c-tomato) 78%, var(--c-ink)); }
+  .feedbackFlip { width:min(720px, 100%); display:grid; perspective:1600px; }
+  .feedbackFlipCard { display:grid; grid-template-columns:minmax(0,1fr); transform-style:preserve-3d;
+    transition:transform var(--dur-base) var(--ease-snap); }
+  .feedbackFlipCard.isFlipped { transform:rotateY(180deg); }
+  .feedbackFlipCard .modalBox { width:100%; box-sizing:border-box; }
+  .flipFace { grid-area:1 / 1; min-width:0; -webkit-backface-visibility:hidden; backface-visibility:hidden; }
+  .flipBack { transform:rotateY(180deg); }
+  .flipFace[aria-hidden="true"] { pointer-events:none; }
   .feedbackFace { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-3); align-content: start; }
   .feedbackSub { font-family: var(--font-body); font-size: 0.9rem; color: var(--role-text-muted); margin: 0; }
   .chipSet { display: flex; flex-wrap: wrap; gap: var(--space-2); }
@@ -280,7 +288,8 @@
     transition: box-shadow var(--dur-fast) var(--ease-snap), background-color var(--dur-fast) var(--ease-snap), color var(--dur-fast) var(--ease-snap); }
   .chipCheck { display: inline-flex; align-items: center; }
   .chipCheck svg { flex: none; width: 13px; height: 13px; }
-  .chip:hover { box-shadow: 2px 2px 0 var(--c-ink); }
+  .chip:hover:not(:disabled) { box-shadow: 2px 2px 0 var(--c-ink); }
+  .chip:disabled { cursor: default; }
   .chipOn { color: var(--c-paper); background-color: var(--c-teal); box-shadow: var(--reg-box); }
   @media (prefers-reduced-motion: reduce) { .chip { transition: none; } }
   .seRow { display: flex; align-items: center; gap: var(--space-2); }
@@ -291,6 +300,12 @@
     border-radius: var(--radius-md); padding: 8px var(--space-3); }
   .seInput:disabled { opacity: 0.5; }
   .seCount { flex: none; font-family: var(--font-ui, Inter, system-ui, sans-serif); font-size: 0.74rem; color: var(--role-text-faint); }
+  @media (max-width: 420px) {
+    .seRow { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; align-items: center; }
+    .seRow label { grid-column: 2 / 4; }
+    .seInput { grid-column: 2; width: 100%; }
+    .seCount { grid-column: 3; }
+  }
   .feedbackFooter { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--space-2); margin-top: var(--space-2); }
   .btnGhost { font-family: var(--font-display); font-size: 1rem; color: var(--c-ink); background-color: var(--c-paper);
     border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-md); box-shadow: var(--shadow-card);
@@ -301,6 +316,13 @@
     border: var(--line-bold) solid var(--c-ink); border-radius: var(--radius-md); box-shadow: var(--shadow-card);
     padding: var(--space-2) var(--space-5); cursor: pointer; }
   .btnPrimary:hover { box-shadow: var(--reg-box); text-shadow: 1px 1px 0 rgba(36, 31, 26, 0.35); }
+  .btnPrimary:disabled { opacity:0.5; cursor:not-allowed; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .feedbackFlipCard, .flipFace { transform:none !important; transition:opacity var(--dur-base) ease; }
+    .feedbackFlipCard:not(.isFlipped) .flipBack { opacity:0; }
+    .feedbackFlipCard.isFlipped .flipFront { opacity:0; }
+  }
 
   /* Demo scaffold only (labels each step state; not part of the ported component) */
   .dsStepLabel { width: min(720px, 100%); font-family: var(--font-subhead); text-transform: uppercase;
@@ -428,7 +450,9 @@
 
     <!-- ================= STEP 3 of 4 · OUTREACH ================= -->
     <p class="dsStepLabel">Step 3 of 4 · Outreach</p>
-    <div class="modalBox">
+    <div class="feedbackFlip">
+    <div class="feedbackFlipCard" id="wizardFeedbackFlip">
+    <div class="modalBox flipFace flipFront" id="wizardFeedbackFront" aria-hidden="false">
       <div class="modalHeader">
         <h4 class="modalTitle">Human Path: Senior Producer</h4>
         <button type="button" class="modalClose" aria-label="Close">
@@ -463,7 +487,7 @@
           </div>
           <textarea class="messageTextarea" readonly>Hi Sam, I produced Topo Chico's launch end to end and shipped it across 40+ SKUs in a quarter. Liquid Death's Senior Producer role looks like the same problem at a louder volume. Worth a short conversation?</textarea>
           <div class="msgTrigger">
-            <button type="button" class="linkNotMatch">This message is not great</button>
+            <button type="button" class="linkNotMatch" data-feedback-open aria-expanded="false" aria-controls="wizardFeedbackBack">This message is not great</button>
           </div>
         </section>
         <section>
@@ -504,18 +528,17 @@
          "This message is not great" (red link under the message) flips the entire modal.
          Chips are multi-select; the free text lives in the "something else" row. Saving records
          evidence only (never edits/regenerates/sends). Close or Escape flips back to Outreach. -->
-    <p class="dsStepLabel">Message feedback · full-modal flip</p>
-    <div class="modalBox">
+    <div class="modalBox flipFace flipBack" id="wizardFeedbackBack" role="group" aria-labelledby="wizardFeedbackTitle" aria-hidden="true" inert>
       <div class="modalHeader">
-        <h4 class="modalTitle">What's off about this message?</h4>
-        <button type="button" class="modalClose" aria-label="Back to message">
+        <h4 class="modalTitle" id="wizardFeedbackTitle" tabindex="-1">What's off about this message?</h4>
+        <button type="button" class="modalClose" data-feedback-close aria-label="Back to message">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
         </button>
       </div>
       <div class="feedbackFace">
         <p class="feedbackSub">Pick all that apply. This won't edit, regenerate, or send the message.</p>
         <div class="chipSet" role="group" aria-label="What's off about this message">
-          <button type="button" class="chip chipOn" aria-pressed="true"><span class="chipCheck"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12" /></svg></span>Wrong skills/title applied</button>
+          <button type="button" class="chip" aria-pressed="false">Wrong skills/title applied</button>
           <button type="button" class="chip" aria-pressed="false">Doesn't sound like Me</button>
           <button type="button" class="chip" aria-pressed="false">Doesn't sound like selected tone</button>
           <button type="button" class="chip" aria-pressed="false">Awkward to read</button>
@@ -528,10 +551,12 @@
           <span class="seCount">0/500</span>
         </div>
         <div class="feedbackFooter">
-          <button type="button" class="btnGhost">Close</button>
-          <button type="button" class="btnPrimary">Save feedback</button>
+          <button type="button" class="btnGhost" data-feedback-close>Close</button>
+          <button type="button" class="btnPrimary" data-feedback-save disabled>Save feedback</button>
         </div>
       </div>
+    </div>
+    </div>
     </div>
 
     <!-- ================= STEP 4 of 4 · TRACK ================= -->
@@ -1138,5 +1163,58 @@
     </div>
 
   </div>
+<script>
+(() => {
+  const flip = document.getElementById('wizardFeedbackFlip');
+  const front = document.getElementById('wizardFeedbackFront');
+  const back = document.getElementById('wizardFeedbackBack');
+  const trigger = flip.querySelector('[data-feedback-open]');
+  const heading = document.getElementById('wizardFeedbackTitle');
+  const other = document.getElementById('wiz-fb-se');
+  const note = back.querySelector('.seInput');
+  const count = back.querySelector('.seCount');
+  const save = back.querySelector('[data-feedback-save]');
+
+  function syncSave() {
+    save.disabled = !other.checked && !back.querySelector('.chip[aria-pressed="true"]');
+  }
+  function setFlipped(open) {
+    flip.classList.toggle('isFlipped', open);
+    front.setAttribute('aria-hidden', String(open));
+    back.setAttribute('aria-hidden', String(!open));
+    front.inert = open;
+    back.inert = !open;
+    trigger.setAttribute('aria-expanded', String(open));
+    window.setTimeout(() => (open ? heading : trigger).focus(), 0);
+  }
+  function reset() {
+    back.querySelectorAll('.chip').forEach((chip) => {
+      chip.setAttribute('aria-pressed', 'false');
+      chip.classList.remove('chipOn');
+    });
+    other.checked = false;
+    note.value = '';
+    note.disabled = true;
+    count.textContent = '0/500';
+    syncSave();
+  }
+  trigger.addEventListener('click', () => setFlipped(true));
+  back.querySelectorAll('[data-feedback-close]').forEach((button) => button.addEventListener('click', () => { setFlipped(false); reset(); }));
+  back.querySelectorAll('.chip').forEach((chip) => chip.addEventListener('click', () => {
+    const pressed = chip.getAttribute('aria-pressed') !== 'true';
+    chip.setAttribute('aria-pressed', String(pressed));
+    chip.classList.toggle('chipOn', pressed);
+    syncSave();
+  }));
+  other.addEventListener('change', () => {
+    note.disabled = !other.checked;
+    if (other.checked) note.focus();
+    syncSave();
+  });
+  note.addEventListener('input', () => { count.textContent = `${note.value.length}/500`; });
+  save.addEventListener('click', () => { setFlipped(false); reset(); });
+  back.addEventListener('keydown', (event) => { if (event.key === 'Escape') { setFlipped(false); reset(); } });
+})();
+</script>
 </body>
 </html>

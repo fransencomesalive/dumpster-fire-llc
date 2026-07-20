@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import {
   getPublicAuthSession,
   type PublicAuthSession,
@@ -29,6 +30,7 @@ import {
   loadContactSuggestionsForPursuit,
   loadContactSuggestionsForPursuits,
   loadInitialOutreachGenerationCommit,
+  loadOutreachGenerationContextForMessage,
   loadOutreachMessageById,
   loadOutreachMessagesForPursuit,
   loadOutreachMessagesForPursuits,
@@ -72,6 +74,8 @@ import type {
   OutreachMessageRecord,
   OutreachMessageFeedback,
   OutreachMessageFeedbackReason,
+  OutreachFeedbackGenerationContext,
+  OutreachGenerationContext,
   OutreachRecipientType,
   Pursuit,
   PursuitEvent,
@@ -493,6 +497,10 @@ export type PublicProfilePursuitsHandlerOptions = PublicProfileMatchHandlerOptio
     request: PublicProfileRepositoryRequest,
     input: SaveOutreachMessageFeedbackInput,
   ) => Promise<OutreachMessageFeedback>;
+  loadOutreachGenerationContext?: (
+    request: PublicProfileRepositoryRequest,
+    message: OutreachMessageRecord,
+  ) => Promise<OutreachFeedbackGenerationContext | undefined>;
   loadPursuitEvents?: (
     request: PublicProfileRepositoryRequest,
     pursuitId: string,
@@ -580,6 +588,7 @@ export type PublicProfilePursuitsHandlerOptions = PublicProfileMatchHandlerOptio
       messageId: string;
       previousMessage: string;
       message: string;
+      generationContext: OutreachGenerationContext;
       updatedAt: string;
     },
   ) => Promise<OutreachMessageRecord | undefined>;
@@ -1914,6 +1923,70 @@ export async function handlePublicProfilePursuitContactSelectionRequest(
   });
 }
 
+function outreachGenerationContext(input: {
+  aggregate: CandidateProfileAggregate;
+  profileMarkdown: string;
+  pursuit: Pursuit;
+  job: PublicJobRecord;
+  contact: HumanPathContactSuggestion;
+  generatedAt: string;
+}): OutreachGenerationContext {
+  const roleTrack = input.aggregate.roleTracks.find((item) => item.id === input.pursuit.selectedRoleTrackId);
+  const resume = input.aggregate.resumes.find((item) => item.id === input.pursuit.selectedResumeId);
+  const workExample = input.aggregate.workExamples.find((item) => item.id === input.pursuit.selectedWorkExampleId);
+  const voice = input.aggregate.voicePersonality;
+
+  return {
+    schemaVersion: 1,
+    generatedAt: input.generatedAt,
+    profile: {
+      id: input.aggregate.profile.id,
+      version: input.aggregate.profile.version,
+      updatedAt: input.aggregate.profile.updatedAt,
+      ...(input.aggregate.profile.markdownGeneratedAt
+        ? { markdownGeneratedAt: input.aggregate.profile.markdownGeneratedAt }
+        : {}),
+      markdownSha256: createHash("sha256").update(input.profileMarkdown).digest("hex"),
+      toneTags: [...(voice?.toneTags ?? [])],
+      avoidTags: [...(voice?.avoidTags ?? [])],
+      avoidNote: voice?.avoidNote ?? "",
+    },
+    selection: {
+      ...(roleTrack ? { roleTrack: { id: roleTrack.id, name: roleTrack.name, targetTitles: [...roleTrack.targetTitles] } } : {}),
+      ...(resume ? { resume: { id: resume.id, name: resume.name, highlights: [...resume.highlights] } } : {}),
+      ...(workExample ? {
+        workExample: {
+          id: workExample.id,
+          title: workExample.title,
+          oneHitter: workExample.oneHitter,
+          context: workExample.context,
+          ...(workExample.link ? { link: workExample.link } : {}),
+        },
+      } : {}),
+    },
+    pursuit: {
+      id: input.pursuit.id,
+      ...(input.pursuit.selectionSnapshot ? { selectionSnapshot: input.pursuit.selectionSnapshot } : {}),
+    },
+    job: {
+      id: input.job.id,
+      title: input.job.title,
+      companyName: input.job.companyName,
+      ...(input.job.location ? { location: input.job.location } : {}),
+      ...(input.job.remoteType ? { remoteType: input.job.remoteType } : {}),
+      ...(input.job.employmentType ? { employmentType: input.job.employmentType } : {}),
+      ...(input.job.compensationText ? { compensationText: input.job.compensationText } : {}),
+      ...(input.job.sourceUrl ? { sourceUrl: input.job.sourceUrl } : {}),
+    },
+    recipient: {
+      contactSuggestionId: input.contact.id,
+      name: input.contact.name,
+      title: input.contact.title,
+      contactType: input.contact.contactType,
+    },
+  };
+}
+
 export async function handlePublicProfilePursuitOutreachRequest(
   request: Request,
   options: PublicProfilePursuitsHandlerOptions = {},
@@ -1992,7 +2065,7 @@ export async function handlePublicProfilePursuitOutreachRequest(
   }
 
   const loadAggregate = options.loadAggregate ?? loadCandidateProfileAggregate;
-  const aggregate = await loadAggregate(repositoryRequest, session.userId);
+  let aggregate = await loadAggregate(repositoryRequest, session.userId);
   if (!aggregate) {
     return json({ error: "Candidate profile not found.", status: "not_found" }, { status: 404 });
   }
@@ -2020,7 +2093,10 @@ export async function handlePublicProfilePursuitOutreachRequest(
     });
     if (regenerated.status === "regenerated") {
       const refreshed = regenerated.generation.aggregate.profile.generatedMarkdown?.trim();
-      if (refreshed) profileMarkdown = refreshed;
+      if (refreshed) {
+        profileMarkdown = refreshed;
+        aggregate = regenerated.generation.aggregate;
+      }
     }
   }
 
@@ -2124,6 +2200,14 @@ export async function handlePublicProfilePursuitOutreachRequest(
       messageId: previousMessage.id,
       previousMessage: previousMessage.message,
       message: outreach.message,
+      generationContext: outreachGenerationContext({
+        aggregate,
+        profileMarkdown,
+        pursuit,
+        job,
+        contact: contactSuggestion,
+        generatedAt,
+      }),
       updatedAt: generatedAt,
     });
     if (!regeneratedMessage) {
@@ -2258,6 +2342,14 @@ export async function handlePublicProfilePursuitOutreachRequest(
     selectedRoleTrackId: pursuit.selectedRoleTrackId,
     selectedResumeId: pursuit.selectedResumeId,
     selectedWorkExampleId: pursuit.selectedWorkExampleId,
+    generationContext: outreachGenerationContext({
+      aggregate,
+      profileMarkdown,
+      pursuit,
+      job,
+      contact,
+      generatedAt,
+    }),
     createdAt: generatedAt,
   }));
   const persistOutreach = options.persistOutreach ?? persistOutreachGeneration;
@@ -2439,7 +2531,19 @@ function parseOutreachMessageFeedback(input: Record<string, unknown> | null) {
     }
   }
 
-  return { issues, reasonCodes, notes };
+  const rawRevision = input?.expectedMessageRevision;
+  const expectedMessageRevision = rawRevision === 0 || rawRevision === 1 ? rawRevision : undefined;
+  if (expectedMessageRevision === undefined) {
+    issues.push({ field: "expectedMessageRevision", message: "expectedMessageRevision must be 0 or 1." });
+  }
+
+  const rawUpdatedAt = input?.expectedMessageUpdatedAt;
+  const expectedMessageUpdatedAt = typeof rawUpdatedAt === "string" ? rawUpdatedAt.trim() : "";
+  if (!expectedMessageUpdatedAt || Number.isNaN(Date.parse(expectedMessageUpdatedAt))) {
+    issues.push({ field: "expectedMessageUpdatedAt", message: "expectedMessageUpdatedAt must be an ISO timestamp." });
+  }
+
+  return { issues, reasonCodes, notes, expectedMessageRevision, expectedMessageUpdatedAt };
 }
 
 // Feedback is intentionally observational. Saving it snapshots the exact current draft and
@@ -2486,6 +2590,38 @@ export async function handlePublicProfilePursuitOutreachMessageFeedbackRequest(
     return json({ error: "Outreach message not found.", status: "not_found" }, { status: 404 });
   }
 
+  if (
+    (message.regenerationCount ?? 0) !== parsed.expectedMessageRevision
+    || message.updatedAt !== parsed.expectedMessageUpdatedAt
+  ) {
+    return json({
+      error: "This draft changed after feedback was opened. Return to the message and try again.",
+      status: "message_changed",
+      saved: false,
+    }, { status: 409 });
+  }
+
+  const loadGenerationContext = options.loadOutreachGenerationContext
+    ?? loadOutreachGenerationContextForMessage;
+  let generationContext: OutreachFeedbackGenerationContext | undefined;
+  try {
+    generationContext = await loadGenerationContext(repositoryRequest, message);
+  } catch {
+    return json({
+      error: "Message feedback could not be saved. Try again.",
+      status: "context_unavailable",
+      retryable: true,
+      saved: false,
+    }, { status: 503 });
+  }
+  generationContext ??= {
+    source: "legacy_partial",
+    selectedRoleTrackId: message.selectedRoleTrackId,
+    selectedResumeId: message.selectedResumeId,
+    selectedWorkExampleId: message.selectedWorkExampleId,
+    pursuitSelectionSnapshot: pursuit.selectionSnapshot,
+  };
+
   const persist = options.persistOutreachMessageFeedback ?? persistOutreachMessageFeedback;
   let feedback: OutreachMessageFeedback;
   try {
@@ -2496,6 +2632,8 @@ export async function handlePublicProfilePursuitOutreachMessageFeedbackRequest(
       notes: parsed.notes,
       messageSnapshot: message.message,
       messageRevision: message.regenerationCount ?? 0,
+      generationRequestId: message.generationRequestId,
+      generationContext,
       updatedAt: options.now?.() ?? new Date().toISOString(),
     });
   } catch {

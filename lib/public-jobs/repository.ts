@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { evaluateCandidateProfileQuality } from "../public-profile/profile-quality";
 import {
   evaluatePublicJobDecision,
@@ -334,6 +335,51 @@ function matchSummaryForJob(
     signals: unique(result.categoryFits.flatMap((fit) => fit.matchedSignals)).slice(0, 12),
     matcherVersion: PUBLIC_JOB_MATCHER_VERSION,
     evaluatedAt,
+  };
+}
+
+function feedbackContextForJob(
+  job: PublicJobRecord,
+  aggregate: CandidateProfileAggregate,
+  evaluatedAt: string,
+) {
+  const matchJob = matchJobFromRecord(job);
+  const matchingSignals = matchingSignalsForAggregate(aggregate);
+  const result = evaluateMatch({ profile: aggregate, job: matchJob, evaluatedAt });
+  const match: PublicJobMatchSummary = {
+    score: result.internalScore,
+    label: result.label,
+    signals: unique(result.categoryFits.flatMap((fit) => fit.matchedSignals)).slice(0, 12),
+    matcherVersion: PUBLIC_JOB_MATCHER_VERSION,
+    evaluatedAt,
+  };
+  const matchContextHash = createHash("sha256")
+    .update(JSON.stringify({
+      matcherVersion: PUBLIC_JOB_MATCHER_VERSION,
+      matchingSignals,
+      job: matchJob,
+    }))
+    .digest("hex");
+
+  return {
+    match,
+    matchContextHash,
+    profileContext: {
+      profileId: aggregate.profile.id,
+      profileVersion: aggregate.profile.version,
+      profileUpdatedAt: aggregate.profile.updatedAt,
+      matchingSignals,
+    },
+    jobSnapshot: matchJob,
+    matchDetails: {
+      categoryFits: result.categoryFits,
+      recommendations: result.recommendations,
+      risks: result.risks,
+      whyMatched: result.whyMatched,
+      whyNotMatched: result.whyNotMatched,
+      softExclusions: result.softExclusions,
+      explanation: result.explanation,
+    },
   };
 }
 
@@ -852,10 +898,10 @@ export async function savePublicJobMatchFeedbackForUser(
   const jobRow = (await jobsByIdForUser(request, userId, [input.jobId]))[0];
   if (!jobRow) return { status: "not_in_results" };
 
-  const match = matchSummaryForJob(mapPublicJobRecord(jobRow), readiness.aggregate, submittedAt);
+  const context = feedbackContextForJob(mapPublicJobRecord(jobRow), readiness.aggregate, submittedAt);
   await request("job_match_feedback", {
     method: "POST",
-    query: "?on_conflict=user_id,job_id,matcher_version,profile_version",
+    query: "?on_conflict=user_id,job_id,matcher_version,match_context_hash",
     headers: { Prefer: "resolution=merge-duplicates" },
     body: {
       user_id: userId,
@@ -863,12 +909,16 @@ export async function savePublicJobMatchFeedbackForUser(
       job_id: input.jobId,
       reason_codes: input.reasonCodes,
       note: input.note ?? null,
-      match_score: match.score,
-      match_label: match.label,
-      match_signals: match.signals,
-      matcher_version: match.matcherVersion,
-      match_evaluated_at: match.evaluatedAt,
+      match_score: context.match.score,
+      match_label: context.match.label,
+      match_signals: context.match.signals,
+      matcher_version: context.match.matcherVersion,
+      match_evaluated_at: context.match.evaluatedAt,
       profile_version: readiness.aggregate.profile.version,
+      match_context_hash: context.matchContextHash,
+      profile_context: context.profileContext,
+      job_snapshot: context.jobSnapshot,
+      match_details: context.matchDetails,
       updated_at: submittedAt,
     },
   });
@@ -880,7 +930,8 @@ export async function savePublicJobMatchFeedbackForUser(
       ...(input.note ? { note: input.note } : {}),
       profileId: readiness.aggregate.profile.id,
       profileVersion: readiness.aggregate.profile.version,
-      match,
+      matchContextHash: context.matchContextHash,
+      match: context.match,
       updatedAt: submittedAt,
     },
   };

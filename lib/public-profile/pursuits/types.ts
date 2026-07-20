@@ -264,6 +264,7 @@ export type GeneratedOutreachDraft = {
   selectedRoleTrackId?: string;
   selectedResumeId?: string;
   selectedWorkExampleId?: string;
+  generationContext: OutreachGenerationContext;
   createdAt: string;
 };
 
@@ -286,6 +287,8 @@ export type OutreachMessageFeedback = {
   notes?: string;
   messageSnapshot: string;
   messageRevision: 0 | 1;
+  generationRequestId?: string;
+  generationContext: OutreachFeedbackGenerationContext;
   createdAt: string;
   updatedAt: string;
 };
@@ -297,8 +300,60 @@ export type SaveOutreachMessageFeedbackInput = {
   notes?: string;
   messageSnapshot: string;
   messageRevision: 0 | 1;
+  generationRequestId?: string;
+  generationContext: OutreachFeedbackGenerationContext;
   updatedAt: string;
 };
+
+export type OutreachGenerationContext = {
+  schemaVersion: 1;
+  generatedAt: string;
+  profile: {
+    id: string;
+    version: number;
+    updatedAt: string;
+    markdownGeneratedAt?: string;
+    markdownSha256: string;
+    toneTags: string[];
+    avoidTags: string[];
+    avoidNote: string;
+  };
+  selection: {
+    roleTrack?: { id: string; name: string; targetTitles: string[] };
+    resume?: { id: string; name: string; highlights: string[] };
+    workExample?: { id: string; title: string; oneHitter: string; context: string; link?: string };
+  };
+  pursuit: {
+    id: string;
+    selectionSnapshot?: PursuitSelectionSnapshot;
+  };
+  job: {
+    id?: string;
+    title: string;
+    companyName: string;
+    location?: string;
+    remoteType?: string;
+    employmentType?: string;
+    compensationText?: string;
+    sourceUrl?: string;
+  };
+  recipient: {
+    contactSuggestionId: string;
+    name: string;
+    title: string;
+    contactType: HumanPathContact["contactType"];
+  };
+};
+
+export type OutreachFeedbackGenerationContext =
+  | { source: "initial_generation" | "regeneration"; generation: OutreachGenerationContext }
+  | {
+      source: "legacy_partial";
+      selectedRoleTrackId?: string;
+      selectedResumeId?: string;
+      selectedWorkExampleId?: string;
+      pursuitSelectionSnapshot?: PursuitSelectionSnapshot;
+    };
 
 export type OutreachMessageRecord = {
   id: string;
@@ -315,6 +370,7 @@ export type OutreachMessageRecord = {
   selectedResumeId?: string;
   selectedWorkExampleId?: string;
   generationRequestId?: string;
+  regenerationContext?: OutreachGenerationContext;
   sentAt?: string;
   createdAt: string;
   updatedAt: string;

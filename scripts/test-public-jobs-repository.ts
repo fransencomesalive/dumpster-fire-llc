@@ -87,6 +87,10 @@ type JobMatchFeedbackRow = {
   matcher_version: string;
   match_evaluated_at: string;
   profile_version: number;
+  match_context_hash: string;
+  profile_context: Record<string, unknown>;
+  job_snapshot: Record<string, unknown>;
+  match_details: Record<string, unknown>;
   updated_at: string;
 };
 
@@ -159,6 +163,7 @@ const jobMatchFeedbackWrites: Array<{
 const jobSources: JobSourceRow[] = [];
 const unrecognizedBoardSubmissions: Array<{ user_id: string; url: string; reason: string }> = [];
 let failSubmissionLogging = false;
+let profileRemotePreference = "remote_preferred";
 
 const request: PublicProfileRepositoryRequest = async <T>(
   table: string,
@@ -204,7 +209,7 @@ const request: PublicProfileRepositoryRequest = async <T>(
       location: "Denver, CO",
       work_authorization: "US authorized",
       email: "avery@example.com",
-      remote_preference: "remote_preferred",
+      remote_preference: profileRemotePreference,
       target_compensation_min: null,
       target_compensation_preferred: null,
       target_compensation_hourly_min: null,
@@ -450,7 +455,7 @@ const request: PublicProfileRepositoryRequest = async <T>(
       row.user_id === body.user_id
       && row.job_id === body.job_id
       && row.matcher_version === body.matcher_version
-      && row.profile_version === body.profile_version
+      && row.match_context_hash === body.match_context_hash
     ));
     if (existing) Object.assign(existing, body);
     else jobMatchFeedback.push({ ...body });
@@ -592,7 +597,12 @@ async function main() {
   assert.equal(jobMatchFeedback[0].matcher_version, PUBLIC_JOB_MATCHER_VERSION);
   assert.equal(jobMatchFeedback[0].match_evaluated_at, now);
   assert.equal(jobMatchFeedback[0].profile_version, 1);
-  assert.equal(jobMatchFeedbackWrites[0].query, "?on_conflict=user_id,job_id,matcher_version,profile_version");
+  assert.match(jobMatchFeedback[0].match_context_hash, /^[a-f0-9]{64}$/);
+  assert.equal(feedback.feedback.matchContextHash, jobMatchFeedback[0].match_context_hash);
+  assert.equal((jobMatchFeedback[0].profile_context.profileVersion as number), 1);
+  assert.equal(jobMatchFeedback[0].job_snapshot.title, "Program Director");
+  assert.ok(Array.isArray(jobMatchFeedback[0].match_details.categoryFits));
+  assert.equal(jobMatchFeedbackWrites[0].query, "?on_conflict=user_id,job_id,matcher_version,match_context_hash");
   assert.equal(jobMatchFeedbackWrites[0].headers?.Prefer, "resolution=merge-duplicates");
   assert.equal(scanResults.find((row) => row.job_id === "job-1")?.status, "active");
   assert.equal(savedJobs.length, 0);
@@ -655,12 +665,26 @@ async function main() {
   assert.equal(jobMatchFeedback.length, 1);
   assert.deepEqual(jobMatchFeedback[0].reason_codes, ["wrong_industry", "other"]);
 
+  // A match-relevant profile edit creates a new immutable context even when the legacy
+  // profile version has not changed, so feedback from the two contexts cannot overwrite.
+  const originalContextHash = jobMatchFeedback[0].match_context_hash;
+  profileRemotePreference = "onsite_ok";
+  const changedContextFeedback = await savePublicJobMatchFeedbackForUser(request, userId, {
+    jobId: "job-1",
+    reasonCodes: ["wrong_location_preference"],
+  }, now);
+  assert.equal("status" in changedContextFeedback, false);
+  if ("status" in changedContextFeedback) throw new Error("Expected changed-context feedback response");
+  assert.equal(changedContextFeedback.feedback.profileVersion, 1);
+  assert.notEqual(changedContextFeedback.feedback.matchContextHash, originalContextHash);
+  assert.equal(jobMatchFeedback.length, 2);
+
   const inactiveFeedback = await handlePublicJobMatchFeedbackRequest(feedbackRequest({
     jobId: "job-missing",
     reasonCodes: ["other"],
   }), feedbackOptions);
   assert.equal(inactiveFeedback.status, 404);
-  assert.equal(jobMatchFeedback.length, 1);
+  assert.equal(jobMatchFeedback.length, 2);
 
   const saved = await setPublicJobSavedForUser(request, userId, "job-1", true, now);
   assert.equal("status" in saved, false);

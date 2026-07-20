@@ -6,6 +6,8 @@ import type {
   HumanPathContactSuggestion,
   OutreachMessageRecord,
   OutreachMessageFeedback,
+  OutreachFeedbackGenerationContext,
+  OutreachGenerationContext,
   OutreachRecipientType,
   Pursuit,
   PursuitEvent,
@@ -64,6 +66,7 @@ type OutreachMessageRow = {
   selected_resume_id: string | null;
   selected_work_example_id: string | null;
   generation_request_id?: string | null;
+  regeneration_context?: OutreachGenerationContext | null;
   sent_at?: string | null;
   created_at: string;
   updated_at: string;
@@ -89,7 +92,7 @@ type PursuitTrackingEventRow = {
 };
 
 const PURSUIT_SELECT = "id,user_id,profile_id,job_id,selected_role_track_id,selected_resume_id,selected_work_example_id,status,fit_summary,risks,recommended_work_example_ids,outreach_angle,tracking_started_at,pursuit_metered_at,notes,job_snapshot,selection_snapshot,last_activity_at,created_at,updated_at";
-const OUTREACH_MESSAGE_SELECT = "id,pursuit_id,contact_suggestion_id,recipient_type,channel,message,previous_message,regeneration_count,status,rejection_reason,selected_role_track_id,selected_resume_id,selected_work_example_id,generation_request_id,sent_at,created_at,updated_at";
+const OUTREACH_MESSAGE_SELECT = "id,pursuit_id,contact_suggestion_id,recipient_type,channel,message,previous_message,regeneration_count,status,rejection_reason,selected_role_track_id,selected_resume_id,selected_work_example_id,generation_request_id,regeneration_context,sent_at,created_at,updated_at";
 
 type OutreachMessageFeedbackRow = {
   id: string;
@@ -100,6 +103,8 @@ type OutreachMessageFeedbackRow = {
   notes: string | null;
   message_snapshot: string;
   message_revision: 0 | 1;
+  generation_request_id: string | null;
+  generation_context: OutreachFeedbackGenerationContext;
   created_at: string;
   updated_at: string;
 };
@@ -155,6 +160,7 @@ type OutreachGenerationRequestRow = {
   user_id: string;
   pursuit_debit_added: boolean;
   outreach_debit_quantity: number;
+  request_payload?: unknown;
 };
 
 function qs(params: Record<string, string>) {
@@ -288,6 +294,7 @@ function outreachMessageBody(pursuit: Pursuit, draft: GeneratedOutreachDraft) {
     selected_resume_id: draft.selectedResumeId ?? null,
     selected_role_track_id: draft.selectedRoleTrackId ?? null,
     selected_work_example_id: draft.selectedWorkExampleId ?? null,
+    generation_context: draft.generationContext,
     status: "draft",
     created_at: draft.createdAt,
     updated_at: draft.createdAt,
@@ -400,6 +407,7 @@ function mapOutreachMessage(row: OutreachMessageRow): OutreachMessageRecord {
     selectedResumeId: defined(row.selected_resume_id),
     selectedWorkExampleId: defined(row.selected_work_example_id),
     generationRequestId: defined(row.generation_request_id),
+    regenerationContext: defined(row.regeneration_context),
     sentAt: defined(row.sent_at),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -416,6 +424,8 @@ function mapOutreachMessageFeedback(row: OutreachMessageFeedbackRow): OutreachMe
     notes: defined(row.notes),
     messageSnapshot: row.message_snapshot,
     messageRevision: row.message_revision,
+    generationRequestId: defined(row.generation_request_id),
+    generationContext: row.generation_context,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -562,12 +572,46 @@ export async function persistOutreachMessageFeedback(
       notes: input.notes ?? null,
       message_snapshot: input.messageSnapshot,
       message_revision: input.messageRevision,
+      generation_request_id: input.generationRequestId ?? null,
+      generation_context: input.generationContext,
       updated_at: input.updatedAt,
     },
   });
   const row = first(rows);
   if (!row) throw new Error("message_feedback_not_persisted");
   return mapOutreachMessageFeedback(row);
+}
+
+function validGenerationContext(value: unknown): value is OutreachGenerationContext {
+  return Boolean(
+    value
+    && typeof value === "object"
+    && (value as { schemaVersion?: unknown }).schemaVersion === 1,
+  );
+}
+
+export async function loadOutreachGenerationContextForMessage(
+  request: PublicProfileRepositoryRequest,
+  message: OutreachMessageRecord,
+): Promise<OutreachFeedbackGenerationContext | undefined> {
+  if ((message.regenerationCount ?? 0) > 0 && message.regenerationContext) {
+    return { source: "regeneration", generation: message.regenerationContext };
+  }
+  if (!message.generationRequestId) return undefined;
+
+  const rows = await request<OutreachGenerationRequestRow[]>("pursuit_outreach_generation_requests", {
+    query: qs({ id: `eq.${message.generationRequestId}`, select: "id,request_payload", limit: "1" }),
+  });
+  const payload = rows[0]?.request_payload;
+  if (!Array.isArray(payload)) return undefined;
+  const matchingPayload = payload.find((item) => {
+    if (!item || typeof item !== "object") return false;
+    return (item as Record<string, unknown>).contact_suggestion_id === (message.contactSuggestionId ?? null);
+  }) as Record<string, unknown> | undefined;
+  const generationContext = matchingPayload?.generation_context;
+  return validGenerationContext(generationContext)
+    ? { source: "initial_generation", generation: generationContext }
+    : undefined;
 }
 
 export async function persistOutreachRegeneration(
@@ -577,6 +621,7 @@ export async function persistOutreachRegeneration(
     messageId: string;
     previousMessage: string;
     message: string;
+    generationContext: OutreachGenerationContext;
     updatedAt: string;
   },
 ): Promise<OutreachMessageRecord | undefined> {
@@ -593,6 +638,7 @@ export async function persistOutreachRegeneration(
       message: input.message,
       previous_message: input.previousMessage,
       regeneration_count: 1,
+      regeneration_context: input.generationContext,
       status: "draft",
       rejection_reason: null,
       updated_at: input.updatedAt,

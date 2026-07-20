@@ -215,6 +215,9 @@ function JobCard({
   const triggerRef = useRef<HTMLButtonElement>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const seInputRef = useRef<HTMLInputElement>(null);
+  const feedbackSessionRef = useRef(0);
+  const focusTimerRef = useRef<number | null>(null);
+  const ackTimerRef = useRef<number | null>(null);
 
   const backId = `job-feedback-${job.id}`;
   const titleId = `job-feedback-title-${job.id}`;
@@ -227,21 +230,34 @@ function JobCard({
     if (backRef.current) backRef.current.inert = !flipped;
   }, [flipped]);
 
+  useEffect(() => () => {
+    feedbackSessionRef.current += 1;
+    if (focusTimerRef.current !== null) window.clearTimeout(focusTimerRef.current);
+    if (ackTimerRef.current !== null) window.clearTimeout(ackTimerRef.current);
+  }, []);
+
   function openFeedback() {
+    const session = feedbackSessionRef.current + 1;
+    feedbackSessionRef.current = session;
+    if (focusTimerRef.current !== null) window.clearTimeout(focusTimerRef.current);
     setErrored(false);
     setFlipped(true);
     const reduce = typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    window.setTimeout(() => headingRef.current?.focus(), reduce ? 0 : 200);
+    focusTimerRef.current = window.setTimeout(() => {
+      if (feedbackSessionRef.current === session) headingRef.current?.focus();
+    }, reduce ? 0 : 200);
   }
 
   function closeFeedback() {
+    feedbackSessionRef.current += 1;
+    if (focusTimerRef.current !== null) window.clearTimeout(focusTimerRef.current);
     setFlipped(false);
     setSaving(false);
     setErrored(false);
     setCodes(new Set());
     setSeChecked(false);
     setNote("");
-    window.setTimeout(() => triggerRef.current?.focus(), 0);
+    focusTimerRef.current = window.setTimeout(() => triggerRef.current?.focus(), 0);
   }
 
   function toggleCode(code: PublicJobFeedbackReasonCode) {
@@ -255,7 +271,11 @@ function JobCard({
   async function saveFeedback() {
     if (!hasSelection || saving) return;
     const accessToken = readPublicProfileAccessToken();
-    if (!accessToken) return;
+    if (!accessToken) {
+      setErrored(true);
+      return;
+    }
+    const session = feedbackSessionRef.current;
     const reasonCodes = [...codes];
     if (seChecked) reasonCodes.push("other");
     const trimmed = note.trim();
@@ -267,10 +287,13 @@ function JobCard({
         accessToken,
         body: { jobId: job.id, reasonCodes, ...(seChecked && trimmed ? { note: trimmed } : {}) },
       });
+      if (feedbackSessionRef.current !== session) return;
       closeFeedback();
       setAcked(true);
-      window.setTimeout(() => setAcked(false), 2600);
+      if (ackTimerRef.current !== null) window.clearTimeout(ackTimerRef.current);
+      ackTimerRef.current = window.setTimeout(() => setAcked(false), 2600);
     } catch {
+      if (feedbackSessionRef.current !== session) return;
       setErrored(true);
       setSaving(false);
     }
@@ -279,7 +302,7 @@ function JobCard({
   return (
     <div className={`${jobsStyles.flipScene} ${leaving ? jobsStyles.cardLeaving : ""}`}>
       <div className={`${jobsStyles.flipCard} ${flipped ? jobsStyles.flipCardFlipped : ""}`}>
-        <article ref={frontRef} className={`${jobsStyles.card} ${jobsStyles.jobCard} ${jobsStyles.flipFace} ${jobsStyles.flipFront}`}>
+        <article ref={frontRef} aria-hidden={flipped} className={`${jobsStyles.card} ${jobsStyles.jobCard} ${jobsStyles.flipFace} ${jobsStyles.flipFront}`}>
           {isWildcard ? (
             <span className={jobsStyles.weirdMatchTag} aria-label="Wildcard match">
               {"WEIRD".split("").map((letter, index) => <span key={`w${index}`}>{letter}</span>)}
@@ -357,6 +380,7 @@ function JobCard({
           className={`${jobsStyles.card} ${jobsStyles.jobCard} ${jobsStyles.flipFace} ${jobsStyles.flipBack}`}
           role="group"
           aria-labelledby={titleId}
+          aria-hidden={!flipped}
           onKeyDown={(event) => { if (event.key === "Escape") { event.stopPropagation(); closeFeedback(); } }}
         >
           <div className={jobsStyles.feedbackFace}>
@@ -372,7 +396,7 @@ function JobCard({
               {JOB_FEEDBACK_REASONS.map((reason) => {
                 const on = codes.has(reason.code);
                 return (
-                  <button key={reason.code} type="button" className={`${jobsStyles.chip} ${on ? jobsStyles.chipOn : ""}`} aria-pressed={on} onClick={() => toggleCode(reason.code)}>
+                  <button key={reason.code} type="button" disabled={saving} className={`${jobsStyles.chip} ${on ? jobsStyles.chipOn : ""}`} aria-pressed={on} onClick={() => toggleCode(reason.code)}>
                     {on ? (
                       <span className={jobsStyles.chipCheck}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12" /></svg></span>
                     ) : null}
@@ -386,17 +410,24 @@ function JobCard({
                 type="checkbox"
                 id={seId}
                 checked={seChecked}
+                disabled={saving}
                 onChange={(event) => {
                   setSeChecked(event.target.checked);
-                  if (event.target.checked) window.setTimeout(() => seInputRef.current?.focus(), 0);
+                  if (event.target.checked) {
+                    const session = feedbackSessionRef.current;
+                    if (focusTimerRef.current !== null) window.clearTimeout(focusTimerRef.current);
+                    focusTimerRef.current = window.setTimeout(() => {
+                      if (feedbackSessionRef.current === session) seInputRef.current?.focus();
+                    }, 0);
+                  }
                 }}
               />
               <label htmlFor={seId}>Something Else</label>
-              <input ref={seInputRef} type="text" className={jobsStyles.seInput} maxLength={500} placeholder="Tell us what missed" value={note} disabled={!seChecked} onChange={(event) => setNote(event.target.value)} />
+              <input ref={seInputRef} type="text" className={jobsStyles.seInput} maxLength={500} placeholder="Tell us what missed" value={note} disabled={!seChecked || saving} onChange={(event) => setNote(event.target.value)} />
               <span className={jobsStyles.seCount}>{note.length}/500</span>
             </div>
             {errored ? (
-              <div className={jobsStyles.feedbackAlert}>
+              <div className={jobsStyles.feedbackAlert} role="alert">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
                 <p>That didn&apos;t save. Your selections are still here, give it another go.</p>
               </div>

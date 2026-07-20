@@ -41,7 +41,7 @@ import {
   handleWritingSamplesSectionPatchRequest,
 } from "../lib/public-profile/api";
 import type { PublicProfileRepositoryRequest } from "../lib/public-profile/repository";
-import type { GeneratedOutreachDraft, HumanPathContact, HumanPathContactSuggestion, OutreachMessageFeedback, OutreachMessageRecord, Pursuit, PursuitTrackingCommit, PursuitTrackingEvent, SaveOutreachMessageFeedbackInput } from "../lib/public-profile/pursuits/types";
+import type { GeneratedOutreachDraft, HumanPathContact, HumanPathContactSuggestion, OutreachFeedbackGenerationContext, OutreachGenerationContext, OutreachMessageFeedback, OutreachMessageRecord, Pursuit, PursuitTrackingCommit, PursuitTrackingEvent, SaveOutreachMessageFeedbackInput } from "../lib/public-profile/pursuits/types";
 import type { PublicJobRecord } from "../lib/public-jobs/types";
 import type { SubscriptionContext, UsageLedgerEntry } from "../lib/public-profile/subscription/types";
 import type { PublicProfileRegenerationResult } from "../lib/public-profile/service";
@@ -61,6 +61,32 @@ import type { ProfileQuality } from "../lib/public-profile/types";
 import { completeCandidateProfileAggregate } from "./fixtures/public-profile";
 
 const now = "2026-06-23T16:00:00.000Z";
+const generationContext: OutreachGenerationContext = {
+  schemaVersion: 1,
+  generatedAt: now,
+  profile: {
+    id: "profile-1",
+    version: 2,
+    updatedAt: now,
+    markdownSha256: "a".repeat(64),
+    toneTags: ["direct"],
+    avoidTags: ["formal"],
+    avoidNote: "",
+  },
+  selection: {},
+  pursuit: { id: "pursuit-1" },
+  job: { id: "job-1", title: "Program Director", companyName: "Acme" },
+  recipient: {
+    contactSuggestionId: "contact-1",
+    name: "Dana Lee",
+    title: "VP Product",
+    contactType: "likely_hiring_manager",
+  },
+};
+const feedbackGenerationContext: OutreachFeedbackGenerationContext = {
+  source: "regeneration",
+  generation: generationContext,
+};
 const regenerateRequest = new Request("https://app.example/api/public-profile/regenerate", { method: "POST" });
 const repositoryRequest: PublicProfileRepositoryRequest = async () => {
   throw new Error("repository should not be called by mocked handlers");
@@ -1778,12 +1804,27 @@ async function main() {
   });
   assert.equal(pursuitOutreachRegenerated.status, 200);
   assert.equal((regenerationGeneratorInput as { previousMessage: string }).previousMessage, "Original message.");
-  assert.deepEqual(persistedRegeneration, {
+  const persistedRegenerationInput = persistedRegeneration as {
+    messageId: string;
+    previousMessage: string;
+    message: string;
+    generationContext: OutreachGenerationContext;
+    updatedAt: string;
+  };
+  assert.deepEqual({
+    messageId: persistedRegenerationInput.messageId,
+    previousMessage: persistedRegenerationInput.previousMessage,
+    message: persistedRegenerationInput.message,
+    updatedAt: persistedRegenerationInput.updatedAt,
+  }, {
     messageId: "message-1",
     previousMessage: "Original message.",
     message: "Replacement message.",
     updatedAt: now,
   });
+  assert.equal(persistedRegenerationInput.generationContext.schemaVersion, 1);
+  assert.equal(persistedRegenerationInput.generationContext.profile.version, agg.profile.version);
+  assert.deepEqual(persistedRegenerationInput.generationContext.profile.toneTags, agg.voicePersonality?.toneTags);
   assert.equal((persistedRegenerationTransition as { usageEvents: Array<{ quantity: number }> }).usageEvents[0].quantity, 1);
   const pursuitOutreachRegeneratedJson = await body(pursuitOutreachRegenerated);
   assert.equal(pursuitOutreachRegeneratedJson.status, "outreach_regenerated");
@@ -1960,7 +2001,11 @@ async function main() {
   assert.equal(messageFeedbackUnauthorized.status, 401);
 
   const messageFeedbackNotFound = await handlePublicProfilePursuitOutreachMessageFeedbackRequest(
-    postRequest("pursuits/outreach/message-404/feedback", { reasonCodes: ["would_not_send"] }),
+    postRequest("pursuits/outreach/message-404/feedback", {
+      reasonCodes: ["would_not_send"],
+      expectedMessageRevision: 0,
+      expectedMessageUpdatedAt: now,
+    }),
     "message-404",
     {
       getSession: async () => authed(),
@@ -1975,9 +2020,14 @@ async function main() {
     message: "Exact regenerated draft.\n\nKeep spacing.",
     regenerationCount: 1 as const,
     generationRequestId: "generation-1",
+    regenerationContext: generationContext,
   };
   const messageFeedbackNotOwned = await handlePublicProfilePursuitOutreachMessageFeedbackRequest(
-    postRequest("pursuits/outreach/message-1/feedback", { reasonCodes: ["would_not_send"] }),
+    postRequest("pursuits/outreach/message-1/feedback", {
+      reasonCodes: ["would_not_send"],
+      expectedMessageRevision: 1,
+      expectedMessageUpdatedAt: now,
+    }),
     "message-1",
     {
       getSession: async () => authed(),
@@ -1989,6 +2039,24 @@ async function main() {
   );
   assert.equal(messageFeedbackNotOwned.status, 404);
 
+  const staleMessageFeedback = await handlePublicProfilePursuitOutreachMessageFeedbackRequest(
+    postRequest("pursuits/outreach/message-1/feedback", {
+      reasonCodes: ["would_not_send"],
+      expectedMessageRevision: 0,
+      expectedMessageUpdatedAt: draftMessage.updatedAt,
+    }),
+    "message-1",
+    {
+      getSession: async () => authed(),
+      repositoryRequest,
+      loadOutreachMessage: async () => regeneratedDraft,
+      loadPursuit: async () => savedPursuit({ status: "outreach_ready" }),
+      persistOutreachMessageFeedback: async () => { throw new Error("stale feedback must not persist"); },
+    },
+  );
+  assert.equal(staleMessageFeedback.status, 409);
+  assert.equal((await body(staleMessageFeedback)).status, "message_changed");
+
   let persistedFeedbackInput: SaveOutreachMessageFeedbackInput | undefined;
   const savedFeedback: OutreachMessageFeedback = {
     id: "feedback-1",
@@ -1999,6 +2067,8 @@ async function main() {
     notes: "Opening feels stiff.",
     messageSnapshot: regeneratedDraft.message,
     messageRevision: 1,
+    generationRequestId: "generation-1",
+    generationContext: feedbackGenerationContext,
     createdAt: now,
     updatedAt: now,
   };
@@ -2006,6 +2076,8 @@ async function main() {
     postRequest("pursuits/outreach/message-1/feedback", {
       reasonCodes: ["personal_voice_mismatch", "awkward_to_read", "personal_voice_mismatch"],
       notes: "  Opening feels stiff.  ",
+      expectedMessageRevision: 1,
+      expectedMessageUpdatedAt: now,
     }),
     "message-1",
     {
@@ -2014,6 +2086,7 @@ async function main() {
       repositoryRequest,
       loadOutreachMessage: async () => regeneratedDraft,
       loadPursuit: async () => savedPursuit({ status: "outreach_ready" }),
+      loadOutreachGenerationContext: async () => feedbackGenerationContext,
       persistOutreachMessageFeedback: async (_request, input) => {
         persistedFeedbackInput = input;
         return savedFeedback;
@@ -2031,6 +2104,8 @@ async function main() {
     notes: "Opening feels stiff.",
     messageSnapshot: "Exact regenerated draft.\n\nKeep spacing.",
     messageRevision: 1,
+    generationRequestId: "generation-1",
+    generationContext: feedbackGenerationContext,
     updatedAt: now,
   });
   assert.deepEqual(messageFeedbackSavedJson.context, {
@@ -2043,13 +2118,18 @@ async function main() {
   assert.equal(regeneratedDraft.message, "Exact regenerated draft.\n\nKeep spacing.");
 
   const messageFeedbackPersistenceFailed = await handlePublicProfilePursuitOutreachMessageFeedbackRequest(
-    postRequest("pursuits/outreach/message-1/feedback", { reasonCodes: ["other"] }),
+    postRequest("pursuits/outreach/message-1/feedback", {
+      reasonCodes: ["other"],
+      expectedMessageRevision: 1,
+      expectedMessageUpdatedAt: now,
+    }),
     "message-1",
     {
       getSession: async () => authed(),
       repositoryRequest,
       loadOutreachMessage: async () => regeneratedDraft,
       loadPursuit: async () => savedPursuit({ status: "outreach_ready" }),
+      loadOutreachGenerationContext: async () => feedbackGenerationContext,
       persistOutreachMessageFeedback: async () => { throw new Error("database unavailable"); },
     },
   );

@@ -2,7 +2,7 @@
 
 Date: 2026-07-19
 Claude Design project: `3af2f1ea-428c-49b3-8b02-c066ec0c7452`
-Status: product behavior approved; visual design and production UI not yet approved or implemented
+Status: product behavior and Claude Design approved; production implementation is in release audit
 
 ## Mandatory design and review instruction
 
@@ -38,14 +38,14 @@ Do not describe this as a beta, rollout, limited release, or coming-soon feature
 
 ### Job match feedback
 
-- Approved trigger label: **This job isn't a good match**
+- Approved trigger label: **Not a match** (Randall confirmed the shorter Claude Design label was approved in chat.)
 - The trigger belongs on the existing production job card.
 - Activating it flips the entire job card to its feedback face.
 - This is separate from **Skip**. Saving feedback must not dismiss, hide, skip, save, pursue, or
   otherwise change the job.
 - The feedback is tied to the exact job plus the server-computed matcher and profile versions.
 
-Approved multi-select chips and stable codes:
+Approved multi-select chips and stable codes, plus the separate Other control:
 
 | Public label | Stable code |
 |---|---|
@@ -53,7 +53,7 @@ Approved multi-select chips and stable codes:
 | Wrong location preference | `wrong_location_preference` |
 | Wrong Comp | `wrong_comp` |
 | Wrong Industry | `wrong_industry` |
-| Something Else | `other` |
+| Something Else checkbox that activates its inline note input | `other` |
 
 Preserve the approved capitalization exactly unless Randall changes it during the Claude Design
 review.
@@ -67,7 +67,7 @@ review.
 - Saving feedback must not edit, reject, approve, regenerate, copy, or send the message. It must not
   change pursuit state, consume usage, or change the user's profile or voice settings.
 
-Approved multi-select chips and stable codes:
+Approved multi-select chips and stable codes, plus the separate Other control:
 
 | Public label | Stable code |
 |---|---|
@@ -76,7 +76,7 @@ Approved multi-select chips and stable codes:
 | Doesn't sound like selected tone | `selected_tone_mismatch` |
 | Awkward to read | `awkward_to_read` |
 | I wouldn't send this | `would_not_send` |
-| something else | `other` |
+| something else checkbox that activates its inline note input | `other` |
 
 Preserve the approved capitalization exactly unless Randall changes it during the Claude Design
 review.
@@ -84,8 +84,10 @@ review.
 ### Shared save and close contract
 
 - Chips are multi-select.
-- An optional free-text note is supported, with a 500-character backend maximum.
-- **Save** is disabled until at least one chip is selected. This specific gate is approved.
+- **Something Else / something else is a labeled checkbox, not a chip.** Checking it activates the
+  inline optional note input. The note has a 500-character backend maximum.
+- **Save** is disabled until at least one chip is selected or the Other checkbox is checked. This
+  specific gate is approved.
 - A close control is always available on the feedback face.
 - Closing flips back to the original face, saves nothing, and discards unsaved selections.
 - A successful Save persists the feedback and flips back to the original face.
@@ -130,7 +132,7 @@ whether either action flips back or closes the entire Apply Wizard.
 
 Present a recommendation for each of these in the numbered review:
 
-1. Whether the optional note is always visible or revealed by **Something Else**.
+1. Resolved: the input stays visible but disabled until the labeled **Something Else** checkbox is checked.
 2. The unapproved feedback-face heading, note label/help text, saved acknowledgement, and error copy.
 3. Escape-key behavior on the Apply Wizard feedback face.
 4. Backdrop-click behavior while the Apply Wizard feedback face is open.
@@ -230,7 +232,7 @@ Job endpoint:
 Message endpoint:
 
 - `POST /api/public-profile/pursuits/outreach/[messageId]/feedback`
-- Body: `{ reasonCodes, notes? }`
+- Body: `{ reasonCodes, notes?, expectedMessageRevision, expectedMessageUpdatedAt }`
 - Route: `app/api/public-profile/pursuits/outreach/[messageId]/feedback/route.ts`
 - Server verifies ownership and stores the exact message snapshot, revision, and available pursuit
   and generation context.
@@ -238,8 +240,13 @@ Message endpoint:
 Persistence:
 
 - Migration: `supabase/migrations/20260719000100_feedback_capture.sql`
-- Job feedback upserts by user, job, matcher version, and profile version.
+- Job feedback upserts by user, job, matcher version, and an immutable hash of the exact match inputs.
+- Job feedback retains structured profile, job, and match-detail snapshots for later analysis even
+  if the live job row is removed.
 - Message feedback upserts by user, message, revision, and feedback type.
+- Message feedback stores the generation request plus the generation-time profile version, voice
+  settings, selected role/resume/work example, job, and recipient context. Regenerations carry a
+  separate immutable context snapshot.
 - Authenticated browser clients have owner-scoped reads but cannot write directly. Writes are
   server-only so analysis context cannot be forged.
 - Database constraints enforce the exact codes, at least one chip, note length, message snapshot,

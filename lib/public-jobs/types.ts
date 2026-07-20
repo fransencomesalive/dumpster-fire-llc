@@ -36,6 +36,7 @@ export type PublicJobMatchFeedbackResponse = {
     note?: string;
     profileId: string;
     profileVersion: number;
+    matchContextHash: string;
     match: PublicJobMatchSummary;
     updatedAt: string;
   };

@@ -52,6 +52,13 @@ create table public.outreach_messages (
   pursuit_id uuid not null references public.pursuits(id) on delete cascade
 );
 
+create table public.pursuit_outreach_generation_requests (
+  id uuid primary key default gen_random_uuid(),
+  pursuit_id uuid not null references public.pursuits(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  request_payload jsonb not null default '[]'::jsonb
+);
+
 create table public.saved_message_feedback (
   id uuid primary key default gen_random_uuid(),
   outreach_message_id uuid not null references public.outreach_messages(id) on delete cascade,
@@ -87,6 +94,7 @@ grant select, insert, update, delete on all tables in schema public to authentic
 SQL
 
 "${PSQL[@]}" -f "$REPO_ROOT/supabase/migrations/20260719000100_feedback_capture.sql" >/dev/null
+"${PSQL[@]}" -f "$REPO_ROOT/supabase/migrations/20260719000100_feedback_capture.sql" >/dev/null
 
 "${PSQL[@]}" >/dev/null <<'SQL'
 insert into auth.users (id) values
@@ -111,7 +119,8 @@ insert into public.outreach_messages (id, pursuit_id) values
 
 insert into public.job_match_feedback (
   user_id, profile_id, job_id, reason_codes, match_score, match_label,
-  matcher_version, match_evaluated_at, profile_version
+  matcher_version, match_evaluated_at, profile_version, match_context_hash,
+  profile_context, job_snapshot, match_details
 ) values (
   '00000000-0000-0000-0000-000000000001',
   '10000000-0000-0000-0000-000000000001',
@@ -121,12 +130,16 @@ insert into public.job_match_feedback (
   'Potential Match',
   'public-match-v1',
   '2026-07-19',
-  1
+  1,
+  repeat('a', 64),
+  '{"profileVersion":1}',
+  '{"title":"Test role"}',
+  '{"whyMatched":[]}'
 );
 
 insert into public.saved_message_feedback (
   outreach_message_id, user_id, feedback_type, reason_codes,
-  message_snapshot, message_revision, notes
+  message_snapshot, message_revision, notes, generation_context
 ) values (
   '40000000-0000-0000-0000-000000000001',
   '00000000-0000-0000-0000-000000000001',
@@ -134,7 +147,8 @@ insert into public.saved_message_feedback (
   array['personal_voice_mismatch', 'would_not_send'],
   'Draft one.',
   0,
-  'Not how I talk.'
+  'Not how I talk.',
+  '{"source":"legacy_partial"}'
 );
 
 do $$
@@ -142,12 +156,14 @@ begin
   begin
     insert into public.job_match_feedback (
       user_id, profile_id, job_id, reason_codes, match_score, match_label,
-      matcher_version, match_evaluated_at, profile_version
+      matcher_version, match_evaluated_at, profile_version, match_context_hash,
+      profile_context, job_snapshot, match_details
     ) values (
       '00000000-0000-0000-0000-000000000001',
       '10000000-0000-0000-0000-000000000001',
       '20000000-0000-0000-0000-000000000002',
-      array['unsupported'], 50, 'Weak Match', 'public-match-v1', '2026-07-19', 1
+      array['unsupported'], 50, 'Weak Match', 'public-match-v1', '2026-07-19', 1,
+      repeat('b', 64), '{"profileVersion":1}', '{"title":"Test role"}', '{"whyMatched":[]}'
     );
     raise exception 'unsupported job feedback code should fail';
   exception when check_violation then null;
@@ -156,11 +172,11 @@ begin
   begin
     insert into public.saved_message_feedback (
       outreach_message_id, user_id, feedback_type, reason_codes,
-      message_snapshot, message_revision
+      message_snapshot, message_revision, generation_context
     ) values (
       '40000000-0000-0000-0000-000000000002',
       '00000000-0000-0000-0000-000000000002',
-      'needs_work', '{}', 'Draft two.', 0
+      'needs_work', '{}', 'Draft two.', 0, '{"source":"legacy_partial"}'
     );
     raise exception 'empty message feedback should fail';
   exception when check_violation then null;
@@ -169,11 +185,11 @@ begin
   begin
     insert into public.saved_message_feedback (
       outreach_message_id, user_id, feedback_type, reason_codes,
-      message_snapshot, message_revision
+      message_snapshot, message_revision, generation_context
     ) values (
       '40000000-0000-0000-0000-000000000002',
       '00000000-0000-0000-0000-000000000002',
-      'needs_work', array['other'], null, 0
+      'needs_work', array['other'], null, 0, '{"source":"legacy_partial"}'
     );
     raise exception 'message feedback without its draft snapshot should fail';
   exception when check_violation then null;
@@ -182,15 +198,26 @@ begin
   begin
     insert into public.saved_message_feedback (
       outreach_message_id, user_id, feedback_type, reason_codes,
-      message_snapshot, message_revision
+      message_snapshot, message_revision, generation_context
     ) values (
       '40000000-0000-0000-0000-000000000001',
       '00000000-0000-0000-0000-000000000001',
-      'needs_work', array['awkward_to_read'], 'Draft one.', 0
+      'needs_work', array['awkward_to_read'], 'Draft one.', 0, '{"source":"legacy_partial"}'
     );
     raise exception 'duplicate message revision should fail';
   exception when unique_violation then null;
   end;
+end $$;
+
+delete from public.jobs where id = '20000000-0000-0000-0000-000000000001';
+do $$
+begin
+  if not exists (
+    select 1 from public.job_match_feedback
+    where job_id is null and job_snapshot ->> 'title' = 'Test role'
+  ) then
+    raise exception 'deleted job should retain immutable feedback evidence';
+  end if;
 end $$;
 
 set role authenticated;
@@ -209,12 +236,14 @@ begin
   begin
     insert into public.job_match_feedback (
       user_id, profile_id, job_id, reason_codes, match_score, match_label,
-      matcher_version, match_evaluated_at, profile_version
+      matcher_version, match_evaluated_at, profile_version, match_context_hash,
+      profile_context, job_snapshot, match_details
     ) values (
       '00000000-0000-0000-0000-000000000001',
       '10000000-0000-0000-0000-000000000001',
       '20000000-0000-0000-0000-000000000002',
-      array['other'], 50, 'Weak Match', 'public-match-v1', '2026-07-19', 1
+      array['other'], 50, 'Weak Match', 'public-match-v1', '2026-07-19', 1,
+      repeat('c', 64), '{"profileVersion":1}', '{"title":"Test role"}', '{"whyMatched":[]}'
     );
     raise exception 'authenticated job feedback writes should be denied';
   exception when insufficient_privilege then null;
@@ -223,11 +252,11 @@ begin
   begin
     insert into public.saved_message_feedback (
       outreach_message_id, user_id, feedback_type, reason_codes,
-      message_snapshot, message_revision
+      message_snapshot, message_revision, generation_context
     ) values (
       '40000000-0000-0000-0000-000000000002',
       '00000000-0000-0000-0000-000000000001',
-      'needs_work', array['other'], 'Foreign draft.', 1
+      'needs_work', array['other'], 'Foreign draft.', 1, '{"source":"legacy_partial"}'
     );
     raise exception 'authenticated message feedback writes should be denied';
   exception when insufficient_privilege then null;

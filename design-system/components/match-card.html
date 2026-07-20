@@ -12,8 +12,7 @@
      dashboard.module.css), reconciled 2026-07-10. Fit = label + numeric score + stars;
      meta = Source/Salary/Remote/Location; actions = Save / Open posting / Pursue.
      Plain paper — no halftone (rejected pattern, Randall 2026-07-04).
-     2026-07-19: added the "This job isn't a good match" feedback trigger (quiet row under
-     the action rail). Full flip interaction lives in feedback.html. */
+     2026-07-19: approved "Not a match" trigger and full-card feedback flip. */
   body { margin: 0; padding: var(--space-6); background: var(--c-paper); color: var(--c-ink); font-family: var(--font-body); }
   .wrap { max-width: 720px; margin: 0 auto; }
 
@@ -115,6 +114,51 @@
     text-transform:uppercase; letter-spacing:0.05em; font-size:0.72rem; color:var(--c-teal); }
   .savedAck svg { flex:none; width:12px; height:12px; }
 
+  /* Approved full-card feedback flip. This card is interactive so it stays in parity with
+     DashboardClient instead of pointing at a separate static example. */
+  .flipCard { position:relative; display:grid; grid-template-columns:minmax(0,1fr); transform-style:preserve-3d;
+    transition:transform var(--dur-base) var(--ease-snap); }
+  .flipCard.isFlipped { transform:rotateY(180deg); }
+  .flipFace { grid-area:1 / 1; min-width:0; -webkit-backface-visibility:hidden; backface-visibility:hidden; }
+  .flipBack { transform:rotateY(180deg); }
+  .flipFace[aria-hidden="true"] { pointer-events:none; }
+  .feedbackFace { display:grid; grid-template-columns:minmax(0,1fr); gap:var(--space-3); align-content:start; }
+  .feedbackHead { display:flex; align-items:baseline; justify-content:space-between; gap:var(--space-3); }
+  .feedbackTitle { font-family:var(--font-display); font-size:1.15rem; line-height:1.1; margin:0; }
+  .feedbackTitle small { font-family:var(--font-body); font-size:0.85rem; color:var(--role-text-muted); }
+  .feedbackClose { display:inline-flex; align-items:center; justify-content:center; flex:none; width:30px; height:30px;
+    color:var(--c-ink); background:var(--c-paper); border:var(--line-reg) solid var(--c-ink); border-radius:50%; cursor:pointer; }
+  .chipSet { display:flex; flex-wrap:wrap; gap:var(--space-2); }
+  .chip { display:inline-flex; align-items:center; gap:6px; font-family:var(--font-ui, Inter, system-ui, sans-serif);
+    font-size:0.9rem; line-height:1; color:var(--c-ink); background:var(--c-paper); border:var(--line-reg) solid var(--c-ink);
+    border-radius:var(--radius-pill); padding:8px 14px; cursor:pointer; }
+  .chip:hover:not(:disabled) { box-shadow:2px 2px 0 var(--c-ink); }
+  .chip:disabled { cursor:default; }
+  .chip.chipOn { color:var(--c-paper); background:var(--c-teal); box-shadow:var(--reg-box); }
+  .seRow { display:flex; align-items:center; gap:var(--space-2); }
+  .seRow input[type="checkbox"] { accent-color:var(--c-teal); width:18px; height:18px; flex:none; }
+  .seRow label { font-family:var(--font-ui, Inter, system-ui, sans-serif); font-size:0.9rem; white-space:nowrap; }
+  .seInput { flex:1 1 auto; min-width:0; box-sizing:border-box; font-family:var(--font-ui, Inter, system-ui, sans-serif);
+    font-size:0.9rem; background:var(--c-paper); border:var(--line-reg) solid var(--c-ink); border-radius:var(--radius-md); padding:8px var(--space-3); }
+  .seInput:disabled { opacity:0.5; }
+  .seCount { flex:none; font-family:var(--font-ui, Inter, system-ui, sans-serif); font-size:0.74rem; color:var(--role-text-faint); }
+  @media (max-width:420px) {
+    .seRow { display:grid; grid-template-columns:18px minmax(0, 1fr) auto; align-items:center; }
+    .seRow label { grid-column:2 / 4; }
+    .seInput { grid-column:2; width:100%; }
+    .seCount { grid-column:3; }
+  }
+  .feedbackFooter { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:var(--space-2); }
+  .btnGhost, .btnPrimary { font-family:var(--font-display); font-size:1rem; border-radius:var(--radius-md); padding:var(--space-2) var(--space-5); cursor:pointer; }
+  .btnGhost { color:var(--c-ink); background:var(--c-paper); border:var(--line-reg) solid var(--c-ink); }
+  .btnPrimary { color:var(--c-paper); background:var(--c-teal); border:var(--line-bold) solid var(--c-ink); box-shadow:var(--shadow-card); }
+  .btnPrimary:disabled { opacity:0.5; cursor:not-allowed; }
+  @media (prefers-reduced-motion: reduce) {
+    .flipCard, .flipFace { transform:none !important; transition:opacity var(--dur-base) ease; }
+    .flipCard:not(.isFlipped) .flipBack { opacity:0; }
+    .flipCard.isFlipped .flipFront { opacity:0; }
+  }
+
   @media (max-width:560px){
     .matchSections { grid-template-columns:minmax(0,1fr); }
     .jobMetaGrid { grid-template-columns:repeat(2,minmax(0,1fr)); }
@@ -129,8 +173,9 @@
   </div>
 
   <div class="matchList">
-    <!-- Strong match · full card -->
-    <article class="card jobCard">
+    <!-- Strong match · full card · live feedback flip -->
+    <div class="flipCard" id="matchCardFlip">
+    <article class="card jobCard flipFace flipFront" id="matchCardFront" aria-hidden="false">
       <div class="jobCardHeader">
         <div class="jobNumberTitle">
           <span class="jobNumber" aria-hidden="true">1</span>
@@ -188,11 +233,36 @@
         <button type="button" class="btnAct btnSkip">Skip</button>
         <span class="linkStack">
           <a href="#" target="_blank" rel="noopener" class="linkAct linkOpen">Open posting <svg class="extIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>
-          <button type="button" class="linkAct linkNotMatch" aria-expanded="false">Not a match</button>
+          <button type="button" class="linkAct linkNotMatch" data-flip-open aria-expanded="false" aria-controls="matchCardBack">Not a match</button>
         </span>
         <button type="button" class="btnAct btnPursue">Pursue</button>
       </div>
     </article>
+    <div class="card jobCard flipFace flipBack" id="matchCardBack" role="group" aria-labelledby="matchCardFeedbackTitle" aria-hidden="true" inert>
+      <div class="feedbackFace">
+        <div class="feedbackHead">
+          <h3 class="feedbackTitle" id="matchCardFeedbackTitle" tabindex="-1">What's off about this match? <small>Pick all that apply.</small></h3>
+          <button type="button" class="feedbackClose" data-flip-close aria-label="Back to job">&#215;</button>
+        </div>
+        <div class="chipSet" role="group" aria-label="What's off about this match">
+          <button type="button" class="chip" aria-pressed="false">Wrong role/title</button>
+          <button type="button" class="chip" aria-pressed="false">Wrong location preference</button>
+          <button type="button" class="chip" aria-pressed="false">Wrong Comp</button>
+          <button type="button" class="chip" aria-pressed="false">Wrong Industry</button>
+        </div>
+        <div class="seRow">
+          <input type="checkbox" id="matchCardOther" />
+          <label for="matchCardOther">Something Else</label>
+          <input type="text" class="seInput" maxlength="500" placeholder="Tell us what missed" disabled />
+          <span class="seCount">0/500</span>
+        </div>
+        <div class="feedbackFooter">
+          <button type="button" class="btnGhost" data-flip-close>Close</button>
+          <button type="button" class="btnPrimary" data-save disabled>Save feedback</button>
+        </div>
+      </div>
+    </div>
+    </div>
 
     <!-- Off-target surfaced with context · weird-match tag · shows the saved acknowledgement -->
     <article class="card jobCard">
@@ -267,5 +337,58 @@
     </article>
   </div>
 </div>
+<script>
+(() => {
+  const flip = document.getElementById('matchCardFlip');
+  const front = document.getElementById('matchCardFront');
+  const back = document.getElementById('matchCardBack');
+  const trigger = flip.querySelector('[data-flip-open]');
+  const heading = document.getElementById('matchCardFeedbackTitle');
+  const other = document.getElementById('matchCardOther');
+  const note = back.querySelector('.seInput');
+  const count = back.querySelector('.seCount');
+  const save = back.querySelector('[data-save]');
+
+  function syncSave() {
+    save.disabled = !other.checked && !back.querySelector('.chip[aria-pressed="true"]');
+  }
+  function setFlipped(open) {
+    flip.classList.toggle('isFlipped', open);
+    front.setAttribute('aria-hidden', String(open));
+    back.setAttribute('aria-hidden', String(!open));
+    front.inert = open;
+    back.inert = !open;
+    trigger.setAttribute('aria-expanded', String(open));
+    window.setTimeout(() => (open ? heading : trigger).focus(), 0);
+  }
+  function reset() {
+    back.querySelectorAll('.chip').forEach((chip) => {
+      chip.setAttribute('aria-pressed', 'false');
+      chip.classList.remove('chipOn');
+    });
+    other.checked = false;
+    note.value = '';
+    note.disabled = true;
+    count.textContent = '0/500';
+    syncSave();
+  }
+  trigger.addEventListener('click', () => setFlipped(true));
+  back.querySelectorAll('[data-flip-close]').forEach((button) => button.addEventListener('click', () => { setFlipped(false); reset(); }));
+  back.querySelectorAll('.chip').forEach((chip) => chip.addEventListener('click', () => {
+    const pressed = chip.getAttribute('aria-pressed') !== 'true';
+    chip.setAttribute('aria-pressed', String(pressed));
+    chip.classList.toggle('chipOn', pressed);
+    syncSave();
+  }));
+  other.addEventListener('change', () => {
+    note.disabled = !other.checked;
+    if (other.checked) note.focus();
+    syncSave();
+  });
+  note.addEventListener('input', () => { count.textContent = `${note.value.length}/500`; });
+  save.addEventListener('click', () => { setFlipped(false); reset(); });
+  back.addEventListener('keydown', (event) => { if (event.key === 'Escape') { setFlipped(false); reset(); } });
+})();
+</script>
 </body>
 </html>

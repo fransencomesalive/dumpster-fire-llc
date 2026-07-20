@@ -18,6 +18,7 @@ import {
 import {
   createPursuitForJob,
   loadContactSuggestionsForPursuit,
+  loadOutreachGenerationContextForMessage,
   loadOutreachMessageById,
   loadOutreachMessagesForPursuit,
   loadPursuitEventsForPursuit,
@@ -33,10 +34,32 @@ import {
   persistPursuitTrackingMutation,
   updateOutreachMessage,
 } from "../lib/public-profile/pursuits/repository";
-import type { OutreachMessageRecord } from "../lib/public-profile/pursuits/types";
+import type { OutreachGenerationContext, OutreachMessageRecord } from "../lib/public-profile/pursuits/types";
 
 const now = "2026-06-29T12:00:00.000Z";
 const later = "2026-06-29T13:00:00.000Z";
+const generationContext: OutreachGenerationContext = {
+  schemaVersion: 1,
+  generatedAt: now,
+  profile: {
+    id: "profile-1",
+    version: 1,
+    updatedAt: now,
+    markdownSha256: "a".repeat(64),
+    toneTags: ["direct"],
+    avoidTags: ["formal"],
+    avoidNote: "",
+  },
+  selection: {},
+  pursuit: { id: "pursuit-1" },
+  job: { id: "job-1", title: "Program Director", companyName: "Acme" },
+  recipient: {
+    contactSuggestionId: "contact-1",
+    name: "Dana Lee",
+    title: "VP Product",
+    contactType: "likely_hiring_manager",
+  },
+};
 
 const created = createPursuit({
   id: "pursuit-1",
@@ -528,10 +551,13 @@ async function main() {
     selectedRoleTrackId: "track-1",
     selectedResumeId: "resume-1",
     selectedWorkExampleId: "example-1",
+    generationContext,
     createdAt: outreach.pursuit.updatedAt,
   }], { idempotencyKey: "initial-outreach-1" });
   assert.equal(atomicCalls.length, 1);
   assert.equal(atomicCalls[0].table, "rpc/persist_initial_outreach_generation");
+  const initialRpcBody = atomicCalls[0].body as { p_messages: Array<{ generation_context: OutreachGenerationContext }> };
+  assert.deepEqual(initialRpcBody.p_messages[0].generation_context, generationContext);
   assert.equal(persistedInitial.messages[0].id, "message-atomic-1");
   assert.equal(persistedInitial.pursuitDebited, true);
   assert.equal(persistedInitial.outreachDebited, 1);
@@ -829,6 +855,8 @@ async function main() {
       notes: "Opening feels stiff.",
       message_snapshot: "Original draft.",
       message_revision: 0,
+      generation_request_id: "generation-1",
+      generation_context: { source: "initial_generation", generation: generationContext },
       created_at: now,
       updated_at: later,
     }] as T;
@@ -840,6 +868,8 @@ async function main() {
     notes: "Opening feels stiff.",
     messageSnapshot: "Original draft.",
     messageRevision: 0,
+    generationRequestId: "generation-1",
+    generationContext: { source: "initial_generation", generation: generationContext },
     updatedAt: later,
   });
   assert.equal(feedback.id, "feedback-1");
@@ -859,8 +889,31 @@ async function main() {
     notes: "Opening feels stiff.",
     message_snapshot: "Original draft.",
     message_revision: 0,
+    generation_request_id: "generation-1",
+    generation_context: { source: "initial_generation", generation: generationContext },
     updated_at: later,
   });
+
+  const loadedInitialContext = await loadOutreachGenerationContextForMessage(
+    async <T>() => [{
+      id: "generation-1",
+      request_payload: [{ contact_suggestion_id: "contact-1", generation_context: generationContext }],
+    }] as T,
+    {
+      id: "message-1",
+      pursuitId: "pursuit-1",
+      contactSuggestionId: "contact-1",
+      recipientType: "likely_hiring_manager",
+      channel: "email",
+      message: "Original draft.",
+      regenerationCount: 0,
+      status: "draft",
+      generationRequestId: "generation-1",
+      createdAt: now,
+      updatedAt: now,
+    },
+  );
+  assert.deepEqual(loadedInitialContext, { source: "initial_generation", generation: generationContext });
 
   // Repository: regeneration updates the existing row only when its count is still zero,
   // then records the pursuit event and one outreach-message credit.
@@ -899,6 +952,7 @@ async function main() {
     messageId: "message-1",
     previousMessage: "Original draft.",
     message: "Replacement draft.",
+    generationContext,
     updatedAt: later,
   });
   assert.equal(regeneratedMessage?.message, "Replacement draft.");
@@ -914,6 +968,7 @@ async function main() {
     message: "Replacement draft.",
     previous_message: "Original draft.",
     regeneration_count: 1,
+    regeneration_context: generationContext,
     status: "draft",
     rejection_reason: null,
     updated_at: later,
@@ -929,6 +984,7 @@ async function main() {
     messageId: "message-1",
     previousMessage: "Original draft.",
     message: "Another replacement.",
+    generationContext,
     updatedAt: later,
   });
   assert.equal(lostRace, undefined);
