@@ -65,6 +65,13 @@ When asking Randall to review anything (Randall, 2026-07-02):
     URL and where to look.
 - State explicitly which review method is being used and what feedback is needed.
 
+### Visual QA Geometry
+
+When verifying visual spacing or overlap, DOM border-box measurements alone are not sufficient.
+Measure the visible painted edges, including borders, box shadows, pseudo-elements, sticky offsets,
+and the pseudo-element containing block. Confirm the result in a rendered browser capture at every
+required breakpoint before reporting the visual state as verified.
+
 ### Git Truthfulness
 
 - `Committed` means `git commit` actually succeeded and produced a hash.

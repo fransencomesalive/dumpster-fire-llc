@@ -10,9 +10,12 @@
 <style>
   /* Spacing study only (Randall, 2026-07-17): the ONE thing being decided here is the
      VERTICAL gap between the sticky header bar and the top of the matchbook hero card.
-     Header markup is lifted from Chrome · Header & Nav; the matchbook card from Hero ·
-     Matchbook. Widths are held at the live values (header content 1160, card 1080) but
-     width is NOT the question — only the gap labelled on each stage. */
+     --gap is the VISIBLE PAINTED gap measured after the header's 3px hard shadow (i.e. the
+     painted edge), NOT the header box edge; the hero band pads down past --header-shadow-y
+     first so the labelled value is the true painted spacing. The gap chip is absolutely
+     positioned and adds no layout height. Header markup is lifted from Chrome · Header & Nav;
+     the matchbook card from Hero · Matchbook. Widths are held at the live values (header
+     content 1160, card 1080) but width is NOT the question — only the gap labelled per stage. */
   body { margin: 0; color: var(--c-ink); font-family: var(--font-body); background: var(--c-paper); }
 
   .wrap { max-width: 1240px; margin: 0 auto; padding: var(--space-6) var(--space-5); display: grid; gap: var(--space-6); }
@@ -50,10 +53,12 @@
     font-family: var(--font-display); font-size: 0.85rem; text-decoration: none; }
 
   /* ---- hero band + matchbook card (from Hero · Matchbook) ---- */
-  .heroBand { background-color: var(--c-paper-deep); background-image: var(--grain-img);
+  .heroBand { position: relative; --header-shadow-y: 3px;
+    background-color: var(--c-paper-deep); background-image: var(--grain-img);
     background-blend-mode: soft-light; background-size: 46px 46px; padding-bottom: 34px; }
-  /* The gap under the header is set per-stage via --gap. */
-  .heroBand { padding-top: var(--gap); }
+  /* --gap is the VISIBLE PAINTED gap after the header's 3px hard shadow: padding starts below
+     the shadow (--header-shadow-y) so the labelled value is the painted edge, not the box edge. */
+  .heroBand { padding-top: calc(var(--gap) + var(--header-shadow-y)); }
   .heroInner { position: relative; width: min(1080px, calc(100% - 48px)); margin: 0 auto; box-sizing: border-box;
     padding: clamp(var(--space-6), 6vw, var(--space-8)) clamp(var(--space-5), 5vw, var(--space-7));
     border: var(--line-bold) solid var(--c-ink);
@@ -66,10 +71,12 @@
   .heroLead { margin: 0; font-family: var(--font-display); color: var(--c-ink);
     font-size: clamp(1.2rem, 2.2vw, 1.7rem); line-height: 1.04; letter-spacing: var(--tracking-display); text-align: center; }
 
-  /* Gap read-out chip pinned between the two elements. */
-  .gapTag { display: block; width: fit-content; margin: 0 auto; font-family: var(--font-subhead);
+  /* Gap read-out chip: absolutely positioned in the painted gap so it adds NO layout height.
+     Centred on the middle of the painted gap = --header-shadow-y + --gap/2. */
+  .gapTag { position: absolute; left: 50%; top: calc(var(--header-shadow-y) + var(--gap) / 2);
+    transform: translate(-50%, -50%); z-index: 1; font-family: var(--font-subhead);
     text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.72rem; color: var(--c-paper);
-    background: var(--c-ink); border-radius: var(--radius-sm); padding: 3px 8px; position: relative; top: calc(var(--gap) / -2 - 9px); }
+    background: var(--c-ink); border-radius: var(--radius-sm); padding: 3px 8px; }
 
   .stageA { --gap: 10px; }
   .stageB { --gap: 36px; }
@@ -80,10 +87,11 @@
 <div class="wrap">
   <div>
     <h1 class="page">Header &rarr; matchbook card · vertical gap</h1>
-    <p class="lede">The vertical space between the bottom of the sticky header bar and the top of the
-    matchbook hero card. <strong>Decided (Randall, 2026-07-17): 10px</strong> &mdash; stage A below is the
-    production value; B (was 36px) and C (56px) are kept for reference. Width is held at the live values
-    and is not part of this study.</p>
+    <p class="lede">The visible painted gap between the header's 3px hard shadow and the top of the
+    matchbook hero card &mdash; measured from the painted edge <em>after</em> the shadow, not from the
+    header box. <strong>Decided (Randall, 2026-07-17): 10px</strong> &mdash; stage A below is the
+    production value; B (was 36px) and C (56px) are kept for reference. The gap chip is absolutely
+    positioned and adds no layout height. Width is held at the live values and is not part of this study.</p>
   </div>
 
   <div>

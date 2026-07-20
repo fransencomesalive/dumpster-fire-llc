@@ -78,6 +78,13 @@
     .heroMascot{ width:210px; }
     .signTeal{ margin-left:var(--space-5); }
   }
+
+  /* Sub-340px only: cap the painted "Dumpster Fire" wordmark (plus its 3.6px
+     registration slip) so the lockup stays inside the 186px content area at a
+     320px viewport, without touching the 760px breakpoint above. */
+  @media (max-width:340px){
+    .word{ font-size:2.5rem; }
+  }
 </style>
 </head>
 <body>
