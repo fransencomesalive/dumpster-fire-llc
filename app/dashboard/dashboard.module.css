@@ -38,7 +38,9 @@
   .matchList { display:grid; gap:var(--space-4); }
   /* Skip removal: the card fades and collapses out so the dismissal reads as an action, not a
      freeze. The list reflows as it goes. Honors reduced-motion (see below). */
-  .cardLeaving { overflow:hidden; pointer-events:none; animation:cardLeave 200ms var(--ease-snap) forwards; }
+  /* Same slow, smooth timing as the card flip (Randall 2026-07-21) — the old 200ms snap read as
+     jumpy. */
+  .cardLeaving { overflow:hidden; pointer-events:none; animation:cardLeave 680ms cubic-bezier(0.62,0.04,0.22,1) forwards; }
   @keyframes cardLeave {
     from { opacity:1; max-height:1200px; transform:none; }
     55%  { opacity:0; transform:translateX(14px); }
@@ -243,7 +245,10 @@
      lower cards (incl. the company-board adder) stay reachable. */
   /* top:90px clears the sticky SiteHeader (top 12px + ~63px bar) so the sidebar stops under
      it instead of sliding beneath — same rule the onboarding rail uses (Randall, 2026-07-12). */
-  .dashboardSidebar { position:sticky; top:90px; align-self:start; max-height:calc(100svh - 90px - var(--space-5)); overflow-y:auto; display:flex; flex-direction:column; gap:var(--space-4); }
+  /* overflow-y:auto forces overflow-x to auto too (CSS spec), which would clip the hard 3px card
+     shadow and the rounded right corners. The right/bottom padding gives them room inside the
+     scroll viewport so nothing is cut (Randall 2026-07-21). */
+  .dashboardSidebar { position:sticky; top:90px; align-self:start; max-height:calc(100svh - 90px - var(--space-5)); overflow-y:auto; padding:0 var(--space-2) var(--space-2) 0; display:flex; flex-direction:column; gap:var(--space-4); }
   .panelHeaderRow { display:flex; align-items:center; justify-content:space-between; gap:var(--space-3);
     margin-bottom:var(--space-4); padding-bottom:var(--space-3); border-bottom:var(--line-hair) solid var(--c-paper-edge); }
   .sidebarHeading { margin:0; font-family:var(--font-display); font-size:1.25rem; color:var(--c-ink); }
@@ -367,7 +372,9 @@
 
   @media (max-width:900px){
     .dashboardGrid { grid-template-columns:minmax(0,1fr); }
-    .dashboardSidebar { position:static; }
+    /* Static full-width column on mobile — no internal scroll box, so nothing clips the card
+       shadow/corners; drop the desktop shadow padding too. */
+    .dashboardSidebar { position:static; max-height:none; overflow:visible; padding:0; }
   }
   @media (max-width:560px){
     .matchSections { grid-template-columns:minmax(0,1fr); }

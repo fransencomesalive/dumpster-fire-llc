@@ -645,9 +645,11 @@ export default function DashboardClient() {
           weakResponseCount: response.profileQuality.weakResponseCount,
         });
         // Boards load independently — a failure never blocks the dashboard.
+        // Surface a load failure in the boards card (still never blocks the dashboard) so a
+        // backend error is visible instead of looking like an empty boards list.
         requestPublicProfileApi<PublicJobBoardsResponse>("/api/jobs/boards", { method: "GET", accessToken })
           .then((boardsResponse) => setBoards(boardsResponse.boards))
-          .catch(() => {});
+          .catch((error) => setBoardError({ message: error instanceof Error ? error.message : "Your saved company boards couldn't be loaded. Give it a refresh." }));
         return loadJobs(accessToken).catch((error) => {
           setJobsState({
             status: "error",
@@ -750,7 +752,9 @@ export default function DashboardClient() {
       accessToken,
       body: { jobId: job.id },
     });
-    await new Promise((resolve) => setTimeout(resolve, 220));
+    // Match the .cardLeaving animation duration (680ms, same as the card flip) so the card is
+    // pulled from the list exactly as the leave animation finishes.
+    await new Promise((resolve) => setTimeout(resolve, 680));
     if (snapshot) {
       setJobsState({ status: "ready", response: withJobRemoved(snapshot, job.id), message: confirmation });
     }
