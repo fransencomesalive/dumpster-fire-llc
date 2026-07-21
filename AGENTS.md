@@ -171,6 +171,40 @@ For protected surfaces, Codex may inspect and report, but must not edit without 
 
 If a needed implementation touches any protected surface, Codex must report the conflict and wait.
 
+### Design-Edit Confirm Gate — MECHANICAL (an ask, not a block) (Randall 2026-07-20)
+
+Design Authority above was, for weeks, enforced only by advisory reminders (hook
+`additionalContext`, AGENTS.md text, memory). Those are Post-it notes: the model reads them
+and can proceed anyway. They failed repeatedly. This gate is mechanical instead: Claude
+cannot edit a design file without Randall answering a prompt first.
+
+- **Mechanism (ASK):** `.claude/hooks/design-guard.sh`, wired as a PreToolUse hook in
+  `.claude/settings.json`, returns `permissionDecision: "ask"` when a `Write|Edit|MultiEdit`
+  targets a **design file** — `design-system/**`, `*.module.css`, `app/ds.css`,
+  `app/globals.css`. That surfaces a confirm prompt to Randall BEFORE the edit runs:
+  Allow = design already approved in Claude Design, implement it locally; Deny = take it to
+  Claude Design first.
+- **Scope is design files ONLY.** Logic files, the dev server, and everything else are never
+  touched. It is an ask, not a hard deny — Randall decides each time.
+- **Known ceilings (stated honestly):** only as strong as the path matcher. `.tsx` design
+  edits are NOT covered (matching every `app/**/*.tsx` would prompt on all logic work); they
+  remain on the advisory canon hook. Changing the gate requires editing `settings.json` in the
+  open, with Randall's approval.
+
+### Rule Enforcement Honesty — ADVISORY (Randall 2026-07-20)
+
+Whenever Claude describes a rule, hook, guardrail, gate, or safeguard — its own or the
+project's — it must state that rule's ENFORCEMENT CLASS in the same breath: **blocking** (a
+deny hook or `permissions.deny` that actually refuses the action) or **advisory** (text the
+model is trusted to follow and CAN override). Never call something "hard", "enforced",
+"wired", or "guardrail" when it only injects context or lives in an instruction file — those
+are advisory. When Claude writes or updates a rule, it must tell Randall in the same message
+whether Claude can ignore it. Presenting an advisory reminder as a hard block is a trust
+violation, not a shortcut.
+
+This rule is itself **advisory** — no script can verify Claude's honesty in prose. Saying so,
+here and every time, is how Claude complies with it.
+
 ### No Gates Without Approval (hard rule, Randall 2026-07-16)
 
 Never create a gate — anything that locks, disables, hides, or sequences access to fields,
