@@ -11,6 +11,7 @@
     "test:saved-pursuits": "node scripts/test-fixtures.mjs --saved-pursuits",
     "test:migrations:saved-pursuits": "bash scripts/test-saved-pursuits-migration.sh",
     "test:migrations:feedback": "bash scripts/test-feedback-migration.sh",
+    "test:migrations:contact-reachability": "bash scripts/test-human-path-contact-reachability-migration.sh",
     "test:fixtures": "node scripts/test-fixtures.mjs",
     "release:check": "node scripts/release-check.mjs",
     "test:job-link": "node scripts/test-job-link.mjs",

@@ -770,7 +770,12 @@ type ContactSuggestion = {
   title: string
   companyName: string
   linkedinUrl?: string
-  email?: string
+  professionalContactUrl?: string
+  reachability:
+    | { method: 'linkedin'; url: string }
+    | { method: 'contact_page'; url: string }
+    | { method: 'none' }
+  email?: string // legacy storage only; not a Human Path contact route
 
   contactType:
     | 'likely_hiring_manager'

@@ -28,12 +28,18 @@ type ResearchedContact = {
   contactType: HumanPathContact["contactType"];
   confidence: number;
   linkedinUrl?: string;
-  email?: string;
+  professionalContactUrl?: string;
   relevanceReason: string;
   roleConnection: string;
   verificationNotes: string[];
   rank: number;
 };
+
+function resolveHumanPathReachability(contact: Pick<ResearchedContact, "linkedinUrl" | "professionalContactUrl">): HumanPathContact["reachability"] {
+  if (contact.linkedinUrl) return { method: "linkedin", url: contact.linkedinUrl };
+  if (contact.professionalContactUrl) return { method: "contact_page", url: contact.professionalContactUrl };
+  return { method: "none" };
+}
 
 // Hiring-manager outreach rules, mirrored from the legacy prompt
 // (app/scans/job_search_context_for_codex.md §7 + §10).
@@ -54,7 +60,9 @@ const SYSTEM_PROMPT = [
   "For creative, brand, growth, content, producer, or marketing-adjacent roles, include creative operations leaders, VP/Head of Marketing, lifecycle/growth marketing leaders, and relevant marketing department leaders when they plausibly own the team.",
   "Avoid recommending: random peers; founders or CEOs unless the company is small and outreach is realistic; unrelated executives; designers or engineers unless they are explicitly the hiring manager.",
   "Public evidence is stronger when it connects to the role's function: hiring posts, team announcements, thought leadership, company blog posts, podcasts, conference talks, or practice leadership pages.",
-  "Prefer people who are reachable on LinkedIn.",
+  "A direct LinkedIn profile is the preferred contact route. A URL is a LinkedIn profile only when it points to that person's /in/ page, not a post, company page, or search result.",
+  "If no direct LinkedIn profile can be verified, return a professionalContactUrl only when it is the person's professional site, official bio, or another page with a direct contact action. Do not reuse an evidence-only page as a contact route.",
+  "Do not return, infer, or guess email addresses.",
   "Return JSON only, matching the requested schema. No commentary outside the JSON.",
 ].join(" ");
 
@@ -64,6 +72,31 @@ function cleanString(value: unknown): string {
 
 function firstUrl(value: string) {
   return value.match(/https?:\/\/[^\s)\]]+/i)?.[0] ?? "";
+}
+
+function normalizedPublicUrl(value: string) {
+  const candidate = firstUrl(value) || (value.startsWith("http") ? value : "");
+  if (!candidate) return "";
+  try {
+    const url = new URL(candidate);
+    if (url.protocol !== "https:" && url.protocol !== "http:") return "";
+    return url.toString();
+  } catch {
+    return "";
+  }
+}
+
+function normalizedLinkedinProfileUrl(value: string) {
+  const candidate = normalizedPublicUrl(value);
+  if (!candidate) return "";
+  const url = new URL(candidate);
+  const hostname = url.hostname.toLowerCase();
+  if (hostname !== "linkedin.com" && !hostname.endsWith(".linkedin.com")) return "";
+  if (!/^\/in\/[^/]+\/?$/i.test(url.pathname)) return "";
+  url.protocol = "https:";
+  url.search = "";
+  url.hash = "";
+  return url.toString();
 }
 
 function cleanField(row: Record<string, unknown>, ...keys: string[]) {
@@ -162,7 +195,9 @@ export function parseResearchedContacts(value: unknown, companyName: string): Re
       if (!isSpecificPersonName(name)) return null;
 
       const rawLinkedinUrl = cleanField(row, "linkedinUrl", "linkedin_url", "linkedInUrl", "linkedIn", "linkedin", "profileUrl", "profile_url");
-      const linkedinUrl = firstUrl(rawLinkedinUrl) || (rawLinkedinUrl.startsWith("http") ? rawLinkedinUrl : "");
+      const linkedinUrl = normalizedLinkedinProfileUrl(rawLinkedinUrl);
+      const rawProfessionalContactUrl = cleanField(row, "professionalContactUrl", "professional_contact_url", "contactPageUrl", "contact_page_url");
+      const professionalContactUrl = normalizedPublicUrl(rawProfessionalContactUrl);
       const candidateRole = cleanField(row, "candidateRole", "candidate_role", "role", "recommendationType", "recommendation_type");
       const roleConnection = cleanField(row, "roleConnection", "role_connection", "connection");
       const notes = cleanString(row.notes);
@@ -171,6 +206,7 @@ export function parseResearchedContacts(value: unknown, companyName: string): Re
       const evidenceUrl = firstUrl(rawEvidenceUrl)
         || firstUrl(notes)
         || firstUrl(reason)
+        || normalizedPublicUrl(rawLinkedinUrl)
         || linkedinUrl
         || (rawEvidenceUrl.startsWith("http") ? rawEvidenceUrl : "");
 
@@ -190,7 +226,7 @@ export function parseResearchedContacts(value: unknown, companyName: string): Re
         contactType,
         confidence: clampConfidence(row.confidence),
         linkedinUrl: linkedinUrl || undefined,
-        email: cleanField(row, "email") || undefined,
+        professionalContactUrl: professionalContactUrl || undefined,
         relevanceReason: reason,
         roleConnection: roleConnection || notes,
         verificationNotes,
@@ -264,7 +300,8 @@ const OUTPUT_SCHEMA = {
       title: "Their current title",
       candidateRole: "Hiring Manager | Functional Leader | Recruiter | Long Shot",
       contactType: "likely_hiring_manager | functional_leader | recruiter | executive_sponsor | referral_candidate | unknown",
-      linkedinUrl: "Direct LinkedIn profile URL, or empty string if not found",
+      linkedinUrl: "Direct LinkedIn /in/ profile URL, or empty string if not found",
+      professionalContactUrl: "Direct professional contact page URL only when no LinkedIn profile is found, otherwise empty string",
       evidenceUrl: "URL proving they currently work at the company (LinkedIn, company page, press, etc.)",
       confidence: "0-100 integer: how sure they are current and relevant to this role",
       reason: "One sentence explaining why this person matters for THIS role and where they sit in the likely reporting chain",
@@ -360,7 +397,8 @@ function toHumanPathContact(contact: ResearchedContact): HumanPathContact {
     title: contact.title,
     companyName: contact.companyName,
     linkedinUrl: contact.linkedinUrl,
-    email: contact.email,
+    professionalContactUrl: contact.professionalContactUrl,
+    reachability: resolveHumanPathReachability(contact),
     contactType: contact.contactType,
     confidence: bucketConfidence(contact.confidence),
     relevanceReason: contact.relevanceReason,

@@ -70,6 +70,8 @@ export type PursuitSelectionSnapshot = {
     title?: string;
     companyName?: string;
     linkedinUrl?: string;
+    professionalContactUrl?: string;
+    reachability?: HumanPathReachability;
   }>;
   // Legacy flat identifiers remain readable while existing rows are converted.
   roleTrackId?: string;
@@ -235,6 +237,9 @@ export type HumanPathContact = {
   title: string;
   companyName: string;
   linkedinUrl?: string;
+  professionalContactUrl?: string;
+  reachability: HumanPathReachability;
+  // Legacy storage remains readable, but email is not a Human Path contact route.
   email?: string;
   contactType: "likely_hiring_manager" | "functional_leader" | "recruiter" | "executive_sponsor" | "referral_candidate" | "unknown";
   confidence: "low" | "medium" | "high";
@@ -242,6 +247,11 @@ export type HumanPathContact = {
   roleConnection: string;
   verificationNotes: string[];
 };
+
+export type HumanPathReachability =
+  | { method: "linkedin"; url: string }
+  | { method: "contact_page"; url: string }
+  | { method: "none" };
 
 export type HumanPathContactSuggestion = HumanPathContact & {
   id: string;

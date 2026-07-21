@@ -178,6 +178,7 @@ function humanPathContact(overrides: Partial<HumanPathContact> = {}): HumanPathC
     title: "VP Product",
     companyName: "Useful Studio",
     linkedinUrl: "https://linkedin.example/dana",
+    reachability: { method: "linkedin", url: "https://linkedin.example/dana" },
     contactType: "likely_hiring_manager",
     confidence: "high",
     relevanceReason: "Owns the program area.",

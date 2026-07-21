@@ -22,8 +22,8 @@ assert.match(unavailable.reason, /OPENAI_API_KEY/);
 const strongResponse = JSON.stringify({
   contacts: [
     { name: "Dana Reyes", title: "VP Media", candidateRole: "Functional Leader", confidence: 82, linkedinUrl: "https://linkedin.com/in/danareyes", evidenceUrl: "https://useful.example/leadership", reason: "Owns the media practice this role sits under." },
-    { name: "Priya Nadar", title: "Director, Paid Media", candidateRole: "Hiring Manager", confidence: 0.6, evidenceUrl: "https://useful.example/team", reason: "One level above the opening." },
-    { name: "Sam Cole", title: "Talent Partner", candidateRole: "Recruiter", confidence: 55, reason: "Assigned recruiter for media roles." },
+    { name: "Priya Nadar", title: "Director, Paid Media", candidateRole: "Hiring Manager", confidence: 0.6, professionalContactUrl: "https://priya.example/contact", evidenceUrl: "https://useful.example/team", reason: "One level above the opening." },
+    { name: "Sam Cole", title: "Talent Partner", candidateRole: "Recruiter", confidence: 55, linkedinUrl: "https://www.linkedin.com/posts/sam-example", reason: "Assigned recruiter for media roles." },
   ],
 });
 let calls = 0;
@@ -42,6 +42,9 @@ assert.equal(strong.contacts[1].confidence, "high"); // 82 -> high
 assert.equal(strong.contacts[0].companyName, "Useful Studio");
 assert.ok(strong.contacts[1].verificationNotes.some((note) => note.includes("useful.example/leadership")));
 assert.equal(strong.contacts[0].linkedinUrl, undefined);
+assert.deepEqual(strong.contacts[0].reachability, { method: "contact_page", url: "https://priya.example/contact" });
+assert.deepEqual(strong.contacts[1].reachability, { method: "linkedin", url: "https://linkedin.com/in/danareyes" });
+assert.deepEqual(strong.contacts[2].reachability, { method: "none" }, "LinkedIn posts are evidence, not direct contact routes");
 
 // 3. Thin first response (1 recruiter, no functional lead) -> gap-fill call, merged + deduped.
 const thinResponse = JSON.stringify({

@@ -132,6 +132,7 @@ function contact(overrides: Partial<HumanPathContactSuggestion> = {}): HumanPath
     name: "Dana Lee",
     title: "VP Product",
     companyName: "Useful Studio",
+    reachability: { method: "none" },
     contactType: "likely_hiring_manager",
     confidence: "high",
     relevanceReason: "Owns the program area.",

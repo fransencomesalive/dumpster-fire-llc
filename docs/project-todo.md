@@ -268,6 +268,9 @@ error — nothing breaks. In order:
 - [x] Add hiring manager, functional leader, recruiter, and executive sponsor contact types.
   (`HumanPathContact` types)
 - [x] Add confidence scoring and reasoning. (contact confidence + reason fields in the contract)
+- [ ] Design the no-verified-contact-route state and fallback action for Human Path contact cards.
+  LinkedIn is preferred, a professional contact page is the only direct fallback, and email is excluded.
+  See `docs/human-path-contact-reachability-design-need-2026-07-20.md`.
 - [x] Add Human Path usage ledger integration. (`human_path` usage events)
 - [ ] **BLOCKED (decision):** choose + integrate a real contact-discovery provider. Until then the
   provider degrades gracefully (provider_unavailable). Contact ranking by company context lands with

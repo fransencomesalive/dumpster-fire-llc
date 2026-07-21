@@ -28,6 +28,15 @@ import type {
 import { createPursuit } from "./state-machine";
 import { derivePursuitTrackingState, pursuitHistory } from "./tracking";
 
+function resolveHumanPathReachability(input: {
+  linkedinUrl?: string;
+  professionalContactUrl?: string;
+}): HumanPathContact["reachability"] {
+  if (input.linkedinUrl) return { method: "linkedin", url: input.linkedinUrl };
+  if (input.professionalContactUrl) return { method: "contact_page", url: input.professionalContactUrl };
+  return { method: "none" };
+}
+
 type PursuitRow = {
   id: string;
   user_id: string;
@@ -127,6 +136,7 @@ type ContactSuggestionRow = {
   title: string;
   company_name: string;
   linkedin_url: string | null;
+  professional_contact_url: string | null;
   email: string | null;
   contact_type: HumanPathContact["contactType"];
   confidence: HumanPathContact["confidence"];
@@ -273,6 +283,7 @@ function contactSuggestionBody(pursuit: Pursuit, contact: HumanPathContact, upda
     title: contact.title,
     company_name: contact.companyName,
     linkedin_url: contact.linkedinUrl ?? null,
+    professional_contact_url: contact.professionalContactUrl ?? null,
     email: contact.email ?? null,
     contact_type: contact.contactType,
     confidence: contact.confidence,
@@ -308,6 +319,11 @@ function mapContactSuggestion(row: ContactSuggestionRow): HumanPathContactSugges
     title: row.title,
     companyName: row.company_name,
     linkedinUrl: defined(row.linkedin_url),
+    professionalContactUrl: defined(row.professional_contact_url),
+    reachability: resolveHumanPathReachability({
+      linkedinUrl: defined(row.linkedin_url),
+      professionalContactUrl: defined(row.professional_contact_url),
+    }),
     email: defined(row.email),
     contactType: row.contact_type,
     confidence: row.confidence,

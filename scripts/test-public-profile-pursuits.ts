@@ -408,6 +408,8 @@ async function main() {
     name: "Dana Lee",
     title: "VP Product",
     companyName: "Useful Studio",
+    professionalContactUrl: "https://dana.example/contact",
+    reachability: { method: "contact_page", url: "https://dana.example/contact" },
     contactType: "likely_hiring_manager",
     confidence: "high",
     relevanceReason: "Owns the program area.",
@@ -422,13 +424,16 @@ async function main() {
   assert.equal(calls[3].method, "DELETE");
   assert.equal(calls[4].table, "contact_suggestions");
   assert.equal(calls[4].method, "POST");
+  const persistedContacts = calls[4].body as Array<{ professional_contact_url: string | null }>;
+  assert.equal(persistedContacts[0].professional_contact_url, "https://dana.example/contact");
 
   const contactRowsRequest: PublicProfileRepositoryRequest = async <T>() => [{
     id: "contact-1",
     name: "Dana Lee",
     title: "VP Product",
     company_name: "Useful Studio",
-    linkedin_url: "https://linkedin.example/dana",
+    linkedin_url: null,
+    professional_contact_url: "https://dana.example/contact",
     email: null,
     contact_type: "likely_hiring_manager",
     confidence: "high",
@@ -442,6 +447,7 @@ async function main() {
   const loadedContacts = await loadContactSuggestionsForPursuit(contactRowsRequest, "pursuit-1");
   assert.equal(loadedContacts[0].id, "contact-1");
   assert.equal(loadedContacts[0].companyName, "Useful Studio");
+  assert.deepEqual(loadedContacts[0].reachability, { method: "contact_page", url: "https://dana.example/contact" });
   assert.equal(loadedContacts[0].selectedForOutreach, true);
 
   if (!contacts.ok) throw new Error("contact selection pursuit should be available for repository test");

@@ -56,8 +56,17 @@ re-run a psql-applied migration through the CLI — A4 in particular is non-idem
   `schema_migrations` (`resume_highlights`). Column confirmed present (`data_type ARRAY`,
   default `'{}'::text[]`, NOT NULL).
 
-Every migration through `20260719000100` is applied and recorded. The most recent production
-apply is the feedback-capture migration documented below.
+Every migration through `20260720000100` is applied and recorded. The most recent production
+apply is the Human Path contact-reachability migration documented below.
+
+## Applied 2026-07-20 (confirmed + recorded in schema_migrations)
+
+- `20260720000100_human_path_contact_reachability.sql` adds the nullable
+  `professional_contact_url text` fallback to `contact_suggestions`. Validated on disposable
+  PostgreSQL 16 with clean apply and idempotent reapply, applied through the Management API,
+  and recorded as `human_path_contact_reachability`. Production verification confirmed the
+  column and migration-history row. The verified LinkedIn URLs for the existing Perplexity
+  contact rows Chris Segura and Kevin Kraft were backfilled after the schema apply.
 
 ## How to apply migrations (current method)
 
