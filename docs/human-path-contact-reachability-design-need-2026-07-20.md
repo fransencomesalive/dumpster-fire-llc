@@ -9,6 +9,9 @@ Status: design needed before UI implementation
 - A direct professional contact page is the only fallback route.
 - Email is not a Human Path contact route and must not be offered as an action.
 - When neither route is verified, the contact has an explicit `none` reachability state.
+- After contact selection and any gap-fill search, the provider makes at most one additional
+  batched search when accepted contacts still have no verified route. This search may enrich only
+  those existing contacts and may not add or reclassify people.
 
 ## Design need
 

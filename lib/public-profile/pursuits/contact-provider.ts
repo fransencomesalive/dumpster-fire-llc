@@ -66,6 +66,16 @@ const SYSTEM_PROMPT = [
   "Return JSON only, matching the requested schema. No commentary outside the JSON.",
 ].join(" ");
 
+const REACHABILITY_SYSTEM_PROMPT = [
+  "You are a contact-route research assistant for a job-search product.",
+  "Use web search only for the exact people supplied by the user. Do not add, replace, rank, or reclassify people.",
+  "Find a direct LinkedIn /in/ profile for each person when one can be verified. LinkedIn is the preferred route.",
+  "A LinkedIn post, company page, search page, or other non-/in/ URL is not a direct profile.",
+  "If no direct LinkedIn profile can be verified, return a professionalContactUrl only when it is the person's professional site, official bio, or another page with a direct contact action.",
+  "Do not reuse an evidence-only page as a contact route. Do not return, infer, or guess email addresses.",
+  "Return JSON only. Omit people for whom no verified route is found.",
+].join(" ");
+
 function cleanString(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
 }
@@ -373,6 +383,34 @@ export function buildGapFillPrompt(job: HumanPathJob, existing: ResearchedContac
   });
 }
 
+export function buildReachabilityEnrichmentPrompt(job: HumanPathJob, contacts: ResearchedContact[]) {
+  return JSON.stringify({
+    task: "Find a verified contact route for only these already-selected people.",
+    role: {
+      title: job.title,
+      company: job.companyName,
+    },
+    exactPeople: contacts.map((contact) => ({
+      name: contact.name,
+      title: contact.title,
+      company: contact.companyName,
+    })),
+    requiredSearches: contacts.flatMap((contact) => [
+      `site:linkedin.com/in \"${contact.name}\" \"${contact.companyName}\"`,
+      `\"${contact.name}\" \"${contact.companyName}\" contact`,
+    ]),
+    outputSchema: {
+      contacts: [{
+        name: "Exact supplied full name",
+        title: "Exact supplied title",
+        linkedinUrl: "Verified direct LinkedIn /in/ profile URL, or empty string",
+        professionalContactUrl: "Verified direct professional contact page only when LinkedIn is unavailable, or empty string",
+        evidenceUrl: "Search result that supports the route",
+      }],
+    },
+  });
+}
+
 function contactDedupKey(contact: ResearchedContact) {
   return `${contact.name.toLowerCase()}|${contact.title.toLowerCase()}`;
 }
@@ -389,6 +427,30 @@ export function mergeResearchedContacts(primary: ResearchedContact[], supplement
   return merged
     .sort((a, b) => a.rank - b.rank || b.confidence - a.confidence)
     .slice(0, 5);
+}
+
+function normalizedContactName(name: string) {
+  return name.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+export function mergeReachabilityEnrichment(contacts: ResearchedContact[], enrichment: ResearchedContact[]) {
+  const routesByName = new Map(
+    enrichment
+      .filter((contact) => contact.linkedinUrl || contact.professionalContactUrl)
+      .map((contact) => [normalizedContactName(contact.name), contact] as const),
+  );
+
+  return contacts.map((contact) => {
+    if (contact.linkedinUrl || contact.professionalContactUrl) return contact;
+    const route = routesByName.get(normalizedContactName(contact.name));
+    if (!route) return contact;
+    return {
+      ...contact,
+      linkedinUrl: route.linkedinUrl,
+      professionalContactUrl: route.professionalContactUrl,
+      verificationNotes: Array.from(new Set([...contact.verificationNotes, ...route.verificationNotes])),
+    };
+  });
 }
 
 function toHumanPathContact(contact: ResearchedContact): HumanPathContact {
@@ -458,6 +520,22 @@ export function createOpenAIHumanPathProvider(dependencies: ContactProviderDepen
       }
     } else {
       contacts = mergeResearchedContacts(contacts, []);
+    }
+
+    const contactsMissingRoutes = contacts.filter(
+      (contact) => !contact.linkedinUrl && !contact.professionalContactUrl,
+    );
+    if (contactsMissingRoutes.length > 0) {
+      const enrichmentRaw = await callModel({
+        system: REACHABILITY_SYSTEM_PROMPT,
+        user: buildReachabilityEnrichmentPrompt(job, contactsMissingRoutes),
+      });
+      if (enrichmentRaw !== undefined) {
+        contacts = mergeReachabilityEnrichment(
+          contacts,
+          parseResearchedContacts(extractJson(enrichmentRaw), job.companyName),
+        );
+      }
     }
 
     return { status: "generated", contacts: contacts.map(toHumanPathContact) };
