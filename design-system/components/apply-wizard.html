@@ -42,10 +42,16 @@
   .wizardStep span { display: inline-grid; place-items: center; flex: none; width: 24px; height: 24px;
     font-family: var(--font-subhead); font-size: 0.92rem; color: var(--c-ink);
     background-color: var(--c-paper-deep); border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-pill); }
-  /* Only completed (past) steps navigate; the active and future steps are disabled, so they
-     get no pointer cursor and no hover tint (hover pass, Randall 2026-07-17). */
-  .wizardStep:disabled { cursor: default; }
-  .wizardStep:hover:not(:disabled) { background-color: color-mix(in srgb, var(--c-teal) 14%, var(--c-paper)); }
+  /* Steps advance IN ORDER. Reached steps navigate freely; clicking a step ahead of the
+     frontier is refused with a contextual skip error (canon tomato ds-callout) beneath the
+     stepper. All steps read as clickable (Randall 2026-07-20). */
+  .wizardStep:hover { box-shadow: var(--reg-box); }
+  /* Skip error = the canon tomato callout, ds-callout (app/ds.css), verbatim. */
+  .ds-callout { font-family: var(--font-body); color: var(--c-ink); background-color: var(--c-paper);
+    background-image: var(--grain-img); background-size: 46px 46px;
+    border: var(--line-reg) solid var(--c-ink); border-left: var(--line-bold) solid var(--c-tomato);
+    border-radius: var(--radius-md); padding: var(--space-3) var(--space-4); }
+  .skipError { margin-top: var(--space-3); }
   .wizardStepActive { color: var(--c-paper); background-color: var(--c-teal);
     background-image: var(--fiber-img), var(--grain-img); background-blend-mode: normal, soft-light;
     background-size: 170px 170px, 46px 46px; box-shadow: var(--shadow-card); }
@@ -352,11 +358,11 @@
         </button>
       </div>
       <div class="wizardSteps" aria-label="Human Path steps">
-        <!-- Only past steps are enabled; active + future steps carry disabled. -->
-        <button type="button" class="wizardStep wizardStepActive" disabled><span>1</span>Review</button>
-        <button type="button" class="wizardStep" disabled><span>2</span>Contacts</button>
-        <button type="button" class="wizardStep" disabled><span>3</span>Outreach</button>
-        <button type="button" class="wizardStep" disabled><span>4</span>Track</button>
+        <!-- All steps are clickable; advancing is in order. Skipping ahead shows the skip error (see the out-of-order state below). -->
+        <button type="button" class="wizardStep wizardStepActive"><span>1</span>Review</button>
+        <button type="button" class="wizardStep"><span>2</span>Contacts</button>
+        <button type="button" class="wizardStep"><span>3</span>Outreach</button>
+        <button type="button" class="wizardStep"><span>4</span>Track</button>
       </div>
       <div class="modalStack">
         <section class="modeSection">
@@ -385,6 +391,21 @@
       </div>
     </div>
 
+    <!-- ========= STEPPER · OUT-OF-ORDER CLICK (skip error) ========= -->
+    <p class="dsStepLabel">Stepper · clicking a step out of order</p>
+    <div class="modalBox">
+      <div class="wizardSteps" aria-label="Human Path steps">
+        <button type="button" class="wizardStep wizardStepActive"><span>1</span>Review</button>
+        <button type="button" class="wizardStep"><span>2</span>Contacts</button>
+        <button type="button" class="wizardStep"><span>3</span>Outreach</button>
+        <button type="button" class="wizardStep"><span>4</span>Track</button>
+      </div>
+      <!-- Clicked Outreach (3) from Review, before Contacts. -->
+      <div class="ds-callout skipError">Can't generate a message without contacts first, go back a step.</div>
+      <!-- Clicked Track (4) before Contacts and Outreach. -->
+      <div class="ds-callout skipError">Can't wrestle if you don't weigh in, go back to Contacts first.</div>
+    </div>
+
     <!-- ================= STEP 2 of 4 · CONTACTS ================= -->
     <p class="dsStepLabel">Step 2 of 4 · Contacts</p>
     <div class="modalBox">
@@ -398,9 +419,9 @@
       </div>
       <div class="wizardSteps" aria-label="Human Path steps">
         <button type="button" class="wizardStep"><span>1</span>Review</button>
-        <button type="button" class="wizardStep wizardStepActive" disabled><span>2</span>Contacts</button>
-        <button type="button" class="wizardStep" disabled><span>3</span>Outreach</button>
-        <button type="button" class="wizardStep" disabled><span>4</span>Track</button>
+        <button type="button" class="wizardStep wizardStepActive"><span>2</span>Contacts</button>
+        <button type="button" class="wizardStep"><span>3</span>Outreach</button>
+        <button type="button" class="wizardStep"><span>4</span>Track</button>
       </div>
       <div class="modalStack">
         <section>
@@ -464,8 +485,8 @@
       <div class="wizardSteps" aria-label="Human Path steps">
         <button type="button" class="wizardStep"><span>1</span>Review</button>
         <button type="button" class="wizardStep"><span>2</span>Contacts</button>
-        <button type="button" class="wizardStep wizardStepActive" disabled><span>3</span>Outreach</button>
-        <button type="button" class="wizardStep" disabled><span>4</span>Track</button>
+        <button type="button" class="wizardStep wizardStepActive"><span>3</span>Outreach</button>
+        <button type="button" class="wizardStep"><span>4</span>Track</button>
       </div>
       <div class="modalStack">
         <section>
@@ -587,7 +608,7 @@
         <button type="button" class="wizardStep"><span>1</span>Review</button>
         <button type="button" class="wizardStep"><span>2</span>Contacts</button>
         <button type="button" class="wizardStep"><span>3</span>Outreach</button>
-        <button type="button" class="wizardStep wizardStepActive" disabled><span>4</span>Track</button>
+        <button type="button" class="wizardStep wizardStepActive"><span>4</span>Track</button>
       </div>
       <div class="modalStack">
         <section>
@@ -632,7 +653,7 @@
         <button type="button" class="wizardStep"><span>1</span>Review</button>
         <button type="button" class="wizardStep"><span>2</span>Contacts</button>
         <button type="button" class="wizardStep"><span>3</span>Outreach</button>
-        <button type="button" class="wizardStep wizardStepActive" disabled><span>4</span>Track</button>
+        <button type="button" class="wizardStep wizardStepActive"><span>4</span>Track</button>
       </div>
       <div class="modalStack">
         <section>
@@ -684,7 +705,7 @@
         <button type="button" class="wizardStep"><span>1</span>Review</button>
         <button type="button" class="wizardStep"><span>2</span>Contacts</button>
         <button type="button" class="wizardStep"><span>3</span>Outreach</button>
-        <button type="button" class="wizardStep wizardStepActive" disabled><span>4</span>Track</button>
+        <button type="button" class="wizardStep wizardStepActive"><span>4</span>Track</button>
       </div>
       <div class="modalStack">
         <section>
@@ -756,7 +777,7 @@
         <button type="button" class="wizardStep"><span>1</span>Review</button>
         <button type="button" class="wizardStep"><span>2</span>Contacts</button>
         <button type="button" class="wizardStep"><span>3</span>Outreach</button>
-        <button type="button" class="wizardStep wizardStepActive" disabled><span>4</span>Track</button>
+        <button type="button" class="wizardStep wizardStepActive"><span>4</span>Track</button>
       </div>
       <div class="modalStack">
         <section>
@@ -801,7 +822,7 @@
         <button type="button" class="wizardStep"><span>1</span>Review</button>
         <button type="button" class="wizardStep"><span>2</span>Contacts</button>
         <button type="button" class="wizardStep"><span>3</span>Outreach</button>
-        <button type="button" class="wizardStep wizardStepActive" disabled><span>4</span>Track</button>
+        <button type="button" class="wizardStep wizardStepActive"><span>4</span>Track</button>
       </div>
       <div class="modalStack">
         <section>
@@ -862,7 +883,7 @@
         <button type="button" class="wizardStep"><span>1</span>Review</button>
         <button type="button" class="wizardStep"><span>2</span>Contacts</button>
         <button type="button" class="wizardStep"><span>3</span>Outreach</button>
-        <button type="button" class="wizardStep wizardStepActive" disabled><span>4</span>Track</button>
+        <button type="button" class="wizardStep wizardStepActive"><span>4</span>Track</button>
       </div>
       <div class="modalStack">
         <section>
@@ -927,7 +948,7 @@
         <button type="button" class="wizardStep"><span>1</span>Review</button>
         <button type="button" class="wizardStep"><span>2</span>Contacts</button>
         <button type="button" class="wizardStep"><span>3</span>Outreach</button>
-        <button type="button" class="wizardStep wizardStepActive" disabled><span>4</span>Track</button>
+        <button type="button" class="wizardStep wizardStepActive"><span>4</span>Track</button>
       </div>
       <div class="modalStack">
         <div class="trackAlert">

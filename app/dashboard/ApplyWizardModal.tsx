@@ -263,6 +263,9 @@ export default function ApplyWizardModal({
 }) {
   const [mode, setMode] = useState<"stepper" | "applied">("stepper");
   const [step, setStep] = useState<WizardStep>(target.kind === "pursuit" ? 4 : 1);
+  // Highest step legitimately reached. Reached steps navigate freely; the frontier advances one
+  // step in order; anything further ahead is a skip and is refused with a contextual message.
+  const [reached, setReached] = useState<WizardStep>(target.kind === "pursuit" ? 4 : 1);
   const [pursuitId, setPursuitId] = useState<string | null>(target.kind === "pursuit" ? target.pursuitId : null);
   const [match, setMatch] = useState<MatchResult | null>(null);
   const [job, setJob] = useState<PublicJobRecord | null>(target.kind === "job" ? target.job : null);
@@ -463,9 +466,11 @@ export default function ApplyWizardModal({
           if (data.bucket === "applied") {
             setMode("applied");
             setStep(4);
+            setReached(4);
           } else {
             setMode("stepper");
             setStep(4);
+            setReached(4);
             setResumedSavedForLater(true);
             // Best-effort match + role tracks so the stepper can navigate back to Review;
             // a snapshot-only posting (no live job) degrades to Track-only.
@@ -567,6 +572,7 @@ export default function ApplyWizardModal({
         selectedRoleTrackId: selectedRoleTrackId ?? undefined,
       });
       setStep(2);
+      setReached((r) => (r < 2 ? 2 : r));
       if (contacts.length === 0) await discoverContacts(pursuitId);
     });
   }
@@ -611,6 +617,7 @@ export default function ApplyWizardModal({
     run(async () => {
       await api(`/api/public-profile/pursuits/contacts`, "POST", { pursuitId, contactIds });
       setStep(3);
+      setReached((r) => (r < 3 ? 3 : r));
       await generateOutreach(pursuitId);
     });
   }
@@ -714,6 +721,23 @@ export default function ApplyWizardModal({
     </button>
   );
 
+  // Stepper navigation. Reached steps navigate freely; the frontier advances one step in order
+  // (running that step's real work); skipping further ahead is refused with a message naming the
+  // missing prerequisite. The message renders in the canon tomato ds-callout beneath the stepper.
+  const goToStep = (target: WizardStep) => {
+    if (busy || target === step) return;
+    setError(null);
+    if (target <= reached) { setStep(target); return; }
+    if (target === 4 && reached >= 3) { setStep(4); setReached(4); return; }
+    if (target === reached + 1 && step === reached) {
+      if (step === 1) { submitReview(); return; }
+      if (step === 2) { submitContacts(); return; }
+    }
+    setError(target >= 4
+      ? "Can't wrestle if you don't weigh in, go back to Contacts first."
+      : "Can't generate a message without contacts first, go back a step.");
+  };
+
   const stepper = (
     <div className={styles.wizardSteps} aria-label="Human Path steps">
       {([1, 2, 3, 4] as WizardStep[]).map((n) => (
@@ -721,8 +745,8 @@ export default function ApplyWizardModal({
           type="button"
           key={n}
           className={`${styles.wizardStep} ${n === step ? styles.wizardStepActive : ""}`}
-          onClick={() => { if (n < step) setStep(n); }}
-          disabled={n >= step}
+          onClick={() => goToStep(n)}
+          aria-current={n === step ? "step" : undefined}
         >
           <span>{n}</span>{STEP_LABELS[n]}
         </button>
@@ -750,7 +774,7 @@ export default function ApplyWizardModal({
       ) : mode === "stepper" && step === 2 ? (
         <button type="button" className={styles.modalBtnSave} onClick={submitContacts} disabled={busy || providerUnavailable}>Continue</button>
       ) : mode === "stepper" && step === 3 ? (
-        <button type="button" className={styles.modalBtnSave} onClick={() => setStep(4)} disabled={busy}>Continue</button>
+        <button type="button" className={styles.modalBtnSave} onClick={() => { setStep(4); setReached(4); }} disabled={busy}>Continue</button>
       ) : (
         <button type="button" className={`${styles.modalBtnSave} ${isApplied ? styles.modalBtnSaveOn : ""}`} onClick={saveTracking} disabled={busy}>{saveLabel}</button>
       )}
@@ -867,6 +891,7 @@ export default function ApplyWizardModal({
           {closeButton}
         </div>
         {mode === "applied" ? appliedBar : stepper}
+        {error ? <div className={`ds-callout ${styles.skipError}`} role="alert">{error}</div> : null}
 
         {initError ? (
           <div className={styles.modalStack}>
@@ -1012,8 +1037,6 @@ export default function ApplyWizardModal({
             ) : null}
 
             {step === 4 ? trackStep : null}
-
-            {error ? <p className={styles.errorNote}>{error}</p> : null}
           </>
         )}
         {footer}
