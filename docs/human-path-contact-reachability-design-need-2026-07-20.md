@@ -1,7 +1,8 @@
 # Human Path Contact Reachability Design Need
 
 Date: 2026-07-20
-Status: design needed before UI implementation
+Status: next Claude Design session priority before UI implementation
+Owner: Claude Design
 
 ## Approved product behavior
 
@@ -16,6 +17,9 @@ Status: design needed before UI implementation
 ## Design need
 
 The Human Path contact card needs a small treatment that communicates when no verified contact route was found. The treatment must not imply that the contact itself is unverified. It only describes whether the product found a usable way to reach that person.
+
+This is the first design task for Claude's next session. Begin with the existing `apply-wizard`
+card and `seeProfileBtn` action primitive listed below; do not create a separate card system.
 
 The later design pass must decide:
 
