@@ -310,6 +310,11 @@ function JobCard({
               {"MATCH".split("").map((letter, index) => <span key={`m${index}`}>{letter}</span>)}
             </span>
           ) : null}
+          {acked ? (
+            <span className={jobsStyles.notedTag} role="status" aria-live="polite" aria-label="Noted">
+              {"NOTED".split("").map((letter, index) => <span key={`n${index}`}>{letter}</span>)}
+            </span>
+          ) : null}
           <div className={jobsStyles.jobCardHeader}>
             <div className={jobsStyles.jobNumberTitle}>
               <span className={jobsStyles.jobNumber} aria-hidden="true">{number}</span>
@@ -352,25 +357,22 @@ function JobCard({
           ) : null}
 
           <div className={jobsStyles.actionRow}>
-            <button className={`${jobsStyles.btnAct} ${jobsStyles.btnSave} ${job.saved ? jobsStyles.btnSaveOn : ""}`} disabled={jobsBusy || pending} onClick={onToggleSave} type="button">
-              {job.saved ? (
-                <>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12" /></svg>
-                  Saved
-                </>
-              ) : "Save"}
-            </button>
-            <button className={`${jobsStyles.btnAct} ${jobsStyles.btnSkip}`} disabled={jobsBusy} onClick={onSkip} type="button" title="This job will be removed from results.">Skip</button>
+            <div className={jobsStyles.actionLeft}>
+              <button className={`${jobsStyles.btnAct} ${jobsStyles.btnSave} ${job.saved ? jobsStyles.btnSaveOn : ""}`} disabled={jobsBusy || pending} onClick={onToggleSave} type="button">
+                {job.saved ? (
+                  <>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12" /></svg>
+                    Saved
+                  </>
+                ) : "Save"}
+              </button>
+              <button className={`${jobsStyles.btnAct} ${jobsStyles.btnSkip}`} disabled={jobsBusy} onClick={onSkip} type="button" title="This job will be removed from results.">Skip</button>
+            </div>
             <span className={jobsStyles.linkStack}>
               <a className={`${jobsStyles.linkAct} ${jobsStyles.linkOpen}`} href={job.sourceUrl} rel="noreferrer" target="_blank">Open posting {OPEN_LINK_ICON}</a>
               <button ref={triggerRef} className={`${jobsStyles.linkAct} ${jobsStyles.linkNotMatch}`} type="button" onClick={openFeedback} aria-expanded={flipped} aria-controls={backId}>Not a match</button>
             </span>
             <button className={`${jobsStyles.btnAct} ${jobsStyles.btnPursue}`} disabled={jobsBusy} onClick={onPursue} type="button">Pursue</button>
-            {acked ? (
-              <span className={jobsStyles.savedAck} role="status" aria-live="polite">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12" /></svg>Noted
-              </span>
-            ) : null}
           </div>
         </article>
 

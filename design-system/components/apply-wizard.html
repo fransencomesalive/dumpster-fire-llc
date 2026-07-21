@@ -307,7 +307,9 @@
     font-size: 0.9rem; color: var(--c-ink); background-color: var(--c-paper); border: var(--line-reg) solid var(--c-ink);
     border-radius: var(--radius-md); padding: 8px var(--space-3); }
   .seInput:disabled { opacity: 0.5; }
-  .seCount { flex: none; font-family: var(--font-ui, Inter, system-ui, sans-serif); font-size: 0.74rem; color: var(--role-text-faint); }
+  /* Fixed width + tabular figures so the counter never changes size as the digit count grows
+     (0/500 -> 500/500) and the input can't reflow while typing (Randall 2026-07-21). */
+  .seCount { flex: none; min-width: 3.8rem; text-align: right; font-variant-numeric: tabular-nums; font-family: var(--font-ui, Inter, system-ui, sans-serif); font-size: 0.74rem; color: var(--role-text-faint); }
   @media (max-width: 420px) {
     .seRow { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; align-items: center; }
     .seRow label { grid-column: 2 / 4; }

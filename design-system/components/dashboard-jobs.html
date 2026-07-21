@@ -85,6 +85,19 @@
   .weirdMatchTag span { font-family:var(--font-display-accent); text-transform:uppercase; font-size:0.72rem; line-height:1.04; letter-spacing:0.01em; }
   .weirdMatchTag .sp { height:6px; }
 
+  /* "Noted" feedback ack — the same vertical corner banner as WEIRD MATCH (mustard), text swapped.
+     Fades in for ~2.4s after feedback is saved, then out (Randall 2026-07-21). Replaces the old
+     inline savedAck so nothing invisible sits in the action row and skews the link alignment. */
+  .notedTag { position:absolute; top:calc(-1 * var(--line-reg)); right:var(--space-5);
+    display:flex; flex-direction:column; align-items:center;
+    background-color:var(--c-mustard); background-image:var(--fiber-img), var(--grain-img);
+    background-blend-mode:normal, soft-light; background-size:170px 170px, 46px 46px; color:var(--c-ink);
+    border:var(--line-reg) solid var(--c-ink); border-top:none; border-radius:0 0 var(--radius-sm) var(--radius-sm);
+    padding:var(--space-2) 6px var(--space-3); box-shadow:var(--shadow-card);
+    opacity:0; pointer-events:none; transition:opacity var(--dur-base) var(--ease-snap); }
+  .notedTag.isVisible { opacity:1; }
+  .notedTag span { font-family:var(--font-display-accent); text-transform:uppercase; font-size:0.72rem; line-height:1.04; letter-spacing:0.01em; }
+
   .stars { display:flex; align-items:center; gap:var(--space-3); margin:var(--space-4) 0; flex-wrap:wrap; }
   /* Teal labels enlarged +10% across the card (Randall 2026-07-21). */
   .starLabel { font-family:var(--font-subhead); text-transform:uppercase; letter-spacing:0.05em; font-size:0.99rem; color:var(--c-teal); }
@@ -123,7 +136,13 @@
      primary, grain). Open posting + Not a match stacked links. "Not a match" (red link) flips
      the whole card. Save flips to a teal "Saved" check (same teal, like Copy/Copied).
      No teal-tint hovers (no longer approved, Randall 2026-07-19). ===== */
-  .actionRow { display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:var(--space-4); }
+  /* Three-part row (Randall 2026-07-21): Save+Skip hug the left content edge (Responsibilities
+     border), Pursue hugs the right edge (Required-experience border), the link stack sits
+     centered between them (left-aligned text). Explicit groups + space-between so a stray
+     element (e.g. the transient "Noted" ack, which lives inside the link stack) can't shift the
+     edges. */
+  .actionRow { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:var(--space-4); }
+  .actionLeft { display:flex; align-items:center; gap:var(--space-4); }
   /* All filled action buttons carry the grain/ink texture (the design-system standard for
      solid fills). Color is the only difference: Save/Pursue teal, Skip tomato. */
   .btnAct { font-family:var(--font-display); font-size:0.95rem; border-radius:var(--radius-md);
@@ -192,7 +211,10 @@
     border-radius:var(--radius-md); padding:8px var(--space-3); }
   .seInput:focus { outline:none; border-color:var(--c-teal); box-shadow:0 0 0 3px color-mix(in srgb, var(--c-teal) 28%, transparent); }
   .seInput:disabled { opacity:0.5; }
-  .seCount { flex:none; font-family:var(--font-ui), Inter, system-ui, sans-serif; font-size:0.74rem; color:var(--role-text-faint); }
+  /* Fixed width + tabular figures so the counter never changes size as the digit count grows
+     (0/500 -> 500/500) and the input can't reflow while typing (Randall 2026-07-21). */
+  .seCount { flex:none; min-width:3.8rem; text-align:right; font-variant-numeric:tabular-nums;
+    font-family:var(--font-ui), Inter, system-ui, sans-serif; font-size:0.74rem; color:var(--role-text-faint); }
   .feedbackAlert { display:flex; align-items:flex-start; gap:var(--space-2); font-family:var(--font-body); font-size:0.88rem;
     color:var(--c-ink); background-color:var(--c-paper); border:var(--line-reg) solid var(--c-tomato);
     border-left:var(--line-bold) solid var(--c-tomato); border-radius:var(--radius-md); padding:var(--space-2) var(--space-3); }
@@ -338,6 +360,8 @@
     .jobMetaGrid { grid-template-columns:repeat(2,minmax(0,1fr)); row-gap:var(--space-3); }
     .ratingStars { font-size:0.78rem; letter-spacing:0; }
     .ratingFilterBtn strong { font-size:1.05rem; }
+    /* Too narrow for a three-part row — center the wrap. */
+    .actionRow { justify-content:center; }
   }
 </style>
 </head>
@@ -387,6 +411,9 @@
         <div class="flipScene">
           <div class="flipCard" id="jobFlip">
             <article class="card jobCard flipFace flipFront" id="jobFront">
+              <span class="notedTag isVisible" id="jobAck" role="status" aria-live="polite" aria-label="Noted">
+                <span>N</span><span>O</span><span>T</span><span>E</span><span>D</span>
+              </span>
               <div class="jobCardHeader">
                 <div class="jobNumberTitle">
                   <span class="jobNumber" aria-hidden="true">1</span>
@@ -438,16 +465,15 @@
                 </div>
               </div>
               <div class="actionRow">
-                <button type="button" class="btnAct btnSave">Save</button>
-                <button type="button" class="btnAct btnSkip">Skip</button>
+                <div class="actionLeft">
+                  <button type="button" class="btnAct btnSave">Save</button>
+                  <button type="button" class="btnAct btnSkip">Skip</button>
+                </div>
                 <span class="linkStack">
                   <a href="#" target="_blank" rel="noopener" class="linkAct linkOpen">Open posting <svg class="extIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>
                   <button type="button" class="linkAct linkNotMatch" data-flip-open="jobFlip" aria-expanded="false" aria-controls="jobBack">Not a match</button>
                 </span>
                 <button type="button" class="btnAct btnPursue">Pursue</button>
-                <span class="savedAck" id="jobAck" role="status" aria-live="polite">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>Noted
-                </span>
               </div>
             </article>
 
@@ -539,8 +565,10 @@
             </div>
           </div>
           <div class="actionRow">
-            <button type="button" class="btnAct btnSave btnSaveOn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>Saved</button>
-            <button type="button" class="btnAct btnSkip">Skip</button>
+            <div class="actionLeft">
+              <button type="button" class="btnAct btnSave btnSaveOn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>Saved</button>
+              <button type="button" class="btnAct btnSkip">Skip</button>
+            </div>
             <span class="linkStack">
               <a href="#" target="_blank" rel="noopener" class="linkAct linkOpen">Open posting <svg class="extIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>
               <button type="button" class="linkAct linkNotMatch" aria-expanded="false">Not a match</button>
@@ -708,7 +736,7 @@
   var heading = back.querySelector('[tabindex="-1"]');
   var saveBtn = back.querySelector('[data-save]');
   var alert = back.querySelector('[data-alert]');
-  var ack = front.querySelector('.savedAck');
+  var ack = front.querySelector('.notedTag');
   var chips = back.querySelectorAll('[data-chipset] .chip');
   var seCheck = back.querySelector('[data-se-check]');
   var seInput = back.querySelector('[data-se-input]');

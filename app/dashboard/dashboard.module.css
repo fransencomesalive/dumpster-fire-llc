@@ -127,7 +127,11 @@
      grain/ink texture (the design-system standard for solid fills); color is the only
      difference. "Not a match" (red link) flips the whole card to its feedback face. No
      teal-tint hovers (no longer approved, Randall 2026-07-19). */
-  .actionRow { display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:var(--space-4); }
+  /* Three-part row (Randall 2026-07-21): Save+Skip hug the left content edge (Responsibilities
+     border), Pursue the right edge (Required-experience border), the link stack centered
+     between. Explicit groups + space-between so nothing invisible can shift the edges. */
+  .actionRow { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:var(--space-4); }
+  .actionLeft { display:flex; align-items:center; gap:var(--space-4); }
   .btnAct { font-family:var(--font-display); font-size:0.95rem; border-radius:var(--radius-md);
     padding:var(--space-2) var(--space-5); cursor:pointer; border:var(--line-bold) solid var(--c-ink);
     box-shadow:var(--shadow-card); color:var(--c-paper); display:inline-flex; align-items:center; gap:6px;
@@ -190,7 +194,9 @@
     border-radius:var(--radius-md); padding:8px var(--space-3); }
   .seInput:focus { outline:none; border-color:var(--c-teal); box-shadow:0 0 0 3px color-mix(in srgb, var(--c-teal) 28%, transparent); }
   .seInput:disabled { opacity:0.5; }
-  .seCount { flex:none; font-family:var(--font-ui), Inter, system-ui, sans-serif; font-size:0.74rem; color:var(--role-text-faint); }
+  /* Fixed width (holds the max "500/500") + tabular figures so the counter never changes size as
+     the digit count grows and the input can't reflow while typing (Randall 2026-07-21). */
+  .seCount { flex:none; min-width:3.8rem; text-align:right; font-variant-numeric:tabular-nums; font-family:var(--font-ui), Inter, system-ui, sans-serif; font-size:0.74rem; color:var(--role-text-faint); }
   @media (max-width: 420px) {
     .seRow { display:grid; grid-template-columns:18px minmax(0, 1fr) auto; align-items:center; }
     .seRow label { grid-column:2 / 4; }
@@ -213,9 +219,16 @@
     padding:var(--space-2) var(--space-5); cursor:pointer; }
   .btnPrimary:hover:not(:disabled) { box-shadow:var(--reg-box); text-shadow:1px 1px 0 rgba(36,31,26,0.35); }
   .btnPrimary:disabled { opacity:0.5; cursor:default; }
-  .savedAck { display:inline-flex; align-items:center; gap:5px; font-family:var(--font-subhead);
-    text-transform:uppercase; letter-spacing:0.05em; font-size:0.79rem; color:var(--c-teal); }
-  .savedAck svg { flex:none; width:12px; height:12px; }
+  /* "Noted" feedback ack — the same vertical corner banner as WEIRD MATCH (mustard), text
+     swapped (Randall 2026-07-21). Rendered only while acked, so nothing sits in the action row
+     to skew the link alignment. */
+  .notedTag { position:absolute; top:calc(-1 * var(--line-reg)); right:var(--space-5);
+    display:flex; flex-direction:column; align-items:center;
+    background-color:var(--c-mustard); background-image:var(--fiber-img), var(--grain-img);
+    background-blend-mode:normal, soft-light; background-size:170px 170px, 46px 46px; color:var(--c-ink);
+    border:var(--line-reg) solid var(--c-ink); border-top:none; border-radius:0 0 var(--radius-sm) var(--radius-sm);
+    padding:var(--space-2) 6px var(--space-3); box-shadow:var(--shadow-card); }
+  .notedTag span { font-family:var(--font-display-accent); text-transform:uppercase; font-size:0.72rem; line-height:1.04; letter-spacing:0.01em; }
 
   /* Inline page loader (scan-progress DS card): mascot standee + one line. */
   .pageLoad { display:grid; justify-items:center; gap:var(--space-2); padding:64px 16px; }
@@ -361,6 +374,8 @@
     .jobMetaGrid { grid-template-columns:repeat(2,minmax(0,1fr)); row-gap:var(--space-3); }
     .ratingStars { font-size:0.78rem; letter-spacing:0; }
     .ratingFilterBtn strong { font-size:1.05rem; }
+    /* Too narrow for a three-part row — center the wrap. */
+    .actionRow { justify-content:center; }
   }
 
   /* Status messages + empty states (app-only; not in the static card) */
