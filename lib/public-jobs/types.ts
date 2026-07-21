@@ -110,7 +110,11 @@ export type PublicJobsSummary = {
 export type PublicJobSearchSettings = {
   remotePreference: string;
   salaryFloor?: number;
+  // The actual scan-title union and avoided-company list — the dashboard cards edit these
+  // inline (counts kept for any read-only display).
+  targetTitles: string[];
   targetTitleCount: number;
+  avoidCompanies: string[];
   avoidedCompanyCount: number;
 };
 

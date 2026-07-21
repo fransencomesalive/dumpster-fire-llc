@@ -136,5 +136,5 @@
 .ds-callout { font-family: var(--font-body); color: var(--c-ink); background-color: var(--c-paper);
   background-image: var(--grain-img); background-size: 46px 46px;
   border: var(--line-reg) solid var(--c-ink); border-left: var(--line-bold) solid var(--c-tomato);
-  border-radius: var(--radius-md); padding: var(--space-3) var(--space-4); }
+  border-radius: var(--radius-md); padding: var(--space-3) var(--space-4); margin-bottom: var(--space-4); }
 .ds-callout--positive { border-left-color: var(--c-teal); }

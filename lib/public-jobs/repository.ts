@@ -409,11 +409,14 @@ function rankJobsForProfile(
 
 function searchSettingsForAggregate(aggregate: CandidateProfileAggregate): PublicJobSearchSettings {
   const targetTitles = unique(aggregate.roleTracks.flatMap((track) => track.targetTitles));
+  const avoidCompanies = aggregate.preferences?.avoidCompanies ?? [];
   return {
     remotePreference: aggregate.profile.remotePreference,
     salaryFloor: aggregate.profile.targetCompensationMin,
+    targetTitles,
     targetTitleCount: targetTitles.length,
-    avoidedCompanyCount: (aggregate.preferences?.avoidCompanies ?? []).length,
+    avoidCompanies,
+    avoidedCompanyCount: avoidCompanies.length,
   };
 }
 

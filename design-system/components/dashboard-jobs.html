@@ -14,6 +14,19 @@
      2026-07-19: action row corrected (Save teal / Skip tomato / Pursue teal primary; Open
      posting + Not a match stacked links); "Not a match" flips the whole card to a feedback
      face (chips + Something-else input). No teal-tint hovers. */
+
+  /* Real Gotham loaded so this preview matches production (2026-07-21). Most DS cards fall
+     back to Inter for --font-ui, which mis-represented the teal chips; the app serves these
+     exact faces via next/font. Gotham ships no 400 — the browser maps normal weight to 500,
+     same as production. */
+  @font-face { font-family:"Gotham"; font-weight:300; font-style:normal; font-display:swap; src:url("../fonts/Gotham-Light.otf") format("opentype"); }
+  @font-face { font-family:"Gotham"; font-weight:500; font-style:normal; font-display:swap; src:url("../fonts/Gotham-Medium.otf") format("opentype"); }
+  @font-face { font-family:"Gotham"; font-weight:700; font-style:normal; font-display:swap; src:url("../fonts/Gotham-Bold.otf") format("opentype"); }
+  @font-face { font-family:"Gotham"; font-weight:900; font-style:normal; font-display:swap; src:url("../fonts/Gotham-Black.otf") format("opentype"); }
+  :root { --font-gotham:"Gotham";
+    /* One shared flip timing for BOTH the feedback flip and the settings flip (Randall 2026-07-21). */
+    --flip-dur:680ms; --flip-ease:cubic-bezier(0.62,0.04,0.22,1); }
+
   body { margin:0; background:var(--c-paper); color:var(--c-ink); font-family:var(--font-body); padding:var(--space-6) 0; }
   .pageWrap { width:min(1080px, calc(100% - 48px)); margin:0 auto; }
 
@@ -73,7 +86,8 @@
   .weirdMatchTag .sp { height:6px; }
 
   .stars { display:flex; align-items:center; gap:var(--space-3); margin:var(--space-4) 0; flex-wrap:wrap; }
-  .starLabel { font-family:var(--font-subhead); text-transform:uppercase; letter-spacing:0.05em; font-size:0.9rem; color:var(--c-teal); }
+  /* Teal labels enlarged +10% across the card (Randall 2026-07-21). */
+  .starLabel { font-family:var(--font-subhead); text-transform:uppercase; letter-spacing:0.05em; font-size:0.99rem; color:var(--c-teal); }
   .starScore { font-family:var(--font-display); font-size:1.05rem; color:var(--c-ink); }
   .starScore small { font-family:var(--font-body); font-size:0.85rem; color:var(--role-text-muted); }
   .starIconRow { display:inline-flex; gap:3px; color:var(--c-teal); }
@@ -81,7 +95,7 @@
   .jobMetaGrid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:var(--space-3); margin:0 0 var(--space-4);
     padding:var(--space-3) 0; border-top:var(--line-reg) solid var(--c-ink); border-bottom:var(--line-reg) solid var(--c-ink); }
   .jobMetaGrid > div { min-width:0; }
-  .jobMetaGrid dt { font-family:var(--font-subhead); text-transform:uppercase; letter-spacing:0.04em; font-size:0.85rem; color:var(--c-teal); margin-bottom:3px; }
+  .jobMetaGrid dt { font-family:var(--font-subhead); text-transform:uppercase; letter-spacing:0.04em; font-size:0.94rem; color:var(--c-teal); margin-bottom:3px; }
   .jobMetaGrid dd { margin:0; font-family:var(--font-body); font-size:0.95rem; color:var(--c-ink); overflow-wrap:anywhere; }
 
   .descriptionBox { background-color:var(--c-paper); background-image:var(--fiber-img), var(--grain-img);
@@ -96,7 +110,7 @@
     background-blend-mode:normal, soft-light; background-size:170px 170px, 46px 46px;
     border:var(--line-reg) solid var(--c-ink); border-radius:var(--radius-md); padding:var(--space-4); }
   .matchSectionLabel { display:block; font-family:var(--font-subhead); text-transform:uppercase; letter-spacing:0.05em;
-    font-size:0.95rem; color:var(--c-teal); padding-bottom:var(--space-2); margin-bottom:var(--space-2);
+    font-size:1.05rem; color:var(--c-teal); padding-bottom:var(--space-2); margin-bottom:var(--space-2);
     border-bottom:var(--line-hair) solid var(--c-paper-edge); }
   .matchSectionList { margin:0; padding-left:1.1em; font-family:var(--font-body); font-size:0.92rem; color:var(--c-ink); }
   .matchSectionList li { margin-bottom:var(--space-2); }
@@ -132,8 +146,8 @@
 
   /* ===== Feedback flip · whole card flips. Both faces share one grid cell so height is the
      taller face (no jump). Reduced-motion cross-fades. ===== */
-  .flipScene { perspective:1800px; }
-  .flipCard { position:relative; display:grid; grid-template-columns:minmax(0, 1fr); transform-style:preserve-3d; transition:transform var(--dur-base) var(--ease-snap); }
+  .flipScene { perspective:2000px; }
+  .flipCard { position:relative; display:grid; grid-template-columns:minmax(0, 1fr); transform-style:preserve-3d; transition:transform var(--flip-dur) var(--flip-ease); }
   .flipCard.isFlipped { transform:rotateY(180deg); }
   .flipFace { grid-area:1 / 1; -webkit-backface-visibility:hidden; backface-visibility:hidden; min-width:0; }
   .flipFace.flipBack { transform:rotateY(180deg); }
@@ -196,7 +210,7 @@
   .btnPrimary:hover:not(:disabled) { box-shadow:var(--reg-box); text-shadow:1px 1px 0 rgba(36,31,26,0.35); }
   .btnPrimary:disabled { opacity:0.5; cursor:default; }
   .savedAck { display:inline-flex; align-items:center; gap:5px; font-family:var(--font-subhead);
-    text-transform:uppercase; letter-spacing:0.05em; font-size:0.72rem; color:var(--c-teal); opacity:0; transition:opacity var(--dur-base) var(--ease-snap); }
+    text-transform:uppercase; letter-spacing:0.05em; font-size:0.79rem; color:var(--c-teal); opacity:0; transition:opacity var(--dur-base) var(--ease-snap); }
   .savedAck.isVisible { opacity:1; }
   .savedAck svg { flex:none; width:12px; height:12px; }
 
@@ -223,8 +237,10 @@
     border-radius:var(--radius-md); box-shadow:var(--shadow-card); padding:var(--space-2) var(--space-4); cursor:pointer; text-decoration:none; }
   .configStats { display:grid; grid-template-columns:1fr 1fr; gap:var(--space-4) var(--space-3); }
   .configStat { display:flex; flex-direction:column; gap:2px; min-width:0; }
-  .metaLabel { font-family:var(--font-subhead); text-transform:uppercase; letter-spacing:0.04em; font-size:0.78rem; color:var(--c-teal); }
-  .metaValue { font-family:var(--font-display); font-size:1.05rem; color:var(--c-ink); }
+  /* Reconciled to the job-meta treatment (Randall 2026-07-21): label matches .jobMetaGrid dt,
+     value matches .jobMetaGrid dd (body font, like "greenhouse" / "Not listed") — was display font. */
+  .metaLabel { font-family:var(--font-subhead); text-transform:uppercase; letter-spacing:0.04em; font-size:0.94rem; color:var(--c-teal); }
+  .metaValue { font-family:var(--font-body); font-size:0.95rem; color:var(--c-ink); }
 
   .titleChips { display:flex; flex-wrap:wrap; gap:var(--space-2); }
   .titleChip { display:inline-flex; align-items:center; font-family:var(--font-ui), Inter, system-ui, sans-serif;
@@ -252,6 +268,63 @@
     width:22px; height:22px; border-radius:50%; color:var(--c-ink); background:transparent;
     border:var(--line-hair) solid var(--c-ink); cursor:pointer; font-size:13px; line-height:1; }
   .boardRemove:hover { color:var(--c-paper); background:var(--c-tomato); border-color:var(--c-ink); }
+
+  /* ===== Inline edit · Job titles + Search settings flip in 3D to their edit face (2026-07-21) =====
+     A real Y-axis card flip, slow enough to read (680ms), not the fast feedback-flip timing.
+     The edit face is taller than the compact view, so JS animates the card HEIGHT from the
+     view height up to the form height in step with the rotation — the card grows as it turns
+     rather than reserving dead space (Randall, 2026-07-21). Reduced-motion cross-fades instead.
+     Reuses the token-input primitive (chips + × + add-field) so gestures match the product. */
+  .sflipScene { perspective:2000px; }
+  .sflip { position:relative; transform-style:preserve-3d;
+    transition:transform var(--flip-dur) var(--flip-ease), height var(--flip-dur) var(--flip-ease); }
+  .sflip.isFlipped { transform:rotateY(180deg); }
+  .sflipFace { -webkit-backface-visibility:hidden; backface-visibility:hidden; }
+  .sflipFace.sback { position:absolute; top:0; left:0; width:100%; transform:rotateY(180deg); }
+  .sflipFace[aria-hidden="true"] { pointer-events:none; }
+  @media (prefers-reduced-motion: reduce) {
+    .sflip { transition:height 260ms ease; transform:none !important; }
+    .sflipFace { transition:opacity 220ms ease; }
+    .sflipFace.sback { transform:none; opacity:0; }
+    .sflip.isFlipped .sfront { opacity:0; }
+    .sflip.isFlipped .sback { opacity:1; }
+  }
+  /* The edit face shows its own header (title + Done) so the flipped side reads as the same card. */
+  .sflipEditHead { display:flex; align-items:center; justify-content:space-between; gap:var(--space-3);
+    margin:0; padding-bottom:var(--space-3); border-bottom:var(--line-hair) solid var(--c-paper-edge); }
+
+  /* Removable token chip — shared by editable job titles + avoided companies (mirrors onboarding-pickers .token) */
+  .tokens { display:flex; flex-wrap:wrap; gap:var(--space-2); margin-bottom:var(--space-3); }
+  .token { display:inline-flex; align-items:center; gap:8px; font-family:var(--font-ui), Inter, system-ui, sans-serif;
+    font-size:var(--type-small); color:var(--c-paper); background:var(--c-teal);
+    border:var(--line-reg) solid var(--c-ink); border-radius:var(--radius-pill); padding:5px 6px 5px 12px; }
+  .token .x { display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; flex:none;
+    border-radius:50%; background:rgba(36,31,26,0.22); color:var(--c-paper); font-size:12px; line-height:1; cursor:pointer; border:0; }
+
+  /* Search-settings edit form — stacked fields */
+  .editForm { display:grid; gap:var(--space-4); }
+  .editField { display:grid; gap:var(--space-2); min-width:0; }
+  .editControl { width:100%; box-sizing:border-box; font-family:var(--font-ui), Inter, system-ui, sans-serif;
+    font-size:var(--type-small); color:var(--c-ink); background:var(--c-paper);
+    border:var(--line-reg) solid var(--c-ink); border-radius:var(--radius-md); padding:9px var(--space-3); }
+  select.editControl { appearance:none; -webkit-appearance:none; cursor:pointer; padding-right:var(--space-6);
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23241f1a' stroke-width='2'/%3E%3C/svg%3E");
+    background-repeat:no-repeat; background-position:right var(--space-3) center; }
+  .editControl:focus { outline:none; border-color:var(--c-teal); box-shadow:0 0 0 3px color-mix(in srgb, var(--c-teal) 28%, transparent); }
+  .moneyField { position:relative; }
+  .moneyField .prefix { position:absolute; left:var(--space-3); top:50%; transform:translateY(-50%);
+    font-family:var(--font-ui), Inter, system-ui, sans-serif; font-size:var(--type-small); color:var(--role-text-faint); pointer-events:none; }
+  .moneyField .editControl { padding-left:calc(var(--space-3) + 12px); }
+  .editHint { font-family:var(--font-body); font-size:0.82rem; color:var(--role-text-faint); margin:0; line-height:1.4; }
+  .editFooter { display:flex; align-items:center; justify-content:flex-end; gap:var(--space-2); margin-top:var(--space-1); }
+  .editFooter .btnGhost, .editFooter .btnPrimary { font-size:0.9rem; padding:var(--space-2) var(--space-4); }
+
+  /* Company boards — name is a link to the board; × only in edit mode; Edit/Done footer */
+  .boardLink { font-family:var(--font-display); font-size:0.95rem; color:var(--c-ink);
+    text-decoration:underline; text-underline-offset:2px; text-decoration-thickness:1.5px; }
+  .boardLink:hover { color:var(--c-bluebird); }
+  .boardRemove { display:none; }
+  .boardList.isEditing .boardRemove { display:inline-flex; }
 
   .pursueLinkCard { margin-bottom:var(--space-4); }
   .pursueLinkCard .boardInputRow { margin-bottom:0; }
@@ -495,54 +568,123 @@
         <button type="button" class="scanSecondaryBtn">View Saved Pursuits</button>
       </div>
 
-      <div class="card">
-        <div class="panelHeaderRow">
-          <h3 class="sidebarHeading">Job titles in this scan</h3>
+      <div class="sflipScene" data-sflip>
+        <div class="sflip">
+          <div class="card sflipFace sfront">
+            <div class="panelHeaderRow">
+              <h3 class="sidebarHeading">Job titles in this scan</h3>
+              <button type="button" class="editBtn" data-sflip-open aria-expanded="false">Edit</button>
+            </div>
+            <div class="titleChips">
+              <span class="titleChip">Executive Producer</span>
+              <span class="titleChip">Senior Producer</span>
+              <span class="titleChip">Creative Producer</span>
+            </div>
+            <p class="chipNote">Every title here is used in each scan, across all your role tracks.</p>
+          </div>
+          <div class="card sflipFace sback" aria-hidden="true">
+            <form class="editForm">
+              <div class="sflipEditHead">
+                <h3 class="sidebarHeading">Edit job titles</h3>
+                <button type="button" class="editBtn" data-sflip-close>Cancel</button>
+              </div>
+              <div class="tokens" data-token-list>
+                <span class="token">Executive Producer<button type="button" class="x" aria-label="Remove Executive Producer">&times;</button></span>
+                <span class="token">Senior Producer<button type="button" class="x" aria-label="Remove Senior Producer">&times;</button></span>
+                <span class="token">Creative Producer<button type="button" class="x" aria-label="Remove Creative Producer">&times;</button></span>
+              </div>
+              <div class="boardInputRow">
+                <input class="boardInput" data-token-input placeholder="Add a title (Enter or comma adds it)" />
+                <button type="button" class="boardAddBtn" data-token-add>Add</button>
+              </div>
+              <p class="editHint">Enter or comma adds it. These titles drive every scan.</p>
+              <div class="editFooter">
+                <button type="submit" class="btnPrimary" data-edit-save>Save</button>
+              </div>
+            </form>
+          </div>
         </div>
-        <div class="titleChips">
-          <span class="titleChip">Executive Producer</span>
-          <span class="titleChip">Senior Producer</span>
-          <span class="titleChip">Creative Producer</span>
-        </div>
-        <p class="chipNote">To edit job titles, change parameters in this role track in your profile.</p>
       </div>
 
-      <div class="card">
-        <div class="panelHeaderRow">
-          <h3 class="sidebarHeading">Search settings</h3>
-          <button type="button" class="editBtn">Edit</button>
-        </div>
-        <div class="configStats">
-          <div class="configStat"><span class="metaLabel">Remote</span><strong class="metaValue">Remote only</strong></div>
-          <div class="configStat"><span class="metaLabel">Salary floor</span><strong class="metaValue">$140k</strong></div>
-          <div class="configStat"><span class="metaLabel">Target titles</span><strong class="metaValue">5</strong></div>
-          <div class="configStat"><span class="metaLabel">Avoided cos.</span><strong class="metaValue">6</strong></div>
+      <div class="sflipScene" data-sflip>
+        <div class="sflip">
+          <div class="card sflipFace sfront">
+            <div class="panelHeaderRow">
+              <h3 class="sidebarHeading">Search settings</h3>
+              <button type="button" class="editBtn" data-sflip-open aria-expanded="false">Edit</button>
+            </div>
+            <div class="configStats">
+              <div class="configStat"><span class="metaLabel">Remote</span><strong class="metaValue">Remote only</strong></div>
+              <div class="configStat"><span class="metaLabel">Salary floor</span><strong class="metaValue">$140k</strong></div>
+              <div class="configStat"><span class="metaLabel">Avoided cos.</span><strong class="metaValue">6</strong></div>
+            </div>
+          </div>
+          <div class="card sflipFace sback" aria-hidden="true">
+            <form class="editForm">
+              <div class="sflipEditHead">
+                <h3 class="sidebarHeading">Edit search settings</h3>
+                <button type="button" class="editBtn" data-sflip-close>Cancel</button>
+              </div>
+              <div class="editField">
+                <span class="metaLabel">Remote preference</span>
+                <select class="editControl">
+                  <option>Remote only</option>
+                  <option>Remote preferred</option>
+                  <option>Hybrid OK</option>
+                  <option>Onsite OK</option>
+                </select>
+              </div>
+              <div class="editField">
+                <span class="metaLabel">Salary floor</span>
+                <div class="moneyField">
+                  <span class="prefix">$</span>
+                  <input class="editControl" inputmode="numeric" value="140000" placeholder="Any" />
+                </div>
+              </div>
+              <div class="editField">
+                <span class="metaLabel">Avoided companies</span>
+                <div class="tokens" data-token-list>
+                  <span class="token">Initech<button type="button" class="x" aria-label="Remove Initech">&times;</button></span>
+                  <span class="token">Globex<button type="button" class="x" aria-label="Remove Globex">&times;</button></span>
+                </div>
+                <div class="boardInputRow">
+                  <input class="boardInput" data-token-input placeholder="Add a company (Enter or comma adds it)" />
+                  <button type="button" class="boardAddBtn" data-token-add>Add</button>
+                </div>
+              </div>
+              <p class="editHint">Job titles live in the card above. Saving updates your profile settings.</p>
+              <div class="editFooter">
+                <button type="submit" class="btnPrimary" data-edit-save>Save</button>
+              </div>
+            </form>
+          </div>
         </div>
       </div>
 
       <div class="card">
         <div class="panelHeaderRow">
           <h3 class="sidebarHeading">Company job boards</h3>
+          <button type="button" class="editBtn" data-board-edit>Edit</button>
         </div>
         <p class="boardHint">Watching a company? Paste their careers page and every scan checks their board directly.</p>
         <div class="boardInputRow">
           <input class="boardInput" placeholder="Paste a careers page URL" />
           <button type="button" class="boardAddBtn">Add</button>
         </div>
-        <div class="boardList">
+        <div class="boardList" data-board-list>
           <div class="boardRow">
             <div class="boardMain">
-              <span class="boardName">Hinge Health</span>
+              <a class="boardLink" href="https://jobs.ashbyhq.com/hinge-health" target="_blank" rel="noopener">Hinge Health</a>
               <span class="boardDomain">jobs.ashbyhq.com</span>
             </div>
-            <button type="button" class="boardRemove" aria-label="Remove Hinge Health">×</button>
+            <button type="button" class="boardRemove" aria-label="Remove Hinge Health">&times;</button>
           </div>
           <div class="boardRow">
             <div class="boardMain">
-              <span class="boardName">Northbeam Labs</span>
+              <a class="boardLink" href="https://job-boards.greenhouse.io/northbeam" target="_blank" rel="noopener">Northbeam Labs</a>
               <span class="boardDomain">job-boards.greenhouse.io</span>
             </div>
-            <button type="button" class="boardRemove" aria-label="Remove Northbeam Labs">×</button>
+            <button type="button" class="boardRemove" aria-label="Remove Northbeam Labs">&times;</button>
           </div>
         </div>
       </div>
@@ -627,6 +769,99 @@
       saveBtn.textContent = original; close(); reset(); showAck();
     }, 850);
   });
+})();
+
+// ---- Inline edit: Job titles + Search settings flip in 3D to their edit face ----
+(function () {
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  document.querySelectorAll('[data-sflip]').forEach(function (scene) {
+    var flip = scene.querySelector('.sflip');
+    var front = scene.querySelector('.sfront');
+    var back = scene.querySelector('.sback');
+    var openBtn = scene.querySelector('[data-sflip-open]');
+    if (!flip || !front || !back || !openBtn) return;
+
+    // Height is driven explicitly so the card grows from the compact view to the taller form
+    // in step with the rotation. offsetHeight is layout height (ignores the rotateY transform).
+    function fit(face) { flip.style.height = face.offsetHeight + 'px'; }
+    function refit() { fit(flip.classList.contains('isFlipped') ? back : front); }
+    requestAnimationFrame(function () { fit(front); });
+    window.addEventListener('resize', refit);
+
+    function open() {
+      fit(back);
+      flip.classList.add('isFlipped');
+      front.setAttribute('aria-hidden', 'true');
+      back.removeAttribute('aria-hidden');
+      openBtn.setAttribute('aria-expanded', 'true');
+      setTimeout(function () {
+        var focusable = back.querySelector('select, input, [data-sflip-close]');
+        if (focusable) focusable.focus();
+      }, reduce ? 0 : 360);
+    }
+    function close() {
+      fit(front);
+      flip.classList.remove('isFlipped');
+      back.setAttribute('aria-hidden', 'true');
+      front.removeAttribute('aria-hidden');
+      openBtn.setAttribute('aria-expanded', 'false');
+      openBtn.focus();
+    }
+    openBtn.addEventListener('click', open);
+    scene.querySelectorAll('[data-sflip-close]').forEach(function (b) { b.addEventListener('click', close); });
+    var form = back.querySelector('.editForm');
+    if (form) form.addEventListener('submit', function (e) { e.preventDefault(); close(); });
+
+    // Token add/remove (mirrors the shared token-input gestures); refit height while flipped.
+    var list = back.querySelector('[data-token-list]');
+    var input = back.querySelector('[data-token-input]');
+    var addBtn = back.querySelector('[data-token-add]');
+    function makeToken(value) {
+      var t = document.createElement('span');
+      t.className = 'token';
+      t.textContent = value;
+      var x = document.createElement('button');
+      x.type = 'button'; x.className = 'x';
+      x.setAttribute('aria-label', 'Remove ' + value);
+      x.innerHTML = '&times;';
+      t.appendChild(x);
+      return t;
+    }
+    function addValues(raw) {
+      raw.split(',').map(function (s) { return s.trim(); }).filter(Boolean).forEach(function (v) {
+        if (list) list.appendChild(makeToken(v));
+      });
+      refit();
+    }
+    if (list) list.addEventListener('click', function (e) {
+      var x = e.target.closest ? e.target.closest('.x') : null;
+      if (x && x.parentNode) { x.parentNode.remove(); refit(); }
+    });
+    if (addBtn && input) addBtn.addEventListener('click', function () {
+      addValues(input.value); input.value = ''; input.focus();
+    });
+    if (input) input.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); addValues(input.value); input.value = ''; }
+    });
+  });
+
+  // ---- Company boards: Edit toggles removal mode; × only while editing ----
+  var boardEditBtn = document.querySelector('[data-board-edit]');
+  var boardList = document.querySelector('[data-board-list]');
+  if (boardEditBtn && boardList) {
+    boardEditBtn.addEventListener('click', function () {
+      var editing = boardList.classList.toggle('isEditing');
+      boardEditBtn.textContent = editing ? 'Done' : 'Edit';
+    });
+    boardList.addEventListener('click', function (e) {
+      var rm = e.target.closest ? e.target.closest('.boardRemove') : null;
+      if (rm && boardList.classList.contains('isEditing')) {
+        var row = rm.closest('.boardRow');
+        if (row) row.remove();
+      }
+    });
+  }
 })();
 </script>
 </body>

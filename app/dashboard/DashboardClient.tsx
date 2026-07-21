@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { clearPublicProfileAccessToken, readPublicProfileAccessToken } from "@/lib/public-profile/browser-session";
 import { syncPublicProfileSession } from "@/lib/public-auth/supabase-browser";
@@ -443,6 +443,143 @@ function JobCard({
   );
 }
 
+// Case-insensitive append for the token editors (job titles, avoided companies): a typed or
+// pasted comma splits into one chip per segment; dedupe ignores casing.
+function addTokens(current: string[], raw: string): string[] {
+  const next = [...current];
+  for (const part of raw.split(",").map((segment) => segment.trim()).filter(Boolean)) {
+    if (!next.some((value) => value.toLowerCase() === part.toLowerCase())) next.push(part);
+  }
+  return next;
+}
+
+// The shared token-input primitive (onboarding-pickers): removable chips above, an add field
+// below where Enter / comma / the Add button all commit.
+function TokenInput({ values, onChange, placeholder, disabled }: {
+  values: string[];
+  onChange: (next: string[]) => void;
+  placeholder: string;
+  disabled?: boolean;
+}) {
+  const [draft, setDraft] = useState("");
+  function commit() {
+    if (!draft.trim()) return;
+    onChange(addTokens(values, draft));
+    setDraft("");
+  }
+  return (
+    <>
+      {values.length > 0 ? (
+        <div className={jobsStyles.tokens}>
+          {values.map((value) => (
+            <span key={value} className={jobsStyles.token}>
+              {value}
+              <button type="button" className={jobsStyles.tokenX} aria-label={`Remove ${value}`} disabled={disabled} onClick={() => onChange(values.filter((entry) => entry !== value))}>×</button>
+            </span>
+          ))}
+        </div>
+      ) : null}
+      <div className={jobsStyles.boardInputRow}>
+        <input
+          className={jobsStyles.boardInput}
+          placeholder={placeholder}
+          value={draft}
+          disabled={disabled}
+          onChange={(event) => setDraft(event.target.value)}
+          onKeyDown={(event) => { if (event.key === "Enter" || event.key === ",") { event.preventDefault(); commit(); } }}
+        />
+        <button type="button" className={jobsStyles.boardAddBtn} disabled={disabled} onClick={commit}>Add</button>
+      </div>
+    </>
+  );
+}
+
+// A sidebar card that flips in 3D to its edit face (approved dashboard-jobs DS card). The card
+// height is driven explicitly so it grows from the compact view up to the taller form in step
+// with the rotation; the CSS handles the 680ms flip + reduced-motion cross-fade.
+function FlipEditCard({ heading, editHeading, view, form, onOpen, onSave, saveDisabled, footerHint }: {
+  heading: string;
+  editHeading: string;
+  view: ReactNode;
+  form: ReactNode;
+  onOpen: () => void;
+  onSave: () => Promise<void>;
+  saveDisabled?: boolean;
+  footerHint?: string;
+}) {
+  const [flipped, setFlipped] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const sflipRef = useRef<HTMLDivElement>(null);
+  const frontRef = useRef<HTMLDivElement>(null);
+  const backRef = useRef<HTMLDivElement>(null);
+
+  // Runs every render so the height tracks the visible face — this drives the grow-as-it-turns
+  // animation on flip and keeps the height correct as tokens are added/removed in the form.
+  useLayoutEffect(() => {
+    const face = flipped ? backRef.current : frontRef.current;
+    if (sflipRef.current && face) sflipRef.current.style.height = `${face.offsetHeight}px`;
+  });
+
+  function open() {
+    setError(null);
+    onOpen();
+    setFlipped(true);
+  }
+  function cancel() {
+    setFlipped(false);
+    setSaving(false);
+    setError(null);
+  }
+  async function save() {
+    if (saving) return;
+    setSaving(true);
+    setError(null);
+    try {
+      await onSave();
+      setFlipped(false);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "That didn't save. Give it another go.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className={jobsStyles.sflipScene}>
+      <div ref={sflipRef} className={`${jobsStyles.sflip} ${flipped ? jobsStyles.sflipFlipped : ""}`}>
+        <div ref={frontRef} className={`${jobsStyles.card} ${jobsStyles.sflipFace} ${jobsStyles.sfront}`} aria-hidden={flipped}>
+          <div className={jobsStyles.panelHeaderRow}>
+            <h3 className={jobsStyles.sidebarHeading}>{heading}</h3>
+            <button type="button" className={jobsStyles.editBtn} onClick={open} aria-expanded={flipped}>Edit</button>
+          </div>
+          {view}
+        </div>
+        <div ref={backRef} className={`${jobsStyles.card} ${jobsStyles.sflipFace} ${jobsStyles.sback}`} aria-hidden={!flipped}>
+          <form className={jobsStyles.editForm} onSubmit={(event) => { event.preventDefault(); void save(); }}>
+            <div className={jobsStyles.sflipEditHead}>
+              <h3 className={jobsStyles.sidebarHeading}>{editHeading}</h3>
+              <button type="button" className={jobsStyles.editBtn} onClick={cancel} disabled={saving}>Cancel</button>
+            </div>
+            {form}
+            {footerHint ? <p className={jobsStyles.editHint}>{footerHint}</p> : null}
+            {error ? <p className={jobsStyles.boardErr}>{error}</p> : null}
+            <div className={jobsStyles.editFooter}>
+              <button type="submit" className={jobsStyles.btnPrimary} disabled={saving || saveDisabled}>{saving ? "Saving…" : "Save"}</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Role-track objects are rich; the dashboard only touches targetTitles, so keep the rest opaque
+// and pass it back through on save.
+type RoleTrackForSave = { targetTitles: string[] } & Record<string, unknown>;
+
+type SearchDraft = { remotePreference: string; salaryFloor: string; avoidCompanies: string[] };
+
 export default function DashboardClient() {
   const router = useRouter();
   const [guardState, setGuardState] = useState<GuardState>({ status: "checking" });
@@ -467,6 +604,11 @@ export default function DashboardClient() {
   const [pursueLinkDraft, setPursueLinkDraft] = useState("");
   const [pursueLinkBusy, setPursueLinkBusy] = useState(false);
   const [pursueLinkError, setPursueLinkError] = useState<string | null>(null);
+  // Company-boards edit mode gates the × removers (Randall 2026-07-21).
+  const [boardsEditing, setBoardsEditing] = useState(false);
+  // Inline-edit drafts for the flip cards, seeded when a card flips to its edit face.
+  const [titleDraft, setTitleDraft] = useState<string[]>([]);
+  const [searchDraft, setSearchDraft] = useState<SearchDraft>({ remotePreference: "remote_preferred", salaryFloor: "", avoidCompanies: [] });
 
   async function loadJobs(accessToken: string, message?: string) {
     setJobsState((state) => state.status === "ready" ? { ...state, message } : { status: "loading" });
@@ -679,6 +821,55 @@ export default function DashboardClient() {
     }
   }
 
+  // Search settings save → identity-search PATCH (remote pref + salary floor on the profile,
+  // avoided companies on preferences). Reload jobs so the card and matches reflect the change.
+  async function saveSearchSettings(draft: SearchDraft) {
+    const accessToken = readPublicProfileAccessToken();
+    if (!accessToken) {
+      router.replace("/onboarding");
+      return;
+    }
+    await requestPublicProfileApi("/api/public-profile/identity-search", {
+      method: "PATCH",
+      accessToken,
+      body: {
+        remotePreference: draft.remotePreference,
+        targetCompensationMin: draft.salaryFloor ? Number(draft.salaryFloor) : null,
+        avoidCompanies: draft.avoidCompanies,
+      },
+    });
+    await loadJobs(accessToken, "Search settings updated.");
+  }
+
+  // Job titles save → the flat scan-title pool maps back to role tracks: removed titles are
+  // stripped from every track; added titles land on the first (primary) track (Randall
+  // 2026-07-21). Role-track positioning is otherwise untouched, so the apply wizard is unchanged.
+  async function saveTitles(nextTitles: string[]) {
+    const accessToken = readPublicProfileAccessToken();
+    if (!accessToken) {
+      router.replace("/onboarding");
+      return;
+    }
+    const current = await requestPublicProfileApi<{ section: { roleTracks: RoleTrackForSave[] } }>(
+      "/api/public-profile/role-tracks",
+      { method: "GET", accessToken },
+    );
+    const lower = (value: string) => value.trim().toLowerCase();
+    const keep = new Set(nextTitles.map(lower));
+    const existing = new Set(current.section.roleTracks.flatMap((track) => track.targetTitles.map(lower)));
+    const added = nextTitles.filter((title) => !existing.has(lower(title)));
+    const roleTracks = current.section.roleTracks.map((track, index) => {
+      const retained = track.targetTitles.filter((title) => keep.has(lower(title)));
+      return { ...track, targetTitles: index === 0 ? [...retained, ...added] : retained };
+    });
+    await requestPublicProfileApi("/api/public-profile/role-tracks", {
+      method: "PATCH",
+      accessToken,
+      body: { roleTracks },
+    });
+    await loadJobs(accessToken, "Job titles updated.");
+  }
+
   // Pursue-a-link: ingest the pasted posting via /api/jobs/from-link, then hand the job
   // straight to the wizard. The stub record only needs the id up front; the wizard replaces
   // it with the full record from the pursuit create/read response.
@@ -886,50 +1077,87 @@ export default function DashboardClient() {
                 </button>
               </div>
 
-              {jobsResponse && jobsResponse.summary.titleParameters.length > 0 ? (
-                <div className={jobsStyles.card}>
-                  <div className={jobsStyles.panelHeaderRow}>
-                    <h3 className={jobsStyles.sidebarHeading}>Job titles in this scan</h3>
-                  </div>
-                  <div className={jobsStyles.titleChips}>
-                    {jobsResponse.summary.titleParameters.map((title) => (
-                      <span key={title} className={jobsStyles.titleChip}>{title}</span>
-                    ))}
-                  </div>
-                  <p className={jobsStyles.chipNote}>To edit job titles, change parameters in this role track in your profile.</p>
-                </div>
-              ) : null}
-
               {searchSettings ? (
-                <div className={jobsStyles.card}>
-                  <div className={jobsStyles.panelHeaderRow}>
-                    <h3 className={jobsStyles.sidebarHeading}>Search settings</h3>
-                    <button className={jobsStyles.editBtn} onClick={() => router.push("/onboarding")} type="button">Edit</button>
-                  </div>
-                  <div className={jobsStyles.configStats}>
-                    <div className={jobsStyles.configStat}>
-                      <span className={jobsStyles.metaLabel}>Remote</span>
-                      <strong className={jobsStyles.metaValue}>{formatRemotePreference(searchSettings.remotePreference)}</strong>
-                    </div>
-                    <div className={jobsStyles.configStat}>
-                      <span className={jobsStyles.metaLabel}>Salary floor</span>
-                      <strong className={jobsStyles.metaValue}>{searchSettings.salaryFloor ? `$${Math.round(searchSettings.salaryFloor / 1000)}k` : "Any"}</strong>
-                    </div>
-                    <div className={jobsStyles.configStat}>
-                      <span className={jobsStyles.metaLabel}>Target titles</span>
-                      <strong className={jobsStyles.metaValue}>{searchSettings.targetTitleCount}</strong>
-                    </div>
-                    <div className={jobsStyles.configStat}>
-                      <span className={jobsStyles.metaLabel}>Avoided cos.</span>
-                      <strong className={jobsStyles.metaValue}>{searchSettings.avoidedCompanyCount}</strong>
-                    </div>
-                  </div>
-                </div>
+                <>
+                  <FlipEditCard
+                    heading="Job titles in this scan"
+                    editHeading="Edit job titles"
+                    view={
+                      <>
+                        {searchSettings.targetTitles.length > 0 ? (
+                          <div className={jobsStyles.titleChips}>
+                            {searchSettings.targetTitles.map((title) => (
+                              <span key={title} className={jobsStyles.titleChip}>{title}</span>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className={jobsStyles.chipNote}>No titles yet. Add the roles you want scans to look for.</p>
+                        )}
+                        <p className={jobsStyles.chipNote}>Every title here is used in each scan, across all your role tracks.</p>
+                      </>
+                    }
+                    form={<TokenInput values={titleDraft} onChange={setTitleDraft} placeholder="Add a title (Enter or comma adds it)" />}
+                    footerHint="Enter or comma adds it. These titles drive every scan."
+                    onOpen={() => setTitleDraft(searchSettings.targetTitles)}
+                    onSave={() => saveTitles(titleDraft)}
+                  />
+
+                  <FlipEditCard
+                    heading="Search settings"
+                    editHeading="Edit search settings"
+                    view={
+                      <div className={jobsStyles.configStats}>
+                        <div className={jobsStyles.configStat}>
+                          <span className={jobsStyles.metaLabel}>Remote</span>
+                          <strong className={jobsStyles.metaValue}>{formatRemotePreference(searchSettings.remotePreference)}</strong>
+                        </div>
+                        <div className={jobsStyles.configStat}>
+                          <span className={jobsStyles.metaLabel}>Salary floor</span>
+                          <strong className={jobsStyles.metaValue}>{searchSettings.salaryFloor ? `$${Math.round(searchSettings.salaryFloor / 1000)}k` : "Any"}</strong>
+                        </div>
+                        <div className={jobsStyles.configStat}>
+                          <span className={jobsStyles.metaLabel}>Avoided cos.</span>
+                          <strong className={jobsStyles.metaValue}>{searchSettings.avoidCompanies.length}</strong>
+                        </div>
+                      </div>
+                    }
+                    form={
+                      <>
+                        <div className={jobsStyles.editField}>
+                          <span className={jobsStyles.metaLabel}>Remote preference</span>
+                          <select className={jobsStyles.editControl} value={searchDraft.remotePreference} onChange={(event) => setSearchDraft((draft) => ({ ...draft, remotePreference: event.target.value }))}>
+                            <option value="remote_only">Remote only</option>
+                            <option value="remote_preferred">Remote preferred</option>
+                            <option value="hybrid_ok">Hybrid OK</option>
+                            <option value="onsite_ok">Onsite OK</option>
+                          </select>
+                        </div>
+                        <div className={jobsStyles.editField}>
+                          <span className={jobsStyles.metaLabel}>Salary floor</span>
+                          <div className={jobsStyles.moneyField}>
+                            <span className={jobsStyles.moneyPrefix}>$</span>
+                            <input className={jobsStyles.editControl} inputMode="numeric" placeholder="Any" value={searchDraft.salaryFloor} onChange={(event) => setSearchDraft((draft) => ({ ...draft, salaryFloor: event.target.value.replace(/[^0-9]/g, "") }))} />
+                          </div>
+                        </div>
+                        <div className={jobsStyles.editField}>
+                          <span className={jobsStyles.metaLabel}>Avoided companies</span>
+                          <TokenInput values={searchDraft.avoidCompanies} onChange={(next) => setSearchDraft((draft) => ({ ...draft, avoidCompanies: next }))} placeholder="Add a company (Enter or comma adds it)" />
+                        </div>
+                      </>
+                    }
+                    footerHint="Job titles live in the card above. Saving updates your profile settings."
+                    onOpen={() => setSearchDraft({ remotePreference: searchSettings.remotePreference, salaryFloor: searchSettings.salaryFloor ? String(searchSettings.salaryFloor) : "", avoidCompanies: searchSettings.avoidCompanies })}
+                    onSave={() => saveSearchSettings(searchDraft)}
+                  />
+                </>
               ) : null}
 
               <div className={jobsStyles.card}>
                 <div className={jobsStyles.panelHeaderRow}>
                   <h3 className={jobsStyles.sidebarHeading}>Company job boards</h3>
+                  {boards.length > 0 ? (
+                    <button className={jobsStyles.editBtn} onClick={() => setBoardsEditing((editing) => !editing)} type="button">{boardsEditing ? "Done" : "Edit"}</button>
+                  ) : null}
                 </div>
                 <p className={jobsStyles.boardHint}>Watching a company? Paste their careers page and every scan checks their board directly.</p>
                 <div className={jobsStyles.boardInputRow}>
@@ -951,11 +1179,11 @@ export default function DashboardClient() {
                   </button>
                 </div>
                 {boards.length > 0 ? (
-                  <div className={jobsStyles.boardList}>
+                  <div className={`${jobsStyles.boardList} ${boardsEditing ? jobsStyles.boardListEditing : ""}`}>
                     {boards.map((board) => (
                       <div className={jobsStyles.boardRow} key={board.id}>
                         <div className={jobsStyles.boardMain}>
-                          <span className={jobsStyles.boardName}>{board.companyName}</span>
+                          <a className={jobsStyles.boardLink} href={board.careersUrl} target="_blank" rel="noreferrer">{board.companyName}</a>
                           <span className={jobsStyles.boardDomain}>{boardDomain(board.careersUrl)}</span>
                         </div>
                         <button

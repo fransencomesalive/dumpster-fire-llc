@@ -46,11 +46,13 @@
      frontier is refused with a contextual skip error (canon tomato ds-callout) beneath the
      stepper. All steps read as clickable (Randall 2026-07-20). */
   .wizardStep:hover { box-shadow: var(--reg-box); }
-  /* Skip error = the canon tomato callout, ds-callout (app/ds.css), verbatim. */
+  /* Skip error = the canon tomato callout, ds-callout (app/ds.css), verbatim.
+     margin-bottom added 2026-07-21 (Randall): every message shown this way needs a gap
+     below it before the following block — matches the modal's space-4 section rhythm. */
   .ds-callout { font-family: var(--font-body); color: var(--c-ink); background-color: var(--c-paper);
     background-image: var(--grain-img); background-size: 46px 46px;
     border: var(--line-reg) solid var(--c-ink); border-left: var(--line-bold) solid var(--c-tomato);
-    border-radius: var(--radius-md); padding: var(--space-3) var(--space-4); }
+    border-radius: var(--radius-md); padding: var(--space-3) var(--space-4); margin-bottom: var(--space-4); }
   .skipError { margin-top: var(--space-3); }
   .wizardStepActive { color: var(--c-paper); background-color: var(--c-teal);
     background-image: var(--fiber-img), var(--grain-img); background-blend-mode: normal, soft-light;
@@ -91,7 +93,7 @@
   .contactSuggestion strong { font-family: var(--font-display); font-size: 1.1rem; color: var(--c-ink); }
   .contactSuggestion em { font-family: var(--font-body); font-style: italic; color: var(--role-text-muted); }
   .contactSuggestion b { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.04em;
-    font-size: 0.9rem; color: var(--c-teal); font-weight: 400; }
+    font-size:0.99rem; color: var(--c-teal); font-weight: 400; }
   .contactSuggestion small { font-family: var(--font-body); font-size: var(--type-small); color: var(--role-text-faint); }
   .seeProfileBtn { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-subhead);
     text-transform: uppercase; letter-spacing: 0.04em; font-size: 0.8rem; color: var(--c-bluebird);
