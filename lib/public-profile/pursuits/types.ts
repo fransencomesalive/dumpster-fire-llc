@@ -248,6 +248,41 @@ export type HumanPathContact = {
   verificationNotes: string[];
 };
 
+export type HumanPathLane = Extract<
+  HumanPathContact["contactType"],
+  "likely_hiring_manager" | "recruiter" | "functional_leader"
+>;
+
+export type HumanPathRejectionCode =
+  | "identity_unverified"
+  | "company_unverified"
+  | "current_role_unverified"
+  | "linkedin_profile_unverified"
+  | "classification_unverified"
+  | "title_mismatch"
+  | "duplicate_candidate"
+  | "verification_unavailable";
+
+export type HumanPathLaneDiagnostic = {
+  lane: HumanPathLane;
+  discoveryStatus: "completed" | "provider_unavailable";
+  verificationStatus: "completed" | "not_needed" | "provider_unavailable";
+  discoveredCount: number;
+  verifiedCount: number;
+  acceptedCount: number;
+  rejected: Array<{
+    candidateKey: string;
+    name?: string;
+    reasonCodes: HumanPathRejectionCode[];
+  }>;
+};
+
+export type HumanPathDiagnostics = {
+  schemaVersion: 1;
+  lanes: HumanPathLaneDiagnostic[];
+  assembledCount: number;
+};
+
 export type HumanPathReachability =
   | { method: "linkedin"; url: string }
   | { method: "contact_page"; url: string }
@@ -397,7 +432,7 @@ export type HumanPathProviderInput = {
 };
 
 export type HumanPathProviderResult =
-  | { status: "generated"; contacts: HumanPathContact[] }
+  | { status: "generated"; contacts: HumanPathContact[]; diagnostics: HumanPathDiagnostics }
   | { status: "provider_unavailable"; reason: string };
 
 export type HumanPathProvider = (input: HumanPathProviderInput) => Promise<HumanPathProviderResult>;

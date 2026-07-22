@@ -300,6 +300,18 @@ if (humanPath.ok) {
   assert.equal(humanPath.usageEvents[0].usageType, "human_path");
 }
 
+const refreshedHumanPath = transitionPursuit(
+  humanPath.ok ? humanPath.pursuit : reviewed.pursuit,
+  "human_path_generated",
+  "2026-06-29T14:15:00.000Z",
+  { contactCount: 1, providerVersion: 3, chargeUsage: false },
+);
+assert.equal(refreshedHumanPath.ok, true);
+if (refreshedHumanPath.ok) {
+  assert.equal(refreshedHumanPath.usageEvents.length, 0);
+  assert.equal(refreshedHumanPath.event.usageType, undefined);
+}
+
 if (!humanPath.ok) throw new Error("human path transition should succeed");
 // A resumed Human Path re-enters at step 1, so re-completing review on an already-advanced
 // pursuit must succeed, update the selection, and never regress the status.

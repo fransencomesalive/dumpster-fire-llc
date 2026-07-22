@@ -1,265 +1,325 @@
 import assert from "node:assert/strict";
 import {
+  buildLaneDiscoveryPrompt,
+  buildOrganizationLeadershipPrompt,
+  buildProfileVerificationPrompt,
   buildUserPrompt,
   createOpenAIHumanPathProvider,
   parseResearchedContacts,
 } from "../lib/public-profile/pursuits/contact-provider.ts";
 
+const pursuit = { id: "pursuit-1" };
 const job = {
   id: "job-1",
   title: "Programmatic Media Director",
   companyName: "Useful Studio",
   description: "Own paid media and performance marketing for a growth-stage brand.",
 };
-const pursuit = { id: "pursuit-1" };
 
-function verifiedCandidate(candidateKey, currentName, currentTitle, contactType, linkedinUrl, overrides = {}) {
-  const currentExperienceCompany = overrides.currentExperienceCompany ?? "Useful Studio";
-  const linkedinHeadline = overrides.linkedinHeadline ?? currentTitle;
+function candidate(name, title, linkedinUrl, overrides = {}) {
   return {
-    candidateKey,
-    currentName,
-    linkedinHeadline,
-    linkedinHeadlineEvidenceText: `${currentName} | ${linkedinHeadline}`,
-    currentExperienceTitle: currentTitle,
-    currentExperienceCompany,
-    currentExperienceEvidenceText: `${currentTitle} at ${currentExperienceCompany}`,
-    currentExperienceIsCurrent: true,
+    name,
+    title,
+    companyName: overrides.companyName ?? "Useful Studio",
     linkedinUrl,
-    identityMatches: true,
-    companyMatches: true,
-    roleEligible: true,
-    contactType,
-    confidence: 90,
-    reason: "Verified current role is relevant to this hiring chain.",
-    roleConnection: "Verified current hiring-chain contact.",
-    headlineEvidenceUrl: linkedinUrl,
-    experienceEvidenceUrl: linkedinUrl,
-    ...overrides,
+    evidenceUrl: overrides.evidenceUrl ?? linkedinUrl,
+    confidence: overrides.confidence ?? 90,
+    reason: overrides.reason ?? "Current public evidence supports this candidate.",
+    roleConnection: overrides.roleConnection ?? "Connection requires independent verification.",
   };
 }
 
-// 1. No key / model unavailable -> provider_unavailable (graceful degradation).
-const unavailable = await createOpenAIHumanPathProvider({ callModel: async () => undefined })({ pursuit, job });
+function verification(candidateKey, currentName, currentTitle, lane, overrides = {}) {
+  const currentCompany = overrides.currentCompany ?? "Useful Studio";
+  const linkedinUrl = overrides.linkedinUrl ?? `https://www.linkedin.com/in/${currentName.toLowerCase().replace(/[^a-z]+/g, "-")}`;
+  const classificationEvidenceText = overrides.classificationEvidenceText
+    ?? (lane === "likely_hiring_manager"
+      ? `${currentName} leads the Programmatic Media team and is hiring for the group.`
+      : lane === "functional_leader"
+        ? `${currentName} leads the Programmatic Media practice.`
+        : `${currentTitle} at ${currentCompany}`);
+  return {
+    candidateKey,
+    currentName,
+    linkedinHeadline: overrides.linkedinHeadline ?? currentTitle,
+    linkedinHeadlineEvidenceText: overrides.linkedinHeadlineEvidenceText ?? `${currentName} | ${currentTitle}`,
+    currentTitle,
+    currentTitleSource: overrides.currentTitleSource ?? "linkedin_experience",
+    currentCompany,
+    currentRoleEvidenceText: overrides.currentRoleEvidenceText ?? `${currentTitle} at ${currentCompany}`,
+    currentRoleEvidenceUrl: overrides.currentRoleEvidenceUrl ?? linkedinUrl,
+    currentCompanyEvidenceText: overrides.currentCompanyEvidenceText ?? `${currentName} works at ${currentCompany}`,
+    currentCompanyEvidenceUrl: overrides.currentCompanyEvidenceUrl ?? linkedinUrl,
+    currentRoleIsCurrent: overrides.currentRoleIsCurrent ?? true,
+    linkedinUrl,
+    identityMatches: overrides.identityMatches ?? true,
+    companyMatches: overrides.companyMatches ?? true,
+    classificationSupported: overrides.classificationSupported ?? true,
+    classificationEvidenceText,
+    classificationEvidenceUrl: overrides.classificationEvidenceUrl ?? linkedinUrl,
+    confidence: overrides.confidence ?? 90,
+    reason: overrides.reason ?? `Verified current ${lane} contact.`,
+    roleConnection: overrides.roleConnection ?? `Verified ${lane} connection.`,
+  };
+}
+
+function laneFixtureProvider({ discovery, verifications, organizationLeadership = [] }) {
+  return createOpenAIHumanPathProvider({
+    callModel: async ({ lane, phase, strategy, user }) => {
+      assert.ok(lane, "provider calls identify the result lane");
+      assert.ok(phase, "provider calls identify discovery or verification");
+      if (phase === "discovery") {
+        if (strategy === "organization_leadership") {
+          return JSON.stringify({ contacts: organizationLeadership });
+        }
+        const value = discovery[lane];
+        return value === undefined ? undefined : JSON.stringify({ contacts: value });
+      }
+      const prompt = JSON.parse(user);
+      const rows = verifications[lane] ?? [];
+      assert.equal(prompt.requestedLane, lane);
+      return JSON.stringify({ verifications: rows });
+    },
+  });
+}
+
+// All three category searches failing is a provider outage, not a legitimate zero result.
+const unavailable = await createOpenAIHumanPathProvider({
+  callModel: async () => undefined,
+})({ pursuit, job });
 assert.equal(unavailable.status, "provider_unavailable");
-assert.match(unavailable.reason, /OPENAI_API_KEY/);
 
-// 2. Even a well-formed discovery response requires an independent profile-verification call.
-const strongResponse = JSON.stringify({
-  contacts: [
-    { name: "Dana Reyes", title: "VP Media", candidateRole: "Functional Leader", confidence: 82, linkedinUrl: "https://linkedin.com/in/danareyes", evidenceUrl: "https://useful.example/leadership", reason: "Owns the media practice this role sits under." },
-    { name: "Priya Nadar", title: "Director, Paid Media", candidateRole: "Hiring Manager", confidence: 0.6, linkedinUrl: "https://linkedin.com/in/priyanadar", evidenceUrl: "https://useful.example/team", reason: "One level above the opening." },
-    { name: "Sam Cole", title: "Talent Partner", candidateRole: "Recruiter", confidence: 55, linkedinUrl: "https://www.linkedin.com/in/sam-cole", reason: "Assigned recruiter for media roles." },
-  ],
-});
-let calls = 0;
-const strong = await createOpenAIHumanPathProvider({
-  callModel: async () => {
-    calls += 1;
-    if (calls === 1) return strongResponse;
-    return JSON.stringify({ verifications: [
-      verifiedCandidate("0", "Priya Nadar", "Director, Paid Media", "likely_hiring_manager", "https://linkedin.com/in/priyanadar", { confidence: 60 }),
-      verifiedCandidate("1", "Dana Reyes", "VP Media", "functional_leader", "https://linkedin.com/in/danareyes", { confidence: 82 }),
-      verifiedCandidate("2", "Sam Cole", "Talent Partner", "recruiter", "https://www.linkedin.com/in/sam-cole", { confidence: 55 }),
-    ] });
+// Category discovery and verification are independent. The deterministic assembler reserves
+// hiring-manager and recruiter slots, includes a functional leader, then fills to five.
+const variedProvider = laneFixtureProvider({
+  discovery: {
+    likely_hiring_manager: [
+      candidate("Dana Lee", "Director, Programmatic Media", "https://www.linkedin.com/in/dana-lee"),
+      candidate("Taylor Reed", "Paid Media Team Manager", "https://www.linkedin.com/in/taylor-reed"),
+    ],
+    recruiter: [
+      candidate("Rene Ortiz", "Principal Recruiter", "https://www.linkedin.com/in/rene-ortiz"),
+      candidate("Quinn Patel", "Talent Acquisition Partner", "https://www.linkedin.com/in/quinn-patel"),
+    ],
+    functional_leader: [
+      candidate("Morgan Chen", "VP, Programmatic Media", "https://www.linkedin.com/in/morgan-chen"),
+      candidate("Avery Shah", "Head of Paid Media", "https://www.linkedin.com/in/avery-shah"),
+    ],
   },
-})({ pursuit, job });
-assert.equal(strong.status, "generated");
-assert.equal(calls, 2, "all discovered contacts receive a mandatory independent verification call");
-// Ranked: hiring manager first, then functional leader, then recruiter.
-assert.equal(strong.contacts[0].contactType, "likely_hiring_manager");
-assert.equal(strong.contacts[1].contactType, "functional_leader");
-assert.equal(strong.contacts[2].contactType, "recruiter");
-// Mapping: confidence bucketed, company defaulted, verification notes cite evidence.
-assert.equal(strong.contacts[0].confidence, "medium"); // 0.6 -> 60 -> medium
-assert.equal(strong.contacts[1].confidence, "high"); // 82 -> high
-assert.equal(strong.contacts[0].companyName, "Useful Studio");
-assert.ok(strong.contacts[1].verificationNotes.some((note) => note.includes("linkedin.com/in/danareyes")));
-assert.equal(strong.contacts[0].linkedinUrl, "https://linkedin.com/in/priyanadar");
-assert.deepEqual(strong.contacts[0].reachability, { method: "linkedin", url: "https://linkedin.com/in/priyanadar" });
-assert.deepEqual(strong.contacts[1].reachability, { method: "linkedin", url: "https://linkedin.com/in/danareyes" });
-assert.deepEqual(strong.contacts[2].reachability, { method: "linkedin", url: "https://www.linkedin.com/in/sam-cole" });
-
-// 2b. Mandatory verification repairs missing or invalid LinkedIn routes without adding people.
-const missingRouteResponse = JSON.stringify({
-  contacts: [
-    { name: "Dana Reyes", title: "VP Media", candidateRole: "Functional Leader", confidence: 82, linkedinUrl: "https://linkedin.com/in/danareyes", reason: "Owns the media practice." },
-    { name: "Priya Nadar", title: "Director, Paid Media", candidateRole: "Hiring Manager", confidence: 60, professionalContactUrl: "https://priya.example/contact", reason: "One level above." },
-    { name: "Sam Cole", title: "Talent Partner", candidateRole: "Recruiter", confidence: 55, linkedinUrl: "https://www.linkedin.com/posts/sam-example", reason: "Assigned recruiter." },
-  ],
-});
-const enrichmentResponse = JSON.stringify({
-  verifications: [
-    verifiedCandidate("0", "Priya Nadar", "Director, Paid Media", "likely_hiring_manager", "https://www.linkedin.com/in/priyanadar", { confidence: 60 }),
-    verifiedCandidate("1", "Dana Reyes", "VP Media", "functional_leader", "https://linkedin.com/in/danareyes", { confidence: 82 }),
-    verifiedCandidate("2", "Sam Cole", "Talent Partner", "recruiter", "https://www.linkedin.com/in/sam-cole?trk=search", { confidence: 55 }),
-  ],
-});
-let enrichmentCalls = 0;
-const enriched = await createOpenAIHumanPathProvider({
-  callModel: async () => {
-    enrichmentCalls += 1;
-    return enrichmentCalls === 1 ? missingRouteResponse : enrichmentResponse;
+  verifications: {
+    likely_hiring_manager: [
+      verification("0", "Dana Lee", "Director, Programmatic Media", "likely_hiring_manager"),
+      verification("1", "Taylor Reed", "Paid Media Team Manager", "likely_hiring_manager", {
+        classificationEvidenceText: "Taylor Reed manages the Paid Media team and is hiring for the group.",
+      }),
+    ],
+    recruiter: [
+      verification("0", "Rene Ortiz", "Principal Recruiter", "recruiter"),
+      verification("1", "Quinn Patel", "Talent Acquisition Partner", "recruiter"),
+    ],
+    functional_leader: [
+      verification("0", "Morgan Chen", "VP, Programmatic Media", "functional_leader"),
+      verification("1", "Avery Shah", "Head of Paid Media", "functional_leader"),
+    ],
   },
-})({ pursuit, job });
-assert.equal(enrichmentCalls, 2, "all candidates are verified in one additional batched call");
-assert.equal(enriched.status, "generated");
-assert.equal(enriched.contacts.length, 3, "enrichment cannot introduce a new contact");
-assert.deepEqual(enriched.contacts[0].reachability, { method: "linkedin", url: "https://www.linkedin.com/in/priyanadar" });
-assert.deepEqual(enriched.contacts[2].reachability, { method: "linkedin", url: "https://www.linkedin.com/in/sam-cole" });
-
-// 2c. A verification transport failure exposes no unverified contacts, even pre-linked ones.
-let failedEnrichmentCalls = 0;
-const failedEnrichment = await createOpenAIHumanPathProvider({
-  callModel: async () => {
-    failedEnrichmentCalls += 1;
-    return failedEnrichmentCalls === 1 ? missingRouteResponse : undefined;
-  },
-})({ pursuit, job });
-assert.equal(failedEnrichmentCalls, 2);
-assert.equal(failedEnrichment.status, "generated");
-assert.equal(failedEnrichment.contacts.length, 0);
-
-// 3. Thin first response (1 recruiter, no functional lead) -> gap-fill call, merged + deduped.
-const thinResponse = JSON.stringify({
-  contacts: [
-    { name: "Sam Cole", title: "Talent Partner", candidateRole: "Recruiter", confidence: 90, reason: "Recruiter." },
-  ],
 });
-const gapResponse = JSON.stringify({
-  contacts: [
-    { name: "Priya Nadar", title: "Director, Paid Media", candidateRole: "Hiring Manager", confidence: 60, reason: "One level up." },
-    { name: "Sam Cole", title: "Talent Partner", candidateRole: "Recruiter", confidence: 90, reason: "Dup of first pass." },
+const varied = await variedProvider({ pursuit, job });
+assert.equal(varied.status, "generated");
+assert.equal(varied.contacts.length, 5);
+assert.deepEqual(
+  varied.contacts.map((contact) => contact.contactType),
+  ["likely_hiring_manager", "recruiter", "functional_leader", "likely_hiring_manager", "recruiter"],
+);
+assert.equal(varied.diagnostics.assembledCount, 5);
+assert.deepEqual(
+  varied.diagnostics.lanes.map((lane) => [lane.lane, lane.acceptedCount]),
+  [
+    ["likely_hiring_manager", 2],
+    ["recruiter", 2],
+    ["functional_leader", 1],
   ],
-});
-let gapCalls = 0;
-const gapped = await createOpenAIHumanPathProvider({
-  callModel: async () => {
-    gapCalls += 1;
-    if (gapCalls === 1) return thinResponse;
-    if (gapCalls === 2) return gapResponse;
-    return JSON.stringify({ verifications: [
-      verifiedCandidate("0", "Priya Nadar", "Director, Paid Media", "likely_hiring_manager", "https://linkedin.com/in/priyanadar", { confidence: 60 }),
-      verifiedCandidate("1", "Sam Cole", "Talent Partner", "recruiter", "https://linkedin.com/in/sam-cole"),
-    ] });
-  },
-})({ pursuit, job });
-assert.equal(gapCalls, 3, "thin discovery runs one gap-fill and one batched profile-verification call");
-assert.equal(gapped.contacts.length, 2, "duplicate contact deduped across passes");
-// Hiring manager ranked ahead of recruiter even though recruiter has higher confidence.
-assert.equal(gapped.contacts[0].contactType, "likely_hiring_manager");
-assert.equal(gapped.contacts[1].contactType, "recruiter");
+);
 
-// 3b. A valid LinkedIn URL cannot rescue an irrelevant current role. Joe's
-// verified Senior Project Analyst role is not part of this program-management hiring chain.
+// A missing category remains visible in diagnostics and never suppresses another lane.
+const partialProvider = laneFixtureProvider({
+  discovery: {
+    likely_hiring_manager: [],
+    recruiter: [candidate("Rene Ortiz", "Principal Recruiter", "https://www.linkedin.com/in/rene-ortiz")],
+    functional_leader: undefined,
+  },
+  verifications: {
+    recruiter: [verification("0", "Rene Ortiz", "Principal Recruiter", "recruiter")],
+  },
+});
+const partial = await partialProvider({ pursuit, job });
+assert.equal(partial.status, "generated");
+assert.deepEqual(partial.contacts.map((contact) => contact.contactType), ["recruiter"]);
+assert.equal(
+  partial.diagnostics.lanes.find((lane) => lane.lane === "functional_leader")?.discoveryStatus,
+  "provider_unavailable",
+);
+assert.equal(
+  partial.diagnostics.lanes.find((lane) => lane.lane === "likely_hiring_manager")?.acceptedCount,
+  0,
+);
+
+// Autodesk regression: broad Experience Design adjacency does not qualify Brian Yoder for
+// Design Operations. A verified recruiter and an explicitly Design Operations leader survive.
+const autodeskJob = {
+  id: "job-autodesk",
+  title: "Principal Program Manager, Design Operations",
+  companyName: "Autodesk",
+  description: "Lead DesignOps programs in the Experience Design (XD) team within the Product Design and Manufacturing Solutions (PDMS) organization.",
+};
+const autodeskProvider = laneFixtureProvider({
+  discovery: {
+    likely_hiring_manager: [],
+    recruiter: [candidate("Kevin Martin", "Principal Recruiter", "https://www.linkedin.com/in/kevinmartinautodesk", {
+      companyName: "Autodesk",
+    })],
+    functional_leader: [
+      candidate("Brian Yoder", "Director, Experience Design, Product Design & Manufacturing Solutions", "https://www.linkedin.com/in/byoder", {
+        companyName: "Autodesk",
+      }),
+      candidate("Christiana Lackner", "Chief of Staff / Design Operations", "https://www.linkedin.com/in/christiana-lackner", {
+        companyName: "Autodesk",
+      }),
+    ],
+  },
+  organizationLeadership: [candidate("Steffani Aranas", "Director, Chief Of Staff, Experience Design, PDMS Organization", "https://www.linkedin.com/in/steffani-aranas-4101233", {
+    companyName: "Autodesk",
+  })],
+  verifications: {
+    likely_hiring_manager: [verification("0", "Steffani Aranas", "Director, Chief Of Staff, Experience Design, PDMS Organization", "likely_hiring_manager", {
+      currentCompany: "Autodesk",
+      linkedinUrl: "https://www.linkedin.com/in/steffani-aranas-4101233",
+      currentRoleEvidenceText: "Director, Chief Of Staff, Experience Design, PDMS Organization",
+      currentCompanyEvidenceText: "Steffani Aranas serves as Director and Chief of Staff at Autodesk.",
+      classificationEvidenceText: "I'm hiring! UX Design Program Manager. This key position helps our XD team deliver excellence.",
+      roleConnection: "Current PDMS Experience Design chief of staff with public evidence of hiring Autodesk design program managers.",
+    })],
+    recruiter: [verification("0", "Kevin Martin", "Principal Recruiter", "recruiter", {
+      currentCompany: "Autodesk",
+      linkedinUrl: "https://www.linkedin.com/in/kevinmartinautodesk",
+    })],
+    functional_leader: [
+      verification("0", "Steffani Aranas", "Director, Chief Of Staff, Experience Design, PDMS Organization", "functional_leader", {
+        currentCompany: "Autodesk",
+        linkedinUrl: "https://www.linkedin.com/in/steffani-aranas-4101233",
+        currentRoleEvidenceText: "Director, Chief Of Staff, Experience Design, PDMS Organization",
+        currentCompanyEvidenceText: "Steffani Aranas serves as Director and Chief of Staff at Autodesk.",
+        classificationEvidenceText: "I'm hiring! UX Design Program Manager. This key position helps our XD team deliver excellence.",
+      }),
+      verification("1", "Brian Yoder", "Director, Experience Design, Product Design & Manufacturing Solutions", "functional_leader", {
+        currentCompany: "Autodesk",
+        linkedinUrl: "https://www.linkedin.com/in/byoder",
+        classificationEvidenceText: "Brian Yoder leads Experience Design within Product Design & Manufacturing Solutions.",
+      }),
+      verification("2", "Christiana Lackner", "Chief of Staff / Design Operations", "functional_leader", {
+        currentCompany: "Autodesk",
+        linkedinUrl: "https://www.linkedin.com/in/christiana-lackner",
+        classificationEvidenceText: "Christiana Lackner leads Design Operations programs at Autodesk.",
+      }),
+    ],
+  },
+});
+const autodesk = await autodeskProvider({ pursuit, job: autodeskJob });
+assert.equal(autodesk.status, "generated");
+assert.deepEqual(autodesk.contacts.map((contact) => contact.name), ["Steffani Aranas", "Kevin Martin", "Christiana Lackner"]);
+assert.equal(autodesk.contacts.some((contact) => contact.name === "Brian Yoder"), false);
+assert.deepEqual(
+  autodesk.diagnostics.lanes.find((lane) => lane.lane === "functional_leader")?.rejected[0].reasonCodes,
+  ["classification_unverified"],
+);
+
+// Airbnb regressions: Joe's verified analyst title cannot be relabeled as Hiring Manager.
+// Sarah's exact current Experience title is displayed without headline synthesis.
 const airbnbJob = {
   id: "job-airbnb",
-  title: "Director, Roadmap Planning & Program Management",
+  title: "Program Manager, Roadmap Planning & Program Management",
   companyName: "Airbnb",
-  description: "Lead roadmap planning and program management.",
+  description: "Lead roadmap planning programs.",
 };
-let joeCalls = 0;
-const joeResult = await createOpenAIHumanPathProvider({
-  callModel: async () => {
-    joeCalls += 1;
-    if (joeCalls === 1) return JSON.stringify({ contacts: [{
-      name: "Joe Andrews",
-      title: "Program Manager, Roadmap Planning & Program Management at Airbnb",
-      candidateRole: "Hiring Manager",
-      confidence: 90,
-      linkedinUrl: "https://linkedin.com/in/joe-andrews",
-      reason: "Claimed program-management leader.",
-    }] });
-    if (joeCalls === 2) return JSON.stringify({ contacts: [] });
-    return JSON.stringify({ verifications: [{
-      ...verifiedCandidate("0", "Joe Andrews", "Senior Project Analyst", "unknown", "https://linkedin.com/in/joe-andrews", {
-        currentExperienceCompany: "Airbnb",
-        roleEligible: true,
-        contactType: "likely_hiring_manager",
-        reason: "Verified current role is not in the program-management hiring chain.",
-      }),
-    }] });
+const airbnbProvider = laneFixtureProvider({
+  discovery: {
+    likely_hiring_manager: [candidate("Joe Andrews", "Program Manager", "https://www.linkedin.com/in/joe-andrews", {
+      companyName: "Airbnb",
+    })],
+    recruiter: [candidate("Sarah Kim", "Principal Recruiter, Product and Design", "https://www.linkedin.com/in/sarah-kim", {
+      companyName: "Airbnb",
+    })],
+    functional_leader: [],
   },
-})({ pursuit, job: airbnbJob });
-assert.equal(joeCalls, 3);
-assert.equal(joeResult.status, "generated");
-assert.equal(joeResult.contacts.length, 0, "irrelevant verified role is rejected instead of mislabeled as Hiring Manager");
-
-// 3c. When a candidate is still relevant, the verifier owns the displayed current title.
-let correctedTitleCalls = 0;
-const correctedTitle = await createOpenAIHumanPathProvider({
-  callModel: async () => {
-    correctedTitleCalls += 1;
-    if (correctedTitleCalls === 1) return JSON.stringify({ contacts: [{
-      name: "Morgan Lee",
-      title: "Director of Program Management",
-      candidateRole: "Hiring Manager",
-      confidence: 80,
-      linkedinUrl: "https://linkedin.com/in/morgan-lee",
-    }] });
-    if (correctedTitleCalls === 2) return JSON.stringify({ contacts: [] });
-    return JSON.stringify({ verifications: [{
-      ...verifiedCandidate("0", "Morgan Lee", "Senior Program Manager", "likely_hiring_manager", "https://linkedin.com/in/morgan-lee", {
-        currentExperienceCompany: "Airbnb",
-        confidence: 75,
-      }),
-    }] });
+  verifications: {
+    likely_hiring_manager: [verification("0", "Joe Andrews", "Senior Project Analyst", "likely_hiring_manager", {
+      currentCompany: "Airbnb",
+      linkedinUrl: "https://www.linkedin.com/in/joe-andrews",
+      classificationSupported: false,
+      classificationEvidenceText: "Senior Project Analyst at Airbnb",
+    })],
+    recruiter: [verification("0", "Sarah Kim", "Principal Recruiter, Product and Creative", "recruiter", {
+      currentCompany: "Airbnb",
+      linkedinUrl: "https://www.linkedin.com/in/sarah-kim",
+      linkedinHeadline: "Principal Recruiter, Product and Design",
+      currentRoleEvidenceText: "Principal Recruiter, Product and Creative at Airbnb",
+    })],
   },
-})({ pursuit, job: airbnbJob });
-assert.equal(correctedTitle.contacts.length, 1);
-assert.equal(correctedTitle.contacts[0].title, "Senior Program Manager");
-assert.equal(correctedTitle.contacts[0].contactType, "likely_hiring_manager");
+});
+const airbnb = await airbnbProvider({ pursuit, job: airbnbJob });
+assert.equal(airbnb.status, "generated");
+assert.deepEqual(airbnb.contacts.map((contact) => contact.name), ["Sarah Kim"]);
+assert.equal(airbnb.contacts[0].title, "Principal Recruiter, Product and Creative");
+assert.equal(airbnb.contacts.some((contact) => contact.name === "Joe Andrews"), false);
 
-// 3d. Conflicting LinkedIn headline and Experience text remain separate facts.
-// The exact current Experience title is canonical; no shortened third title is allowed.
-let sarahCalls = 0;
-const sarahResult = await createOpenAIHumanPathProvider({
-  callModel: async () => {
-    sarahCalls += 1;
-    if (sarahCalls === 1) return JSON.stringify({ contacts: [{
-      name: "Sarah Kim",
-      title: "Principal Recruiter, Product",
-      candidateRole: "Recruiter",
-      confidence: 65,
-      linkedinUrl: "https://linkedin.com/in/sarah-kim",
-    }] });
-    if (sarahCalls === 2) return JSON.stringify({ contacts: [] });
-    return JSON.stringify({ verifications: [{
-      ...verifiedCandidate("0", "Sarah Kim", "Principal Recruiter, Product and Creative", "recruiter", "https://linkedin.com/in/sarah-kim", {
-        currentExperienceCompany: "Airbnb",
-        linkedinHeadline: "Principal Recruiter, Product and Design",
-      }),
-    }] });
+// Headlines, employer-suffixed labels, and truncated prose cannot become display titles.
+const malformedTitleProvider = laneFixtureProvider({
+  discovery: {
+    likely_hiring_manager: [],
+    recruiter: [
+      candidate("Casey Rivera", "Recruiter", "https://www.linkedin.com/in/casey-rivera"),
+      candidate("Jamie Brooks", "Principal Recruiter", "https://www.linkedin.com/in/jamie-brooks"),
+    ],
+    functional_leader: [],
   },
-})({ pursuit, job: airbnbJob });
-assert.equal(sarahResult.contacts.length, 1);
-assert.equal(sarahResult.contacts[0].title, "Principal Recruiter, Product and Creative");
-assert.notEqual(sarahResult.contacts[0].title, "Principal Recruiter, Product and Design");
-assert.notEqual(sarahResult.contacts[0].title, "Principal Recruiter, Product");
+  verifications: {
+    recruiter: [
+      verification("0", "Casey Rivera", "Full-cycle recruiter specializing in technical and marketing…", "recruiter"),
+      verification("1", "Jamie Brooks", "Principal Recruiter at Useful Studio", "recruiter"),
+    ],
+  },
+});
+const malformedTitles = await malformedTitleProvider({ pursuit, job });
+assert.deepEqual(malformedTitles.contacts, []);
+assert.deepEqual(
+  malformedTitles.diagnostics.lanes.find((lane) => lane.lane === "recruiter")?.rejected.map((row) => row.reasonCodes),
+  [["current_role_unverified"], ["current_role_unverified"]],
+);
 
-// 4. Junk names (title-only / placeholder / organization-plus-role) are filtered out.
+// Organization-plus-title headings are rejected, while real surnames that resemble role words survive.
 const junk = parseResearchedContacts({
   contacts: [
     { name: "Director", title: "Director of Media", confidence: 50 },
     { name: "(unknown)", title: "VP", confidence: 50 },
-    { name: "Coinbase Principal Recruiter", title: "Principal Recruiter, Core Recruiting team", candidateRole: "Recruiter", confidence: 90 },
+    { name: "Coinbase Principal Recruiter", title: "Principal Recruiter", confidence: 90 },
+    { name: "Principal Recruiter Coinbase", title: "Principal Recruiter", confidence: 90 },
     { name: "Real Person", title: "VP Media", candidateRole: "Functional Leader", confidence: 50 },
+    { name: "Anthony Head", title: "VP Media", candidateRole: "Functional Leader", confidence: 50 },
   ],
 }, "Coinbase");
-assert.equal(junk.length, 1);
-assert.equal(junk[0].name, "Real Person");
+assert.deepEqual(junk.map((contact) => contact.name), ["Real Person", "Anthony Head"]);
 
-// 4b. Underscore role labels ("long_shot") map like their spaced form.
-const underscore = parseResearchedContacts({
-  contacts: [{ name: "Alex Kim", title: "Head of Growth", candidateRole: "long_shot", confidence: 50 }],
-}, "Useful Studio");
-assert.equal(underscore[0].contactType, "executive_sponsor");
-
-// 5. buildUserPrompt carries the role context and a media-specific research plan.
-const prompt = buildUserPrompt(job);
-assert.match(prompt, /Programmatic Media Director/);
-assert.match(prompt, /Useful Studio/);
-assert.match(prompt, /performance marketing/i);
-assert.match(prompt, /Paid Media|Performance Marketing/);
+const hiringPrompt = JSON.parse(buildLaneDiscoveryPrompt(autodeskJob, "likely_hiring_manager"));
+const recruiterPrompt = JSON.parse(buildLaneDiscoveryPrompt(autodeskJob, "recruiter"));
+const functionalPrompt = JSON.parse(buildLaneDiscoveryPrompt(autodeskJob, "functional_leader"));
+assert.equal(hiringPrompt.requestedLane, "likely_hiring_manager");
+assert.deepEqual(hiringPrompt.functionContext.organizationAnchors, ["Experience Design (XD)", "Product Design and Manufacturing Solutions (PDMS)", "XD", "PDMS"]);
+assert.match(JSON.stringify(hiringPrompt.requiredSearches), /PDMS/);
+assert.match(JSON.stringify(hiringPrompt.requiredSearches), /Chief of Staff/);
+assert.match(buildOrganizationLeadershipPrompt(autodeskJob), /Product Design and Manufacturing Solutions \(PDMS\)/);
+assert.equal(recruiterPrompt.requestedLane, "recruiter");
+assert.equal(functionalPrompt.requestedLane, "functional_leader");
+assert.match(JSON.stringify(functionalPrompt.categoryRules), /Experience Design leadership alone is insufficient/);
+assert.match(buildUserPrompt(job), /Programmatic Media Director/);
+assert.match(buildProfileVerificationPrompt(job, [], "recruiter"), /Principal Recruiter|Recruiter/);
 
 console.log("public profile contact discovery: all assertions passed");

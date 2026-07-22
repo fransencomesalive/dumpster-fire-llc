@@ -76,6 +76,8 @@ type PursuitReadResponse = {
   bucket: PursuitBucket;
   tracking: PursuitTrackingState;
   history: PursuitHistoryEntry[];
+  humanPathNeedsRefresh: boolean;
+  humanPathProviderVersion: number;
 };
 type TrackingResponse = {
   status: string;
@@ -460,7 +462,20 @@ export default function ApplyWizardModal({
 
   const readPursuit = useCallback(
     async (id: string) => {
-      const data = await api<PursuitReadResponse>(`/api/public-profile/pursuits/${id}`, "GET");
+      const load = () => api<PursuitReadResponse>(`/api/public-profile/pursuits/${id}`, "GET");
+      let data = await load();
+      if (data.humanPathNeedsRefresh) {
+        try {
+          await api("/api/public-profile/pursuits/human-path", "POST", { pursuitId: id });
+          data = await load();
+        } catch (err) {
+          if (err instanceof PublicProfileApiError && err.status === 503) {
+            setProviderUnavailable(true);
+          } else {
+            throw err;
+          }
+        }
+      }
       if (data.job) setJob(data.job);
       setPosting(data.posting);
       setContacts(data.contacts);
@@ -592,7 +607,7 @@ export default function ApplyWizardModal({
       });
       setStep(2);
       setReached((r) => (r < 2 ? 2 : r));
-      if (contacts.length === 0 && !noContactsFound) await discoverContacts(pursuitId);
+      if (contacts.length === 0) await discoverContacts(pursuitId);
     });
   }
 

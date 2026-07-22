@@ -41,7 +41,7 @@ import {
   handleWritingSamplesSectionPatchRequest,
 } from "../lib/public-profile/api";
 import type { PublicProfileRepositoryRequest } from "../lib/public-profile/repository";
-import type { GeneratedOutreachDraft, HumanPathContact, HumanPathContactSuggestion, OutreachFeedbackGenerationContext, OutreachGenerationContext, OutreachMessageFeedback, OutreachMessageRecord, Pursuit, PursuitTrackingCommit, PursuitTrackingEvent, SaveOutreachMessageFeedbackInput } from "../lib/public-profile/pursuits/types";
+import type { GeneratedOutreachDraft, HumanPathContact, HumanPathContactSuggestion, HumanPathDiagnostics, OutreachFeedbackGenerationContext, OutreachGenerationContext, OutreachMessageFeedback, OutreachMessageRecord, Pursuit, PursuitTrackingCommit, PursuitTrackingEvent, PursuitTransitionResult, SaveOutreachMessageFeedbackInput } from "../lib/public-profile/pursuits/types";
 import type { PublicJobRecord } from "../lib/public-jobs/types";
 import type { SubscriptionContext, UsageLedgerEntry } from "../lib/public-profile/subscription/types";
 import type { PublicProfileRegenerationResult } from "../lib/public-profile/service";
@@ -184,6 +184,43 @@ function humanPathContact(overrides: Partial<HumanPathContact> = {}): HumanPathC
     relevanceReason: "Owns the program area.",
     roleConnection: "Likely sponsor for cross-functional delivery.",
     verificationNotes: ["Title matches the function."],
+    ...overrides,
+  };
+}
+
+function humanPathDiagnostics(overrides: Partial<HumanPathDiagnostics> = {}): HumanPathDiagnostics {
+  return {
+    schemaVersion: 1,
+    lanes: [
+      {
+        lane: "likely_hiring_manager",
+        discoveryStatus: "completed",
+        verificationStatus: "completed",
+        discoveredCount: 1,
+        verifiedCount: 1,
+        acceptedCount: 1,
+        rejected: [],
+      },
+      {
+        lane: "recruiter",
+        discoveryStatus: "completed",
+        verificationStatus: "not_needed",
+        discoveredCount: 0,
+        verifiedCount: 0,
+        acceptedCount: 0,
+        rejected: [],
+      },
+      {
+        lane: "functional_leader",
+        discoveryStatus: "completed",
+        verificationStatus: "not_needed",
+        discoveredCount: 0,
+        verifiedCount: 0,
+        acceptedCount: 0,
+        rejected: [],
+      },
+    ],
+    assembledCount: 1,
     ...overrides,
   };
 }
@@ -745,6 +782,54 @@ async function main() {
   assert.equal("events" in pursuitReadJson, false);
   assert.equal(JSON.stringify(pursuitReadJson.history).includes("idempotencyKey"), false);
 
+  const pursuitReadStaleHumanPath = await handlePublicProfilePursuitReadRequest(
+    getRequest("pursuits/pursuit-1"),
+    "pursuit-1",
+    {
+      getSession: async () => authed(),
+      repositoryRequest,
+      loadPursuit: async () => savedPursuit({ status: "human_path_generated" }),
+      loadJob: async () => publicJob(),
+      loadContactSuggestions: async () => [],
+      loadOutreachMessages: async () => [],
+      loadPursuitTrackingEvents: async () => [],
+      loadPursuitEvents: async () => [{
+        pursuitId: "pursuit-1",
+        userId: "user-1",
+        eventType: "human_path_generated",
+        payload: { contactCount: 0, providerVersion: 2 },
+        createdAt: now,
+      }],
+    },
+  );
+  const pursuitReadStaleJson = await body(pursuitReadStaleHumanPath);
+  assert.equal(pursuitReadStaleJson.humanPathNeedsRefresh, true);
+  assert.equal(pursuitReadStaleJson.humanPathProviderVersion, 2);
+
+  const pursuitReadCurrentEmptyHumanPath = await handlePublicProfilePursuitReadRequest(
+    getRequest("pursuits/pursuit-1"),
+    "pursuit-1",
+    {
+      getSession: async () => authed(),
+      repositoryRequest,
+      loadPursuit: async () => savedPursuit({ status: "human_path_generated" }),
+      loadJob: async () => publicJob(),
+      loadContactSuggestions: async () => [],
+      loadOutreachMessages: async () => [],
+      loadPursuitTrackingEvents: async () => [],
+      loadPursuitEvents: async () => [{
+        pursuitId: "pursuit-1",
+        userId: "user-1",
+        eventType: "human_path_generated",
+        payload: { contactCount: 0, providerVersion: 3 },
+        createdAt: now,
+      }],
+    },
+  );
+  const pursuitReadCurrentEmptyJson = await body(pursuitReadCurrentEmptyHumanPath);
+  assert.equal(pursuitReadCurrentEmptyJson.humanPathNeedsRefresh, false);
+  assert.equal(pursuitReadCurrentEmptyJson.humanPathProviderVersion, 3);
+
   const pursuitReadForeignPrivateJob = await handlePublicProfilePursuitReadRequest(
     getRequest("pursuits/pursuit-private"),
     "pursuit-private",
@@ -1214,7 +1299,7 @@ async function main() {
     loadUsageEntries: async () => [usage("human_path", 50)],
     humanPathProvider: async () => {
       providerCalledAfterLimit = true;
-      return { status: "generated", contacts: [humanPathContact()] };
+      return { status: "generated", contacts: [humanPathContact()], diagnostics: humanPathDiagnostics() };
     },
   });
   assert.equal(humanPathLimitReached.status, 429);
@@ -1243,7 +1328,11 @@ async function main() {
     loadJob: async () => publicJob(),
     loadSubscriptionContext: async () => activeBasicSubscription(),
     loadUsageEntries: async () => [],
-    humanPathProvider: async () => ({ status: "generated", contacts: [humanPathContact()] }),
+    humanPathProvider: async () => ({
+      status: "generated",
+      contacts: [humanPathContact()],
+      diagnostics: humanPathDiagnostics(),
+    }),
   });
   assert.equal(humanPathTransitionError.status, 409);
   assert.equal((await body(humanPathTransitionError)).status, "transition_error");
@@ -1266,7 +1355,7 @@ async function main() {
     humanPathProvider: async ({ job, pursuit }) => {
       assert.equal(job.companyName, "Useful Studio");
       assert.equal(pursuit.status, "review_complete");
-      return { status: "generated", contacts: [humanPathContact()] };
+      return { status: "generated", contacts: [humanPathContact()], diagnostics: humanPathDiagnostics() };
     },
     persistHumanPath: async (_request, result, contacts) => {
       persistedHumanPath = result;
@@ -1283,9 +1372,104 @@ async function main() {
   assert.equal(humanPathJson.status, "human_path_generated");
   assert.equal((humanPathJson.pursuit as Record<string, unknown>).status, "human_path_generated");
   assert.equal((humanPathJson.event as Record<string, unknown>).usageType, "human_path");
+  assert.equal(
+    (humanPathJson.event as { payload: Record<string, unknown> }).payload.providerVersion,
+    3,
+  );
+  assert.equal(
+    (humanPathJson.event as { payload: Record<string, unknown> }).payload.chargeUsage,
+    true,
+  );
+  assert.deepEqual(
+    (humanPathJson.event as { payload: Record<string, unknown> }).payload.diagnostics,
+    humanPathDiagnostics(),
+  );
+  assert.deepEqual(humanPathJson.diagnostics, humanPathDiagnostics());
   assert.deepEqual((persistedHumanPath as { pursuit: Pursuit }).pursuit.status, "human_path_generated");
   assert.equal((persistedContacts as HumanPathContact[]).length, 1);
   assert.equal(((humanPathJson.contacts as HumanPathContact[])[0]).name, "Dana Lee");
+
+  let currentEmptyProviderCalled = false;
+  const currentEmptyCached = await handlePublicProfilePursuitHumanPathRequest(
+    postRequest("pursuits/human-path", { pursuitId: "pursuit-1" }),
+    {
+      now: () => now,
+      getSession: async () => authed(),
+      repositoryRequest,
+      loadAggregate: async () => agg,
+      loadPursuit: async () => savedPursuit({ status: "human_path_generated" }),
+      loadJob: async () => publicJob(),
+      loadPursuitEvents: async () => [{
+        pursuitId: "pursuit-1",
+        userId: "user-1",
+        eventType: "human_path_generated",
+        payload: { contactCount: 0, providerVersion: 3 },
+        createdAt: now,
+      }],
+      loadContactSuggestions: async () => [],
+      loadSubscriptionContext: async () => { throw new Error("cache hit must not load subscription"); },
+      humanPathProvider: async () => {
+        currentEmptyProviderCalled = true;
+        return {
+          status: "generated",
+          contacts: [humanPathContact()],
+          diagnostics: humanPathDiagnostics(),
+        };
+      },
+    },
+  );
+  assert.equal(currentEmptyCached.status, 200);
+  const currentEmptyJson = await body(currentEmptyCached);
+  assert.equal(currentEmptyJson.cached, true);
+  assert.equal(currentEmptyJson.providerVersion, 3);
+  assert.equal((currentEmptyJson.contacts as unknown[]).length, 0);
+  assert.equal(currentEmptyProviderCalled, false);
+
+  let staleRefreshPersisted: Extract<PursuitTransitionResult, { ok: true }> | undefined;
+  const staleEmptyRefreshed = await handlePublicProfilePursuitHumanPathRequest(
+    postRequest("pursuits/human-path", { pursuitId: "pursuit-1" }),
+    {
+      now: () => now,
+      getSession: async () => authed(),
+      repositoryRequest,
+      loadAggregate: async () => agg,
+      loadPursuit: async () => savedPursuit({ status: "human_path_generated" }),
+      loadJob: async () => publicJob(),
+      loadPursuitEvents: async () => [{
+        pursuitId: "pursuit-1",
+        userId: "user-1",
+        eventType: "human_path_generated",
+        payload: { contactCount: 0, providerVersion: 2 },
+        createdAt: now,
+      }],
+      loadContactSuggestions: async () => [],
+      loadSubscriptionContext: async () => activeBasicSubscription(),
+      loadUsageEntries: async () => [],
+      enforceSubscription: () => ({
+        status: "limit_reached",
+        feature: "human_path",
+        used: 25,
+        limit: 25,
+        remaining: 0,
+      }),
+      humanPathProvider: async () => ({
+        status: "generated",
+        contacts: [humanPathContact()],
+        diagnostics: humanPathDiagnostics(),
+      }),
+      persistHumanPath: async (_request, result) => {
+        staleRefreshPersisted = result;
+      },
+    },
+  );
+  assert.equal(staleEmptyRefreshed.status, 200);
+  const staleRefreshJson = await body(staleEmptyRefreshed);
+  assert.equal(staleRefreshJson.refreshedStaleEmptyResult, true);
+  assert.equal((staleRefreshJson.contacts as unknown[]).length, 1);
+  assert.equal(staleRefreshPersisted?.usageEvents.length, 0);
+  assert.equal(staleRefreshPersisted?.event.usageType, undefined);
+  assert.equal(staleRefreshPersisted?.event.payload.providerVersion, 3);
+  assert.deepEqual(staleRefreshPersisted?.event.payload.diagnostics, humanPathDiagnostics());
 
   // ---- Pursuit contact selection route ----
   const contactSelectionValidation = await handlePublicProfilePursuitContactSelectionRequest(postRequest("pursuits/contacts", {}), {
