@@ -186,7 +186,7 @@ export function transitionPursuit(
     lastActivityAt: now,
     updatedAt: now,
   };
-  const usageType = eventType === "human_path_generated"
+  const usageType = eventType === "human_path_generated" && payload.chargeUsage !== false
     ? "human_path"
     : eventType === "outreach_generated"
       ? "outreach_message"

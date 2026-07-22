@@ -18,6 +18,10 @@ export type ContactProviderDependencies = {
   callModel?: ContactModelCall;
 };
 
+// Stored on each Human Path generation event. Increment when a provider change
+// materially changes which zero-contact results should be reconsidered.
+export const HUMAN_PATH_PROVIDER_VERSION = 2;
+
 // Internal shape carried through parse -> merge/rank -> map. `rank` and the
 // numeric `confidence` exist only for ordering; the public HumanPathContact
 // buckets confidence to low/medium/high and drops rank.
