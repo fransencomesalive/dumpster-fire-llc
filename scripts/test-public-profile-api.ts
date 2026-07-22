@@ -830,6 +830,36 @@ async function main() {
   assert.equal(pursuitReadCurrentEmptyJson.humanPathNeedsRefresh, false);
   assert.equal(pursuitReadCurrentEmptyJson.humanPathProviderVersion, 3);
 
+  const pursuitReadRaceCorruptedHumanPath = await handlePublicProfilePursuitReadRequest(
+    getRequest("pursuits/pursuit-1"),
+    "pursuit-1",
+    {
+      getSession: async () => authed(),
+      repositoryRequest,
+      loadPursuit: async () => savedPursuit({ status: "human_path_generated" }),
+      loadJob: async () => publicJob(),
+      loadContactSuggestions: async () => [],
+      loadOutreachMessages: async () => [],
+      loadPursuitTrackingEvents: async () => [],
+      loadPursuitEvents: async () => [{
+        pursuitId: "pursuit-1",
+        userId: "user-1",
+        eventType: "human_path_generated",
+        payload: { contactCount: 1, contacts: [humanPathContact()], providerVersion: 3 },
+        createdAt: "2026-06-22T00:00:00.000Z",
+      }, {
+        pursuitId: "pursuit-1",
+        userId: "user-1",
+        eventType: "human_path_generated",
+        payload: { contactCount: 0, contacts: [], providerVersion: 3 },
+        createdAt: "2026-06-22T00:01:00.000Z",
+      }],
+    },
+  );
+  const pursuitReadRaceCorruptedJson = await body(pursuitReadRaceCorruptedHumanPath);
+  assert.equal(pursuitReadRaceCorruptedJson.humanPathNeedsRefresh, true);
+  assert.equal(pursuitReadRaceCorruptedJson.humanPathProviderVersion, 3);
+
   const pursuitReadForeignPrivateJob = await handlePublicProfilePursuitReadRequest(
     getRequest("pursuits/pursuit-private"),
     "pursuit-private",
@@ -1424,6 +1454,138 @@ async function main() {
   assert.equal(currentEmptyJson.providerVersion, 3);
   assert.equal((currentEmptyJson.contacts as unknown[]).length, 0);
   assert.equal(currentEmptyProviderCalled, false);
+
+  let recoveredContacts: HumanPathContact[] = [];
+  let recoveryProviderCalled = false;
+  const raceCorruptedEmptyRecovered = await handlePublicProfilePursuitHumanPathRequest(
+    postRequest("pursuits/human-path", { pursuitId: "pursuit-1" }),
+    {
+      now: () => now,
+      getSession: async () => authed(),
+      repositoryRequest,
+      loadAggregate: async () => agg,
+      loadPursuit: async () => savedPursuit({ status: "human_path_generated" }),
+      loadJob: async () => publicJob(),
+      loadPursuitEvents: async () => [{
+        pursuitId: "pursuit-1",
+        userId: "user-1",
+        eventType: "human_path_generated",
+        payload: {
+          contactCount: 1,
+          contacts: [humanPathContact()],
+          diagnostics: humanPathDiagnostics(),
+          providerVersion: 3,
+        },
+        createdAt: "2026-06-22T00:00:00.000Z",
+      }, {
+        pursuitId: "pursuit-1",
+        userId: "user-1",
+        eventType: "human_path_generated",
+        payload: { contactCount: 0, contacts: [], providerVersion: 3 },
+        createdAt: "2026-06-22T00:01:00.000Z",
+      }],
+      loadContactSuggestions: async () => [],
+      loadSubscriptionContext: async () => { throw new Error("recovery must not load subscription"); },
+      humanPathProvider: async () => {
+        recoveryProviderCalled = true;
+        return {
+          status: "generated",
+          contacts: [],
+          diagnostics: humanPathDiagnostics({ assembledCount: 0 }),
+        };
+      },
+      persistHumanPath: async (_request, result, contacts) => {
+        recoveredContacts = contacts;
+        assert.equal(result.event.payload.recoveredRaceResult, true);
+        assert.equal(result.event.payload.chargeUsage, false);
+        assert.equal(result.usageEvents.length, 0);
+      },
+    },
+  );
+  assert.equal(raceCorruptedEmptyRecovered.status, 200);
+  const raceCorruptedJson = await body(raceCorruptedEmptyRecovered);
+  assert.equal(raceCorruptedJson.recoveredRaceResult, true);
+  assert.equal((raceCorruptedJson.contacts as unknown[]).length, 1);
+  assert.equal(recoveredContacts.length, 1);
+  assert.equal(recoveryProviderCalled, false);
+
+  let currentContactsProviderCalled = false;
+  const currentContactsCached = await handlePublicProfilePursuitHumanPathRequest(
+    postRequest("pursuits/human-path", { pursuitId: "pursuit-1" }),
+    {
+      now: () => now,
+      getSession: async () => authed(),
+      repositoryRequest,
+      loadAggregate: async () => agg,
+      loadPursuit: async () => savedPursuit({ status: "human_path_generated" }),
+      loadJob: async () => publicJob(),
+      loadPursuitEvents: async () => [{
+        pursuitId: "pursuit-1",
+        userId: "user-1",
+        eventType: "human_path_generated",
+        payload: { contactCount: 1, providerVersion: 3 },
+        createdAt: now,
+      }],
+      loadContactSuggestions: async () => [contactSuggestion()],
+      loadSubscriptionContext: async () => { throw new Error("cache hit must not load subscription"); },
+      humanPathProvider: async () => {
+        currentContactsProviderCalled = true;
+        return {
+          status: "generated",
+          contacts: [],
+          diagnostics: humanPathDiagnostics({ assembledCount: 0 }),
+        };
+      },
+    },
+  );
+  assert.equal(currentContactsCached.status, 200);
+  const currentContactsJson = await body(currentContactsCached);
+  assert.equal(currentContactsJson.cached, true);
+  assert.equal((currentContactsJson.contacts as unknown[]).length, 1);
+  assert.equal(currentContactsProviderCalled, false);
+
+  let racingPursuitLoad = 0;
+  let racingZeroPersisted = false;
+  const racingZeroResult = await handlePublicProfilePursuitHumanPathRequest(
+    postRequest("pursuits/human-path", { pursuitId: "pursuit-1" }),
+    {
+      now: () => now,
+      getSession: async () => authed(),
+      repositoryRequest,
+      loadAggregate: async () => agg,
+      loadPursuit: async () => {
+        racingPursuitLoad += 1;
+        return savedPursuit({
+          status: racingPursuitLoad === 1 ? "review_complete" : "human_path_generated",
+        });
+      },
+      loadJob: async () => publicJob(),
+      loadPursuitEvents: async () => [{
+        pursuitId: "pursuit-1",
+        userId: "user-1",
+        eventType: "human_path_generated",
+        payload: { contactCount: 1, providerVersion: 3 },
+        createdAt: now,
+      }],
+      loadContactSuggestions: async () => [contactSuggestion()],
+      loadSubscriptionContext: async () => activeBasicSubscription(),
+      loadUsageEntries: async () => [],
+      humanPathProvider: async () => ({
+        status: "generated",
+        contacts: [],
+        diagnostics: humanPathDiagnostics({ assembledCount: 0 }),
+      }),
+      persistHumanPath: async () => {
+        racingZeroPersisted = true;
+      },
+    },
+  );
+  assert.equal(racingZeroResult.status, 200);
+  const racingZeroJson = await body(racingZeroResult);
+  assert.equal(racingZeroJson.cached, true);
+  assert.equal(racingZeroJson.raceResolved, true);
+  assert.equal((racingZeroJson.contacts as unknown[]).length, 1);
+  assert.equal(racingZeroPersisted, false);
 
   let staleRefreshPersisted: Extract<PursuitTransitionResult, { ok: true }> | undefined;
   const staleEmptyRefreshed = await handlePublicProfilePursuitHumanPathRequest(

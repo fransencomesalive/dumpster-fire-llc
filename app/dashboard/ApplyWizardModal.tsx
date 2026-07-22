@@ -19,6 +19,7 @@ import type {
   Pursuit,
   PursuitHistoryEntry,
 } from "@/lib/public-profile/pursuits/types";
+import { runSingleFlight, type SingleFlightState } from "@/lib/public-profile/single-flight";
 import {
   PURSUIT_TRACKING_ACTIONS,
   emptyPursuitTrackingState,
@@ -295,6 +296,7 @@ export default function ApplyWizardModal({
   const [selectedContactIds, setSelectedContactIds] = useState<Set<string>>(new Set());
   const [providerUnavailable, setProviderUnavailable] = useState(false);
   const [noContactsFound, setNoContactsFound] = useState(false);
+  const actionInFlightRef = useRef<SingleFlightState>({ active: false });
   const [messages, setMessages] = useState<OutreachMessageRecord[]>([]);
   const [regeneratingId, setRegeneratingId] = useState<string | null>(null);
   // Tracking: `tracking` is the last committed server state; `draft` is the in-progress
@@ -587,15 +589,17 @@ export default function ApplyWizardModal({
   }, [api, target, readPursuit]);
 
   async function run(fn: () => Promise<void>) {
-    setBusy(true);
-    setError(null);
-    try {
-      await fn();
-    } catch (err) {
-      setError(errorMessage(err, "Something went wrong. Try again."));
-    } finally {
-      setBusy(false);
-    }
+    await runSingleFlight(actionInFlightRef.current, async () => {
+      setBusy(true);
+      setError(null);
+      try {
+        await fn();
+      } catch (err) {
+        setError(errorMessage(err, "Something went wrong. Try again."));
+      } finally {
+        setBusy(false);
+      }
+    });
   }
 
   function submitReview() {
@@ -762,7 +766,7 @@ export default function ApplyWizardModal({
   // (running that step's real work); skipping further ahead is refused with a message naming the
   // missing prerequisite. The message renders in the canon tomato ds-callout beneath the stepper.
   const goToStep = (target: WizardStep) => {
-    if (busy || target === step) return;
+    if (!ready || busy || actionInFlightRef.current.active || target === step) return;
     if (noContactsFound && target >= 3) return;
     setError(null);
     if (target <= reached) { setStep(target); return; }
@@ -784,7 +788,7 @@ export default function ApplyWizardModal({
           key={n}
           className={`${styles.wizardStep} ${n === step ? styles.wizardStepActive : ""}`}
           onClick={() => goToStep(n)}
-          disabled={noContactsFound && n >= 3}
+          disabled={!ready || busy || (noContactsFound && n >= 3)}
           aria-current={n === step ? "step" : undefined}
         >
           <span>{n}</span>{STEP_LABELS[n]}
@@ -806,16 +810,16 @@ export default function ApplyWizardModal({
         <a href={sourceUrl} target="_blank" rel="noreferrer" className={`${styles.modalBtnClose} ${styles.footerSpacer}`}>Open job posting{EXTERNAL_LINK_ICON}</a>
       ) : <span className={styles.footerSpacer} />}
       {mode === "stepper" && step > 1 ? (
-        <button type="button" className={styles.modalBtnClose} onClick={() => setStep((s) => (s - 1) as WizardStep)} disabled={busy}>Back</button>
+        <button type="button" className={styles.modalBtnClose} onClick={() => { if (!actionInFlightRef.current.active) setStep((s) => (s - 1) as WizardStep); }} disabled={!ready || busy}>Back</button>
       ) : null}
       {mode === "stepper" && step === 1 ? (
-        <button type="button" className={styles.modalBtnSave} onClick={submitReview} disabled={busy}>Continue</button>
+        <button type="button" className={styles.modalBtnSave} onClick={submitReview} disabled={!ready || busy}>Continue</button>
       ) : mode === "stepper" && step === 2 ? (
-        <button type="button" className={styles.modalBtnSave} onClick={submitContacts} disabled={busy || providerUnavailable || noContactsFound}>Continue</button>
+        <button type="button" className={styles.modalBtnSave} onClick={submitContacts} disabled={!ready || busy || providerUnavailable || noContactsFound}>Continue</button>
       ) : mode === "stepper" && step === 3 ? (
-        <button type="button" className={styles.modalBtnSave} onClick={() => { setStep(4); setReached(4); }} disabled={busy}>Continue</button>
+        <button type="button" className={styles.modalBtnSave} onClick={() => { if (!actionInFlightRef.current.active) { setStep(4); setReached(4); } }} disabled={!ready || busy}>Continue</button>
       ) : (
-        <button type="button" className={`${styles.modalBtnSave} ${isApplied ? styles.modalBtnSaveOn : ""}`} onClick={saveTracking} disabled={busy}>{saveLabel}</button>
+        <button type="button" className={`${styles.modalBtnSave} ${isApplied ? styles.modalBtnSaveOn : ""}`} onClick={saveTracking} disabled={!ready || busy}>{saveLabel}</button>
       )}
     </div>
   );

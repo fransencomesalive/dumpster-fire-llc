@@ -1565,23 +1565,52 @@ function humanPathCacheState(
   contacts: HumanPathContactSuggestion[],
   pursuitEvents: PursuitEvent[],
 ) {
-  const latestHumanPathEvent = pursuitEvents
-    .filter((event) => event.eventType === "human_path_generated")
-    .at(-1);
+  const humanPathEvents = pursuitEvents.filter((event) => event.eventType === "human_path_generated");
+  const latestHumanPathEvent = humanPathEvents.at(-1);
   const latestProviderVersion = typeof latestHumanPathEvent?.payload.providerVersion === "number"
     ? latestHumanPathEvent.payload.providerVersion
     : 0;
   const latestContactCount = typeof latestHumanPathEvent?.payload.contactCount === "number"
     ? latestHumanPathEvent.payload.contactCount
     : undefined;
-  const emptyGeneratedPursuit = pursuit.status === "human_path_generated" && contacts.length === 0;
-  const currentVersionEmptyResult = emptyGeneratedPursuit
+  const generatedPursuit = pursuit.status === "human_path_generated";
+  const versionAndCountMatch = generatedPursuit
     && latestProviderVersion >= HUMAN_PATH_PROVIDER_VERSION
-    && latestContactCount === 0;
+    && latestContactCount === contacts.length;
+  const emptyGeneratedPursuit = generatedPursuit && contacts.length === 0;
+  const recoverableEvent = versionAndCountMatch && contacts.length === 0
+    ? humanPathEvents.slice(0, -1).reverse().find((event) => {
+        const eventVersion = event.payload.providerVersion;
+        const eventContacts = event.payload.contacts;
+        return typeof eventVersion === "number"
+          && eventVersion >= HUMAN_PATH_PROVIDER_VERSION
+          && typeof event.payload.contactCount === "number"
+          && event.payload.contactCount > 0
+          && Array.isArray(eventContacts)
+          && eventContacts.length > 0;
+      })
+    : undefined;
+  const recoverableContacts = Array.isArray(recoverableEvent?.payload.contacts)
+    ? recoverableEvent.payload.contacts.filter((contact): contact is HumanPathContact => Boolean(
+        contact
+        && typeof contact === "object"
+        && typeof (contact as HumanPathContact).name === "string"
+        && typeof (contact as HumanPathContact).title === "string"
+        && typeof (contact as HumanPathContact).companyName === "string"
+        && Array.isArray((contact as HumanPathContact).verificationNotes),
+      ))
+    : [];
+  const raceCorruptedEmptyResult = recoverableContacts.length > 0;
+  const currentVersionGeneratedResult = versionAndCountMatch && !raceCorruptedEmptyResult;
+  const currentVersionEmptyResult = currentVersionGeneratedResult && contacts.length === 0;
   return {
     latestProviderVersion,
+    currentVersionGeneratedResult,
     currentVersionEmptyResult,
-    refreshStaleEmptyResult: emptyGeneratedPursuit && !currentVersionEmptyResult,
+    recoverableEvent,
+    recoverableContacts,
+    raceCorruptedEmptyResult,
+    refreshStaleEmptyResult: emptyGeneratedPursuit && (!currentVersionEmptyResult || raceCorruptedEmptyResult),
   };
 }
 
@@ -1809,26 +1838,61 @@ export async function handlePublicProfilePursuitHumanPathRequest(
 
   const loadPursuitEvents = options.loadPursuitEvents ?? loadPursuitEventsForPursuit;
   const loadContactSuggestions = options.loadContactSuggestions ?? loadContactSuggestionsForPursuit;
+  const persistHumanPath = options.persistHumanPath ?? persistHumanPathGeneration;
   const [pursuitEvents, existingContacts] = pursuit.status === "human_path_generated"
     ? await Promise.all([
         loadPursuitEvents(repositoryRequest, pursuit.id),
         loadContactSuggestions(repositoryRequest, pursuit.id),
       ])
     : [[], []];
+  const humanPathCache = humanPathCacheState(pursuit, existingContacts, pursuitEvents);
   const {
-    currentVersionEmptyResult,
+    currentVersionGeneratedResult,
+    recoverableContacts,
+    recoverableEvent,
     refreshStaleEmptyResult,
-  } = humanPathCacheState(pursuit, existingContacts, pursuitEvents);
+  } = humanPathCache;
 
-  // Revisiting Review is not a generic retry. A current provider-version zero
-  // is a cache hit; only an older empty result receives one corrective refresh.
-  if (currentVersionEmptyResult) {
+  if (recoverableContacts.length > 0) {
+    const recoveryResult = transitionPursuit(pursuit, "human_path_generated", generatedAt, {
+      contactCount: recoverableContacts.length,
+      contacts: recoverableContacts,
+      diagnostics: recoverableEvent?.payload.diagnostics,
+      providerVersion: HUMAN_PATH_PROVIDER_VERSION,
+      recoveredRaceResult: true,
+      chargeUsage: false,
+    });
+    if (recoveryResult.ok === false) {
+      return json({
+        error: "Could not recover Human Path.",
+        status: "transition_error",
+        issues: recoveryResult.issues,
+      }, { status: 409 });
+    }
+    await persistHumanPath(repositoryRequest, recoveryResult, recoverableContacts);
+    return json({
+      status: "human_path_generated",
+      profileId: aggregate.profile.id,
+      job,
+      pursuit: recoveryResult.pursuit,
+      contacts: recoverableContacts,
+      diagnostics: recoverableEvent?.payload.diagnostics,
+      event: recoveryResult.event,
+      cached: false,
+      recoveredRaceResult: true,
+      providerVersion: HUMAN_PATH_PROVIDER_VERSION,
+    });
+  }
+
+  // Revisiting Review is not a generic retry. Every complete current-version
+  // result is a cache hit; only an older empty result receives one corrective refresh.
+  if (currentVersionGeneratedResult) {
     return json({
       status: "human_path_generated",
       profileId: aggregate.profile.id,
       job,
       pursuit,
-      contacts: [],
+      contacts: existingContacts,
       cached: true,
       providerVersion: HUMAN_PATH_PROVIDER_VERSION,
     });
@@ -1867,6 +1931,32 @@ export async function handlePublicProfilePursuitHumanPathRequest(
     }, { status: 503 });
   }
 
+  // A second request may have started before the first request committed. Once
+  // a current result exists, the slower request must not replace it. In
+  // particular, a late zero result can never erase contacts already shown to the user.
+  const latestPursuit = await loadPursuit(repositoryRequest, session.userId, pursuitId as string);
+  if (latestPursuit?.status === "human_path_generated" || providerResult.contacts.length === 0) {
+    const [latestEvents, latestContacts] = await Promise.all([
+      loadPursuitEvents(repositoryRequest, pursuit.id),
+      loadContactSuggestions(repositoryRequest, pursuit.id),
+    ]);
+    const latestCache = latestPursuit
+      ? humanPathCacheState(latestPursuit, latestContacts, latestEvents)
+      : undefined;
+    if (latestPursuit && (latestCache?.currentVersionGeneratedResult || latestContacts.length > 0)) {
+      return json({
+        status: "human_path_generated",
+        profileId: aggregate.profile.id,
+        job,
+        pursuit: latestPursuit,
+        contacts: latestContacts,
+        cached: true,
+        raceResolved: true,
+        providerVersion: latestCache?.latestProviderVersion ?? HUMAN_PATH_PROVIDER_VERSION,
+      });
+    }
+  }
+
   const result = transitionPursuit(pursuit, "human_path_generated", generatedAt, {
     contactCount: providerResult.contacts.length,
     contacts: providerResult.contacts,
@@ -1883,7 +1973,6 @@ export async function handlePublicProfilePursuitHumanPathRequest(
     }, { status: 409 });
   }
 
-  const persistHumanPath = options.persistHumanPath ?? persistHumanPathGeneration;
   await persistHumanPath(repositoryRequest, result, providerResult.contacts);
 
   return json({

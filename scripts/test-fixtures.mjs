@@ -33,6 +33,7 @@ const fixtureSuites = [
   "scripts/test-refine-postings.mjs",
   "scripts/test-scan-api.mjs",
   "scripts/test-scan-sources.mjs",
+  "scripts/test-single-flight.mjs",
   "scripts/test-source-scan.mjs",
 ];
 
