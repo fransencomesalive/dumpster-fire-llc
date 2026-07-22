@@ -14,17 +14,18 @@ const job = {
 const pursuit = { id: "pursuit-1" };
 
 function verifiedCandidate(candidateKey, currentName, currentTitle, contactType, linkedinUrl, overrides = {}) {
-  const currentExperienceCompany = overrides.currentExperienceCompany ?? "Useful Studio";
+  const currentCompany = overrides.currentCompany ?? overrides.currentExperienceCompany ?? "Useful Studio";
   const linkedinHeadline = overrides.linkedinHeadline ?? currentTitle;
   return {
     candidateKey,
     currentName,
     linkedinHeadline,
     linkedinHeadlineEvidenceText: `${currentName} | ${linkedinHeadline}`,
-    currentExperienceTitle: currentTitle,
-    currentExperienceCompany,
-    currentExperienceEvidenceText: `${currentTitle} at ${currentExperienceCompany}`,
-    currentExperienceIsCurrent: true,
+    currentTitle,
+    currentCompany,
+    currentRoleEvidenceText: `${currentTitle} at ${currentCompany}`,
+    currentRoleEvidenceUrl: linkedinUrl,
+    currentRoleIsCurrent: true,
     linkedinUrl,
     identityMatches: true,
     companyMatches: true,
@@ -34,7 +35,6 @@ function verifiedCandidate(candidateKey, currentName, currentTitle, contactType,
     reason: "Verified current role is relevant to this hiring chain.",
     roleConnection: "Verified current hiring-chain contact.",
     headlineEvidenceUrl: linkedinUrl,
-    experienceEvidenceUrl: linkedinUrl,
     ...overrides,
   };
 }
@@ -60,7 +60,7 @@ const strong = await createOpenAIHumanPathProvider({
     return JSON.stringify({ verifications: [
       verifiedCandidate("0", "Priya Nadar", "Director, Paid Media", "likely_hiring_manager", "https://linkedin.com/in/priyanadar", { confidence: 60 }),
       verifiedCandidate("1", "Dana Reyes", "VP Media", "functional_leader", "https://linkedin.com/in/danareyes", { confidence: 82 }),
-      verifiedCandidate("2", "Sam Cole", "Talent Partner", "recruiter", "https://www.linkedin.com/in/sam-cole", { confidence: 55 }),
+      verifiedCandidate("2", "Sam Cole", "Talent Partner", "recruiter", "https://www.linkedin.com/in/sam-cole", { confidence: 55, roleEligible: false }),
     ] });
   },
 })({ pursuit, job });
@@ -173,8 +173,8 @@ const joeResult = await createOpenAIHumanPathProvider({
     if (joeCalls === 2) return JSON.stringify({ contacts: [] });
     return JSON.stringify({ verifications: [{
       ...verifiedCandidate("0", "Joe Andrews", "Senior Project Analyst", "unknown", "https://linkedin.com/in/joe-andrews", {
-        currentExperienceCompany: "Airbnb",
-        roleEligible: true,
+        currentCompany: "Airbnb",
+        roleEligible: false,
         contactType: "likely_hiring_manager",
         reason: "Verified current role is not in the program-management hiring chain.",
       }),
@@ -200,7 +200,7 @@ const correctedTitle = await createOpenAIHumanPathProvider({
     if (correctedTitleCalls === 2) return JSON.stringify({ contacts: [] });
     return JSON.stringify({ verifications: [{
       ...verifiedCandidate("0", "Morgan Lee", "Senior Program Manager", "likely_hiring_manager", "https://linkedin.com/in/morgan-lee", {
-        currentExperienceCompany: "Airbnb",
+        currentCompany: "Airbnb",
         confidence: 75,
       }),
     }] });
@@ -226,7 +226,7 @@ const sarahResult = await createOpenAIHumanPathProvider({
     if (sarahCalls === 2) return JSON.stringify({ contacts: [] });
     return JSON.stringify({ verifications: [{
       ...verifiedCandidate("0", "Sarah Kim", "Principal Recruiter, Product and Creative", "recruiter", "https://linkedin.com/in/sarah-kim", {
-        currentExperienceCompany: "Airbnb",
+        currentCompany: "Airbnb",
         linkedinHeadline: "Principal Recruiter, Product and Design",
       }),
     }] });
@@ -237,17 +237,132 @@ assert.equal(sarahResult.contacts[0].title, "Principal Recruiter, Product and Cr
 assert.notEqual(sarahResult.contacts[0].title, "Principal Recruiter, Product and Design");
 assert.notEqual(sarahResult.contacts[0].title, "Principal Recruiter, Product");
 
+// 3e. A verified current employee survives when LinkedIn's headline is not
+// exposed and the current-role excerpt does not redundantly repeat the company.
+// Missing formatting is not evidence that the person is invalid.
+let autodeskCalls = 0;
+const autodeskJob = {
+  id: "job-autodesk",
+  title: "Principal Program Manager, Design Operations",
+  companyName: "Autodesk",
+  description: "Lead DesignOps programs in the Experience Design organization.",
+};
+const autodeskResult = await createOpenAIHumanPathProvider({
+  callModel: async () => {
+    autodeskCalls += 1;
+    if (autodeskCalls === 1) return JSON.stringify({ contacts: [{
+      name: "Corey Long",
+      title: "Program Management & Operations Leader",
+      candidateRole: "Hiring Manager",
+      confidence: 75,
+      linkedinUrl: "https://www.linkedin.com/in/coreymlong",
+    }] });
+    if (autodeskCalls === 2) return JSON.stringify({ contacts: [] });
+    return JSON.stringify({ verifications: [{
+      ...verifiedCandidate(
+        "0",
+        "Corey Long",
+        "Principal Design Program Mgr, Experience Design Program Management",
+        "referral_candidate",
+        "https://www.linkedin.com/in/coreymlong",
+        {
+          currentCompany: "Autodesk",
+          linkedinHeadline: "",
+          linkedinHeadlineEvidenceText: "",
+          headlineEvidenceUrl: "source showing headline at LinkedIn",
+          currentRoleEvidenceText: "Principal Design Program Mgr, Experience Design Program Management",
+          currentRoleEvidenceUrl: "source showing current experience at LinkedIn",
+          confidence: 85,
+        },
+      ),
+    }] });
+  },
+})({ pursuit, job: autodeskJob });
+assert.equal(autodeskResult.contacts.length, 1);
+assert.equal(autodeskResult.contacts[0].name, "Corey Long");
+assert.equal(autodeskResult.contacts[0].title, "Principal Design Program Mgr, Experience Design Program Management");
+assert.equal(autodeskResult.contacts[0].contactType, "referral_candidate");
+assert.equal(autodeskResult.contacts[0].confidence, "medium");
+assert.deepEqual(autodeskResult.contacts[0].reachability, { method: "linkedin", url: "https://www.linkedin.com/in/coreymlong" });
+
+// 3f. When identity, company, and LinkedIn are confirmed but the current title
+// is hidden, a targeted external-evidence pass repairs that exact candidate.
+let repairCalls = 0;
+const repairedAutodeskResult = await createOpenAIHumanPathProvider({
+  callModel: async () => {
+    repairCalls += 1;
+    if (repairCalls === 1) return JSON.stringify({ contacts: [
+      {
+        name: "Christiana Lackner",
+        title: "Chief of Staff / Design Operations",
+        candidateRole: "Functional Leader",
+        confidence: 75,
+        linkedinUrl: "https://www.linkedin.com/in/christiana-lackner",
+        evidenceUrl: "https://theorg.com/org/autodesk/org-chart/christiana-lackner",
+      },
+      {
+        name: "Kevin Martin",
+        title: "Principal Recruiter",
+        candidateRole: "Recruiter",
+        confidence: 70,
+        linkedinUrl: "https://www.linkedin.com/in/kevinmartinautodesk",
+      },
+    ] });
+    if (repairCalls === 2) return JSON.stringify({ contacts: [] });
+    if (repairCalls === 3) return JSON.stringify({ verifications: [
+      {
+        ...verifiedCandidate("0", "Christiana Lackner", "", "unknown", "https://www.linkedin.com/in/christiana-lackner", {
+          currentCompany: "Autodesk",
+          currentRoleEvidenceText: "",
+          currentRoleEvidenceUrl: "",
+          currentRoleIsCurrent: false,
+          roleEligible: false,
+        }),
+      },
+      verifiedCandidate("1", "Kevin Martin", "Principal Recruiter", "recruiter", "https://www.linkedin.com/in/kevinmartinautodesk", {
+        currentCompany: "Autodesk",
+        roleEligible: false,
+      }),
+    ] });
+    return JSON.stringify({ verifications: [{
+      ...verifiedCandidate(
+        "0",
+        "Christiana Lackner",
+        "Chief of Staff / Design Operations",
+        "functional_leader",
+        "https://www.linkedin.com/in/christiana-lackner",
+        {
+          currentCompany: "Autodesk",
+          currentRoleEvidenceText: "Chief of Staff / Design Operations at Autodesk",
+          currentRoleEvidenceUrl: "https://theorg.com/org/autodesk/org-chart/christiana-lackner",
+          confidence: 80,
+        },
+      ),
+    }] });
+  },
+})({ pursuit, job: autodeskJob });
+assert.equal(repairCalls, 4, "missing role evidence triggers one targeted repair call");
+assert.equal(repairedAutodeskResult.contacts.length, 2, "functional repair still runs when a recruiter already passed verification");
+assert.equal(repairedAutodeskResult.contacts[0].name, "Christiana Lackner");
+assert.equal(repairedAutodeskResult.contacts[0].title, "Chief of Staff / Design Operations");
+assert.equal(repairedAutodeskResult.contacts[0].contactType, "functional_leader");
+assert.equal(repairedAutodeskResult.contacts[1].name, "Kevin Martin");
+assert.equal(repairedAutodeskResult.contacts[1].contactType, "recruiter");
+
 // 4. Junk names (title-only / placeholder / organization-plus-role) are filtered out.
 const junk = parseResearchedContacts({
   contacts: [
     { name: "Director", title: "Director of Media", confidence: 50 },
     { name: "(unknown)", title: "VP", confidence: 50 },
     { name: "Coinbase Principal Recruiter", title: "Principal Recruiter, Core Recruiting team", candidateRole: "Recruiter", confidence: 90 },
+    { name: "Principal Recruiter Coinbase", title: "Principal Recruiter, Core Recruiting team", candidateRole: "Recruiter", confidence: 90 },
     { name: "Real Person", title: "VP Media", candidateRole: "Functional Leader", confidence: 50 },
+    { name: "Anthony Head", title: "VP Media", candidateRole: "Functional Leader", confidence: 50 },
   ],
 }, "Coinbase");
-assert.equal(junk.length, 1);
+assert.equal(junk.length, 2);
 assert.equal(junk[0].name, "Real Person");
+assert.equal(junk[1].name, "Anthony Head", "role-like surnames are left to identity verification");
 
 // 4b. Underscore role labels ("long_shot") map like their spaced form.
 const underscore = parseResearchedContacts({
