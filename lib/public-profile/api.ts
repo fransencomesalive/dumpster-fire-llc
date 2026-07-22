@@ -36,7 +36,6 @@ import {
   loadOutreachMessagesForPursuits,
   loadPursuitByIdForUser,
   loadPursuitByJobForUser,
-  loadPursuitEventsForPursuit,
   loadPursuitTrackingEventsForUser,
   loadPursuitTrackingEventsForUserAndPursuits,
   loadPursuitsForUser,
@@ -51,10 +50,7 @@ import {
   recordProfileExportUsage,
   updateOutreachMessage,
 } from "./pursuits/repository";
-import {
-  HUMAN_PATH_PROVIDER_VERSION,
-  openAIHumanPathProvider,
-} from "./pursuits/contact-provider";
+import { openAIHumanPathProvider } from "./pursuits/contact-provider";
 import {
   applyOutreachMessageAction,
   completeReview,
@@ -1490,9 +1486,8 @@ export async function handlePublicProfilePursuitReadRequest(
   const loadContactSuggestions = options.loadContactSuggestions ?? loadContactSuggestionsForPursuit;
   const loadOutreachMessages = options.loadOutreachMessages ?? loadOutreachMessagesForPursuit;
   const loadTrackingEvents = options.loadPursuitTrackingEvents ?? loadPursuitTrackingEventsForUser;
-  const loadPursuitEvents = options.loadPursuitEvents ?? loadPursuitEventsForPursuit;
 
-  const [loadedJob, contacts, outreachMessages, trackingEvents, pursuitEvents] = await Promise.all([
+  const [loadedJob, contacts, outreachMessages, trackingEvents] = await Promise.all([
     pursuit.jobId
       ? (options.loadJob
           ? options.loadJob(repositoryRequest, pursuit.jobId)
@@ -1501,13 +1496,9 @@ export async function handlePublicProfilePursuitReadRequest(
     loadContactSuggestions(repositoryRequest, pursuit.id),
     loadOutreachMessages(repositoryRequest, pursuit.id),
     loadTrackingEvents(repositoryRequest, session.userId, pursuit.id),
-    pursuit.status === "human_path_generated"
-      ? loadPursuitEvents(repositoryRequest, pursuit.id)
-      : Promise.resolve([]),
   ]);
   const job = publicJobVisibleToUser(loadedJob, session.userId);
   const snapshot = pursuit.jobSnapshot;
-  const humanPathCache = humanPathCacheState(pursuit, contacts, pursuitEvents);
 
   return json({
     status: "ok",
@@ -1555,34 +1546,7 @@ export async function handlePublicProfilePursuitReadRequest(
     bucket: pursuitBucket(pursuit),
     tracking: derivePursuitTrackingState(trackingEvents),
     history: pursuitHistory(trackingEvents),
-    humanPathNeedsRefresh: humanPathCache.refreshStaleEmptyResult,
-    humanPathProviderVersion: humanPathCache.latestProviderVersion,
   });
-}
-
-function humanPathCacheState(
-  pursuit: Pursuit,
-  contacts: HumanPathContactSuggestion[],
-  pursuitEvents: PursuitEvent[],
-) {
-  const latestHumanPathEvent = pursuitEvents
-    .filter((event) => event.eventType === "human_path_generated")
-    .at(-1);
-  const latestProviderVersion = typeof latestHumanPathEvent?.payload.providerVersion === "number"
-    ? latestHumanPathEvent.payload.providerVersion
-    : 0;
-  const latestContactCount = typeof latestHumanPathEvent?.payload.contactCount === "number"
-    ? latestHumanPathEvent.payload.contactCount
-    : undefined;
-  const emptyGeneratedPursuit = pursuit.status === "human_path_generated" && contacts.length === 0;
-  const currentVersionEmptyResult = emptyGeneratedPursuit
-    && latestProviderVersion >= HUMAN_PATH_PROVIDER_VERSION
-    && latestContactCount === 0;
-  return {
-    latestProviderVersion,
-    currentVersionEmptyResult,
-    refreshStaleEmptyResult: emptyGeneratedPursuit && !currentVersionEmptyResult,
-  };
 }
 
 export async function handlePublicProfilePursuitCreateRequest(
@@ -1807,33 +1771,6 @@ export async function handlePublicProfilePursuitHumanPathRequest(
     return json({ error: "Job not found.", status: "not_found" }, { status: 404 });
   }
 
-  const loadPursuitEvents = options.loadPursuitEvents ?? loadPursuitEventsForPursuit;
-  const loadContactSuggestions = options.loadContactSuggestions ?? loadContactSuggestionsForPursuit;
-  const [pursuitEvents, existingContacts] = pursuit.status === "human_path_generated"
-    ? await Promise.all([
-        loadPursuitEvents(repositoryRequest, pursuit.id),
-        loadContactSuggestions(repositoryRequest, pursuit.id),
-      ])
-    : [[], []];
-  const {
-    currentVersionEmptyResult,
-    refreshStaleEmptyResult,
-  } = humanPathCacheState(pursuit, existingContacts, pursuitEvents);
-
-  // A current-version empty result is a cache hit, not a retry. The client may
-  // revisit Review, but identical discovery is neither rerun nor re-metered.
-  if (currentVersionEmptyResult) {
-    return json({
-      status: "human_path_generated",
-      profileId: aggregate.profile.id,
-      job,
-      pursuit,
-      contacts: [],
-      cached: true,
-      providerVersion: HUMAN_PATH_PROVIDER_VERSION,
-    });
-  }
-
   const loadSubscriptionContext = options.loadSubscriptionContext ?? loadSubscriptionContextForUser;
   const loadUsageEntries = options.loadUsageEntries ?? loadUsageLedgerForUser;
   const subscriptionContext = await loadSubscriptionContext(repositoryRequest, session.userId);
@@ -1845,8 +1782,7 @@ export async function handlePublicProfilePursuitHumanPathRequest(
   const enforceSubscription = options.enforceSubscription
     ?? ((context, entries, at) => enforceSubscriptionFeature(context, entries, "human_path", { at }));
   const enforcement = enforceSubscription(subscriptionContext, usageEntries, generatedAt);
-  if (enforcement.status !== "allowed"
-    && !(refreshStaleEmptyResult && enforcement.status === "limit_reached")) {
+  if (enforcement.status !== "allowed") {
     return subscriptionBlockedResponse(enforcement);
   }
 
@@ -1870,9 +1806,6 @@ export async function handlePublicProfilePursuitHumanPathRequest(
   const result = transitionPursuit(pursuit, "human_path_generated", generatedAt, {
     contactCount: providerResult.contacts.length,
     contacts: providerResult.contacts,
-    providerVersion: HUMAN_PATH_PROVIDER_VERSION,
-    refreshStaleEmptyResult,
-    chargeUsage: !refreshStaleEmptyResult,
   });
   if (result.ok === false) {
     return json({
@@ -1893,9 +1826,6 @@ export async function handlePublicProfilePursuitHumanPathRequest(
     contacts: providerResult.contacts,
     event: result.event,
     subscription: enforcement,
-    cached: false,
-    providerVersion: HUMAN_PATH_PROVIDER_VERSION,
-    refreshedStaleEmptyResult: refreshStaleEmptyResult,
   });
 }
 

@@ -127,6 +127,30 @@ These are standing copy rules for all user-facing surfaces (Randall, 2026-06-26)
 - **No em dashes in generated messages (Randall, 2026-07-14).** No message generated on Dumpster Fire's platform may ever contain an em dash. Use alternate punctuation or sentence structure instead: commas, parentheses, semicolons, colons, or a new sentence. This is a hard generation rule (prompt-enforced, measured by the outreach-quality harness `emDash` meter), extending the no-em-dash rule already applied to static product copy.
 - **No logistics talk in generated outreach (Randall, 2026-07-14).** Outreach messages never discuss, volunteer, or make claims about location, remote, hybrid, in-office, relocation, time zones, or availability — regardless of the user's remote-preference setting or the job's stated location. Outreach sells the fit; logistics belong to later conversations. Hard generation rule (prompt-enforced + `logisticsMention` detector).
 
+### Human Path Result Mix (Randall, 2026-07-22)
+
+Human Path must return a useful mix of up to five verified contacts rather than collapsing
+the result to one supposedly best person.
+
+- Search, verify, and rank **Hiring Manager**, **Recruiter**, and **Functional Leader** as
+  independent result lanes. One lane must never suppress discovery or display of another.
+- When credible matches can be found, always include both a Hiring Manager and a Recruiter.
+  Include Functional Leaders when credible matches are available, then use any remaining
+  capacity for other useful, clearly classified contacts up to the five-contact maximum.
+- Classification variety is part of the product value. Preserve each contact's honest role
+  in the hiring path so the user can decide whom to approach; do not reduce a varied set to
+  a single contact merely because that person ranks highest overall.
+- Filtering exists to improve truthfulness within each lane, not to erase lanes. Company or
+  function adjacency alone is not evidence that someone manages the opening or belongs in
+  its hiring chain. A displayed classification must be supported by evidence appropriate to
+  that classification.
+- If a required lane has no credible result after its own search and verification pass,
+  return the other credible lanes and retain auditable diagnostics for the missing lane.
+  Never fill a lane with an unrelated person just to satisfy the desired mix.
+- Prompt wording alone is insufficient enforcement. Production implementation must encode
+  lane-aware discovery, verification, result assembly, and regression tests that prove one
+  contact category cannot crowd out another.
+
 ### Input Conventions — List-Like Fields (Randall, 2026-07-10)
 
 Every user-facing input that collects a LIST of values must behave identically, on
