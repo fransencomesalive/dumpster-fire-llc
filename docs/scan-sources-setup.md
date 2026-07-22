@@ -33,10 +33,15 @@ curl -X POST https://<host>/api/jobs/source-scan \
 Daily is compatible with all Vercel plans. On Pro you can increase frequency (e.g. `0 */6 * * *`
 for every six hours) by editing the schedule.
 
-## 3. Add scan sources (the company/board list — Randall provides)
+## 3. Add or adjust scan sources
 
-The scan reads active rows from the `job_sources` table. It ships empty; add the companies/boards
-to scan. Each provider needs a different identifier:
+The scan reads active global rows from the `job_sources` table. Migration
+`20260721000100_restore_mapped_job_sources.sql` restores only the mapped broad feeds from the
+retired scanner. It intentionally excludes targeted company boards because those mappings came
+from a personal watchlist and must not become defaults for other users. User-owned rows are fetched
+only by that user's Run scan and are excluded from this scheduled global scan. The restored Adzuna
+rows are active and require `ADZUNA_APP_ID` and `ADZUNA_APP_KEY` in production. Each provider needs
+a different identifier:
 
 | provider     | put the identifier in        | example                                                        |
 |--------------|------------------------------|----------------------------------------------------------------|

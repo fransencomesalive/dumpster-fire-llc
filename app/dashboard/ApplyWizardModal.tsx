@@ -100,6 +100,22 @@ function humanizeContactType(type: HumanPathContactSuggestion["contactType"]): s
   }
 }
 
+function linkedInBooleanSearch(jobTitle: string, companyName: string | null) {
+  const clean = (value: string) => value.replace(/["“”]/g, "").trim();
+  const fragments = clean(jobTitle)
+    .split(/\s*[,|/]\s*|\s+[–—-]\s+/)
+    .map((value) => value.trim())
+    .filter(Boolean);
+  const roleTerms = Array.from(new Set([clean(jobTitle), ...fragments])).slice(0, 4);
+  const roleClause = roleTerms.map((term) => `"${term}"`).join(" OR ");
+  const companyClause = companyName ? `"${clean(companyName)}" AND ` : "";
+  const query = `${companyClause}(${roleClause}) AND ("Manager" OR "Director" OR "Head" OR "Recruiter" OR "Talent Acquisition")`;
+  return {
+    query,
+    url: `https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(query)}&origin=GLOBAL_SEARCH_HEADER`,
+  };
+}
+
 function confidenceStars(confidence: HumanPathContactSuggestion["confidence"]): string {
   const filled = confidence === "high" ? 4 : confidence === "medium" ? 3 : 2;
   return "★".repeat(filled) + "☆".repeat(5 - filled);
@@ -276,6 +292,7 @@ export default function ApplyWizardModal({
   const [contacts, setContacts] = useState<HumanPathContactSuggestion[]>([]);
   const [selectedContactIds, setSelectedContactIds] = useState<Set<string>>(new Set());
   const [providerUnavailable, setProviderUnavailable] = useState(false);
+  const [noContactsFound, setNoContactsFound] = useState(false);
   const [messages, setMessages] = useState<OutreachMessageRecord[]>([]);
   const [regeneratingId, setRegeneratingId] = useState<string | null>(null);
   // Tracking: `tracking` is the last committed server state; `draft` is the in-progress
@@ -447,6 +464,7 @@ export default function ApplyWizardModal({
       if (data.job) setJob(data.job);
       setPosting(data.posting);
       setContacts(data.contacts);
+      setNoContactsFound(data.pursuit.status === "human_path_generated" && data.contacts.length === 0);
       setMessages(data.outreachMessages);
       applyTracking({ tracking: data.tracking, history: data.history, trackingStartedAt: data.pursuit.trackingStartedAt ?? null });
       return data;
@@ -469,9 +487,10 @@ export default function ApplyWizardModal({
             setReached(4);
           } else {
             setMode("stepper");
-            setStep(4);
-            setReached(4);
-            setResumedSavedForLater(true);
+            const emptyHumanPath = data.pursuit.status === "human_path_generated" && data.contacts.length === 0;
+            setStep(emptyHumanPath ? 2 : 4);
+            setReached(emptyHumanPath ? 2 : 4);
+            setResumedSavedForLater(!emptyHumanPath);
             // Best-effort match + role tracks so the stepper can navigate back to Review;
             // a snapshot-only posting (no live job) degrades to Track-only.
             if (data.pursuit.jobId) {
@@ -573,12 +592,13 @@ export default function ApplyWizardModal({
       });
       setStep(2);
       setReached((r) => (r < 2 ? 2 : r));
-      if (contacts.length === 0) await discoverContacts(pursuitId);
+      if (contacts.length === 0 && !noContactsFound) await discoverContacts(pursuitId);
     });
   }
 
   async function discoverContacts(id: string) {
     setProviderUnavailable(false);
+    setNoContactsFound(false);
     try {
       await api(`/api/public-profile/pursuits/human-path`, "POST", { pursuitId: id });
     } catch (err) {
@@ -609,6 +629,7 @@ export default function ApplyWizardModal({
 
   function submitContacts() {
     if (!pursuitId) return;
+    if (noContactsFound) return;
     const contactIds = [...selectedContactIds];
     if (contactIds.length === 0) {
       setError("Select at least one contact to continue.");
@@ -702,6 +723,7 @@ export default function ApplyWizardModal({
   const title = job?.title ?? posting?.title ?? "Saved posting";
   const company = job?.companyName ?? posting?.companyName ?? null;
   const sourceUrl = job?.sourceUrl ?? posting?.sourceUrl ?? null;
+  const linkedInSearch = linkedInBooleanSearch(title, company);
   const jobMetaLine = [company, job?.compensationText ?? posting?.compensation, job?.location ?? posting?.location, job?.remoteType ?? posting?.remoteType]
     .filter(Boolean)
     .join(" · ");
@@ -726,6 +748,7 @@ export default function ApplyWizardModal({
   // missing prerequisite. The message renders in the canon tomato ds-callout beneath the stepper.
   const goToStep = (target: WizardStep) => {
     if (busy || target === step) return;
+    if (noContactsFound && target >= 3) return;
     setError(null);
     if (target <= reached) { setStep(target); return; }
     if (target === 4 && reached >= 3) { setStep(4); setReached(4); return; }
@@ -746,6 +769,7 @@ export default function ApplyWizardModal({
           key={n}
           className={`${styles.wizardStep} ${n === step ? styles.wizardStepActive : ""}`}
           onClick={() => goToStep(n)}
+          disabled={noContactsFound && n >= 3}
           aria-current={n === step ? "step" : undefined}
         >
           <span>{n}</span>{STEP_LABELS[n]}
@@ -772,7 +796,7 @@ export default function ApplyWizardModal({
       {mode === "stepper" && step === 1 ? (
         <button type="button" className={styles.modalBtnSave} onClick={submitReview} disabled={busy}>Continue</button>
       ) : mode === "stepper" && step === 2 ? (
-        <button type="button" className={styles.modalBtnSave} onClick={submitContacts} disabled={busy || providerUnavailable}>Continue</button>
+        <button type="button" className={styles.modalBtnSave} onClick={submitContacts} disabled={busy || providerUnavailable || noContactsFound}>Continue</button>
       ) : mode === "stepper" && step === 3 ? (
         <button type="button" className={styles.modalBtnSave} onClick={() => { setStep(4); setReached(4); }} disabled={busy}>Continue</button>
       ) : (
@@ -946,6 +970,11 @@ export default function ApplyWizardModal({
                   <p>The reporting chain is built automatically when you pursue this role: owning function, manager, functional leader, then recruiter.</p>
                   {providerUnavailable ? (
                     <p className={styles.formNotice}>Contact discovery is unavailable right now. Try again in a moment.</p>
+                  ) : noContactsFound ? (
+                    <>
+                      <p className={styles.formNotice}>No verified contacts turned up for this role. Use the preloaded LinkedIn search, or open the job posting and look for a current team leader or recruiter.</p>
+                      <a href={linkedInSearch.url} target="_blank" rel="noreferrer" className={styles.seeProfileBtn} aria-label={`Search LinkedIn people with: ${linkedInSearch.query}`}>Search LinkedIn{EXTERNAL_LINK_ICON}</a>
+                    </>
                   ) : contacts.length > 0 ? (
                     <p className={styles.formSuccess}>Found {contacts.length} reporting-chain contact{contacts.length === 1 ? "" : "s"}.</p>
                   ) : null}

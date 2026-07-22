@@ -27,7 +27,8 @@
 .wizardStep span { display: inline-grid; place-items: center; flex: none; width: 24px; height: 24px;
   font-family: var(--font-subhead); font-size: 0.92rem; color: var(--c-ink);
   background-color: var(--c-paper-deep); border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-pill); }
-.wizardStep:hover { box-shadow: var(--reg-box); }
+.wizardStep:hover:not(:disabled) { box-shadow: var(--reg-box); }
+.wizardStep:disabled { opacity: 0.55; cursor: default; }
 /* Skip error spacing; the box itself is the global canon .ds-callout (app/ds.css). */
 .skipError { margin-top: var(--space-3); }
 .wizardStepActive { color: var(--c-paper); background-color: var(--c-teal);

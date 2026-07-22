@@ -35,6 +35,28 @@ type ResearchedContact = {
   rank: number;
 };
 
+type ContactProfileVerification = {
+  candidateKey: string;
+  currentName: string;
+  linkedinHeadline: string;
+  linkedinHeadlineEvidenceText: string;
+  currentExperienceTitle: string;
+  currentExperienceCompany: string;
+  currentExperienceEvidenceText: string;
+  linkedinUrl: string;
+  contactType: HumanPathContact["contactType"];
+  confidence: number;
+  relevanceReason: string;
+  roleConnection: string;
+  headlineEvidenceUrl: string;
+  experienceEvidenceUrl: string;
+  identityMatches: boolean;
+  companyMatches: boolean;
+  roleEligible: boolean;
+  currentExperienceIsCurrent: boolean;
+  rank: number;
+};
+
 function resolveHumanPathReachability(contact: Pick<ResearchedContact, "linkedinUrl" | "professionalContactUrl">): HumanPathContact["reachability"] {
   if (contact.linkedinUrl) return { method: "linkedin", url: contact.linkedinUrl };
   if (contact.professionalContactUrl) return { method: "contact_page", url: contact.professionalContactUrl };
@@ -61,19 +83,24 @@ const SYSTEM_PROMPT = [
   "Avoid recommending: random peers; founders or CEOs unless the company is small and outreach is realistic; unrelated executives; designers or engineers unless they are explicitly the hiring manager.",
   "Public evidence is stronger when it connects to the role's function: hiring posts, team announcements, thought leadership, company blog posts, podcasts, conference talks, or practice leadership pages.",
   "A direct LinkedIn profile is the preferred contact route. A URL is a LinkedIn profile only when it points to that person's /in/ page, not a post, company page, or search result.",
-  "If no direct LinkedIn profile can be verified, return a professionalContactUrl only when it is the person's professional site, official bio, or another page with a direct contact action. Do not reuse an evidence-only page as a contact route.",
+  "Only return a contact when you can verify a direct LinkedIn /in/ profile for that specific person. A role label, team name, search-result heading, or company-plus-title phrase is not a person's name.",
+  "If no direct LinkedIn profile can be verified, omit the contact. Do not reuse an evidence-only page as a contact route.",
   "Do not return, infer, or guess email addresses.",
   "Return JSON only, matching the requested schema. No commentary outside the JSON.",
 ].join(" ");
 
-const REACHABILITY_SYSTEM_PROMPT = [
-  "You are a contact-route research assistant for a job-search product.",
-  "Use web search only for the exact people supplied by the user. Do not add, replace, rank, or reclassify people.",
-  "Find a direct LinkedIn /in/ profile for each person when one can be verified. LinkedIn is the preferred route.",
-  "A LinkedIn post, company page, search page, or other non-/in/ URL is not a direct profile.",
-  "If no direct LinkedIn profile can be verified, return a professionalContactUrl only when it is the person's professional site, official bio, or another page with a direct contact action.",
-  "Do not reuse an evidence-only page as a contact route. Do not return, infer, or guess email addresses.",
-  "Return JSON only. Omit people for whom no verified route is found.",
+const PROFILE_VERIFICATION_SYSTEM_PROMPT = [
+  "You independently verify job-search contacts after discovery. Treat every supplied name, title, company, role classification, confidence score, and URL as an untrusted claim.",
+  "Use web search to inspect current public evidence for each supplied candidate. Return one verification decision for every candidate key, including rejected candidates.",
+  "Preserve the LinkedIn headline and the current Experience entry as two separate facts. Copy both verbatim from evidence; never combine, shorten, normalize, paraphrase, or reconcile their wording.",
+  "linkedinHeadline must be the exact headline text. currentExperienceTitle and currentExperienceCompany must be the exact title and employer from the current Experience entry at the target company.",
+  "The current Experience title is the canonical display title. The headline is supporting evidence only. If the headline and Experience entry disagree, return both exact strings and do not invent a third version.",
+  "linkedinHeadlineEvidenceText and currentExperienceEvidenceText must be verbatim evidence excerpts containing the corresponding exact facts. If exact current Experience evidence is unavailable, leave its fields empty and set currentExperienceIsCurrent false.",
+  "A direct LinkedIn profile must point to that exact person's /in/ page. A post, company page, search result, or another same-name person's profile does not qualify.",
+  "Set roleEligible true only when the exact current Experience title and function make the person plausibly useful in the requested hiring chain. A peer, analyst, project analyst, or unrelated employee is not a Hiring Manager or Functional Leader.",
+  "Reassess contact type from scratch using the exact current Experience entry. Do not use the supplied title or a synthesized title for relevance or classification.",
+  "Set companyMatches true only when current evidence shows the person currently works at the target company. Set identityMatches true only when the evidence and profile belong to the supplied person.",
+  "Do not infer or guess missing facts. Do not return email addresses. Return JSON only, matching the requested schema.",
 ].join(" ");
 
 function cleanString(value: unknown): string {
@@ -117,13 +144,37 @@ function cleanField(row: Record<string, unknown>, ...keys: string[]) {
   return "";
 }
 
-function isSpecificPersonName(value: string) {
+function normalizedNamePhrase(value: string) {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+function isSpecificPersonName(value: string, companyName: string) {
   const normalized = value.trim().toLowerCase();
   if (!normalized || normalized.includes("unverified") || normalized.includes("unknown")) return false;
   if (normalized.startsWith("(") || normalized.startsWith("the ")) return false;
   if (/^(group director|director|vp|svp|head of|recruiter|talent acquisition|hiring manager)\b/.test(normalized)) return false;
   const words = normalized.split(/\s+/).filter(Boolean);
-  return words.length >= 2 && words.some((word) => /^[a-z][a-z'-]+$/.test(word));
+  if (words.length < 2 || words.length > 5) return false;
+
+  const normalizedCompany = normalizedNamePhrase(companyName);
+  const normalizedCandidate = normalizedNamePhrase(value);
+  if (normalizedCompany && (
+    normalizedCandidate === normalizedCompany
+    || normalizedCandidate.startsWith(`${normalizedCompany} `)
+  )) return false;
+
+  // Search-result headings often look name-like to a shallow word-count check
+  // (for example, "Coinbase Principal Recruiter"). A returned contact must be
+  // a person's name, not an organization plus a job title or recruiting team.
+  const roleWords = new Set([
+    "acquisition", "chief", "coordinator", "department", "director", "executive",
+    "group", "head", "hiring", "lead", "leader", "manager", "officer", "partner",
+    "president", "principal", "recruiter", "recruiting", "svp", "talent", "team",
+    "vice", "vp",
+  ]);
+  if (words.some((word) => roleWords.has(word.replace(/[^a-z]/g, "")))) return false;
+
+  return words.every((word) => /^[a-z][a-z.'-]*$/.test(word));
 }
 
 function clampConfidence(value: unknown): number {
@@ -202,7 +253,7 @@ export function parseResearchedContacts(value: unknown, companyName: string): Re
       const name = cleanField(row, "name", "fullName", "full_name", "person");
       const title = cleanField(row, "title", "jobTitle", "job_title", "currentTitle", "current_title");
       if (!name || !title) return null;
-      if (!isSpecificPersonName(name)) return null;
+      if (!isSpecificPersonName(name, companyName)) return null;
 
       const rawLinkedinUrl = cleanField(row, "linkedinUrl", "linkedin_url", "linkedInUrl", "linkedIn", "linkedin", "profileUrl", "profile_url");
       const linkedinUrl = normalizedLinkedinProfileUrl(rawLinkedinUrl);
@@ -311,7 +362,6 @@ const OUTPUT_SCHEMA = {
       candidateRole: "Hiring Manager | Functional Leader | Recruiter | Long Shot",
       contactType: "likely_hiring_manager | functional_leader | recruiter | executive_sponsor | referral_candidate | unknown",
       linkedinUrl: "Direct LinkedIn /in/ profile URL, or empty string if not found",
-      professionalContactUrl: "Direct professional contact page URL only when no LinkedIn profile is found, otherwise empty string",
       evidenceUrl: "URL proving they currently work at the company (LinkedIn, company page, press, etc.)",
       confidence: "0-100 integer: how sure they are current and relevant to this role",
       reason: "One sentence explaining why this person matters for THIS role and where they sit in the likely reporting chain",
@@ -383,29 +433,46 @@ export function buildGapFillPrompt(job: HumanPathJob, existing: ResearchedContac
   });
 }
 
-export function buildReachabilityEnrichmentPrompt(job: HumanPathJob, contacts: ResearchedContact[]) {
+export function buildProfileVerificationPrompt(job: HumanPathJob, contacts: ResearchedContact[]) {
   return JSON.stringify({
-    task: "Find a verified contact route for only these already-selected people.",
+    task: "Independently verify each candidate's identity, current employer, current title, direct LinkedIn profile, and relevance to this hiring chain.",
     role: {
       title: job.title,
       company: job.companyName,
+      summary: job.description.slice(0, 2000),
     },
-    exactPeople: contacts.map((contact) => ({
-      name: contact.name,
-      title: contact.title,
-      company: contact.companyName,
+    untrustedCandidates: contacts.map((contact, index) => ({
+      candidateKey: String(index),
+      claimedName: contact.name,
+      claimedTitle: contact.title,
+      claimedCompany: contact.companyName,
+      claimedContactType: contact.contactType,
+      claimedLinkedinUrl: contact.linkedinUrl || "",
     })),
     requiredSearches: contacts.flatMap((contact) => [
       `site:linkedin.com/in \"${contact.name}\" \"${contact.companyName}\"`,
-      `\"${contact.name}\" \"${contact.companyName}\" contact`,
+      `\"${contact.name}\" \"${contact.companyName}\" \"${contact.title}\"`,
     ]),
     outputSchema: {
-      contacts: [{
-        name: "Exact supplied full name",
-        title: "Exact supplied title",
+      verifications: [{
+        candidateKey: "Exact supplied candidate key",
+        currentName: "Full name supported by the verified current profile",
+        linkedinHeadline: "Verbatim LinkedIn headline, or empty string when unavailable",
+        linkedinHeadlineEvidenceText: "Verbatim evidence excerpt containing the exact LinkedIn headline",
+        currentExperienceTitle: "Verbatim title from the current Experience entry at the target company",
+        currentExperienceCompany: "Verbatim employer from that same current Experience entry",
+        currentExperienceEvidenceText: "Verbatim evidence excerpt containing that exact title and employer",
+        currentExperienceIsCurrent: "boolean: evidence identifies this as a current Experience entry",
         linkedinUrl: "Verified direct LinkedIn /in/ profile URL, or empty string",
-        professionalContactUrl: "Verified direct professional contact page only when LinkedIn is unavailable, or empty string",
-        evidenceUrl: "Search result that supports the route",
+        identityMatches: "boolean: profile belongs to the supplied person",
+        companyMatches: "boolean: person currently works at the target company",
+        roleEligible: "boolean: verified current role is plausibly useful in this job's hiring chain",
+        contactType: "likely_hiring_manager | functional_leader | recruiter | executive_sponsor | referral_candidate | unknown",
+        confidence: "0-100 confidence in the verified decision",
+        reason: "One sentence grounded in the verified current role explaining relevance or rejection",
+        roleConnection: "Verified relationship to this hiring chain, with uncertainty stated plainly",
+        headlineEvidenceUrl: "Current public source supporting the verbatim headline",
+        experienceEvidenceUrl: "Current public source supporting the verbatim current Experience title and employer",
       }],
     },
   });
@@ -429,28 +496,127 @@ export function mergeResearchedContacts(primary: ResearchedContact[], supplement
     .slice(0, 5);
 }
 
-function normalizedContactName(name: string) {
-  return name.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+function normalizedCompanyName(name: string) {
+  return name.toLowerCase()
+    .replace(/\b(incorporated|corporation|company|limited|inc|corp|co|llc|ltd)\b/g, " ")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
 }
 
-export function mergeReachabilityEnrichment(contacts: ResearchedContact[], enrichment: ResearchedContact[]) {
-  const routesByName = new Map(
-    enrichment
-      .filter((contact) => contact.linkedinUrl || contact.professionalContactUrl)
-      .map((contact) => [normalizedContactName(contact.name), contact] as const),
-  );
+function companyNamesMatch(expected: string, observed: string) {
+  const left = normalizedCompanyName(expected);
+  const right = normalizedCompanyName(observed);
+  const containsPhrase = (whole: string, phrase: string) => ` ${whole} `.includes(` ${phrase} `);
+  return Boolean(left && right && (
+    left === right
+    || containsPhrase(left, right)
+    || containsPhrase(right, left)
+  ));
+}
 
-  return contacts.map((contact) => {
-    if (contact.linkedinUrl || contact.professionalContactUrl) return contact;
-    const route = routesByName.get(normalizedContactName(contact.name));
-    if (!route) return contact;
+function titleSupportsContactType(title: string, contactType: HumanPathContact["contactType"]) {
+  const normalized = normalizedNamePhrase(title);
+  const leadershipTitle = /\b(manager|director|head|lead|chief|president|supervisor|vp|svp|evp)\b/.test(normalized);
+  if (contactType === "likely_hiring_manager" || contactType === "functional_leader") return leadershipTitle;
+  if (contactType === "recruiter") return /\b(recruiter|recruiting|talent acquisition|talent partner|sourcer)\b/.test(normalized);
+  if (contactType === "executive_sponsor") return /\b(chief|president|executive|founder|ceo|coo|cmo|cto|vp|svp|evp)\b/.test(normalized);
+  return contactType === "referral_candidate";
+}
+
+function evidenceContainsVerbatim(evidenceText: string, value: string) {
+  const normalizedEvidence = evidenceText.replace(/\s+/g, " ").trim();
+  const normalizedValue = value.replace(/\s+/g, " ").trim();
+  return Boolean(normalizedValue && normalizedEvidence.includes(normalizedValue));
+}
+
+export function parseProfileVerifications(value: unknown): ContactProfileVerification[] {
+  const record = value && typeof value === "object" ? (value as Record<string, unknown>) : {};
+  const list = Array.isArray(record.verifications) ? record.verifications : [];
+
+  return list.map((item): ContactProfileVerification | null => {
+    if (!item || typeof item !== "object") return null;
+    const row = item as Record<string, unknown>;
+    const candidateKey = cleanField(row, "candidateKey", "candidate_key");
+    const currentName = cleanField(row, "currentName", "current_name", "name");
+    const linkedinHeadline = cleanField(row, "linkedinHeadline", "linkedin_headline");
+    const linkedinHeadlineEvidenceText = cleanField(row, "linkedinHeadlineEvidenceText", "linkedin_headline_evidence_text");
+    const currentExperienceTitle = cleanField(row, "currentExperienceTitle", "current_experience_title");
+    const currentExperienceCompany = cleanField(row, "currentExperienceCompany", "current_experience_company");
+    const currentExperienceEvidenceText = cleanField(row, "currentExperienceEvidenceText", "current_experience_evidence_text");
+    const linkedinUrl = normalizedLinkedinProfileUrl(cleanField(row, "linkedinUrl", "linkedin_url"));
+    const headlineEvidenceUrl = normalizedPublicUrl(cleanField(row, "headlineEvidenceUrl", "headline_evidence_url"));
+    const experienceEvidenceUrl = normalizedPublicUrl(cleanField(row, "experienceEvidenceUrl", "experience_evidence_url"));
+    const relevanceReason = cleanField(row, "reason", "relevanceReason", "relevance_reason");
+    const roleConnection = cleanField(row, "roleConnection", "role_connection");
+    const { contactType, rank } = normalizeContactType(row.contactType ?? row.contact_type);
+
+    if (!candidateKey || !currentName) return null;
     return {
-      ...contact,
-      linkedinUrl: route.linkedinUrl,
-      professionalContactUrl: route.professionalContactUrl,
-      verificationNotes: Array.from(new Set([...contact.verificationNotes, ...route.verificationNotes])),
+      candidateKey,
+      currentName,
+      linkedinHeadline,
+      linkedinHeadlineEvidenceText,
+      currentExperienceTitle,
+      currentExperienceCompany,
+      currentExperienceEvidenceText,
+      linkedinUrl,
+      contactType,
+      confidence: clampConfidence(row.confidence),
+      relevanceReason,
+      roleConnection,
+      headlineEvidenceUrl,
+      experienceEvidenceUrl,
+      identityMatches: row.identityMatches === true || row.identity_matches === true,
+      companyMatches: row.companyMatches === true || row.company_matches === true,
+      roleEligible: row.roleEligible === true || row.role_eligible === true,
+      currentExperienceIsCurrent: row.currentExperienceIsCurrent === true || row.current_experience_is_current === true,
+      rank,
     };
-  });
+  }).filter((verification): verification is ContactProfileVerification => Boolean(verification));
+}
+
+export function applyProfileVerifications(contacts: ResearchedContact[], verifications: ContactProfileVerification[]) {
+  const verificationGroups = new Map<string, ContactProfileVerification[]>();
+  for (const verification of verifications) {
+    const group = verificationGroups.get(verification.candidateKey) ?? [];
+    group.push(verification);
+    verificationGroups.set(verification.candidateKey, group);
+  }
+
+  return contacts.flatMap((contact, index): ResearchedContact[] => {
+    const matches = verificationGroups.get(String(index)) ?? [];
+    const verification = matches.length === 1 ? matches[0] : undefined;
+    if (!verification
+      || !verification.identityMatches
+      || !verification.companyMatches
+      || !verification.roleEligible
+      || !verification.currentExperienceIsCurrent
+      || !verification.linkedinUrl
+      || !verification.headlineEvidenceUrl
+      || !verification.experienceEvidenceUrl
+      || verification.contactType === "unknown"
+      || !verification.linkedinHeadline
+      || !evidenceContainsVerbatim(verification.linkedinHeadlineEvidenceText, verification.linkedinHeadline)
+      || !evidenceContainsVerbatim(verification.currentExperienceEvidenceText, verification.currentExperienceTitle)
+      || !evidenceContainsVerbatim(verification.currentExperienceEvidenceText, verification.currentExperienceCompany)
+      || !titleSupportsContactType(verification.currentExperienceTitle, verification.contactType)
+      || !isSpecificPersonName(verification.currentName, verification.currentExperienceCompany)
+      || !companyNamesMatch(contact.companyName, verification.currentExperienceCompany)) return [];
+    return [{
+      ...contact,
+      name: verification.currentName,
+      title: verification.currentExperienceTitle,
+      companyName: verification.currentExperienceCompany,
+      linkedinUrl: verification.linkedinUrl,
+      professionalContactUrl: undefined,
+      contactType: verification.contactType,
+      confidence: Math.min(contact.confidence, verification.confidence),
+      relevanceReason: verification.relevanceReason,
+      roleConnection: verification.roleConnection,
+      verificationNotes: verification.experienceEvidenceUrl ? [`Evidence: ${verification.experienceEvidenceUrl}`] : [],
+      rank: verification.rank,
+    }];
+  }).sort((a, b) => a.rank - b.rank || b.confidence - a.confidence).slice(0, 5);
 }
 
 function toHumanPathContact(contact: ResearchedContact): HumanPathContact {
@@ -522,22 +688,18 @@ export function createOpenAIHumanPathProvider(dependencies: ContactProviderDepen
       contacts = mergeResearchedContacts(contacts, []);
     }
 
-    const contactsMissingRoutes = contacts.filter(
-      (contact) => !contact.linkedinUrl && !contact.professionalContactUrl,
-    );
-    if (contactsMissingRoutes.length > 0) {
-      const enrichmentRaw = await callModel({
-        system: REACHABILITY_SYSTEM_PROMPT,
-        user: buildReachabilityEnrichmentPrompt(job, contactsMissingRoutes),
-      });
-      if (enrichmentRaw !== undefined) {
-        contacts = mergeReachabilityEnrichment(
-          contacts,
-          parseResearchedContacts(extractJson(enrichmentRaw), job.companyName),
-        );
-      }
-    }
+    if (contacts.length === 0) return { status: "generated", contacts: [] };
 
+    const verificationRaw = await callModel({
+      system: PROFILE_VERIFICATION_SYSTEM_PROMPT,
+      user: buildProfileVerificationPrompt(job, contacts),
+    });
+    if (verificationRaw === undefined) return { status: "generated", contacts: [] };
+
+    contacts = applyProfileVerifications(
+      contacts,
+      parseProfileVerifications(extractJson(verificationRaw)),
+    );
     return { status: "generated", contacts: contacts.map(toHumanPathContact) };
   };
 }

@@ -48,6 +48,7 @@ type JobRow = {
   remote_type: string | null;
   employment_type: string | null;
   compensation_text: string | null;
+  department?: string | null;
   description: string;
   posted_at: string | null;
   scraped_at: string;
@@ -135,6 +136,7 @@ function matchJobFromRow(job: JobRow): MatchJob {
     remoteType: defined(job.remote_type),
     employmentType: defined(job.employment_type),
     compensationText: defined(job.compensation_text),
+    department: defined(job.department),
     postedAt: defined(job.posted_at),
     scrapedAt: job.scraped_at,
     sourceUrl: job.source_url,
@@ -233,7 +235,7 @@ async function jobsById(request: PublicProfileRepositoryRequest, jobIds: string[
   return request<JobRow[]>("jobs", {
     query: qs({
       id: `in.(${jobIds.join(",")})`,
-      select: "id,source,source_url,owner_user_id,company_name,title,location,remote_type,employment_type,compensation_text,description,posted_at,scraped_at,created_at,updated_at,responsibilities,required_experience",
+      select: "id,source,source_url,owner_user_id,company_name,title,location,remote_type,employment_type,compensation_text,department,description,posted_at,scraped_at,created_at,updated_at,responsibilities,required_experience",
     }),
   });
 }
@@ -248,7 +250,7 @@ async function jobsByIdForUser(
     query: qs({
       id: `in.(${jobIds.join(",")})`,
       or: `(owner_user_id.is.null,owner_user_id.eq.${userId})`,
-      select: "id,source,source_url,owner_user_id,company_name,title,location,remote_type,employment_type,compensation_text,description,posted_at,scraped_at,created_at,updated_at,responsibilities,required_experience",
+      select: "id,source,source_url,owner_user_id,company_name,title,location,remote_type,employment_type,compensation_text,department,description,posted_at,scraped_at,created_at,updated_at,responsibilities,required_experience",
     }),
   });
   return rows.filter((row) => !row.owner_user_id || row.owner_user_id === userId);
@@ -549,7 +551,7 @@ export async function runPublicJobsScanForUser(
   for (let offset = 0; candidateRows.length < MAX_SCAN_POOL_ROWS; offset += SCAN_POOL_PAGE_SIZE) {
     const page = await request<JobRow[]>("jobs", {
       query: qs({
-        select: "id,source,source_url,owner_user_id,company_name,title,location,remote_type,employment_type,compensation_text,description,posted_at,scraped_at,created_at,updated_at",
+        select: "id,source,source_url,owner_user_id,company_name,title,location,remote_type,employment_type,compensation_text,department,description,posted_at,scraped_at,created_at,updated_at",
         or: `(owner_user_id.is.null,owner_user_id.eq.${userId})`,
         order: "scraped_at.desc,id.asc",
         limit: String(SCAN_POOL_PAGE_SIZE),

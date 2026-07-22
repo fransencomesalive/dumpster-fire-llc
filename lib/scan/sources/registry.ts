@@ -48,6 +48,7 @@ export async function loadActiveJobSources(
 ): Promise<JobSourceRecord[]> {
   const rows = await request<JobSourceRow[]>("job_sources", {
     query: qs({
+      owner_user_id: "is.null",
       status: "eq.active",
       select: "id,company_name,website_url,careers_url,ats_provider,ats_board_token,status,workday_variants",
       order: "company_name.asc",

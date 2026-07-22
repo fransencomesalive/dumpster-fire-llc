@@ -33,14 +33,51 @@ export type SourceScanOptions = {
   now?: () => string;
   env?: NodeJS.ProcessEnv;
   maxJobsPerSource?: number;
+  hostConcurrency?: number;
 };
 
 const DEFAULT_MAX_JOBS_PER_SOURCE = 200;
+const DEFAULT_HOST_CONCURRENCY = 4;
+
+function sourceName(job: NormalizedConnectorJob) {
+  try {
+    const hostname = new URL(job.sourceUrl).hostname.toLowerCase().replace(/^www\./, "");
+    if (hostname === "remotive.com") return "remotive";
+    if (hostname === "himalayas.app") return "himalayas";
+    if (hostname === "jobs.workable.com") return "workable";
+    if (hostname === "arbeitnow.com" || hostname.endsWith(".arbeitnow.com")) return "arbeitnow";
+    if (hostname === "remoteok.com") return "remote_ok";
+    if (hostname === "weworkremotely.com") return "we_work_remotely";
+    if (hostname === "adzuna.com" || hostname.endsWith(".adzuna.com")) return "adzuna";
+  } catch {
+    // A malformed URL is dropped by ingestableJobs; preserve the provider here.
+  }
+  return job.sourceProvider;
+}
+
+function sourceHostname(source: JobSource) {
+  if (source.atsProvider === "greenhouse") return "boards-api.greenhouse.io";
+  if (source.atsProvider === "lever") return "api.lever.co";
+  if (source.atsProvider === "ashby") return "api.ashbyhq.com";
+  try {
+    return new URL(source.careersUrl).hostname.toLowerCase();
+  } catch {
+    return `${source.atsProvider}:${source.id}`;
+  }
+}
+
+async function mapWithConcurrency<T>(items: T[], limit: number, task: (item: T) => Promise<void>) {
+  const queue = [...items];
+  const workers = Array.from({ length: Math.min(Math.max(1, limit), queue.length) }, async () => {
+    for (let item = queue.shift(); item !== undefined; item = queue.shift()) await task(item);
+  });
+  await Promise.all(workers);
+}
 
 function jobRowBody(job: NormalizedConnectorJob, scrapedAt: string) {
   const parsed = parsePosting(job.descriptionText);
   return {
-    source: job.sourceProvider,
+    source: sourceName(job),
     source_url: job.sourceUrl,
     // Scanned postings are shared-pool rows; only user-pasted jobs carry an owner.
     owner_user_id: null,
@@ -92,6 +129,7 @@ export type IngestedJobRow = {
   remote_type: string | null;
   employment_type: string | null;
   compensation_text: string | null;
+  department: string | null;
   description: string;
   posted_at: string | null;
   scraped_at: string;
@@ -101,7 +139,7 @@ export type IngestedJobRow = {
   required_experience: string[] | null;
 };
 
-const INGESTED_ROW_SELECT = "id,source,source_url,company_name,title,location,remote_type,employment_type,compensation_text,description,posted_at,scraped_at,created_at,updated_at,responsibilities,required_experience";
+const INGESTED_ROW_SELECT = "id,source,source_url,company_name,title,location,remote_type,employment_type,compensation_text,department,description,posted_at,scraped_at,created_at,updated_at,responsibilities,required_experience";
 
 // Upsert normalized postings into the shared `jobs` pool. Rows whose heuristic produced
 // sections carry them; rows with empty sections OMIT those columns so an ingest never
@@ -160,42 +198,51 @@ export async function runSourceScan(
   const fetchSource = options.fetchSource ?? fetchNormalizedConnectorJobs;
   const markScanned = options.markScanned ?? markJobSourceScanned;
   const limit = options.maxJobsPerSource ?? DEFAULT_MAX_JOBS_PER_SOURCE;
+  const hostConcurrency = options.hostConcurrency ?? DEFAULT_HOST_CONCURRENCY;
 
   const sources = await loadSources(request);
-  const results: SourceScanSourceResult[] = [];
-  let totalFetched = 0;
-  let totalUpserted = 0;
+  const grouped = new Map<string, Array<{ source: JobSourceRecord; index: number }>>();
+  sources.forEach((source, index) => {
+    const hostname = sourceHostname(source);
+    const group = grouped.get(hostname) ?? [];
+    group.push({ source, index });
+    grouped.set(hostname, group);
+  });
 
-  for (const source of sources) {
-    try {
-      const jobs = await fetchSource(source, { workdayVariants: source.workdayVariants, env: options.env });
-      const { upserted } = await ingestNormalizedJobs(request, jobs, now, { limit });
-
-      await markScanned(request, source.id, { at: now });
-      totalFetched += jobs.length;
-      totalUpserted += upserted;
-      results.push({
-        sourceId: source.id,
-        companyName: source.companyName,
-        provider: source.atsProvider,
-        status: "scanned",
-        fetched: jobs.length,
-        upserted,
-      });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Unable to scan source.";
-      await markScanned(request, source.id, { at: now, error: message });
-      results.push({
-        sourceId: source.id,
-        companyName: source.companyName,
-        provider: source.atsProvider,
-        status: "error",
-        fetched: 0,
-        upserted: 0,
-        error: message,
-      });
+  const results = new Array<SourceScanSourceResult>(sources.length);
+  await mapWithConcurrency([...grouped.values()], hostConcurrency, async (group) => {
+    // Same-host sources stay sequential so query variants do not hammer one public API.
+    for (const { source, index } of group) {
+      try {
+        const jobs = await fetchSource(source, { workdayVariants: source.workdayVariants, env: options.env });
+        const { upserted } = await ingestNormalizedJobs(request, jobs, now, { limit });
+        await markScanned(request, source.id, { at: now });
+        results[index] = {
+          sourceId: source.id,
+          companyName: source.companyName,
+          provider: source.atsProvider,
+          status: "scanned",
+          fetched: jobs.length,
+          upserted,
+        };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Unable to scan source.";
+        await markScanned(request, source.id, { at: now, error: message });
+        results[index] = {
+          sourceId: source.id,
+          companyName: source.companyName,
+          provider: source.atsProvider,
+          status: "error",
+          fetched: 0,
+          upserted: 0,
+          error: message,
+        };
+      }
     }
-  }
+  });
+
+  const totalFetched = results.reduce((total, result) => total + result.fetched, 0);
+  const totalUpserted = results.reduce((total, result) => total + result.upserted, 0);
 
   return {
     ranAt: now,

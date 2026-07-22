@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import type { PublicProfileRepositoryRequest } from "../lib/public-profile/repository";
 import { runSourceScan } from "../lib/scan/source-scan";
-import type { JobSourceRecord } from "../lib/scan/sources/registry";
+import { loadActiveJobSources, type JobSourceRecord } from "../lib/scan/sources/registry";
 import type { JobSource, NormalizedConnectorJob } from "../lib/scan/sources/types";
 
 const now = "2026-06-29T12:00:00.000Z";
@@ -57,6 +57,17 @@ function recordingRequest(): { request: PublicProfileRepositoryRequest; calls: C
 }
 
 async function main() {
+  // ---- Global registry excludes private user-owned boards ----
+  {
+    let query = "";
+    await loadActiveJobSources(async <T>(_table: string, options: Parameters<PublicProfileRepositoryRequest>[1]) => {
+      query = decodeURIComponent(options.query ?? "");
+      return [] as T;
+    });
+    assert.match(query, /owner_user_id=is\.null/);
+    assert.match(query, /status=eq\.active/);
+  }
+
   // ---- Empty source list is a safe no-op ----
   {
     const { request, calls } = recordingRequest();
@@ -179,6 +190,54 @@ async function main() {
     assert.ok(badMark, "failed source should record its error");
     const goodUpsert = calls.find((call) => call.table === "jobs");
     assert.ok(goodUpsert, "good source should still upsert");
+  }
+
+  // ---- Different hosts overlap; the same host stays sequential; result order is stable ----
+  {
+    const { request } = recordingRequest();
+    let globalActive = 0;
+    let maxGlobalActive = 0;
+    const hostActive = new Map<string, number>();
+    const maxHostActive = new Map<string, number>();
+    const sources = [
+      jobSource({ id: "greenhouse-1", companyName: "Greenhouse One", atsProvider: "greenhouse" }),
+      jobSource({ id: "ashby-1", companyName: "Ashby One", atsProvider: "ashby" }),
+      jobSource({ id: "greenhouse-2", companyName: "Greenhouse Two", atsProvider: "greenhouse" }),
+    ];
+    const result = await runSourceScan(request, {
+      now: () => now,
+      hostConcurrency: 3,
+      loadSources: async () => sources,
+      fetchSource: async (sourceArg) => {
+        const host = sourceArg.atsProvider;
+        globalActive += 1;
+        maxGlobalActive = Math.max(maxGlobalActive, globalActive);
+        hostActive.set(host, (hostActive.get(host) ?? 0) + 1);
+        maxHostActive.set(host, Math.max(maxHostActive.get(host) ?? 0, hostActive.get(host) ?? 0));
+        await new Promise((resolve) => setTimeout(resolve, 15));
+        hostActive.set(host, (hostActive.get(host) ?? 1) - 1);
+        globalActive -= 1;
+        return [];
+      },
+    });
+    assert.ok(maxGlobalActive >= 2, "different hosts should fetch concurrently");
+    assert.equal(maxHostActive.get("greenhouse"), 1, "same-host sources must stay sequential");
+    assert.deepEqual(result.sources.map((source) => source.sourceId), sources.map((source) => source.id));
+  }
+
+  // ---- Broad postings retain explicit source identity instead of generic html ----
+  {
+    const { request, calls } = recordingRequest();
+    await runSourceScan(request, {
+      now: () => now,
+      loadSources: async () => [jobSource({ atsProvider: "html", careersUrl: "https://remotive.com/api/remote-jobs" })],
+      fetchSource: async () => [connectorJob({
+        sourceProvider: "html",
+        sourceUrl: "https://remotive.com/remote-jobs/project-management/program-manager-1",
+      })],
+    });
+    const upsert = calls.find((call) => call.table === "jobs");
+    assert.equal((upsert?.body as Array<Record<string, unknown>>)[0].source, "remotive");
   }
 
   // ---- Workday variants are passed through to the fetcher ----
