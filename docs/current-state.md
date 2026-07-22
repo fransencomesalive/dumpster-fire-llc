@@ -1,5 +1,40 @@
 # Current State
 
+## 2026-07-21 - Human Path contact quality and broad source restoration deployed
+
+Commit `7df17f6` is pushed to `origin/main`; CI release checks passed and the Vercel production
+dashboard bundle was read back with the new zero-contact recovery copy. The canonical production
+root and dashboard return 200. The source-scan route returns the expected protected 401 without
+its cron bearer token.
+
+Human Path contact discovery now rejects candidates without a verified direct LinkedIn profile,
+reconciles current LinkedIn headline and current-experience evidence before selecting a person,
+and does not synthesize unsupported names or titles. A completed zero-contact result stays on
+Contacts, disables Outreach, Track, and Continue, and provides a preloaded LinkedIn Boolean search
+instead of retrying the identical discovery method. Production and design-system mirrors contain
+the same zero-contact state. The Claude Design remote asset registration/readback was not available
+in this Codex session and remains unverified.
+
+Migration `20260721000100_restore_mapped_job_sources.sql` is applied through the Supabase
+Management API and recorded as `restore_mapped_job_sources`. It restores 69 broad-market mappings
+only. The 21 targeted company mappings recovered from Randall's personal profile are intentionally
+excluded. Existing global starter sources remain. Production now has 85 active global sources and
+1 private source; all 20 Adzuna mappings are active.
+
+The first production backfill completed after one isolated Adzuna 503 was retried successfully:
+85/85 active global sources have `last_scanned_at`, zero have `last_error`, and the shared pool has
+4,017 jobs. Broad inventory includes Adzuna 270, Himalayas 344, Workable 221, Arbeitnow 100,
+Remote OK 99, Remotive 41, and We Work Remotely 23. The full local-to-production backfill took
+221.7 seconds because local Node networking required a temporary curl transport and each remote
+database round trip crossed the public network. This does not measure Vercel's in-region runtime.
+The next 06:00 UTC Vercel cron is the remaining verification for whether the expanded 85-source
+run completes inside the route's 60-second function budget.
+
+Verification: local production build, typecheck, migration idempotency, source tests, 28 fixture
+suites, CI release checks, production HTTP checks, migration-history readback, source-health query,
+and shared-job source counts. CI retains four existing unused-symbol warnings. The fixture suite
+also retains its existing test-only unresolved em-dash log while passing.
+
 ## 2026-07-20 - Feedback feature production release verified
 
 The job + message feedback flips are approved, implemented, release-audited, and synchronized to

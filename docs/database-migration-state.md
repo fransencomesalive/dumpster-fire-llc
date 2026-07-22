@@ -56,8 +56,8 @@ re-run a psql-applied migration through the CLI — A4 in particular is non-idem
   `schema_migrations` (`resume_highlights`). Column confirmed present (`data_type ARRAY`,
   default `'{}'::text[]`, NOT NULL).
 
-Every migration through `20260720000100` is applied and recorded. The most recent production
-apply is the Human Path contact-reachability migration documented below.
+Every migration through `20260721000100` is applied and recorded. The most recent production
+apply is the broad-source restoration migration documented below.
 
 ## Applied 2026-07-20 (confirmed + recorded in schema_migrations)
 
@@ -67,6 +67,17 @@ apply is the Human Path contact-reachability migration documented below.
   and recorded as `human_path_contact_reachability`. Production verification confirmed the
   column and migration-history row. The verified LinkedIn URLs for the existing Perplexity
   contact rows Chris Segura and Kevin Kraft were backfilled after the schema apply.
+
+## Applied 2026-07-21 (confirmed + recorded in schema_migrations)
+
+- `20260721000100_restore_mapped_job_sources.sql` restores the retired scanner's broad-market
+  source map into global `job_sources`, without adding the 21 targeted company mappings recovered
+  from Randall's personal profile. The idempotent seed adds 69 broad rows: 20 Himalayas,
+  20 Workable, 20 keyed Adzuna, 4 Remotive, 2 We Work Remotely RSS, Arbeitnow, Remote OK, and
+  Magnit Direct Sourcing. Applied through the Management API and recorded as
+  `restore_mapped_job_sources`. Production postflight: 85 active global sources, 1 private source,
+  20 active Adzuna sources, zero active sources without `last_scanned_at`, zero source errors, and
+  4,017 shared jobs after the initial backfill and one isolated Adzuna 503 retry.
 
 ## How to apply migrations (current method)
 
