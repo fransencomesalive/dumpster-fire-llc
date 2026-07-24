@@ -87,27 +87,32 @@
   .matchHighlight::before { content:""; position:absolute; z-index:-1; inset:-0.14em -0.24em -0.02em -0.2em;
     background:var(--c-mustard); border-radius:0.6em 0.95em 0.5em 0.85em / 0.9em 0.5em 0.95em 0.55em; transform:rotate(var(--rot, -1.4deg)); }
 
-  /* ===== Action row (2026-07-19) · centered. Save (teal) + Skip (tomato) buttons,
+  /* ===== Action row (2026-07-19) · centered. Save (mustard) + Skip (tomato) buttons,
      then a stacked [Open posting / Not a match] link group. "Not a match" is the
      feedback trigger (red link); it flips the whole card (see feedback.html).
      No teal-tint hovers anywhere (no longer approved, Randall 2026-07-19). ===== */
   .actionRow { display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:var(--space-4); }
   /* All filled action buttons carry the grain/ink texture (the design-system standard for
-     solid fills). Color is the only difference: Save/Pursue teal, Skip tomato. */
+     solid fills). Color: Save mustard, Pursue teal, Skip tomato; done states (Saved/Skipped) teal. */
   .btnAct { font-family:var(--font-display); font-size:0.95rem; border-radius:var(--radius-md);
     padding:var(--space-2) var(--space-5); cursor:pointer; border:var(--line-bold) solid var(--c-ink);
     box-shadow:var(--shadow-card); color:var(--c-paper);
     background-image:var(--fiber-img), var(--grain-img); background-blend-mode:normal, soft-light; background-size:170px 170px, 46px 46px;
     transition:box-shadow var(--dur-fast) var(--ease-snap), text-shadow var(--dur-fast) var(--ease-snap); }
-  .btnSave, .btnPursue { background-color:var(--c-teal); }
+  .btnPursue { background-color:var(--c-teal); }
+  .btnSave { background-color:var(--c-mustard); color:var(--c-ink); }
   .btnSkip { background-color:var(--c-tomato); }
+  /* Done states mirror each other: teal fill + white check (Saved and Skipped read the same). */
+  .btnSaveOn, .btnSkipOn { background-color:var(--c-teal); color:var(--c-paper); }
+  .btnSaveOn svg, .btnSkipOn svg { flex:none; width:14px; height:14px; }
   .btnAct:hover { box-shadow:var(--reg-box); text-shadow:1px 1px 0 rgba(36,31,26,0.35); }
   .linkStack { display:flex; flex-direction:column; align-items:flex-start; gap:4px; }
   .linkAct { font-family:var(--font-ui), Inter, system-ui, sans-serif; font-size:0.9rem; background:none; border:0;
     padding:0; cursor:pointer; text-decoration:underline; text-underline-offset:3px; display:inline-flex; align-items:center; gap:5px; }
   .extIcon { flex:none; width:13px; height:13px; }
-  .linkOpen { color:var(--c-ink); }
-  .linkOpen:hover { color:var(--c-bluebird); }
+  /* Open posting = ink text with a mustard underline (no turquoise tint); padding gives a full-font-height hit area. */
+  .linkOpen { color:var(--c-ink); padding:2px 0; text-decoration-color:var(--c-mustard); text-decoration-thickness:2px; }
+  .linkOpen:hover { color:var(--c-ink); text-decoration-color:color-mix(in srgb, var(--c-mustard) 72%, var(--c-ink)); }
   .linkNotMatch { color:var(--c-tomato); }
   .linkNotMatch:hover { color:color-mix(in srgb, var(--c-tomato) 78%, var(--c-ink)); }
   .savedAck { display:inline-flex; align-items:center; gap:5px; font-family:var(--font-subhead);

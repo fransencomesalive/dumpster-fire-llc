@@ -55,27 +55,32 @@ a `color-mix()` tint as a new color.
 | `--c-ink` | `#241F1A` | primary text + all outlines |
 | `--c-ink-soft` | `#4A4038` | secondary text |
 | `--c-ink-faint` | `#8A7B6A` | tertiary / captions / placeholder |
-| `--c-tomato` | `#E0512E` | primary CTA + destructive **only** |
-| `--c-teal` | `#1F9E96` | dominant UI accent: links / active / positive / saved |
-| `--c-mustard` | `#E0A52F` | "new / weird" flags only |
+| `--c-tomato` | `#E0512E` | negative / destructive **only** (Skip, remove, Not a match) |
+| `--c-teal` | `#1F9E96` | affirmative / proceed CTA + links / active / positive / done states (Saved, Skipped) |
+| `--c-mustard` | `#E0A52F` | Save + utility actions (Save, View Saved Pursuits, Edit, Open-posting underline) + "new / weird" flags |
 | `--c-bluebird` | `#2A6AA0` | deep cool, used sparingly (button hover, applied badge) |
 | `--c-rose` | `#E2998C` | soft secondary, rare |
 
 ### Semantic roles (prefer these over core tokens in components)
 `--role-bg` `--role-surface` `--role-text` `--role-text-muted` `--role-text-faint`
-`--role-line` `--role-line-soft` `--role-action` (tomato) `--role-action-text`
+`--role-line` `--role-line-soft` `--role-action` (teal) `--role-action-text`
 `--role-accent` (teal) `--role-highlight` (mustard) `--role-info` (bluebird)
 `--role-positive` (teal) `--role-attention` (mustard) `--role-critical` (tomato).
 
-### Color meaning (this is semantic, not decorative)
-- **Teal = positive / on / selected / saved / links / active.** Any selectable or saved
-  element that is "on" is solid teal fill, paper text, ink outline. There is no neutral
-  "added" state — saved is teal.
-- **Tomato = primary CTA and destructive/negative ONLY.** Never as a generic accent.
-- **Red and yellow never co-star.** Tomato and mustard do not appear as peers in the same
-  composition.
-- **Mustard = "new / weird" flags only.** Not a general highlight.
-- **Bluebird = sparingly** (e.g. the `applied` badge, the primary-button hover).
+### Color meaning (this is semantic, not decorative) — action roles updated Randall 2026-07-23
+- **Teal = affirmative / proceed / positive / on / selected / done.** Every proceed CTA
+  (Pursue, Run scan, Resume, Add, primary CTAs) is teal, and every "done" state is teal:
+  Saved AND Skipped both render as solid teal fill + white checkmark, identically. `--role-action`
+  is teal.
+- **Tomato = negative / destructive ONLY** (Skip, remove-X, Not a match). Never a proceed CTA,
+  never a generic accent.
+- **Mustard = Save + utility actions** (the Save button, View Saved Pursuits, all Edit buttons)
+  plus "new / weird" flags. Solid mustard fill carries ink text (not paper).
+- **Open posting = ink text with a mustard underline** — never mustard text (fails contrast on
+  cream), never a turquoise/teal tint, never a ghost button. Hit area padded to full font height.
+- **The old "red + yellow never co-star" rule is RETIRED (Randall 2026-07-23).** By direction,
+  solid mustard Save sits directly beside tomato Skip in the action row.
+- **Bluebird = sparingly** (e.g. the `applied` badge).
 
 For auth/nav specifically: primary CTAs are **teal** (positive), not tomato.
 
@@ -137,12 +142,13 @@ Every margin, padding, gap, and offset is a spacing token. Nothing off-grid.
 - **Type:** `ds-display` `ds-h1` `ds-h2` `ds-subhead` `ds-body` `ds-lede`
 - **Surface/texture:** `ds-surface` (fiber + grain), `ds-card` (paper-deep card w/ ink border +
   hard shadow), `ds-panel-header` `ds-panel-title` `ds-panel-body`
-- **Buttons:** `ds-btn` (tomato primary), `ds-btn-ghost` (paper + ink outline), `ds-btn-sm`
-- **Links:** `ds-link` (teal underline with registration-slip on hover)
+- **Buttons:** `ds-btn` (teal proceed primary), `ds-btn-ghost` (paper + ink outline), `ds-btn-sm`.
+  Save = mustard fill + ink text; Skip / destructive = tomato; done states (Saved/Skipped) = teal + check.
+- **Links:** `ds-link` (teal underline with registration-slip on hover); Open-posting links use an ink-text + mustard-underline variant
 - **Forms:** wrap in `ds-form`; `ds-label` `ds-field` `ds-field-select`; teal focus ring is
   built in. `ds-filter-row` / `ds-filter-tab` for segmented tabs.
 - **Badges/tags:** `ds-badge` + modifiers (`--saved` teal, `--applied` bluebird, `--new`
-  mustard, `--skipped` paper, `--scan` teal, `--warn` mustard, `--alert` tomato). Also
+  mustard, `--skipped` teal + check (matches saved), `--scan` teal, `--warn` mustard, `--alert` tomato). Also
   `ds-keyword` `ds-industry` `ds-missing`.
 - **Callouts:** `ds-callout` (tomato left border), `ds-callout--positive` (teal).
 

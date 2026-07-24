@@ -36,13 +36,17 @@
   --role-line:          var(--c-ink);          /* inked outlines */
   --role-line-soft:     var(--c-paper-edge);
 
-  /* Accent strategy (app) = teal-forward. Teal carries most UI accents;
-     tomato is reserved for primary CTAs + destructive; mustard for new/weird
-     flags only; bluebird used sparingly. Red + yellow never co-star. */
-  --role-action:        var(--c-tomato);       /* primary CTA + destructive ONLY */
+  /* Accent strategy (app) = teal-forward. Teal is the AFFIRMATIVE / PROCEED action
+     (Pursue, Run scan, Resume, Add, primary CTAs) and the "done" states (Saved,
+     Skipped). Tomato is reserved for NEGATIVE / destructive ONLY (Skip, remove,
+     Not a match). Mustard carries Save + utility actions (Save, View Saved Pursuits,
+     Edit, Open posting) plus new/weird flags. Bluebird used sparingly.
+     Randall 2026-07-23: the old "red + yellow never co-star" rule is RETIRED — by
+     direction, solid mustard Save sits directly beside tomato Skip in the action row. */
+  --role-action:        var(--c-teal);         /* affirmative / proceed primary CTA */
   --role-action-text:   var(--c-paper);
   --role-accent:        var(--c-teal);         /* dominant UI accent: links / active / positive */
-  --role-highlight:     var(--c-mustard);      /* new / weird flags only */
+  --role-highlight:     var(--c-mustard);      /* Save + utility actions; new / weird flags */
   --role-info:          var(--c-bluebird);     /* sparingly */
 
   /* Status (kept inside the deck, no red+yellow pairing) */

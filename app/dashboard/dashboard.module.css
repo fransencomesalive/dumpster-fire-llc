@@ -139,16 +139,20 @@
     box-shadow:var(--shadow-card); color:var(--c-paper); display:inline-flex; align-items:center; gap:6px;
     background-image:var(--fiber-img), var(--grain-img); background-blend-mode:normal, soft-light; background-size:170px 170px, 46px 46px;
     transition:box-shadow var(--dur-fast) var(--ease-snap), text-shadow var(--dur-fast) var(--ease-snap); }
-  .btnSave, .btnPursue { background-color:var(--c-teal); }
+  .btnPursue { background-color:var(--c-teal); }
+  .btnSave { background-color:var(--c-mustard); color:var(--c-ink); }
   .btnSkip { background-color:var(--c-tomato); }
-  .btnSaveOn svg { flex:none; width:14px; height:14px; }
+  /* Done states mirror each other: teal fill + white check (Saved and Skipped read the same). */
+  .btnSaveOn, .btnSkipOn { background-color:var(--c-teal); color:var(--c-paper); }
+  .btnSaveOn svg, .btnSkipOn svg { flex:none; width:14px; height:14px; }
   .btnAct:hover:not(:disabled) { box-shadow:var(--reg-box); text-shadow:1px 1px 0 rgba(36,31,26,0.35); }
   .btnAct:disabled { opacity:0.55; cursor:default; }
   .linkStack { display:flex; flex-direction:column; align-items:flex-start; gap:4px; }
   .linkAct { font-family:var(--font-ui), Inter, system-ui, sans-serif; font-size:0.9rem; background:none; border:0;
     padding:0; cursor:pointer; text-decoration:underline; text-underline-offset:3px; display:inline-flex; align-items:center; gap:5px; }
-  .linkOpen { color:var(--c-ink); }
-  .linkOpen:hover { color:var(--c-bluebird); }
+  /* Open posting = ink text with a mustard underline (no turquoise tint). */
+  .linkOpen { color:var(--c-ink); padding:2px 0; text-decoration-color:var(--c-mustard); text-decoration-thickness:2px; }
+  .linkOpen:hover { color:var(--c-ink); text-decoration-color:color-mix(in srgb, var(--c-mustard) 72%, var(--c-ink)); }
   .linkNotMatch { color:var(--c-tomato); }
   .linkNotMatch:hover { color:color-mix(in srgb, var(--c-tomato) 78%, var(--c-ink)); }
   .linkAct:focus-visible { outline:none; border-radius:var(--radius-sm); box-shadow:0 0 0 3px color-mix(in srgb, var(--c-teal) 40%, transparent); }
@@ -253,7 +257,7 @@
     margin-bottom:var(--space-4); padding-bottom:var(--space-3); border-bottom:var(--line-hair) solid var(--c-paper-edge); }
   .sidebarHeading { margin:0; font-family:var(--font-display); font-size:1.25rem; color:var(--c-ink); }
   .editBtn { font-family:var(--font-subhead); text-transform:uppercase; letter-spacing:0.04em; font-size:0.78rem;
-    color:var(--c-ink); background:var(--c-paper); border:var(--line-reg) solid var(--c-ink);
+    color:var(--c-ink); background:var(--c-mustard); border:var(--line-reg) solid var(--c-ink);
     border-radius:var(--radius-sm); box-shadow:2px 2px 0 var(--c-ink); padding:4px 10px; cursor:pointer; }
   .ovScanRow { display:flex; align-items:center; flex-wrap:wrap; gap:var(--space-2) var(--space-3); margin-bottom:var(--space-3); }
   .ovScanRow .dim { font-family:var(--font-subhead); text-transform:uppercase; letter-spacing:var(--tracking-subhead); font-size:0.78rem; color:var(--role-text-faint); }
@@ -266,7 +270,7 @@
     background-image:var(--fiber-img), var(--grain-img); background-blend-mode:normal, soft-light; background-size:170px 170px, 46px 46px;
     border:var(--line-bold) solid var(--c-ink); border-radius:var(--radius-md); box-shadow:var(--shadow-card); padding:var(--space-3) var(--space-4); cursor:pointer; margin-bottom:var(--space-3); }
   .scanSecondaryBtn { display:block; width:100%; box-sizing:border-box; text-align:center; font-family:var(--font-display);
-    font-size:0.95rem; color:var(--c-ink); background:var(--c-paper); border:var(--line-reg) solid var(--c-ink);
+    font-size:0.95rem; color:var(--c-ink); background:var(--c-mustard); border:var(--line-reg) solid var(--c-ink);
     border-radius:var(--radius-md); box-shadow:var(--shadow-card); padding:var(--space-2) var(--space-4); cursor:pointer; text-decoration:none; }
   .configStats { display:grid; grid-template-columns:1fr 1fr; gap:var(--space-4) var(--space-3); }
   .configStat { display:flex; flex-direction:column; gap:2px; min-width:0; }
@@ -304,10 +308,10 @@
     overflow-wrap:anywhere; }
   /* × only in edit mode (Randall 2026-07-21) — hidden until the boards card is Editing. */
   .boardRemove { margin-left:auto; flex:none; display:none; align-items:center; justify-content:center;
-    width:22px; height:22px; border-radius:50%; color:var(--c-ink); background:transparent;
-    border:var(--line-hair) solid var(--c-ink); cursor:pointer; font-size:13px; line-height:1; }
+    width:22px; height:22px; border-radius:50%; color:var(--c-tomato); background:transparent;
+    border:var(--line-hair) solid var(--c-tomato); cursor:pointer; font-size:13px; line-height:1; }
   .boardListEditing .boardRemove { display:inline-flex; }
-  .boardRemove:hover { color:var(--c-paper); background:var(--c-tomato); border-color:var(--c-ink); }
+  .boardRemove:hover { color:var(--c-paper); background:var(--c-tomato); border-color:var(--c-tomato); }
   /* Board name links straight to the careers board (Randall 2026-07-21). */
   .boardLink { font-family:var(--font-display); font-size:0.95rem; color:var(--c-ink);
     text-decoration:underline; text-underline-offset:2px; text-decoration-thickness:1.5px; }

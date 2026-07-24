@@ -23,13 +23,16 @@
   .row { display: flex; flex-wrap: wrap; gap: var(--space-4); align-items: center; }
 
   /* Solid status pills · ink outline, grain+fiber, colour by state */
-  .statusBadge { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.05em;
+  .statusBadge { display: inline-flex; align-items: center; gap: 6px;
+    font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.05em;
     font-size: 0.82rem; line-height: 1; border: var(--line-reg) solid var(--c-ink);
     border-radius: var(--radius-pill); padding: 6px 13px; }
+  .statusBadge svg { flex: none; width: 13px; height: 13px; }
+  /* Saved and Skipped are both "done" states: teal fill + white check, identical treatment. */
   .stSaved   { background-color: var(--c-teal);     color: var(--c-paper); }
+  .stSkipped { background-color: var(--c-teal);     color: var(--c-paper); }
   .stApplied { background-color: var(--c-bluebird); color: var(--c-paper); }
   .stNew     { background-color: var(--c-mustard);  color: var(--c-ink); }
-  .stSkipped { background-color: var(--c-paper);    color: var(--role-text-muted); }
 
   .scanBadge { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.05em;
     font-size: 0.82rem; color: var(--c-paper); background-color: var(--c-teal);
@@ -56,10 +59,10 @@
   <div class="group">
     <span class="groupLabel">Status</span>
     <div class="row">
-      <span class="statusBadge stSaved ds-surface">Saved</span>
+      <span class="statusBadge stSaved ds-surface"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>Saved</span>
       <span class="statusBadge stApplied ds-surface">Applied</span>
       <span class="statusBadge stNew ds-surface">New</span>
-      <span class="statusBadge stSkipped ds-surface">Skipped</span>
+      <span class="statusBadge stSkipped ds-surface"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>Skipped</span>
     </div>
   </div>
 

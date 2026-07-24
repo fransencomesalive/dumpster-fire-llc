@@ -221,7 +221,7 @@
   border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-md); box-shadow: var(--shadow-card);
   padding: var(--space-3) var(--space-5); cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; }
 .modalBtnClose svg { flex: none; width: 15px; height: 15px; }
-.modalBtnClose:hover:not(:disabled) { background-color: color-mix(in srgb, var(--c-teal) 14%, var(--c-paper)); box-shadow: var(--reg-box); }
+.modalBtnClose:hover:not(:disabled) { box-shadow: var(--reg-box); }
 .modalBtnSave { font-family: var(--font-display); font-size: 1rem; color: var(--role-action-text); background-color: var(--role-action);
   border: var(--line-bold) solid var(--c-ink); border-radius: var(--radius-md); box-shadow: var(--shadow-card);
   padding: var(--space-3) var(--space-5); cursor: pointer; }
@@ -229,6 +229,12 @@
   text-shadow: 1px 1px 0 rgba(36, 31, 26, 0.35); }
 .modalBtnSave:disabled, .modalBtnClose:disabled, .copyButton:disabled { opacity: 0.55; cursor: default; }
 .footerSpacer { margin-right: auto; }
+/* Open job posting = ink text with a mustard underline (no ghost button, no teal tint). */
+.linkOpen { font-family: var(--font-display); font-size: 1rem; color: var(--c-ink); background: none; border: 0;
+  padding: 2px 0; cursor: pointer; display: inline-flex; align-items: center; gap: 8px;
+  text-decoration: underline; text-decoration-color: var(--c-mustard); text-decoration-thickness: 2px; text-underline-offset: 3px; }
+.linkOpen svg { flex: none; width: 15px; height: 15px; }
+.linkOpen:hover { color: var(--c-ink); text-decoration-color: color-mix(in srgb, var(--c-mustard) 72%, var(--c-ink)); }
 
 /* ===== Message feedback flip · the whole modal flips to a chip picker. Both faces share one
    grid cell so the modal keeps its footprint and does not jump. Reduced-motion cross-fades. */

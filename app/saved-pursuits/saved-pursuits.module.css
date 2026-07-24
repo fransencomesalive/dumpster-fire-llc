@@ -38,8 +38,8 @@
   transition: background-color var(--dur-fast) var(--ease-snap);
 }
 .bucketToggle button + button { border-left: var(--line-reg) solid var(--c-ink); }
-.bucketToggle button:hover:not([aria-selected="true"]) { background-color: color-mix(in srgb, var(--c-teal) 12%, var(--c-paper)); }
-.bucketToggle button:active { background-color: color-mix(in srgb, var(--c-teal) 22%, var(--c-paper)); }
+.bucketToggle button:hover:not([aria-selected="true"]) { background-color: color-mix(in srgb, var(--c-ink) 8%, var(--c-paper)); }
+.bucketToggle button:active { background-color: color-mix(in srgb, var(--c-ink) 14%, var(--c-paper)); }
 .bucketToggle button[aria-selected="true"] {
   color: var(--c-paper); background-color: var(--c-teal);
   background-image: var(--fiber-img), var(--grain-img); background-blend-mode: normal, soft-light;
@@ -101,10 +101,13 @@
 .pursuitStamp { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.04em; font-size: 0.72rem; color: var(--role-text-faint); }
 .pursuitActions { display: flex; align-items: center; gap: var(--space-2); margin-left: auto; }
 .pursuitActions button, .pursuitActions a { font-family: var(--font-display); font-size: 0.92rem; border-radius: var(--radius-md); padding: var(--space-2) var(--space-4); cursor: pointer; text-decoration: none; white-space: nowrap; }
+/* Resume = teal (affirmative / proceed). */
 .btnOpen { color: var(--role-action-text); background-color: var(--role-action); border: var(--line-bold) solid var(--c-ink); box-shadow: var(--shadow-card); }
-.btnOpen:hover { background-color: var(--role-info); box-shadow: var(--reg-box); text-shadow: 1px 1px 0 rgba(36, 31, 26, 0.35); }
-.btnQuiet { color: var(--c-ink); background: transparent; border: var(--line-reg) solid transparent; padding-bottom: 3px; }
-.btnQuiet:hover:not(:disabled) { background-color: color-mix(in srgb, var(--c-teal) 14%, var(--c-paper)); }
+.btnOpen:hover { box-shadow: var(--reg-box); text-shadow: 1px 1px 0 rgba(36, 31, 26, 0.35); }
+/* Open posting = ink text with a mustard underline (no turquoise tint). */
+.btnQuiet { color: var(--c-ink); background: transparent; border: var(--line-reg) solid transparent; padding-bottom: 3px;
+  text-decoration: underline; text-decoration-color: var(--c-mustard); text-decoration-thickness: 2px; text-underline-offset: 3px; }
+.btnQuiet:hover:not(:disabled) { color: var(--c-ink); text-decoration-color: color-mix(in srgb, var(--c-mustard) 72%, var(--c-ink)); }
 .btnQuiet:disabled { color: var(--role-text-faint); cursor: default; }
 
 /* ---- Empty / loading / error ---- */

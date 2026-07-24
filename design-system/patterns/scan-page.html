@@ -24,7 +24,7 @@
     padding-bottom:var(--space-4); border-bottom:var(--line-reg) solid var(--c-ink); }
   .topTitle { margin:0; font-family:var(--font-display); font-size:var(--type-h2); color:var(--c-ink); }
   .topActions { display:flex; align-items:center; gap:var(--space-3); flex-wrap:wrap; }
-  .topEdit { font-family:var(--font-display); font-size:0.95rem; color:var(--c-ink); background:var(--c-paper);
+  .topEdit { font-family:var(--font-display); font-size:0.95rem; color:var(--c-ink); background:var(--c-mustard);
     border:var(--line-reg) solid var(--c-ink); border-radius:var(--radius-md); box-shadow:var(--shadow-card);
     padding:var(--space-2) var(--space-4); cursor:pointer; }
   .topLink { font-family:var(--font-subhead); text-transform:uppercase; letter-spacing:0.04em; font-size:0.85rem;
@@ -135,14 +135,15 @@
   .btnApply { color:var(--role-action-text); background-color:var(--role-action);
     background-image:var(--fiber-img), var(--grain-img); background-blend-mode:normal, soft-light; background-size:170px 170px, 46px 46px;
     border:var(--line-bold) solid var(--c-ink); box-shadow:var(--shadow-card); margin-left:auto; }
-  .btnSave { color:var(--c-ink); background:var(--c-paper); border:var(--line-reg) solid var(--c-ink); }
-  /* Skip = "not interested" — removes the posting from results (Randall, 2026-07-10) */
-  .btnSkip { color:var(--role-text-muted); background:transparent; border:var(--line-reg) solid transparent; }
+  .btnSave { color:var(--c-ink); background:var(--c-mustard); border:var(--line-reg) solid var(--c-ink); }
+  /* Skip = "not interested" — removes the posting from results (Randall, 2026-07-10). Tomato = negative. */
+  .btnSkip { color:var(--c-tomato); background:transparent; border:var(--line-reg) solid transparent; }
   .skipNote { flex:1 1 0; min-width:110px; font-family:var(--font-body); font-size:0.8rem; font-style:italic; color:var(--role-text-faint); }
-  .btnSource { position:relative; color:var(--c-ink); background:transparent; padding-bottom:3px; }
-  /* Text-styled rail actions show their full footprint on hover — same teal
-     tint the profile-editor nav uses (Randall, 2026-07-16, option 2). */
-  .btnSkip:hover, .btnSource:hover { background-color:color-mix(in srgb, var(--c-teal) 14%, var(--c-paper)); }
+  /* Open posting = ink text with a mustard underline (no turquoise tint). */
+  .btnSource { position:relative; color:var(--c-ink); background:transparent; padding-bottom:3px;
+    text-decoration:underline; text-decoration-color:var(--c-mustard); text-decoration-thickness:2px; text-underline-offset:3px; }
+  .btnSkip:hover { color:color-mix(in srgb, var(--c-tomato) 80%, var(--c-ink)); }
+  .btnSource:hover { color:var(--c-ink); text-decoration-color:color-mix(in srgb, var(--c-mustard) 72%, var(--c-ink)); }
 
   /* ============================ SIDEBAR ============================ */
   .dashboardSidebar { position:sticky; top:var(--space-5); display:flex; flex-direction:column; gap:var(--space-4); }
@@ -150,7 +151,7 @@
     margin-bottom:var(--space-4); padding-bottom:var(--space-3); border-bottom:var(--line-hair) solid var(--c-paper-edge); }
   .sidebarHeading { margin:0; font-family:var(--font-display); font-size:1.25rem; color:var(--c-ink); }
   .editBtn { font-family:var(--font-subhead); text-transform:uppercase; letter-spacing:0.04em; font-size:0.78rem;
-    color:var(--c-ink); background:var(--c-paper); border:var(--line-reg) solid var(--c-ink);
+    color:var(--c-ink); background:var(--c-mustard); border:var(--line-reg) solid var(--c-ink);
     border-radius:var(--radius-sm); box-shadow:2px 2px 0 var(--c-ink); padding:4px 10px; cursor:pointer; }
 
   .ovScanRow { display:flex; align-items:center; flex-wrap:wrap; gap:var(--space-2) var(--space-3); margin-bottom:var(--space-3); }
@@ -166,7 +167,7 @@
     border:var(--line-bold) solid var(--c-ink); border-radius:var(--radius-md); box-shadow:var(--shadow-card);
     padding:var(--space-3) var(--space-4); cursor:pointer; margin-bottom:var(--space-3); }
   .scanSecondaryBtn { display:block; width:100%; box-sizing:border-box; text-align:center; font-family:var(--font-display);
-    font-size:0.95rem; color:var(--c-ink); background:var(--c-paper); border:var(--line-reg) solid var(--c-ink);
+    font-size:0.95rem; color:var(--c-ink); background:var(--c-mustard); border:var(--line-reg) solid var(--c-ink);
     border-radius:var(--radius-md); box-shadow:var(--shadow-card); padding:var(--space-2) var(--space-4);
     cursor:pointer; text-decoration:none; }
   .configStats { display:grid; grid-template-columns:1fr 1fr; gap:var(--space-4) var(--space-3); }
@@ -200,9 +201,9 @@
   .boardName { font-family:var(--font-display); font-size:0.95rem; color:var(--c-ink); }
   .boardDomain { font-family:var(--font-ui), Inter, system-ui, sans-serif; font-size:0.78rem; color:var(--role-text-faint); overflow-wrap:anywhere; }
   .boardRemove { margin-left:auto; flex:none; display:inline-flex; align-items:center; justify-content:center;
-    width:22px; height:22px; border-radius:50%; color:var(--c-ink); background:transparent;
-    border:var(--line-hair) solid var(--c-ink); cursor:pointer; font-size:13px; line-height:1; }
-  .boardRemove:hover { color:var(--c-paper); background:var(--c-tomato); border-color:var(--c-ink); }
+    width:22px; height:22px; border-radius:50%; color:var(--c-tomato); background:transparent;
+    border:var(--line-hair) solid var(--c-tomato); cursor:pointer; font-size:13px; line-height:1; }
+  .boardRemove:hover { color:var(--c-paper); background:var(--c-tomato); border-color:var(--c-tomato); }
 
   @media (max-width:900px){
     .dashboardGrid { grid-template-columns:minmax(0,1fr); }
