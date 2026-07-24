@@ -1,0 +1,94 @@
+<!-- @dsCard group="Case study" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Case study · Matchbook lockup 450×310</title>
+<link rel="stylesheet" href="../tokens/tokens.css" />
+<style>
+  /* CASE-STUDY LOCKUP — the matchbook hero lockup re-composed to a 450×310
+     ratio (rendered 1000×689). Large mascot on the left; on the right the full
+     type treatment (lead + "Dumpster Fire" teal/tomato overprint WITH the ®
+     registration mark), the tagline, and the tomato + teal marquee CTAs. Printed
+     cover frame (bold ink border + hairline inset). Ground is the grain texture
+     over the warm card paper, NOT the flat paper color. Render at 1000×689,
+     deviceScaleFactor 2. */
+  @font-face { font-family:"Original Surfer"; src:url("../fonts/OriginalSurfer-Regular.ttf") format("truetype"); }
+  @font-face { font-family:"Bemio"; src:url("../fonts/Bemio.otf") format("opentype"); }
+  @font-face { font-family:"Plantagenet Cherokee"; src:url("../fonts/PlantagenetCherokee.ttf") format("truetype"); }
+
+  html, body { margin:0; padding:0; }
+
+  /* Matchbook lockup, re-composed. 1000px wide; height trimmed 60px (30 off the
+     top + bottom margins) to shed dead space. The stage IS the printed cover frame. */
+  .stage { position:relative; box-sizing:border-box; width:1000px; height:629px; overflow:hidden;
+    background-color:var(--c-paper-deep); background-image:var(--grain-img);
+    background-blend-mode:soft-light; background-size:46px 46px;
+    border:var(--line-bold) solid var(--c-ink);
+    display:flex; align-items:center; gap:44px; padding:44px 56px; }
+  .stage::before { content:""; position:absolute; inset:8px; border:var(--line-hair) solid var(--c-ink); pointer-events:none; }
+
+  /* Mascot · large, with the hero's paper knock-out outline + hard drop shadow. */
+  .mascot { flex:none; width:336px; height:auto; object-fit:contain;
+    filter: drop-shadow(2.5px 0 0 var(--c-paper)) drop-shadow(-2.5px 0 0 var(--c-paper))
+            drop-shadow(0 2.5px 0 var(--c-paper)) drop-shadow(0 -2.5px 0 var(--c-paper))
+            drop-shadow(6px 7px 0 rgba(36,31,26,0.32)); }
+
+  /* Type column · centered on its own axis (lead, wordmark, rule, tagline, CTAs
+     all balance about the lockup center). */
+  .lockup { flex:1 1 auto; min-width:0; display:flex; flex-direction:column; align-items:center; text-align:center; }
+  .lead { margin:0; font-family:"Bemio", var(--font-display); color:var(--c-ink);
+    font-size:34px; line-height:1.02; letter-spacing:0.01em; }
+
+  /* Wordmark · teal base + tomato slip overprint, verbatim ratio from the hero
+     (3.6px/4.05px at 88px ≙ 0.0409em/0.0460em). ® rides both plates. */
+  .word { position:relative; display:inline-block; margin:10px 0 0; line-height:0.9;
+    font-family:"Original Surfer", cursive; font-size:62px; }
+  .word .plate { display:block; margin:0; }
+  .word .base { color:var(--c-teal); }
+  .word .slip { position:absolute; left:0; top:0; color:var(--c-tomato);
+    transform:translate(0.0409em, 0.0460em); mix-blend-mode:multiply; }
+  .reg { font-size:0.30em; vertical-align:0.9em; margin-left:0.04em; }
+
+  /* Divider · ink rule with centered teal diamond. */
+  .rule { align-self:stretch; margin:22px 0 0; display:flex; align-items:center; gap:12px; }
+  .rule::before, .rule::after { content:""; flex:1 1 auto; height:var(--line-reg); background:var(--c-ink); }
+  .ruleDot { flex:none; width:12px; height:12px; background:var(--c-teal);
+    border:var(--line-hair) solid var(--c-ink); transform:rotate(45deg); }
+
+  /* Tagline · marketing serif, left-justified at the column width. */
+  .tagline { align-self:stretch; margin:20px 0 0; color:var(--c-ink);
+    font-family:"Plantagenet Cherokee", Georgia, serif; font-size:22px; line-height:1.24; text-wrap:pretty; }
+
+  /* CTAs · the two staggered marquee signs. */
+  .ctas { margin:26px 0 0; display:flex; flex-direction:column; gap:12px; }
+  .sign { display:inline-flex; align-items:center; justify-content:center;
+    font-family:var(--font-subhead); text-transform:uppercase; letter-spacing:0.06em;
+    font-size:20px; line-height:1; padding:9px 20px;
+    border:var(--line-bold) solid var(--c-ink); border-radius:var(--radius-sm); box-shadow:var(--shadow-card);
+    background-image:var(--fiber-img), var(--grain-img);
+    background-blend-mode:normal, soft-light; background-size:170px 170px, 46px 46px; color:var(--c-paper); }
+  .signTomato { background-color:var(--c-tomato); align-self:flex-start; }
+  .signTeal { background-color:var(--c-teal); align-self:flex-start; margin-left:48px; }
+</style>
+</head>
+<body>
+  <div class="stage">
+    <img class="mascot" src="../dumpsterfireguy.png" alt="" aria-hidden="true" />
+    <div class="lockup">
+      <p class="lead">The Job Market Is A</p>
+      <h1 class="word">
+        <span class="plate base">Dumpster Fire<span class="reg">&reg;</span></span>
+        <span class="plate slip" aria-hidden="true">Dumpster Fire<span class="reg">&reg;</span></span>
+      </h1>
+      <div class="rule" aria-hidden="true"><span class="ruleDot"></span></div>
+      <p class="tagline">A job-search operating system for people who are done feeding the machine.</p>
+      <div class="ctas">
+        <span class="sign signTomato">Stop Applying</span>
+        <span class="sign signTeal">Start Pursuing</span>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

@@ -182,6 +182,10 @@
     {
       "path": "components/og-share.html",
       "group": "Sharing"
+    },
+    {
+      "path": "components/case-study-lockup.html",
+      "group": "Case study"
     }
   ],
   "templates": [],
