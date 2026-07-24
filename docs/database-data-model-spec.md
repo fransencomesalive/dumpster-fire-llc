@@ -781,6 +781,7 @@ type ContactSuggestion = {
     | 'likely_hiring_manager'
     | 'functional_leader'
     | 'recruiter'
+    | 'other_useful_contact'
     | 'executive_sponsor'
     | 'referral_candidate'
     | 'unknown'

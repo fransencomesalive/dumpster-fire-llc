@@ -1,5 +1,41 @@
 # Current State
 
+## 2026-07-24 - Human Path production provider replaced with direct Exa discovery
+
+The approved backend pivot is implemented. `lib/public-profile/pursuits/contact-provider.ts` is now
+a lean Exa People Search provider with three dynamic searches derived from the actual job and
+candidate profile. It validates an exact current-company work-history entry, requires a direct
+LinkedIn profile, deduplicates candidates, classifies clear recruiters and leaders, preserves
+other potentially useful contacts, and lightly ranks the full useful set without a five-contact
+cap.
+
+The prior OpenAI discovery, verification, prompt, parser, reconciliation, and cost-estimation
+machinery was removed rather than retained as a parallel implementation. Missing evidence is no
+longer treated as a rejection. Exa titles and employment data are presented as discovery data, not
+verified current facts; the direct LinkedIn profile remains the final validation surface.
+
+Provider responses, highlights, search queries, and excluded rows remain request-local. The
+database stores only the normalized contact records required by the existing selection and
+outreach workflow. Human Path events store aggregate diagnostics and counts, not contact arrays or
+raw provider data.
+
+Verification completed locally:
+
+- 29 fixture suites passed
+- typecheck passed
+- focused API and provider tests passed
+- the `other_useful_contact` database constraint migration passed twice for idempotency and rejected
+  an unsupported value
+- the full repository release check passed, including the Saved Pursuits migration suite, lint,
+  and the Next.js production build
+- a request-local Autodesk smoke test completed all three Exa lanes in 3.4 seconds and returned 16
+  unique exact-company LinkedIn contacts from 30 rows
+
+No Apply Wizard UI, CSS, design-system card, or public copy was changed.
+The existing Apply Wizard still contains old "verified contacts" and "reporting chain" claims that
+the direct-discovery provider intentionally does not make. Correcting that protected public copy
+requires separate design and copy approval before release.
+
 ## 2026-07-23 - Human Path direct-discovery pivot paused on Exa data rights
 
 Three user-approved jobs established that Exa raw discovery is useful enough to continue:
@@ -12,10 +48,9 @@ explicit-conflict filtering, honest uncertainty, and a direct LinkedIn profile a
 current-profile validation surface. No additional paid refinement test is approved. The OpenAI
 web-verification approach is rejected.
 
-Production replacement is paused before implementation. Exa's standard Terms of Service appear to
-restrict copying, storing, or displaying service output without written permission or controlling
-additional terms. Confirm an Exa MSA, business agreement, or written permission for end-user
-storage and display before replacing the current provider.
+This pause was resolved on 2026-07-24 when Randall confirmed that the cited terms allow the
+temporary cache and user display used by this product. No additional licensing action is required
+for the approved implementation.
 
 After permission, replace the current provider cleanly and remove its obsolete OpenAI discovery,
 verification, parsing, reconciliation, and test structure rather than layering Exa beside it. This

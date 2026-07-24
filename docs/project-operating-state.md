@@ -71,7 +71,6 @@ Not yet built as public workflows:
 
 - Public matching UI.
 - Pursuit dashboard/list/read workflow UI.
-- Real Human Path provider integration.
 - Public outreach UI and review workflow.
 - Billing provider, checkout, portal, and webhooks.
 - Pursued Jobs Export backend.
@@ -90,13 +89,13 @@ Not yet built as public workflows:
 
 ## Canonical Next Product Task
 
-> **UPDATED 2026-07-23 AT SESSION CLOSE.** The canonical next task is to confirm that an Exa MSA,
-> business agreement, or written permission allows Dumpster Fire to store and display people-search
-> results to end users. Do not implement the production adapter until this is confirmed. Once
-> confirmed, replace the current Human Path provider cleanly with direct discovery, exact-company
-> validation, lightweight ranking, explicit-conflict filtering, honest uncertainty, and direct
-> LinkedIn links. Remove the obsolete OpenAI web-verification structure instead of layering onto it.
-> See `docs/next-session.md` and
+> **UPDATED 2026-07-24.** The Human Path provider replacement is implemented locally and verified.
+> The next starting point is the protected Apply Wizard copy mismatch documented in
+> `docs/next-session.md`. Get separate design and public-copy approval to replace the old
+> "verified contacts" and "reporting chain" claims before releasing the direct-discovery provider.
+> Then confirm `EXA_API_KEY`, apply the contact-type migration, deploy the synced `main` commit,
+> and verify one authenticated pursuit through discovery, selection, and outreach. See
+> `docs/next-session.md` and
 > `docs/human-path-retrieval-architecture-plan-2026-07-22.md`.
 >
 > **UPDATED 2026-06-28.** Phase D **design pass is COMPLETE** — the four new onboarding controls
@@ -198,8 +197,8 @@ These block later work and should not be silently decided by an agent:
 - Resume file storage provider and retention rules.
 - Resume parsing provider.
 - Billing provider and webhook model.
-- Any future Human Path retrieval-provider selection. A new provider requires a concrete observed
-  failure, explicit scope approval, and compatible licensing.
+- Any future Human Path retrieval-provider replacement. Another provider change requires a
+  concrete observed failure, explicit scope approval, and compatible licensing.
 - Which design-system direction, if any, is locked for a specific live surface.
 
 ## Hard Prohibitions

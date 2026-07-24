@@ -439,6 +439,14 @@ async function main() {
   const persistedContacts = calls[4].body as Array<{ professional_contact_url: string | null }>;
   assert.equal(persistedContacts[0].professional_contact_url, "https://dana.example/contact");
 
+  calls.length = 0;
+  await persistHumanPathGeneration(request, humanPath, []);
+  assert.equal(
+    calls.some((call) => call.table === "contact_suggestions"),
+    false,
+    "a slower empty provider result must not delete contacts from a completed concurrent request",
+  );
+
   const contactRowsRequest: PublicProfileRepositoryRequest = async <T>() => [{
     id: "contact-1",
     name: "Dana Lee",

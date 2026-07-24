@@ -52,8 +52,8 @@ import {
   updateOutreachMessage,
 } from "./pursuits/repository";
 import {
+  exaHumanPathProvider,
   HUMAN_PATH_PROVIDER_VERSION,
-  openAIHumanPathProvider,
 } from "./pursuits/contact-provider";
 import {
   applyOutreachMessageAction,
@@ -889,6 +889,7 @@ function outreachRecipientType(contactType: HumanPathContact["contactType"]): Ou
   if (contactType === "functional_leader") return "functional_leader";
   if (contactType === "recruiter") return "recruiter";
   if (contactType === "executive_sponsor") return "executive_sponsor";
+  if (contactType === "other_useful_contact") return "no_contact";
   return "no_contact";
 }
 
@@ -1578,39 +1579,13 @@ function humanPathCacheState(
     && latestProviderVersion >= HUMAN_PATH_PROVIDER_VERSION
     && latestContactCount === contacts.length;
   const emptyGeneratedPursuit = generatedPursuit && contacts.length === 0;
-  const recoverableEvent = versionAndCountMatch && contacts.length === 0
-    ? humanPathEvents.slice(0, -1).reverse().find((event) => {
-        const eventVersion = event.payload.providerVersion;
-        const eventContacts = event.payload.contacts;
-        return typeof eventVersion === "number"
-          && eventVersion >= HUMAN_PATH_PROVIDER_VERSION
-          && typeof event.payload.contactCount === "number"
-          && event.payload.contactCount > 0
-          && Array.isArray(eventContacts)
-          && eventContacts.length > 0;
-      })
-    : undefined;
-  const recoverableContacts = Array.isArray(recoverableEvent?.payload.contacts)
-    ? recoverableEvent.payload.contacts.filter((contact): contact is HumanPathContact => Boolean(
-        contact
-        && typeof contact === "object"
-        && typeof (contact as HumanPathContact).name === "string"
-        && typeof (contact as HumanPathContact).title === "string"
-        && typeof (contact as HumanPathContact).companyName === "string"
-        && Array.isArray((contact as HumanPathContact).verificationNotes),
-      ))
-    : [];
-  const raceCorruptedEmptyResult = recoverableContacts.length > 0;
-  const currentVersionGeneratedResult = versionAndCountMatch && !raceCorruptedEmptyResult;
+  const currentVersionGeneratedResult = versionAndCountMatch;
   const currentVersionEmptyResult = currentVersionGeneratedResult && contacts.length === 0;
   return {
     latestProviderVersion,
     currentVersionGeneratedResult,
     currentVersionEmptyResult,
-    recoverableEvent,
-    recoverableContacts,
-    raceCorruptedEmptyResult,
-    refreshStaleEmptyResult: emptyGeneratedPursuit && (!currentVersionEmptyResult || raceCorruptedEmptyResult),
+    refreshStaleEmptyResult: emptyGeneratedPursuit && !currentVersionEmptyResult,
   };
 }
 
@@ -1848,41 +1823,8 @@ export async function handlePublicProfilePursuitHumanPathRequest(
   const humanPathCache = humanPathCacheState(pursuit, existingContacts, pursuitEvents);
   const {
     currentVersionGeneratedResult,
-    recoverableContacts,
-    recoverableEvent,
     refreshStaleEmptyResult,
   } = humanPathCache;
-
-  if (recoverableContacts.length > 0) {
-    const recoveryResult = transitionPursuit(pursuit, "human_path_generated", generatedAt, {
-      contactCount: recoverableContacts.length,
-      contacts: recoverableContacts,
-      diagnostics: recoverableEvent?.payload.diagnostics,
-      providerVersion: HUMAN_PATH_PROVIDER_VERSION,
-      recoveredRaceResult: true,
-      chargeUsage: false,
-    });
-    if (recoveryResult.ok === false) {
-      return json({
-        error: "Could not recover Human Path.",
-        status: "transition_error",
-        issues: recoveryResult.issues,
-      }, { status: 409 });
-    }
-    await persistHumanPath(repositoryRequest, recoveryResult, recoverableContacts);
-    return json({
-      status: "human_path_generated",
-      profileId: aggregate.profile.id,
-      job,
-      pursuit: recoveryResult.pursuit,
-      contacts: recoverableContacts,
-      diagnostics: recoverableEvent?.payload.diagnostics,
-      event: recoveryResult.event,
-      cached: false,
-      recoveredRaceResult: true,
-      providerVersion: HUMAN_PATH_PROVIDER_VERSION,
-    });
-  }
 
   // Revisiting Review is not a generic retry. Every complete current-version
   // result is a cache hit; only an older empty result receives one corrective refresh.
@@ -1914,7 +1856,7 @@ export async function handlePublicProfilePursuitHumanPathRequest(
     return subscriptionBlockedResponse(enforcement);
   }
 
-  const provider = options.humanPathProvider ?? openAIHumanPathProvider;
+  const provider = options.humanPathProvider ?? exaHumanPathProvider;
   const selectedRoleTrack = pursuit.selectedRoleTrackId
     ? aggregate.roleTracks.find((track) => track.id === pursuit.selectedRoleTrackId)
     : undefined;
@@ -1969,7 +1911,6 @@ export async function handlePublicProfilePursuitHumanPathRequest(
 
   const result = transitionPursuit(pursuit, "human_path_generated", generatedAt, {
     contactCount: providerResult.contacts.length,
-    contacts: providerResult.contacts,
     diagnostics: providerResult.diagnostics,
     providerVersion: HUMAN_PATH_PROVIDER_VERSION,
     refreshStaleEmptyResult,

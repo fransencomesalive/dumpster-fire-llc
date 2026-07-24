@@ -241,7 +241,14 @@ export type HumanPathContact = {
   reachability: HumanPathReachability;
   // Legacy storage remains readable, but email is not a Human Path contact route.
   email?: string;
-  contactType: "likely_hiring_manager" | "functional_leader" | "recruiter" | "executive_sponsor" | "referral_candidate" | "unknown";
+  contactType:
+    | "likely_hiring_manager"
+    | "functional_leader"
+    | "recruiter"
+    | "other_useful_contact"
+    | "executive_sponsor"
+    | "referral_candidate"
+    | "unknown";
   confidence: "low" | "medium" | "high";
   relevanceReason: string;
   roleConnection: string;
@@ -253,35 +260,25 @@ export type HumanPathLane = Extract<
   "likely_hiring_manager" | "recruiter" | "functional_leader"
 >;
 
-export type HumanPathRejectionCode =
-  | "identity_unverified"
-  | "company_unverified"
-  | "current_role_unverified"
-  | "linkedin_profile_unverified"
-  | "classification_unverified"
-  | "relevance_conflict"
-  | "title_mismatch"
-  | "duplicate_candidate"
-  | "verification_unavailable";
-
 export type HumanPathLaneDiagnostic = {
   lane: HumanPathLane;
   discoveryStatus: "completed" | "provider_unavailable";
-  verificationStatus: "completed" | "not_needed" | "provider_unavailable";
-  discoveredCount: number;
-  verifiedCount: number;
-  acceptedCount: number;
-  rejected: Array<{
-    candidateKey: string;
-    name?: string;
-    reasonCodes: HumanPathRejectionCode[];
-  }>;
+  retrievedCount: number;
+  exactCompanyCount: number;
+  returnedCount: number;
 };
 
 export type HumanPathDiagnostics = {
-  schemaVersion: 1;
+  schemaVersion: 2;
   lanes: HumanPathLaneDiagnostic[];
-  assembledCount: number;
+  retrievedCount: number;
+  exactCompanyCount: number;
+  returnedCount: number;
+  excluded: {
+    companyMismatchCount: number;
+    missingLinkedinCount: number;
+    duplicateCount: number;
+  };
 };
 
 export type HumanPathReachability =

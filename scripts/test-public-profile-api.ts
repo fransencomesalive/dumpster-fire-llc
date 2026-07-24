@@ -190,37 +190,38 @@ function humanPathContact(overrides: Partial<HumanPathContact> = {}): HumanPathC
 
 function humanPathDiagnostics(overrides: Partial<HumanPathDiagnostics> = {}): HumanPathDiagnostics {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     lanes: [
       {
         lane: "likely_hiring_manager",
         discoveryStatus: "completed",
-        verificationStatus: "completed",
-        discoveredCount: 1,
-        verifiedCount: 1,
-        acceptedCount: 1,
-        rejected: [],
+        retrievedCount: 1,
+        exactCompanyCount: 1,
+        returnedCount: 1,
       },
       {
         lane: "recruiter",
         discoveryStatus: "completed",
-        verificationStatus: "not_needed",
-        discoveredCount: 0,
-        verifiedCount: 0,
-        acceptedCount: 0,
-        rejected: [],
+        retrievedCount: 0,
+        exactCompanyCount: 0,
+        returnedCount: 0,
       },
       {
         lane: "functional_leader",
         discoveryStatus: "completed",
-        verificationStatus: "not_needed",
-        discoveredCount: 0,
-        verifiedCount: 0,
-        acceptedCount: 0,
-        rejected: [],
+        retrievedCount: 0,
+        exactCompanyCount: 0,
+        returnedCount: 0,
       },
     ],
-    assembledCount: 1,
+    retrievedCount: 1,
+    exactCompanyCount: 1,
+    returnedCount: 1,
+    excluded: {
+      companyMismatchCount: 0,
+      missingLinkedinCount: 0,
+      duplicateCount: 0,
+    },
     ...overrides,
   };
 }
@@ -821,14 +822,14 @@ async function main() {
         pursuitId: "pursuit-1",
         userId: "user-1",
         eventType: "human_path_generated",
-        payload: { contactCount: 0, providerVersion: 11 },
+        payload: { contactCount: 0, providerVersion: 12 },
         createdAt: now,
       }],
     },
   );
   const pursuitReadCurrentEmptyJson = await body(pursuitReadCurrentEmptyHumanPath);
   assert.equal(pursuitReadCurrentEmptyJson.humanPathNeedsRefresh, false);
-  assert.equal(pursuitReadCurrentEmptyJson.humanPathProviderVersion, 11);
+  assert.equal(pursuitReadCurrentEmptyJson.humanPathProviderVersion, 12);
 
   const pursuitReadRaceCorruptedHumanPath = await handlePublicProfilePursuitReadRequest(
     getRequest("pursuits/pursuit-1"),
@@ -845,20 +846,20 @@ async function main() {
         pursuitId: "pursuit-1",
         userId: "user-1",
         eventType: "human_path_generated",
-        payload: { contactCount: 1, contacts: [humanPathContact()], providerVersion: 11 },
+        payload: { contactCount: 1, contacts: [humanPathContact()], providerVersion: 12 },
         createdAt: "2026-06-22T00:00:00.000Z",
       }, {
         pursuitId: "pursuit-1",
         userId: "user-1",
         eventType: "human_path_generated",
-        payload: { contactCount: 0, contacts: [], providerVersion: 11 },
+        payload: { contactCount: 0, contacts: [], providerVersion: 12 },
         createdAt: "2026-06-22T00:01:00.000Z",
       }],
     },
   );
   const pursuitReadRaceCorruptedJson = await body(pursuitReadRaceCorruptedHumanPath);
-  assert.equal(pursuitReadRaceCorruptedJson.humanPathNeedsRefresh, true);
-  assert.equal(pursuitReadRaceCorruptedJson.humanPathProviderVersion, 11);
+  assert.equal(pursuitReadRaceCorruptedJson.humanPathNeedsRefresh, false);
+  assert.equal(pursuitReadRaceCorruptedJson.humanPathProviderVersion, 12);
 
   const pursuitReadForeignPrivateJob = await handlePublicProfilePursuitReadRequest(
     getRequest("pursuits/pursuit-private"),
@@ -1408,7 +1409,7 @@ async function main() {
   assert.equal((humanPathJson.event as Record<string, unknown>).usageType, "human_path");
   assert.equal(
     (humanPathJson.event as { payload: Record<string, unknown> }).payload.providerVersion,
-    11,
+    12,
   );
   assert.equal(
     (humanPathJson.event as { payload: Record<string, unknown> }).payload.chargeUsage,
@@ -1417,6 +1418,10 @@ async function main() {
   assert.deepEqual(
     (humanPathJson.event as { payload: Record<string, unknown> }).payload.diagnostics,
     humanPathDiagnostics(),
+  );
+  assert.equal(
+    "contacts" in (humanPathJson.event as { payload: Record<string, unknown> }).payload,
+    false,
   );
   assert.deepEqual(humanPathJson.diagnostics, humanPathDiagnostics());
   assert.deepEqual((persistedHumanPath as { pursuit: Pursuit }).pursuit.status, "human_path_generated");
@@ -1437,7 +1442,7 @@ async function main() {
         pursuitId: "pursuit-1",
         userId: "user-1",
         eventType: "human_path_generated",
-        payload: { contactCount: 0, providerVersion: 11 },
+        payload: { contactCount: 0, providerVersion: 12 },
         createdAt: now,
       }],
       loadContactSuggestions: async () => [],
@@ -1455,13 +1460,12 @@ async function main() {
   assert.equal(currentEmptyCached.status, 200);
   const currentEmptyJson = await body(currentEmptyCached);
   assert.equal(currentEmptyJson.cached, true);
-  assert.equal(currentEmptyJson.providerVersion, 11);
+  assert.equal(currentEmptyJson.providerVersion, 12);
   assert.equal((currentEmptyJson.contacts as unknown[]).length, 0);
   assert.equal(currentEmptyProviderCalled, false);
 
-  let recoveredContacts: HumanPathContact[] = [];
   let recoveryProviderCalled = false;
-  const raceCorruptedEmptyRecovered = await handlePublicProfilePursuitHumanPathRequest(
+  const legacyEventContactsIgnored = await handlePublicProfilePursuitHumanPathRequest(
     postRequest("pursuits/human-path", { pursuitId: "pursuit-1" }),
     {
       now: () => now,
@@ -1478,14 +1482,14 @@ async function main() {
           contactCount: 1,
           contacts: [humanPathContact()],
           diagnostics: humanPathDiagnostics(),
-          providerVersion: 11,
+          providerVersion: 12,
         },
         createdAt: "2026-06-22T00:00:00.000Z",
       }, {
         pursuitId: "pursuit-1",
         userId: "user-1",
         eventType: "human_path_generated",
-        payload: { contactCount: 0, contacts: [], providerVersion: 11 },
+        payload: { contactCount: 0, contacts: [], providerVersion: 12 },
         createdAt: "2026-06-22T00:01:00.000Z",
       }],
       loadContactSuggestions: async () => [],
@@ -1495,22 +1499,20 @@ async function main() {
         return {
           status: "generated",
           contacts: [],
-          diagnostics: humanPathDiagnostics({ assembledCount: 0 }),
+          diagnostics: humanPathDiagnostics({
+            retrievedCount: 0,
+            exactCompanyCount: 0,
+            returnedCount: 0,
+          }),
         };
       },
-      persistHumanPath: async (_request, result, contacts) => {
-        recoveredContacts = contacts;
-        assert.equal(result.event.payload.recoveredRaceResult, true);
-        assert.equal(result.event.payload.chargeUsage, false);
-        assert.equal(result.usageEvents.length, 0);
-      },
+      persistHumanPath: async () => { throw new Error("event contacts must not be replayed"); },
     },
   );
-  assert.equal(raceCorruptedEmptyRecovered.status, 200);
-  const raceCorruptedJson = await body(raceCorruptedEmptyRecovered);
-  assert.equal(raceCorruptedJson.recoveredRaceResult, true);
-  assert.equal((raceCorruptedJson.contacts as unknown[]).length, 1);
-  assert.equal(recoveredContacts.length, 1);
+  assert.equal(legacyEventContactsIgnored.status, 200);
+  const legacyEventContactsJson = await body(legacyEventContactsIgnored);
+  assert.equal(legacyEventContactsJson.cached, true);
+  assert.equal((legacyEventContactsJson.contacts as unknown[]).length, 0);
   assert.equal(recoveryProviderCalled, false);
 
   let currentContactsProviderCalled = false;
@@ -1527,7 +1529,7 @@ async function main() {
         pursuitId: "pursuit-1",
         userId: "user-1",
         eventType: "human_path_generated",
-        payload: { contactCount: 1, providerVersion: 11 },
+        payload: { contactCount: 1, providerVersion: 12 },
         createdAt: now,
       }],
       loadContactSuggestions: async () => [contactSuggestion()],
@@ -1537,7 +1539,11 @@ async function main() {
         return {
           status: "generated",
           contacts: [],
-          diagnostics: humanPathDiagnostics({ assembledCount: 0 }),
+          diagnostics: humanPathDiagnostics({
+            retrievedCount: 0,
+            exactCompanyCount: 0,
+            returnedCount: 0,
+          }),
         };
       },
     },
@@ -1568,7 +1574,7 @@ async function main() {
         pursuitId: "pursuit-1",
         userId: "user-1",
         eventType: "human_path_generated",
-        payload: { contactCount: 1, providerVersion: 11 },
+        payload: { contactCount: 1, providerVersion: 12 },
         createdAt: now,
       }],
       loadContactSuggestions: async () => [contactSuggestion()],
@@ -1577,7 +1583,11 @@ async function main() {
       humanPathProvider: async () => ({
         status: "generated",
         contacts: [],
-        diagnostics: humanPathDiagnostics({ assembledCount: 0 }),
+        diagnostics: humanPathDiagnostics({
+          retrievedCount: 0,
+          exactCompanyCount: 0,
+          returnedCount: 0,
+        }),
       }),
       persistHumanPath: async () => {
         racingZeroPersisted = true;
@@ -1634,7 +1644,7 @@ async function main() {
   assert.equal((staleRefreshJson.contacts as unknown[]).length, 1);
   assert.equal(staleRefreshPersisted?.usageEvents.length, 0);
   assert.equal(staleRefreshPersisted?.event.usageType, undefined);
-  assert.equal(staleRefreshPersisted?.event.payload.providerVersion, 11);
+  assert.equal(staleRefreshPersisted?.event.payload.providerVersion, 12);
   assert.deepEqual(staleRefreshPersisted?.event.payload.diagnostics, humanPathDiagnostics());
 
   // ---- Pursuit contact selection route ----

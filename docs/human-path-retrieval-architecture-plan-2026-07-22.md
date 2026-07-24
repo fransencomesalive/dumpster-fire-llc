@@ -1,10 +1,10 @@
 # Human Path Contact Search Plan
 
 Date: 2026-07-23
-Status: approved, reduced scope
+Status: approved pivot implemented locally on 2026-07-24; deployment pending
 Scope: Human Path contact discovery and public-profile validation
-Out of scope: a direct-search-provider migration, company-roster caching, industry matrices,
-labor-market benchmarks, Apply Wizard UI/design, public copy, and deployment
+Out of scope: company-roster caching, industry matrices, labor-market benchmarks, Apply Wizard
+UI/design, public copy, and deployment
 
 ## Goal
 
@@ -17,9 +17,10 @@ mappings may control discovery, classification, ranking, or rejection.
 
 ## Approved Decision
 
-Continue with the existing Human Path provider. Do not build a replacement retrieval architecture
-or select another search provider unless a future observed failure proves that the current provider
-cannot preserve or validate a useful contact.
+Use Exa People Search for direct discovery. Keep the implementation narrow: three dynamic search
+lanes, exact current-company validation from structured work history, direct LinkedIn profiles,
+deduplication, lightweight ranking, honest classification, and uncertainty. Do not add a separate
+OpenAI verification stage or a provider-neutral orchestration layer.
 
 The minimum required behavior is:
 
@@ -28,8 +29,8 @@ The minimum required behavior is:
 2. Search Hiring Manager, Recruiter, and Functional Leader lanes independently so one category
    cannot suppress another.
 3. Preserve real named people through discovery and parsing.
-4. Validate identity, current employer, exact current title, and classification from the person's
-   LinkedIn profile or other person-specific public evidence.
+4. Treat provider title and employment data as discovery evidence. The user validates the current
+   profile through the direct LinkedIn link before outreach.
 5. Judge relevance against the actual job. Treat missing remit evidence as unknown and explicit
    contradictory evidence as conflicting.
 6. Rank useful contacts while preserving honest category variety. Do not pad results with
@@ -123,11 +124,11 @@ Approved for provider-comparison validation on 2026-07-23:
 
 ## Provider Comparison Evaluation
 
-The approved three-job reference set compared the current provider output with reviewed contacts
+The approved three-job reference set compared the previous provider output with reviewed contacts
 while treating any newly discovered person as requiring review rather than automatically rejecting
 them. The temporary comparison harness was removed at session close after the direct-discovery
-pivot. Its raw report remains local under `local-artifacts/human-path-evaluation/` and is not part
-of the Git sync while provider storage and display rights are unresolved.
+pivot. Its raw report remains an ignored local evaluation artifact under
+`local-artifacts/human-path-evaluation/` and is not part of production storage.
 
 The original pre-review baseline did not pass:
 
@@ -272,7 +273,7 @@ profiles rather than another company-sized batch. It should compare the same evi
 for title corrections, former employment, current remit conflicts, and useful-peer preservation.
 Any paid run needs separate approval, a fixed call and cost ceiling, and no production wiring.
 
-## Final Decision and Production Blocker
+## Final Decision and Implementation Resolution
 
 Randall approved the direct-discovery pivot after reviewing the hybrid result. The raw Exa batches
 were useful despite imperfections; the separate OpenAI verification stage spent more and removed
@@ -289,19 +290,18 @@ The product direction is:
 - keep useful operational peers and resource managers under an honest classification
 - provide the direct LinkedIn profile as the final current-profile validation surface
 
-Production implementation is paused on data-use rights. Exa's standard Terms of Service,
-Section 4.2(a), appear to restrict copying, storing, or displaying information obtained through the
-service unless written permission or controlling additional terms allow it. Confirm an Exa MSA,
-business agreement, or written permission for Dumpster Fire's end-user storage and display before
-replacing the provider.
+Randall confirmed on 2026-07-24 that the cited terms allow this product's temporary cache and
+temporary user display. No additional licensing action is required for the approved use.
 
-After permission is confirmed, replace the current provider and delete the obsolete OpenAI
-discovery and web-verification machinery, its verification-specific diagnostics, and its obsolete
-tests. Do not retain parallel production implementations.
+The production provider code now uses Exa direct discovery and removes the obsolete OpenAI
+discovery and web-verification machinery, verification-specific diagnostics, and obsolete tests.
+Provider responses, highlights, queries, and excluded rows remain request-local. Only normalized
+contact records required by selection and outreach are persisted, and Human Path events retain
+aggregate counts rather than contact arrays.
 
 ## Deferred Unless Evidence Requires It
 
-- direct-search-provider integration
+- another direct-search-provider migration
 - new paid search account
 - provider-neutral retrieval framework
 - company-roster cache

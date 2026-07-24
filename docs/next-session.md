@@ -1,48 +1,55 @@
-# Next Session — Starting Point
+# Next Session - Starting Point
 
-_Updated 2026-07-23 at session close. Read `docs/project-operating-state.md` Session Start
+_Updated 2026-07-24. Read `docs/project-operating-state.md` Session Start
 Protocol and `AGENTS.md` first. This file names the immediate next work only._
 
-## Priority 1 - Confirm Exa data rights, then replace the Human Path provider cleanly
+## Priority 1 - Configure and release the Human Path Exa provider
 
-The approved pivot and evaluation evidence are in:
+The approved pivot is implemented locally. Evaluation evidence and the final architecture decision
+are in:
 
 `docs/human-path-retrieval-architecture-plan-2026-07-22.md`
 
-Decision:
+Completed:
 
-- Exa's raw discovery batches were useful enough: 31 of 38 reviewed exact-company contacts were
-  accepted at $0.063.
-- The separate OpenAI verification batch is rejected as a production direction. It cost $0.1779,
-  retained only 14 of 31 useful Exa contacts, and still kept one known stale profile.
-- Continue with direct discovery, exact-company validation, lightweight ranking, explicit-conflict
-  filtering, honest uncertainty, and direct LinkedIn profile links.
-- Do not add another paid verification or refinement test.
+- Replaced the former OpenAI contact provider with Exa People Search.
+- Removed the old discovery, verification, prompt, parser, reconciliation, cost-estimation, and
+  rejection machinery instead of retaining parallel code.
+- Added three dynamic search lanes derived from the actual job and candidate profile.
+- Added exact current-company matching, direct LinkedIn-only results, deduplication, light ranking,
+  and `other_useful_contact`.
+- Kept missing evidence as unknown and preserved all potentially useful exact-company results.
+- Kept provider responses and highlights request-local. Persisted events now contain only aggregate
+  diagnostics, while normalized contact suggestions remain available for selection and outreach.
+- Replaced the contact-model environment example with `EXA_API_KEY`.
 
-The immediate blocker is Exa production data-use permission. Exa's standard Terms of Service,
-Section 4.2(a), appear to restrict copying, storing, or displaying information obtained through the
-service unless Exa expressly permits it in writing or an additional agreement controls. Before
-production code changes, confirm an Exa MSA, business agreement, or written permission that allows
-Dumpster Fire to store and display people-search results to end users.
+Verification:
 
-Once that permission is confirmed:
+- `npm run test:fixtures`: 29 suites passed.
+- `npm run typecheck`: passed.
+- Focused provider and API fixtures: passed.
+- `npm run test:migrations:human-path-contact-type`: passed.
+- `npm run release:check`: passed, including the Saved Pursuits migration suite, lint with four
+  pre-existing warnings and no errors, and the Next.js production build.
+- Live request-local Autodesk smoke test: all three lanes completed in 3.4 seconds; 30 rows became
+  16 unique exact-company LinkedIn contacts after validation and deduplication.
 
-1. Replace `lib/public-profile/pursuits/contact-provider.ts`; do not layer a new provider onto the
-   existing OpenAI discovery and verification implementation.
-2. Remove OpenAI web-verification prompts, parsers, evidence reconciliation, cost tracking,
-   verification rejection machinery, and their obsolete tests.
-3. Add `other_useful_contact` as an honest production classification.
-4. Keep exact-company validation, lane variety, deduplication, lightweight ranking, explicit
-   contradictions, and uncertainty preservation.
-5. Move the reviewed contacts into a provider-neutral regression fixture and remove obsolete
-   OpenAI comparison and hybrid-verification harnesses.
-6. Replace the Human Path contact-model environment configuration with `EXA_API_KEY`.
+Next:
 
-Do not edit Apply Wizard UI, CSS, design-system cards, or public copy during this backend cleanup.
-Raw provider response exports remain local and are not part of the Git sync while Exa's storage and
-display rights are unresolved.
+1. Confirm `EXA_API_KEY` is configured in the production deployment environment.
+2. Apply `20260724000100_human_path_other_useful_contact.sql` to production.
+3. Deploy the synced `main` commit.
+4. Run one authenticated production pursuit through discovery, contact selection, and outreach.
+5. Confirm the direct LinkedIn links, contact classifications, and selected-contact persistence.
+6. Do not add another paid verification layer or refine against only the three evaluation jobs.
+7. Before production release, get separate design and public-copy approval to replace the Apply
+   Wizard's old "verified contacts" and "reporting chain" claims. The direct-discovery provider
+   intentionally does not make either claim. The protected UI was not edited during this backend
+   pass.
+8. Do not edit Apply Wizard UI, CSS, design-system cards, or public copy without that separate
+   approval.
 
-## Session-close verification
+## Previous session verification
 
 - `npm run test:fixtures`: 29 suites passed.
 - `npm run typecheck`: passed.

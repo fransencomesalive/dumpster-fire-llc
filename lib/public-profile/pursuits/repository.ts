@@ -861,12 +861,14 @@ export async function persistHumanPathGeneration(
 ) {
   await persistPursuitTransition(request, result);
 
-  await request("contact_suggestions", {
-    method: "DELETE",
-    query: qs({ pursuit_id: `eq.${result.pursuit.id}` }),
-  });
-
+  // An empty response must not delete contacts written by a faster concurrent
+  // request. The API resolves legitimate cached and refresh states before this call.
   if (contacts.length > 0) {
+    await request("contact_suggestions", {
+      method: "DELETE",
+      query: qs({ pursuit_id: `eq.${result.pursuit.id}` }),
+    });
+
     await request("contact_suggestions", {
       method: "POST",
       body: contacts.map((contact) => contactSuggestionBody(result.pursuit, contact, result.pursuit.updatedAt)),
