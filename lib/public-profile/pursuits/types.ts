@@ -259,6 +259,7 @@ export type HumanPathRejectionCode =
   | "current_role_unverified"
   | "linkedin_profile_unverified"
   | "classification_unverified"
+  | "relevance_conflict"
   | "title_mismatch"
   | "duplicate_candidate"
   | "verification_unavailable";
@@ -428,6 +429,13 @@ export type HumanPathProviderInput = {
     title: string;
     companyName: string;
     description: string;
+  };
+  candidateContext?: {
+    roleTrackName?: string;
+    targetTitles: string[];
+    keyResponsibilities: string[];
+    targetIndustries: string[];
+    skills: string[];
   };
 };
 

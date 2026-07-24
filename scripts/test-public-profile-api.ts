@@ -821,14 +821,14 @@ async function main() {
         pursuitId: "pursuit-1",
         userId: "user-1",
         eventType: "human_path_generated",
-        payload: { contactCount: 0, providerVersion: 3 },
+        payload: { contactCount: 0, providerVersion: 11 },
         createdAt: now,
       }],
     },
   );
   const pursuitReadCurrentEmptyJson = await body(pursuitReadCurrentEmptyHumanPath);
   assert.equal(pursuitReadCurrentEmptyJson.humanPathNeedsRefresh, false);
-  assert.equal(pursuitReadCurrentEmptyJson.humanPathProviderVersion, 3);
+  assert.equal(pursuitReadCurrentEmptyJson.humanPathProviderVersion, 11);
 
   const pursuitReadRaceCorruptedHumanPath = await handlePublicProfilePursuitReadRequest(
     getRequest("pursuits/pursuit-1"),
@@ -845,20 +845,20 @@ async function main() {
         pursuitId: "pursuit-1",
         userId: "user-1",
         eventType: "human_path_generated",
-        payload: { contactCount: 1, contacts: [humanPathContact()], providerVersion: 3 },
+        payload: { contactCount: 1, contacts: [humanPathContact()], providerVersion: 11 },
         createdAt: "2026-06-22T00:00:00.000Z",
       }, {
         pursuitId: "pursuit-1",
         userId: "user-1",
         eventType: "human_path_generated",
-        payload: { contactCount: 0, contacts: [], providerVersion: 3 },
+        payload: { contactCount: 0, contacts: [], providerVersion: 11 },
         createdAt: "2026-06-22T00:01:00.000Z",
       }],
     },
   );
   const pursuitReadRaceCorruptedJson = await body(pursuitReadRaceCorruptedHumanPath);
   assert.equal(pursuitReadRaceCorruptedJson.humanPathNeedsRefresh, true);
-  assert.equal(pursuitReadRaceCorruptedJson.humanPathProviderVersion, 3);
+  assert.equal(pursuitReadRaceCorruptedJson.humanPathProviderVersion, 11);
 
   const pursuitReadForeignPrivateJob = await handlePublicProfilePursuitReadRequest(
     getRequest("pursuits/pursuit-private"),
@@ -1375,16 +1375,20 @@ async function main() {
     getSession: async () => authed(),
     repositoryRequest,
     loadAggregate: async () => agg,
-    loadPursuit: async () => savedPursuit({ status: "review_complete" }),
+    loadPursuit: async () => savedPursuit({ status: "review_complete", selectedRoleTrackId: "track-1" }),
     loadJob: async () => publicJob(),
     loadSubscriptionContext: async () => activeBasicSubscription(),
     loadUsageEntries: async (_request, _userId, options) => {
       usageOptions = options;
       return [usage("human_path", 12)];
     },
-    humanPathProvider: async ({ job, pursuit }) => {
+    humanPathProvider: async ({ job, pursuit, candidateContext }) => {
       assert.equal(job.companyName, "Useful Studio");
       assert.equal(pursuit.status, "review_complete");
+      assert.equal(candidateContext?.roleTrackName, "Program Director");
+      assert.deepEqual(candidateContext?.targetTitles, ["Program Director"]);
+      assert.deepEqual(candidateContext?.targetIndustries, ["AI"]);
+      assert.deepEqual(candidateContext?.skills, ["Program leadership"]);
       return { status: "generated", contacts: [humanPathContact()], diagnostics: humanPathDiagnostics() };
     },
     persistHumanPath: async (_request, result, contacts) => {
@@ -1404,7 +1408,7 @@ async function main() {
   assert.equal((humanPathJson.event as Record<string, unknown>).usageType, "human_path");
   assert.equal(
     (humanPathJson.event as { payload: Record<string, unknown> }).payload.providerVersion,
-    3,
+    11,
   );
   assert.equal(
     (humanPathJson.event as { payload: Record<string, unknown> }).payload.chargeUsage,
@@ -1433,7 +1437,7 @@ async function main() {
         pursuitId: "pursuit-1",
         userId: "user-1",
         eventType: "human_path_generated",
-        payload: { contactCount: 0, providerVersion: 3 },
+        payload: { contactCount: 0, providerVersion: 11 },
         createdAt: now,
       }],
       loadContactSuggestions: async () => [],
@@ -1451,7 +1455,7 @@ async function main() {
   assert.equal(currentEmptyCached.status, 200);
   const currentEmptyJson = await body(currentEmptyCached);
   assert.equal(currentEmptyJson.cached, true);
-  assert.equal(currentEmptyJson.providerVersion, 3);
+  assert.equal(currentEmptyJson.providerVersion, 11);
   assert.equal((currentEmptyJson.contacts as unknown[]).length, 0);
   assert.equal(currentEmptyProviderCalled, false);
 
@@ -1474,14 +1478,14 @@ async function main() {
           contactCount: 1,
           contacts: [humanPathContact()],
           diagnostics: humanPathDiagnostics(),
-          providerVersion: 3,
+          providerVersion: 11,
         },
         createdAt: "2026-06-22T00:00:00.000Z",
       }, {
         pursuitId: "pursuit-1",
         userId: "user-1",
         eventType: "human_path_generated",
-        payload: { contactCount: 0, contacts: [], providerVersion: 3 },
+        payload: { contactCount: 0, contacts: [], providerVersion: 11 },
         createdAt: "2026-06-22T00:01:00.000Z",
       }],
       loadContactSuggestions: async () => [],
@@ -1523,7 +1527,7 @@ async function main() {
         pursuitId: "pursuit-1",
         userId: "user-1",
         eventType: "human_path_generated",
-        payload: { contactCount: 1, providerVersion: 3 },
+        payload: { contactCount: 1, providerVersion: 11 },
         createdAt: now,
       }],
       loadContactSuggestions: async () => [contactSuggestion()],
@@ -1564,7 +1568,7 @@ async function main() {
         pursuitId: "pursuit-1",
         userId: "user-1",
         eventType: "human_path_generated",
-        payload: { contactCount: 1, providerVersion: 3 },
+        payload: { contactCount: 1, providerVersion: 11 },
         createdAt: now,
       }],
       loadContactSuggestions: async () => [contactSuggestion()],
@@ -1630,7 +1634,7 @@ async function main() {
   assert.equal((staleRefreshJson.contacts as unknown[]).length, 1);
   assert.equal(staleRefreshPersisted?.usageEvents.length, 0);
   assert.equal(staleRefreshPersisted?.event.usageType, undefined);
-  assert.equal(staleRefreshPersisted?.event.payload.providerVersion, 3);
+  assert.equal(staleRefreshPersisted?.event.payload.providerVersion, 11);
   assert.deepEqual(staleRefreshPersisted?.event.payload.diagnostics, humanPathDiagnostics());
 
   // ---- Pursuit contact selection route ----

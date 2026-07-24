@@ -170,6 +170,59 @@ current surfaces and anything built later (onboarding, dashboard, scan page):
 New list inputs map to the shared token-input primitive in the design system; do not
 invent a fourth interaction pattern.
 
+### Universal Contact Discovery & Relevance (Randall, 2026-07-22)
+
+Contact discovery and ranking must work for every user's experience, industry, job,
+and target company. Never turn evidence from one user, company, industry, named team,
+or job family into a global matching rule or default mapping.
+
+- Derive the target dynamically from the current user's profile and the specific job:
+  function, discipline, career level, business area, industry, and relevant location
+  constraints.
+- Determine a contact's remit from current public evidence, not employer and title
+  alone. Compare contacts using universal dimensions such as career stage, function,
+  discipline, business or product area, role type, geography when relevant, evidence
+  strength, and evidence freshness.
+- Treat explicit contradictions differently from missing evidence. A contradictory
+  remit can reduce or eliminate relevance; an unknown remit must remain unknown and
+  must not be presented as confirmed alignment.
+- Overindex on returning and ranking potentially useful contacts rather than filtering
+  them out. Preserve variety across recruiters, hiring managers, and functional leaders.
+  Do not discard plausible contacts merely to satisfy a category quota.
+- Result counts are elastic. "Up to 5" is a presentation preference, not a hard product
+  cap. If discovery produces 10 useful contacts, retain and expose the useful results;
+  reduce volume only when evidence shows that doing so improves the experience.
+- Rank by likely outreach usefulness and explain uncertainty. Do not fill a category
+  with a clearly conflicting contact, but do not require requisition-level certainty
+  before a potentially useful contact can appear.
+- Direct-search output is candidate discovery, not a reason to add a second aggressive
+  filtering stage. Prefer lightweight ranking, retain unknown-but-plausible contacts,
+  and use the person's LinkedIn profile as the final current-profile validation surface.
+  A separate paid web-verification stage requires a concrete failure and explicit approval.
+
+This rule is advisory: agents are required to follow it, but no mechanical hook blocks
+an agent from ignoring it.
+
+### Action Color Roles (Randall 2026-07-23)
+
+Standing color semantics for every action control, app-wide. `--role-action` is **teal**.
+
+- **Teal = affirmative / proceed / done.** Every proceed CTA (Pursue, Run scan, Resume, Add,
+  primary CTAs) is teal. Every "done" state is teal: **Saved AND Skipped both render as solid
+  teal fill + white checkmark, identically.**
+- **Tomato = negative / destructive ONLY** (Skip, the remove/circled-X, Not a match). Tomato is
+  never a proceed CTA and never a generic accent. The circled-X remove control is tomato at rest
+  (not only on hover).
+- **Mustard = Save + utility actions** (the Save button, View Saved Pursuits, all Edit buttons)
+  plus new/weird flags. Solid mustard fill carries **ink text**, not paper.
+- **Open posting = ink text with a mustard underline.** Never mustard text (fails contrast on
+  cream), never a turquoise/teal tint, never a ghost button. Hit area padded to full font height.
+- **The old "red + yellow never co-star" rule is RETIRED.** By direction, solid mustard Save sits
+  directly beside tomato Skip in the action row.
+
+This rule is advisory. It is codified in `docs/design-canon.md` §1 and the `--role-*` token
+comments in `app/globals.css` + `design-system/tokens/tokens.css`; keep all three in sync.
+
 ### Design Authority
 
 Codex must not invent UI, layout, CSS, visual hierarchy, component structure, or public-facing presentation from its own judgment.

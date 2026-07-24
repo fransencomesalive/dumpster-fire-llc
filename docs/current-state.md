@@ -1,5 +1,26 @@
 # Current State
 
+## 2026-07-23 - Human Path direct-discovery pivot paused on Exa data rights
+
+Three user-approved jobs established that Exa raw discovery is useful enough to continue:
+31 of 38 reviewed exact-company contacts were accepted at $0.063. A separate OpenAI verification
+batch made the result worse. It retained 14 of the 31 useful Exa contacts, rejected 17 useful
+contacts because evidence was missing, retained one known stale profile, and cost another $0.1779.
+
+The approved product direction is direct discovery, exact-company validation, lightweight ranking,
+explicit-conflict filtering, honest uncertainty, and a direct LinkedIn profile as the final
+current-profile validation surface. No additional paid refinement test is approved. The OpenAI
+web-verification approach is rejected.
+
+Production replacement is paused before implementation. Exa's standard Terms of Service appear to
+restrict copying, storing, or displaying service output without written permission or controlling
+additional terms. Confirm an Exa MSA, business agreement, or written permission for end-user
+storage and display before replacing the current provider.
+
+After permission, replace the current provider cleanly and remove its obsolete OpenAI discovery,
+verification, parsing, reconciliation, and test structure rather than layering Exa beside it. This
+backend decision does not authorize Apply Wizard UI/design or public-copy edits.
+
 ## 2026-07-21 - Human Path contact quality and broad source restoration deployed
 
 Commit `7df17f6` is pushed to `origin/main`; CI release checks passed and the Vercel production

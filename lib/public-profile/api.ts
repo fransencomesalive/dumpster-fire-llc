@@ -1915,6 +1915,9 @@ export async function handlePublicProfilePursuitHumanPathRequest(
   }
 
   const provider = options.humanPathProvider ?? openAIHumanPathProvider;
+  const selectedRoleTrack = pursuit.selectedRoleTrackId
+    ? aggregate.roleTracks.find((track) => track.id === pursuit.selectedRoleTrackId)
+    : undefined;
   const providerResult = await provider({
     pursuit,
     job: {
@@ -1922,6 +1925,13 @@ export async function handlePublicProfilePursuitHumanPathRequest(
       title: job.title,
       companyName: job.companyName,
       description: job.description,
+    },
+    candidateContext: {
+      roleTrackName: selectedRoleTrack?.name,
+      targetTitles: selectedRoleTrack?.targetTitles ?? [],
+      keyResponsibilities: selectedRoleTrack?.keyResponsibilities ?? [],
+      targetIndustries: aggregate.preferences?.targetIndustries ?? [],
+      skills: aggregate.skills.map((skill) => skill.skillName),
     },
   });
   if (providerResult.status === "provider_unavailable") {

@@ -90,6 +90,15 @@ Not yet built as public workflows:
 
 ## Canonical Next Product Task
 
+> **UPDATED 2026-07-23 AT SESSION CLOSE.** The canonical next task is to confirm that an Exa MSA,
+> business agreement, or written permission allows Dumpster Fire to store and display people-search
+> results to end users. Do not implement the production adapter until this is confirmed. Once
+> confirmed, replace the current Human Path provider cleanly with direct discovery, exact-company
+> validation, lightweight ranking, explicit-conflict filtering, honest uncertainty, and direct
+> LinkedIn links. Remove the obsolete OpenAI web-verification structure instead of layering onto it.
+> See `docs/next-session.md` and
+> `docs/human-path-retrieval-architecture-plan-2026-07-22.md`.
+>
 > **UPDATED 2026-06-28.** Phase D **design pass is COMPLETE** — the four new onboarding controls
 > (tone chips, writing-sample buckets, type-ahead pickers, Q1/Q4) are designed, approved, and live
 > as cards in the Claude Design "Onboarding" group. D3 catalogue backend merged + pushed (`dc3015c`).
@@ -189,7 +198,8 @@ These block later work and should not be silently decided by an agent:
 - Resume file storage provider and retention rules.
 - Resume parsing provider.
 - Billing provider and webhook model.
-- Human Path search/provider strategy.
+- Any future Human Path retrieval-provider selection. A new provider requires a concrete observed
+  failure, explicit scope approval, and compatible licensing.
 - Which design-system direction, if any, is locked for a specific live surface.
 
 ## Hard Prohibitions
