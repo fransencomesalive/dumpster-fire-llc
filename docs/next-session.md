@@ -49,10 +49,46 @@ Verification:
 
 Next:
 
-1. Register the touched Apply Wizard card in the Claude Design project; local card parity is
-   complete, but remote registration was not available in this session.
+1. Claude completes the remote Apply Wizard registration task below.
 2. Do not add another paid verification layer or refine against only the three evaluation jobs.
 3. No additional production test is required for this release unless a new failure is observed.
+
+## Claude pickup — register the Apply Wizard card
+
+This is the only remaining release-adjacent task. Production and the local design-system card are
+already complete and verified. Do not change application code, copy, layout, CSS, provider logic,
+or contact ranking, and do not run another paid provider test.
+
+1. Open the Claude Design project `Dumpster Fire Design System`, project ID
+   `3af2f1ea-428c-49b3-8b02-c066ec0c7452`, and ground the session with `get_file`.
+2. Push the exact local card `design-system/components/apply-wizard.html`. Its first line already
+   has `<!-- @dsCard group="Components" -->`.
+3. Keep the existing remote manifest entry for `components/apply-wizard.html` in group
+   `Components`. The committed local manifest already contains that entry, so this task requires
+   no local manifest edit.
+4. Run `register_assets` for the Apply Wizard card so the Design System pane refreshes. Use:
+   - Name: `Apply Wizard`
+   - Subtitle: `Potential-contact copy; Possible Hiring Manager; stale verified and reporting-chain claims removed`
+   - Viewport: reuse the existing Apply Wizard asset viewport rather than inventing a new one.
+5. Inspect the refreshed asset in the Design System pane. Confirm these concepts are present:
+   - `We found people at this company who may be useful for outreach.`
+   - `No potential contacts turned up for this role.`
+   - `Found 2 potential contacts.`
+   - `Possible Hiring Manager`
+6. Confirm these stale claims are absent:
+   - `The reporting chain is built automatically`
+   - `No verified contacts turned up`
+   - `reporting-chain contacts`
+   - A visible `Verified` claim on the example contact
+7. Report the exact registered asset and the successful `register_assets` result. Then update
+   `docs/next-session.md` and `docs/current-state.md` to mark remote registration complete. If
+   asked to sync, commit and push those documentation updates directly on `main`.
+
+Working-tree ownership warning: the current changes to `design-system/_ds_manifest.json`,
+`design-system/components/case-study-lockup.html`, and `exports/` belong to unrelated work. Do not
+stage, overwrite, or include them in this task. If the Claude Design tool requires a manifest push,
+use the already committed Apply Wizard entry and coordinate before touching the dirty local
+manifest.
 
 ## Final release verification
 
