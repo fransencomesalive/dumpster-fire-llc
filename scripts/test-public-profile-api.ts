@@ -1395,6 +1395,7 @@ async function main() {
     persistHumanPath: async (_request, result, contacts) => {
       persistedHumanPath = result;
       persistedContacts = contacts;
+      return [contactSuggestion()];
     },
   });
   assert.equal(humanPathGenerated.status, 200);
@@ -1426,7 +1427,8 @@ async function main() {
   assert.deepEqual(humanPathJson.diagnostics, humanPathDiagnostics());
   assert.deepEqual((persistedHumanPath as { pursuit: Pursuit }).pursuit.status, "human_path_generated");
   assert.equal((persistedContacts as HumanPathContact[]).length, 1);
-  assert.equal(((humanPathJson.contacts as HumanPathContact[])[0]).name, "Dana Lee");
+  assert.equal(((humanPathJson.contacts as HumanPathContactSuggestion[])[0]).name, "Dana Lee");
+  assert.equal(((humanPathJson.contacts as HumanPathContactSuggestion[])[0]).id, "contact-1");
 
   let currentEmptyProviderCalled = false;
   const currentEmptyCached = await handlePublicProfilePursuitHumanPathRequest(
@@ -1591,6 +1593,7 @@ async function main() {
       }),
       persistHumanPath: async () => {
         racingZeroPersisted = true;
+        return [];
       },
     },
   );
@@ -1635,6 +1638,7 @@ async function main() {
       }),
       persistHumanPath: async (_request, result) => {
         staleRefreshPersisted = result;
+        return [contactSuggestion()];
       },
     },
   );

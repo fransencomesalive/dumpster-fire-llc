@@ -545,7 +545,7 @@ export type PublicProfilePursuitsHandlerOptions = PublicProfileMatchHandlerOptio
     request: PublicProfileRepositoryRequest,
     result: Extract<PursuitTransitionResult, { ok: true }>,
     contacts: HumanPathContact[],
-  ) => Promise<void>;
+  ) => Promise<HumanPathContactSuggestion[]>;
   loadContactSuggestions?: (
     request: PublicProfileRepositoryRequest,
     pursuitId: string,
@@ -1924,14 +1924,14 @@ export async function handlePublicProfilePursuitHumanPathRequest(
     }, { status: 409 });
   }
 
-  await persistHumanPath(repositoryRequest, result, providerResult.contacts);
+  const persistedContacts = await persistHumanPath(repositoryRequest, result, providerResult.contacts);
 
   return json({
     status: "human_path_generated",
     profileId: aggregate.profile.id,
     job,
     pursuit: result.pursuit,
-    contacts: providerResult.contacts,
+    contacts: persistedContacts,
     diagnostics: providerResult.diagnostics,
     event: result.event,
     subscription: enforcement,

@@ -336,6 +336,8 @@ function mapContactSuggestion(row: ContactSuggestionRow): HumanPathContactSugges
   };
 }
 
+const CONTACT_SUGGESTION_SELECT = "id,name,title,company_name,linkedin_url,professional_contact_url,email,contact_type,confidence,relevance_reason,role_connection,verification_notes,selected_for_outreach,created_at,updated_at";
+
 export async function loadPursuitByIdForUser(
   request: PublicProfileRepositoryRequest,
   userId: string,
@@ -379,7 +381,7 @@ export async function loadContactSuggestionsForPursuit(
   const rows = await request<ContactSuggestionRow[]>("contact_suggestions", {
     query: qs({
       pursuit_id: `eq.${pursuitId}`,
-      select: "id,name,title,company_name,linkedin_url,email,contact_type,confidence,relevance_reason,role_connection,verification_notes,selected_for_outreach,created_at,updated_at",
+      select: CONTACT_SUGGESTION_SELECT,
       order: "created_at.asc",
     }),
   });
@@ -395,7 +397,7 @@ export async function loadContactSuggestionsForPursuits(
   const rows = await request<(ContactSuggestionRow & { pursuit_id: string })[]>("contact_suggestions", {
     query: qs({
       pursuit_id: `in.(${uniqueIds.join(",")})`,
-      select: "pursuit_id,id,name,title,company_name,linkedin_url,email,contact_type,confidence,relevance_reason,role_connection,verification_notes,selected_for_outreach,created_at,updated_at",
+      select: `pursuit_id,${CONTACT_SUGGESTION_SELECT}`,
       order: "created_at.asc,id.asc",
     }),
   });
@@ -858,22 +860,25 @@ export async function persistHumanPathGeneration(
   request: PublicProfileRepositoryRequest,
   result: Extract<PursuitTransitionResult, { ok: true }>,
   contacts: HumanPathContact[],
-) {
+): Promise<HumanPathContactSuggestion[]> {
   await persistPursuitTransition(request, result);
 
   // An empty response must not delete contacts written by a faster concurrent
   // request. The API resolves legitimate cached and refresh states before this call.
-  if (contacts.length > 0) {
-    await request("contact_suggestions", {
-      method: "DELETE",
-      query: qs({ pursuit_id: `eq.${result.pursuit.id}` }),
-    });
+  if (contacts.length === 0) return [];
 
-    await request("contact_suggestions", {
-      method: "POST",
-      body: contacts.map((contact) => contactSuggestionBody(result.pursuit, contact, result.pursuit.updatedAt)),
-    });
-  }
+  await request("contact_suggestions", {
+    method: "DELETE",
+    query: qs({ pursuit_id: `eq.${result.pursuit.id}` }),
+  });
+
+  const rows = await request<ContactSuggestionRow[]>("contact_suggestions", {
+    method: "POST",
+    query: qs({ select: CONTACT_SUGGESTION_SELECT }),
+    headers: { Prefer: "return=representation" },
+    body: contacts.map((contact) => contactSuggestionBody(result.pursuit, contact, result.pursuit.updatedAt)),
+  });
+  return rows.map(mapContactSuggestion);
 }
 
 export async function persistOutreachGeneration(
