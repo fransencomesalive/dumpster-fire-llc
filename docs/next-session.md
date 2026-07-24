@@ -53,11 +53,23 @@ Next:
 2. Do not add another paid verification layer or refine against only the three evaluation jobs.
 3. No additional production test is required for this release unless a new failure is observed.
 
-## Claude pickup — register the Apply Wizard card
+## Claude pickup — register the Apply Wizard card — COMPLETE (2026-07-24)
 
-This is the only remaining release-adjacent task. Production and the local design-system card are
-already complete and verified. Do not change application code, copy, layout, CSS, provider logic,
-or contact ranking, and do not run another paid provider test.
+Remote registration is done. The updated `components/apply-wizard.html` was pushed to the Claude
+Design project `Dumpster Fire Design System` (`3af2f1ea-428c-49b3-8b02-c066ec0c7452`) and
+`register_assets` succeeded (`{"registered":1}`) with:
+- Name: `Apply Wizard`
+- Subtitle: `Potential-contact copy; Possible Hiring Manager; stale verified and reporting-chain claims removed`
+- Viewport: `1280` (reused the existing Apply Wizard asset viewport)
+
+Readback of the remote card confirmed the new copy is present — `may be useful for outreach`,
+`No potential contacts turned up for this role`, `Found 2 potential contacts`,
+`Possible Hiring Manager` — and the stale claims are absent — no `reporting chain is built
+automatically`, no `No verified contacts turned up`, no `reporting-chain contacts`, and no
+`Verified` claim on the example contact. The dirty working-tree files (`_ds_manifest.json`,
+`case-study-lockup.html`, `exports/`) were left untouched.
+
+Original task steps (kept for reference):
 
 1. Open the Claude Design project `Dumpster Fire Design System`, project ID
    `3af2f1ea-428c-49b3-8b02-c066ec0c7452`, and ground the session with `get_file`.

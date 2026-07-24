@@ -204,7 +204,9 @@ Shipped:
 
 Files: `app/dashboard/ApplyWizardModal.tsx`, `app/dashboard/apply-wizard.module.css`,
 `design-system/components/{apply-wizard,copy-generation,modal}.html`. DS cards registered
-in Claude Design: apply-wizard **r7**, copy-generation **r2**, modal **r2**.
+in Claude Design: apply-wizard **r8** (2026-07-24: potential-contact copy; Possible Hiring
+Manager; stale verified/reporting-chain claims removed; registered at viewport 1280),
+copy-generation **r2**, modal **r2**.
 
 Verified: `tsc` clean; production build green; Playwright at 320/375/390/1280/1440 — zero
 overflow, no textarea clipping, Copy/Regenerate heights equal, teal Copy hovers to bluebird,
