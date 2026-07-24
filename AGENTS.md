@@ -120,7 +120,7 @@ Do not put internal implementation reasoning, roadmap sequencing, backend termin
 
 These are standing copy rules for all user-facing surfaces (Randall, 2026-06-26):
 
-- **Not a beta, not a phased rollout.** Never use "beta", "rollout", "open now", "limited", "coming soon", or availability-announcement framing. The Access section is a **pricing structure** with three ascending tiers named **Good / Gooder / Goodest**.
+- **Not a beta, not a phased rollout.** Never use "beta", "rollout", "open now", "limited", "coming soon", or availability-announcement framing. The public pricing structure has two paid tiers: **Smoldering** at $22/month for 20 Apply Wizard uses, and **Roaring** at $32/month for 45 Apply Wizard uses plus Markdown history export. **Roaring is the top plan.** There is no free retail tier and no one-time membership fee. This vocabulary rule is advisory; no mechanical hook blocks an agent from ignoring it. (Randall, 2026-07-24.)
 - **No "proof" vocabulary.** Never use the word "proof" (proof, Proof Library, proof object, proof selection, "what this proves", etc.) in user-facing copy. The user-facing concept is **work examples / portfolio** — text-only examples used as context for outreach-message generation.
 - **No "improve the profile / improve matching" framing.** Matches are rated by the system to provide better matching; the user maintains/keeps their profile current, they do not "improve matching."
 - **Brand voice: anti-corporate-speak.** Dumpster Fire is not a tool for corporate-speak lovers. The positioning is about bringing the user's personality to the table when pursuing a job. Copy should sound human and specific, never generic corporate boilerplate.

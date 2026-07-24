@@ -3,6 +3,118 @@
 _Updated 2026-07-24. Read `docs/project-operating-state.md` Session Start
 Protocol and `AGENTS.md` first. This file names the immediate next work only._
 
+## START HERE: Smoldering / Roaring production initiative
+
+The next product initiative is approved and specified in:
+
+`docs/subscription-billing-production-plan-2026-07-24.md`
+
+Approved retail contract:
+
+- **Smoldering:** $22/month, 20 successful new Apply Wizard pursuits per Stripe billing period.
+- **Roaring:** $32/month, 45 successful new Apply Wizard pursuits per Stripe billing period plus
+  Markdown pursuit-history export.
+- Roaring is the top plan.
+- No free retail tier.
+- No membership/initiation fee.
+- No usage rollover.
+- No retail overages at launch.
+- Both plans include the complete profile, scan/matching, saved jobs, contact discovery, outreach,
+  and pursuit-tracking workflow.
+- One Apply Wizard use is charged only when a new pursuit successfully persists at least one useful
+  contact. Failed, empty, cached, repeated, and revisited pursuits do not consume another use.
+- The usage count is quiet and deliberately discoverable in Profile → Plan. It is not persistent in
+  the dashboard, navigation, job cards, or normal Apply Wizard.
+- Existing internal tester access codes remain outside the public retail plan matrix.
+
+`AGENTS.md` now contains the Smoldering/Roaring vocabulary as an advisory standing instruction. The
+old Good/Gooder/Goodest names still exist in production code and design cards because implementation
+has not started. Do not treat those stale live strings as approved product direction.
+
+### Immediate task
+
+Kick off Phase 1 from the production plan: **provider cost telemetry foundation**.
+
+First backend slice:
+
+1. Add `supabase/migrations/20260724000200_provider_usage_events.sql`.
+2. Add a small provider-usage type/repository boundary under `lib/costs/`.
+3. Store operational units and estimated cost only:
+   - provider category;
+   - operation/model/version;
+   - request and token/cache units;
+   - result count and outcome;
+   - integer estimated-cost micros;
+   - rate-card version;
+   - user/pursuit/job correlation IDs when applicable;
+   - timestamp.
+4. Never store raw prompts, resume text, generated messages, contact results, Exa highlights, or
+   provider response bodies in the cost table.
+5. Add a focused migration harness and framework-neutral unit tests before instrumenting production
+   call sites.
+6. Stop after the schema/boundary/test slice and report the exact next instrumentation call sites.
+
+Likely first-slice files:
+
+- `supabase/migrations/20260724000200_provider_usage_events.sql`
+- `lib/costs/provider-usage.ts`
+- new focused migration and TypeScript fixture tests
+- `package.json` only if a focused test command is added
+
+This slice is backend/data only. It does not authorize UI, CSS, design-card, pricing-copy, legal-copy,
+Stripe live configuration, or production migration changes.
+
+### Claude Design lane
+
+Claude can begin the non-overlapping design workstream in Claude Design project
+`3af2f1ea-428c-49b3-8b02-c066ec0c7452` while the backend slice proceeds.
+
+Claude starts with:
+
+1. Revise `design-system/components/plan-billing-step.html` from three stale tiers to the approved
+   Smoldering/Roaring contract.
+2. Create or revise an explicit homepage-pricing design card grounded in the current live pricing
+   section, because no dedicated approved two-tier homepage-pricing card exists.
+3. Then design the quiet Profile → Plan usage detail, the Apply Wizard final-use/zero-use states,
+   and the Roaring Markdown-export states listed in plan Section 13.
+4. Present every design review as a numbered list.
+5. Do not edit production UI or public copy until Randall approves the exact Claude Design result.
+6. Complete the full design-sync checklist for every approved card.
+
+Claude-owned likely files:
+
+- `design-system/components/plan-billing-step.html`
+- `design-system/components/onboarding-account-bar.html`
+- `design-system/components/apply-wizard.html`
+- `design-system/components/export.html`
+- a new approved homepage-pricing card
+- `design-system/_ds_manifest.json`
+
+Codex must not touch those files while Claude owns the design lane. Claude must not touch the
+backend cost-telemetry files while Codex owns the first backend slice. All work remains on `main`.
+
+### Not yet authorized or not yet ready
+
+- Do not edit the homepage, plan flow, Profile Plan/Billing popup, Apply Wizard, export UI, or legal
+  pages before their scoped design/copy approvals.
+- Stripe test/live Products, Prices, Portal, webhooks, tax decision, and Vercel secrets remain
+  Randall/manual work at the phases identified in the production plan.
+- The final Terms, Privacy, Billing, and Support language requires Randall approval and a
+  pre-launch legal-counsel checkpoint.
+- Do not apply the provider-usage or subscription migrations to production until their local
+  migration tests, read-only production preflight, and explicit production authorization pass.
+
+### First-session verification
+
+At the beginning of the next session:
+
+1. Run the Session Start Protocol.
+2. Confirm `main` and inspect `git status --short --branch`.
+3. Confirm whether Claude or Codex owns the selected lane and list exact files before editing.
+4. Read the full production plan.
+5. Re-check the latest migration number before creating a migration.
+6. Keep the completed Human Path release below as historical context, not the next task.
+
 ## Human Path Exa provider release complete
 
 The approved pivot is live. Evaluation evidence and the final architecture decision

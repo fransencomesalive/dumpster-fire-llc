@@ -89,14 +89,24 @@ Not yet built as public workflows:
 
 ## Canonical Next Product Task
 
+> **UPDATED 2026-07-24 — NEW IMMEDIATE INITIATIVE.** The Smoldering / Roaring subscription,
+> Apply Wizard metering, cost telemetry, Markdown export, Stripe billing, public pricing, legal,
+> design, migration, QA, and production-release initiative is approved and specified in
+> `docs/subscription-billing-production-plan-2026-07-24.md`. Smoldering is $22/month for 20
+> successful new Apply Wizard pursuits. Roaring is the $32/month top plan with 45 pursuits and
+> Markdown history export. No free retail tier or membership fee. Implementation has not started.
+> The immediate backend slice is the provider-cost telemetry schema/boundary/tests; the independent
+> Claude Design lane begins with the two-tier plan-billing and homepage-pricing cards. Start from
+> `docs/next-session.md`.
+>
 > **UPDATED 2026-07-24.** The Human Path Exa provider, approved Apply Wizard accuracy copy,
 > production environment, contact-type migration, and persisted-contact-ID handoff are live and
 > verified through an authenticated production pursuit. Discovery returned 19 exact-company
 > LinkedIn contacts across four classifications; contact selection and outreach succeeded; all
-> disposable QA data was deleted. The only remaining release-adjacent task is registering the
-> touched Apply Wizard card in Claude Design, which was unavailable from this environment. No
-> additional provider refinement or production test is authorized unless a new failure is
-> observed. See
+> disposable QA data was deleted. Remote registration of the touched Apply Wizard card in Claude
+> Design was subsequently completed and its readback verified. This release has no remaining work
+> unless a new failure is observed. No additional provider refinement or production test is
+> authorized without such evidence. See
 > `docs/next-session.md` and
 > `docs/human-path-retrieval-architecture-plan-2026-07-22.md`.
 >

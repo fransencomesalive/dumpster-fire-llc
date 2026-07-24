@@ -1,5 +1,34 @@
 # Current State
 
+## 2026-07-24 - Smoldering / Roaring subscription initiative approved
+
+The next production initiative is fully specified in
+`docs/subscription-billing-production-plan-2026-07-24.md`.
+
+Approved retail contract:
+
+- Smoldering: $22/month for 20 successful new Apply Wizard pursuits per Stripe billing period.
+- Roaring: $32/month for 45 successful new Apply Wizard pursuits per Stripe billing period plus
+  Markdown pursuit-history export. Roaring is the top plan.
+- No free retail tier, membership/initiation fee, rollover, or retail overages at launch.
+- Both paid plans include the complete pursuit workflow.
+- One Apply Wizard use is consumed only when a new pursuit successfully persists at least one useful
+  contact. Failed, empty, cached, repeated, and revisited pursuits do not consume another use.
+- The usage count is deliberately discoverable in Profile → Plan and is not persistent in the
+  dashboard or normal Apply Wizard.
+- Existing tester access codes remain internal and outside the retail plan matrix.
+
+The plan includes the atomic quota redesign, cost telemetry from the provider audit, Stripe
+Checkout/Portal/webhooks and subscription lifecycle, Markdown export, public pricing and plan flow,
+Terms/Privacy/Billing/Support requirements, Claude Design ownership, Codex implementation
+ownership, migrations, test-mode validation, release sequencing, rollback, and post-launch
+observation.
+
+Implementation has not started. The immediate backend slice is the provider-cost telemetry
+schema/boundary/tests. The independent Claude lane begins with the Smoldering/Roaring plan-billing
+card and a dedicated two-tier homepage-pricing card. Exact ownership and starting files are in
+`docs/next-session.md`.
+
 ## 2026-07-24 - Human Path production provider replaced with direct Exa discovery
 
 The approved backend pivot is implemented. `lib/public-profile/pursuits/contact-provider.ts` is now
