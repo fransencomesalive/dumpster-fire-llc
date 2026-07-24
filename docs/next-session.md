@@ -22,6 +22,11 @@ Completed:
 - Kept provider responses and highlights request-local. Persisted events now contain only aggregate
   diagnostics, while normalized contact suggestions remain available for selection and outreach.
 - Replaced the contact-model environment example with `EXA_API_KEY`.
+- Applied the separately approved Apply Wizard accuracy copy to the live modal and its local design
+  card without changing layout, CSS, or behavior.
+- Added and confirmed `EXA_API_KEY` in the Vercel Production environment.
+- Applied, recorded, and postflight-verified
+  `20260724000100_human_path_other_useful_contact.sql` in production.
 
 Verification:
 
@@ -36,29 +41,23 @@ Verification:
 
 Next:
 
-1. Confirm `EXA_API_KEY` is configured in the production deployment environment.
-2. Apply `20260724000100_human_path_other_useful_contact.sql` to production.
-3. Deploy the synced `main` commit.
+1. Commit and push the approved Apply Wizard copy and project-state updates on `main`.
+2. Register the touched Apply Wizard card in the Claude Design project; local card parity is
+   complete, but remote registration was not available in this session.
+3. Confirm the pushed `main` commit completes its Vercel production deployment.
 4. Run one authenticated production pursuit through discovery, contact selection, and outreach.
 5. Confirm the direct LinkedIn links, contact classifications, and selected-contact persistence.
 6. Do not add another paid verification layer or refine against only the three evaluation jobs.
-7. Before production release, get separate design and public-copy approval to replace the Apply
-   Wizard's old "verified contacts" and "reporting chain" claims. The direct-discovery provider
-   intentionally does not make either claim. The protected UI was not edited during this backend
-   pass.
-8. Do not edit Apply Wizard UI, CSS, design-system cards, or public copy without that separate
-   approval.
 
-## Previous session verification
+## Current local verification
 
-- `npm run test:fixtures`: 29 suites passed.
+- `node scripts/test-fixtures.mjs --saved-pursuits`: two focused suites passed.
 - `npm run typecheck`: passed.
 - `npm run lint`: passed with four existing unused-variable warnings and no errors.
 - `git diff --check`: passed.
-- `npm run build`: not verified. The build produced no progress after
-  `Creating an optimized production build ...` for more than two minutes and was manually stopped
-  with exit 130. At the next session start, rerun `npm run build`. If it stalls again, inspect the
-  Next.js/Turbopack process and environment before changing application code.
+- `npm run build`: passed.
+- Rendered Contacts and zero-contact states passed at 320, 375, 390, 1280, and 1440 pixels with no
+  overflow, painted-edge clipping, or copy orphans.
 
 The 2026-07-11 priorities below are historical and superseded as the immediate starting point.
 

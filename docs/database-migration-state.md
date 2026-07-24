@@ -79,6 +79,16 @@ apply is the broad-source restoration migration documented below.
   20 active Adzuna sources, zero active sources without `last_scanned_at`, zero source errors, and
   4,017 shared jobs after the initial backfill and one isolated Adzuna 503 retry.
 
+## Applied 2026-07-24 (confirmed + recorded in schema_migrations)
+
+- `20260724000100_human_path_other_useful_contact.sql` expands the
+  `contact_suggestions_contact_type_check` constraint to allow `other_useful_contact` for the
+  direct-discovery Human Path provider. The production preflight confirmed the migration was
+  absent, the prior constraint was intact, and all existing rows used supported legacy values.
+  Applied in one transaction through the Supabase Management API and recorded as
+  `human_path_other_useful_contact`. Postflight confirmed exactly one migration-history row, the
+  seven-value constraint including `other_useful_contact`, and zero invalid existing rows.
+
 ## How to apply migrations (current method)
 
 Migrations can now be applied **programmatically from the working environment** via the Supabase

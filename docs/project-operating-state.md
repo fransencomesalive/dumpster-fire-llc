@@ -89,12 +89,12 @@ Not yet built as public workflows:
 
 ## Canonical Next Product Task
 
-> **UPDATED 2026-07-24.** The Human Path provider replacement is implemented locally and verified.
-> The next starting point is the protected Apply Wizard copy mismatch documented in
-> `docs/next-session.md`. Get separate design and public-copy approval to replace the old
-> "verified contacts" and "reporting chain" claims before releasing the direct-discovery provider.
-> Then confirm `EXA_API_KEY`, apply the contact-type migration, deploy the synced `main` commit,
-> and verify one authenticated pursuit through discovery, selection, and outreach. See
+> **UPDATED 2026-07-24.** The Human Path provider replacement is committed and pushed. Randall
+> separately approved the Apply Wizard accuracy copy, which is implemented and verified locally in
+> the live modal and its design-system parity card. The production `EXA_API_KEY` and contact-type
+> migration are configured and verified. The next starting point is to commit and push the copy
+> pass, register the card in Claude Design, confirm the Vercel deployment, and verify one
+> authenticated pursuit through discovery, selection, and outreach. See
 > `docs/next-session.md` and
 > `docs/human-path-retrieval-architecture-plan-2026-07-22.md`.
 >

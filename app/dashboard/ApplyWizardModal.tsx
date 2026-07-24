@@ -94,7 +94,7 @@ type MessageFeedbackTarget = Pick<
 
 function humanizeContactType(type: HumanPathContactSuggestion["contactType"]): string {
   switch (type) {
-    case "likely_hiring_manager": return "Hiring Manager";
+    case "likely_hiring_manager": return "Possible Hiring\u00a0Manager";
     case "functional_leader": return "Functional Leader";
     case "recruiter": return "Recruiter";
     case "executive_sponsor": return "Executive Sponsor";
@@ -986,16 +986,16 @@ export default function ApplyWizardModal({
               <div className={styles.modalStack}>
                 <section>
                   <strong>Human Path</strong>
-                  <p>The reporting chain is built automatically when you pursue this role: owning function, manager, functional leader, then recruiter.</p>
+                  <p>We found people at this company who may be useful for outreach. Check their LinkedIn profiles to confirm their current role and&nbsp;relevance.</p>
                   {providerUnavailable ? (
                     <p className={styles.formNotice}>Contact discovery is unavailable right now. Try again in a moment.</p>
                   ) : noContactsFound ? (
                     <>
-                      <p className={styles.formNotice}>No verified contacts turned up for this role. Use the preloaded LinkedIn search, or open the job posting and look for a current team leader or recruiter.</p>
+                      <p className={styles.formNotice}>No potential contacts turned up for this role. Use the preloaded LinkedIn search, or open the job posting and look for a current team leader or recruiter.</p>
                       <a href={linkedInSearch.url} target="_blank" rel="noreferrer" className={styles.seeProfileBtn} aria-label={`Search LinkedIn people with: ${linkedInSearch.query}`}>Search LinkedIn{EXTERNAL_LINK_ICON}</a>
                     </>
                   ) : contacts.length > 0 ? (
-                    <p className={styles.formSuccess}>Found {contacts.length} reporting-chain contact{contacts.length === 1 ? "" : "s"}.</p>
+                    <p className={styles.formSuccess}>Found {contacts.length} potential contact{contacts.length === 1 ? "" : "s"}.</p>
                   ) : null}
                 </section>
                 {busy && contacts.length === 0 && !providerUnavailable ? (
@@ -1018,7 +1018,7 @@ export default function ApplyWizardModal({
                       <em>
                         {contact.title ? <>{contact.title} &middot; {humanizeContactType(contact.contactType)}</> : humanizeContactType(contact.contactType)}
                       </em>
-                      <b>{confidenceStars(contact.confidence)} &middot; {contact.confidence} confidence</b>
+                      <b>{confidenceStars(contact.confidence)} &middot; {contact.confidence}&nbsp;confidence</b>
                       <small>{contact.roleConnection || contact.relevanceReason}</small>
                       {contact.verificationNotes.length > 0 ? <small>{contact.verificationNotes.join(" ")}</small> : null}
                     </span>

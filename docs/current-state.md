@@ -31,10 +31,21 @@ Verification completed locally:
 - a request-local Autodesk smoke test completed all three Exa lanes in 3.4 seconds and returned 16
   unique exact-company LinkedIn contacts from 30 rows
 
-No Apply Wizard UI, CSS, design-system card, or public copy was changed.
-The existing Apply Wizard still contains old "verified contacts" and "reporting chain" claims that
-the direct-discovery provider intentionally does not make. Correcting that protected public copy
-requires separate design and copy approval before release.
+Randall separately approved the Apply Wizard accuracy correction. The live modal and its
+`design-system/components/apply-wizard.html` parity card now describe potential contacts, ask the
+user to confirm current role and relevance on LinkedIn, and label the inferred lane as "Possible
+Hiring Manager." Stale "Verified" example data was replaced with the provider's actual
+medium-confidence, unconfirmed-authority result shape. No CSS, layout, or behavior changed.
+
+The copy pass is locally verified: focused pursuit/API fixtures, typecheck, lint with four
+pre-existing warnings and no errors, `git diff --check`, and the production build passed. Rendered
+Contacts and zero-contact states passed at 320, 375, 390, 1280, and 1440 pixels with no overflow,
+painted-edge clipping, or copy orphans. Remote Claude Design card registration remains outstanding.
+
+Production prerequisites completed on 2026-07-24: `EXA_API_KEY` is present in the Vercel
+Production environment, and migration `20260724000100_human_path_other_useful_contact.sql` is
+applied, recorded, and postflight-verified in production. The application copy commit and
+deployment are the remaining release steps.
 
 ## 2026-07-23 - Human Path direct-discovery pivot paused on Exa data rights
 
