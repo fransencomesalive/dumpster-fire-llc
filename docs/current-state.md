@@ -44,8 +44,29 @@ painted-edge clipping, or copy orphans. Remote Claude Design card registration r
 
 Production prerequisites completed on 2026-07-24: `EXA_API_KEY` is present in the Vercel
 Production environment, and migration `20260724000100_human_path_other_useful_contact.sql` is
-applied, recorded, and postflight-verified in production. The application copy commit and
-deployment are the remaining release steps.
+applied, recorded, and postflight-verified in production.
+
+The release is live. Apply Wizard copy commit `8d5472a` deployed successfully, and production
+bundle readback confirmed the four corrected contact concepts while the old reporting-chain and
+verified-contact claims were absent. The first disposable authenticated workflow then exposed an
+API-boundary defect: fresh provider contacts were returned before database IDs were assigned, so
+contact selection could not submit a valid `contactIds` value. The temporary user and all cascaded
+rows were deleted.
+
+Follow-up commit `e8f3821` returns the persisted PostgREST contact representations, including their
+database IDs, from the fresh Human Path response. Focused API and pursuit fixtures, typecheck, lint,
+`git diff --check`, and the production build passed. Vercel deployment
+`dpl_7twprGvp4aSc5ip3Sdjt5ckL4pCa` is tied to exact SHA
+`e8f38219b5e5284431c6cf7c582aacc0ea938010`; GitHub reports Production success and all production
+aliases point to that deployment.
+
+The repeated disposable production workflow passed end to end against the shared Autodesk
+Principal Program Manager, Design Operations posting: 19 exact-company contacts with direct
+LinkedIn profiles across Hiring Manager, Recruiter, Functional Leader, and Other Useful Contact;
+successful likely-hiring-manager selection using the returned persisted ID; one generated outreach
+message with no em dash; and complete cleanup with zero candidate-profile, subscription, or pursuit
+rows remaining. The canonical root and dashboard return HTTP 200. Remote Claude Design card
+registration is the only outstanding release-adjacent item.
 
 ## 2026-07-23 - Human Path direct-discovery pivot paused on Exa data rights
 

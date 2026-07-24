@@ -3,9 +3,9 @@
 _Updated 2026-07-24. Read `docs/project-operating-state.md` Session Start
 Protocol and `AGENTS.md` first. This file names the immediate next work only._
 
-## Priority 1 - Configure and release the Human Path Exa provider
+## Human Path Exa provider release complete
 
-The approved pivot is implemented locally. Evaluation evidence and the final architecture decision
+The approved pivot is live. Evaluation evidence and the final architecture decision
 are in:
 
 `docs/human-path-retrieval-architecture-plan-2026-07-22.md`
@@ -27,6 +27,9 @@ Completed:
 - Added and confirmed `EXA_API_KEY` in the Vercel Production environment.
 - Applied, recorded, and postflight-verified
   `20260724000100_human_path_other_useful_contact.sql` in production.
+- Corrected the fresh Human Path response to return persisted contact suggestions with the database
+  IDs required by contact selection (`e8f3821`).
+- Deployed and verified the release on all production aliases.
 
 Verification:
 
@@ -38,26 +41,30 @@ Verification:
   pre-existing warnings and no errors, and the Next.js production build.
 - Live request-local Autodesk smoke test: all three lanes completed in 3.4 seconds; 30 rows became
   16 unique exact-company LinkedIn contacts after validation and deduplication.
+- Disposable authenticated production workflow: 19 Autodesk contacts across four classifications,
+  successful likely-hiring-manager selection, one em-dash-free outreach message, and complete
+  cleanup with zero temporary profile, subscription, or pursuit rows remaining.
+- Production bundle readback confirmed the corrected Apply Wizard copy and absence of the old
+  reporting-chain and verified-contact claims.
 
 Next:
 
-1. Commit and push the approved Apply Wizard copy and project-state updates on `main`.
-2. Register the touched Apply Wizard card in the Claude Design project; local card parity is
+1. Register the touched Apply Wizard card in the Claude Design project; local card parity is
    complete, but remote registration was not available in this session.
-3. Confirm the pushed `main` commit completes its Vercel production deployment.
-4. Run one authenticated production pursuit through discovery, contact selection, and outreach.
-5. Confirm the direct LinkedIn links, contact classifications, and selected-contact persistence.
-6. Do not add another paid verification layer or refine against only the three evaluation jobs.
+2. Do not add another paid verification layer or refine against only the three evaluation jobs.
+3. No additional production test is required for this release unless a new failure is observed.
 
-## Current local verification
+## Final release verification
 
-- `node scripts/test-fixtures.mjs --saved-pursuits`: two focused suites passed.
+- Focused public-profile API and pursuit fixtures: passed.
 - `npm run typecheck`: passed.
 - `npm run lint`: passed with four existing unused-variable warnings and no errors.
 - `git diff --check`: passed.
 - `npm run build`: passed.
 - Rendered Contacts and zero-contact states passed at 320, 375, 390, 1280, and 1440 pixels with no
   overflow, painted-edge clipping, or copy orphans.
+- Exact production SHA: `e8f38219b5e5284431c6cf7c582aacc0ea938010`.
+- Canonical production root and dashboard: HTTP 200.
 
 The 2026-07-11 priorities below are historical and superseded as the immediate starting point.
 

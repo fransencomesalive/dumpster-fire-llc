@@ -89,12 +89,14 @@ Not yet built as public workflows:
 
 ## Canonical Next Product Task
 
-> **UPDATED 2026-07-24.** The Human Path provider replacement is committed and pushed. Randall
-> separately approved the Apply Wizard accuracy copy, which is implemented and verified locally in
-> the live modal and its design-system parity card. The production `EXA_API_KEY` and contact-type
-> migration are configured and verified. The next starting point is to commit and push the copy
-> pass, register the card in Claude Design, confirm the Vercel deployment, and verify one
-> authenticated pursuit through discovery, selection, and outreach. See
+> **UPDATED 2026-07-24.** The Human Path Exa provider, approved Apply Wizard accuracy copy,
+> production environment, contact-type migration, and persisted-contact-ID handoff are live and
+> verified through an authenticated production pursuit. Discovery returned 19 exact-company
+> LinkedIn contacts across four classifications; contact selection and outreach succeeded; all
+> disposable QA data was deleted. The only remaining release-adjacent task is registering the
+> touched Apply Wizard card in Claude Design, which was unavailable from this environment. No
+> additional provider refinement or production test is authorized unless a new failure is
+> observed. See
 > `docs/next-session.md` and
 > `docs/human-path-retrieval-architecture-plan-2026-07-22.md`.
 >
