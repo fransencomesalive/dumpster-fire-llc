@@ -268,15 +268,21 @@
     padding: var(--space-3) var(--space-5); cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; }
   .modalBtnClose svg { flex: none; width: 15px; height: 15px; }
   /* Hovers never fire on disabled buttons (hover pass, Randall 2026-07-17). */
-  .modalBtnClose:hover:not(:disabled) { background-color: color-mix(in srgb, var(--c-teal) 14%, var(--c-paper)); box-shadow: var(--reg-box); }
+  .modalBtnClose:hover:not(:disabled) { box-shadow: var(--reg-box); }
   .modalBtnSave { font-family: var(--font-display); font-size: 1rem; color: var(--role-action-text); background-color: var(--role-action);
     border: var(--line-bold) solid var(--c-ink); border-radius: var(--radius-md); box-shadow: var(--shadow-card);
     padding: var(--space-3) var(--space-5); cursor: pointer; }
   .modalBtnSave:hover:not(:disabled), .modalBtnSave.reg-on { background-color: var(--role-info); box-shadow: var(--reg-box);
     text-shadow: 1px 1px 0 rgba(36, 31, 26, 0.35); }
   .modalBtnSave:disabled, .modalBtnClose:disabled, .copyButton:disabled { opacity: 0.55; cursor: default; }
-  /* Open-job-posting link sits left of the primary pair */
+  /* Open-job-posting link sits left of the primary pair. Ink text with a mustard
+     underline (no ghost button, no teal tint) — matches the Open posting link elsewhere. */
   .footerSpacer { margin-right: auto; }
+  .linkOpen { font-family: var(--font-display); font-size: 1rem; color: var(--c-ink); background: none; border: 0;
+    padding: 2px 0; cursor: pointer; display: inline-flex; align-items: center; gap: 8px;
+    text-decoration: underline; text-decoration-color: var(--c-mustard); text-decoration-thickness: 2px; text-underline-offset: 3px; }
+  .linkOpen svg { flex: none; width: 15px; height: 15px; }
+  .linkOpen:hover { color: var(--c-ink); text-decoration-color: color-mix(in srgb, var(--c-mustard) 72%, var(--c-ink)); }
 
   /* ===== Message feedback flip · "This message is not great" (red link under the message)
      flips the whole modal to this face. Chips multi-select; free text in the "something else"
@@ -395,7 +401,7 @@
         </section>
       </div>
       <div class="modalFooter">
-        <a href="#" class="modalBtnClose footerSpacer">Open job posting
+        <a href="#" class="linkOpen footerSpacer">Open job posting
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" /></svg></a>
         <button type="button" class="modalBtnSave">Continue</button>
       </div>
@@ -460,7 +466,7 @@
               <a href="#" class="seeProfileBtn">LI Profile
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" /></svg></a>
             </span>
-            <em>Senior Recruiter · Recruiter</em>
+            <em>Recruiter</em>
             <b>&#9733;&#9733;&#9733;&#9734;&#9734; · 64% confidence · Unverified lead</b>
             <small>Confirm this person before reaching out.</small>
           </span>
@@ -473,7 +479,7 @@
         </div>
       </div>
       <div class="modalFooter">
-        <a href="#" class="modalBtnClose footerSpacer">Open job posting
+        <a href="#" class="linkOpen footerSpacer">Open job posting
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" /></svg></a>
         <button type="button" class="modalBtnSave">Continue</button>
       </div>
@@ -507,7 +513,7 @@
         </section>
       </div>
       <div class="modalFooter">
-        <a href="#" class="modalBtnClose footerSpacer">Open job posting
+        <a href="#" class="linkOpen footerSpacer">Open job posting
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" /></svg></a>
         <button type="button" class="modalBtnClose">Back</button>
         <button type="button" class="modalBtnSave" disabled>Continue</button>
@@ -584,7 +590,7 @@
         </section>
       </div>
       <div class="modalFooter">
-        <a href="#" class="modalBtnClose footerSpacer">Open job posting
+        <a href="#" class="linkOpen footerSpacer">Open job posting
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" /></svg></a>
         <button type="button" class="modalBtnSave">Continue</button>
       </div>
@@ -677,7 +683,7 @@
         </section>
       </div>
       <div class="modalFooter">
-        <a href="#" class="modalBtnClose footerSpacer">Open job posting
+        <a href="#" class="linkOpen footerSpacer">Open job posting
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" /></svg></a>
         <button type="button" class="modalBtnSave">Save for later</button>
       </div>
@@ -729,7 +735,7 @@
         </section>
       </div>
       <div class="modalFooter">
-        <a href="#" class="modalBtnClose footerSpacer">Open job posting
+        <a href="#" class="linkOpen footerSpacer">Open job posting
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" /></svg></a>
         <button type="button" class="modalBtnSave reg-on">Save to Applied</button>
       </div>
@@ -801,7 +807,7 @@
         </section>
       </div>
       <div class="modalFooter">
-        <a href="#" class="modalBtnClose footerSpacer">Open job posting
+        <a href="#" class="linkOpen footerSpacer">Open job posting
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" /></svg></a>
         <button type="button" class="modalBtnSave reg-on">Save to Applied</button>
       </div>
@@ -846,7 +852,7 @@
         </section>
       </div>
       <div class="modalFooter">
-        <a href="#" class="modalBtnClose footerSpacer">Open job posting
+        <a href="#" class="linkOpen footerSpacer">Open job posting
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" /></svg></a>
         <button type="button" class="modalBtnSave">Save for later</button>
       </div>
@@ -907,7 +913,7 @@
         </section>
       </div>
       <div class="modalFooter">
-        <a href="#" class="modalBtnClose footerSpacer">Open job posting
+        <a href="#" class="linkOpen footerSpacer">Open job posting
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" /></svg></a>
         <button type="button" class="modalBtnSave reg-on">Save to Applied</button>
       </div>
@@ -972,7 +978,7 @@
         </section>
       </div>
       <div class="modalFooter">
-        <a href="#" class="modalBtnClose footerSpacer">Open job posting
+        <a href="#" class="linkOpen footerSpacer">Open job posting
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" /></svg></a>
         <button type="button" class="modalBtnSave reg-on">Save changes</button>
       </div>
@@ -1017,7 +1023,7 @@
         </div>
       </div>
       <div class="modalFooter">
-        <a href="#" class="modalBtnClose footerSpacer">Open job posting
+        <a href="#" class="linkOpen footerSpacer">Open job posting
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" /></svg></a>
         <button type="button" class="modalBtnSave">Save for later</button>
       </div>
@@ -1093,7 +1099,7 @@
         </section>
       </div>
       <div class="modalFooter">
-        <a href="#" class="modalBtnClose footerSpacer">Open job posting
+        <a href="#" class="linkOpen footerSpacer">Open job posting
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" /></svg></a>
         <button type="button" class="modalBtnSave reg-on">Save changes</button>
       </div>
@@ -1137,7 +1143,7 @@
         </section>
       </div>
       <div class="modalFooter">
-        <a href="#" class="modalBtnClose footerSpacer">Open job posting
+        <a href="#" class="linkOpen footerSpacer">Open job posting
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" /></svg></a>
         <button type="button" class="modalBtnSave reg-on">Save changes</button>
       </div>
@@ -1179,7 +1185,7 @@
         </section>
       </div>
       <div class="modalFooter">
-        <a href="#" class="modalBtnClose footerSpacer">Open job posting
+        <a href="#" class="linkOpen footerSpacer">Open job posting
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" /></svg></a>
         <button type="button" class="modalBtnSave reg-on">Save changes</button>
       </div>
@@ -1222,7 +1228,7 @@
         </section>
       </div>
       <div class="modalFooter">
-        <a href="#" class="modalBtnClose footerSpacer">Open job posting
+        <a href="#" class="linkOpen footerSpacer">Open job posting
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" /></svg></a>
         <button type="button" class="modalBtnSave reg-on">Save changes</button>
       </div>

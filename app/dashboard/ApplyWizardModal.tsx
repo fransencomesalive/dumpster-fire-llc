@@ -807,7 +807,7 @@ export default function ApplyWizardModal({
   const footer = (
     <div className={styles.modalFooter}>
       {sourceUrl ? (
-        <a href={sourceUrl} target="_blank" rel="noreferrer" className={`${styles.modalBtnClose} ${styles.footerSpacer}`}>Open job posting{EXTERNAL_LINK_ICON}</a>
+        <a href={sourceUrl} target="_blank" rel="noreferrer" className={`${styles.linkOpen} ${styles.footerSpacer}`}>Open job posting{EXTERNAL_LINK_ICON}</a>
       ) : <span className={styles.footerSpacer} />}
       {mode === "stepper" && step > 1 ? (
         <button type="button" className={styles.modalBtnClose} onClick={() => { if (!actionInFlightRef.current.active) setStep((s) => (s - 1) as WizardStep); }} disabled={!ready || busy}>Back</button>
@@ -1015,7 +1015,9 @@ export default function ApplyWizardModal({
                           <a href={contact.linkedinUrl} target="_blank" rel="noreferrer" className={styles.seeProfileBtn}>LI Profile{EXTERNAL_LINK_ICON}</a>
                         ) : null}
                       </span>
-                      <em>{contact.title} &middot; {humanizeContactType(contact.contactType)}</em>
+                      <em>
+                        {contact.title ? <>{contact.title} &middot; {humanizeContactType(contact.contactType)}</> : humanizeContactType(contact.contactType)}
+                      </em>
                       <b>{confidenceStars(contact.confidence)} &middot; {contact.confidence} confidence</b>
                       <small>{contact.roleConnection || contact.relevanceReason}</small>
                       {contact.verificationNotes.length > 0 ? <small>{contact.verificationNotes.join(" ")}</small> : null}
