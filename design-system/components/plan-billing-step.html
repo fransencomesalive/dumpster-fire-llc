@@ -12,20 +12,21 @@
 
   .wrap { max-width: 1080px; margin: 0 auto; padding: var(--space-6) var(--space-5); display: grid; gap: var(--space-6); }
   h1.page { font-family: var(--font-display); font-size: var(--type-h1); margin: 0 0 var(--space-2); }
-  .lede { font-family: var(--font-body); color: var(--role-text-muted); max-width: 72ch; margin: 0; }
+  .lede { font-family: var(--font-body); color: var(--role-text-muted); max-width: 74ch; margin: 0; }
   .stateLabel { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: var(--tracking-subhead);
-    font-size: 0.82rem; color: var(--c-tomato); margin: 0 0 var(--space-3); }
+    font-size: 0.82rem; color: var(--c-teal); margin: var(--space-2) 0 var(--space-3); }
+  .stateLabel.neg { color: var(--c-tomato); }
   .scroller { overflow-x: auto; }
-  .frame { container-type: inline-size; width: 100%; min-width: 820px; display: grid; gap: var(--space-5); }
+  .frame { container-type: inline-size; width: 100%; display: grid; gap: var(--space-5); }
+  .frame.wide { min-width: 720px; }
 
-  /* Step heading */
   .stepHead { text-align: center; display: grid; gap: var(--space-2); }
   .stepHead h2 { font-family: var(--font-display); font-size: 1.9rem; line-height: 1.05; color: var(--c-ink); margin: 0; }
-  .stepHead p { font-family: var(--font-body); color: var(--role-text-muted); margin: 0; }
+  .stepHead p { font-family: var(--font-body); color: var(--role-text-muted); margin: 0 auto; max-width: 60ch; }
 
-  /* ======================= TIER CARDS (map to homepage Good/Gooder/Goodest matrix) ======================= */
-  .tiers { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-4); }
-  @container (max-width: 780px) { .tiers { grid-template-columns: 1fr; } }
+  /* ======================= TWO PLAN CARDS (parity with homepage-pricing) ======================= */
+  .tiers { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--space-4); align-items: stretch; }
+  @container (max-width: 640px) { .tiers { grid-template-columns: 1fr; } }
   .tier { position: relative; display: flex; flex-direction: column; gap: var(--space-4);
     background-color: var(--c-paper-deep); background-image: var(--fiber-img), var(--grain-img);
     background-blend-mode: normal, soft-light; background-size: 170px 170px, 46px 46px;
@@ -36,55 +37,93 @@
     font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.7rem;
     color: var(--c-paper); background-color: var(--c-teal); border: var(--line-reg) solid var(--c-ink);
     border-radius: var(--radius-pill); padding: 3px var(--space-3); box-shadow: var(--shadow-card); white-space: nowrap; }
-  .tierName { font-family: var(--font-display); font-size: 1.6rem; line-height: 1; color: var(--c-ink); }
-  .tierPrice { font-family: var(--font-body); font-size: 0.92rem; color: var(--role-text-muted); margin-top: var(--space-1); }
+  .tierHead { display: grid; gap: var(--space-1); }
+  .tierName { font-family: var(--font-display); font-size: 1.7rem; line-height: 1; color: var(--c-ink); }
+  .tierTagline { font-family: var(--font-body); font-size: 0.95rem; color: var(--role-text-muted); }
+  .tierPrice { display: flex; align-items: baseline; gap: 4px; margin-top: var(--space-2); }
+  .tierPrice .amt { font-family: var(--font-display); font-size: 2.2rem; line-height: 1; color: var(--c-ink); }
+  .tierPrice .per { font-family: var(--font-body); font-size: 0.95rem; color: var(--role-text-muted); }
   .tierFeatures { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-2); flex: 1; }
   .tierFeatures li { display: flex; align-items: flex-start; gap: var(--space-2);
     font-family: var(--font-body); font-size: 0.95rem; color: var(--c-ink); }
   .tierFeatures li svg { width: 17px; height: 17px; flex: none; margin-top: 2px; color: var(--c-teal); }
+  .tierFeatures li.hero { font-family: var(--font-subhead); }
+  .tierFeatures li.hero b { font-weight: 700; }
+  .termsLink { color: var(--c-ink); text-decoration: underline; text-underline-offset: 2px; }
 
   .tierBtn { width: 100%; font-family: var(--font-display); font-size: 1.02rem; cursor: pointer;
     border-radius: var(--radius-md); box-shadow: var(--shadow-card); padding: var(--space-3);
-    border: var(--line-bold) solid var(--c-ink);
+    border: var(--line-bold) solid var(--c-ink); text-decoration: none; text-align: center; display: block;
     transition: background-color var(--dur-fast) var(--ease-snap), box-shadow var(--dur-fast) var(--ease-snap); }
   .tierBtn.teal { color: var(--c-paper); background-color: var(--c-teal); }
   .tierBtn.teal:hover { background-color: var(--role-info); box-shadow: var(--reg-box); text-shadow: 1px 1px 0 rgba(36,31,26,0.35); }
   .tierBtn.ghost { color: var(--c-ink); background-color: var(--c-paper); }
-  .tierBtn.ghost:hover { background-color: color-mix(in srgb, var(--c-teal) 16%, var(--c-paper)); box-shadow: var(--reg-box); }
-  .comingSoon { font-family: var(--font-subhead); text-transform: uppercase; letter-spacing: 0.05em;
-    font-size: 0.72rem; color: var(--role-text-faint); text-align: center; margin: var(--space-2) 0 0; }
+  .tierBtn.ghost:hover { background-color: var(--c-paper-deep); box-shadow: var(--reg-box); }
+  /* Billing disclosure folded into each plan card (satisfies pre-checkout disclosure) */
+  .cardDisclose { font-family: var(--font-body); font-size: 0.8rem; color: var(--role-text-faint);
+    text-align: center; line-height: 1.4; margin: calc(-1 * var(--space-2)) 0 0; }
+  .consentLine { font-family: var(--font-body); font-size: 0.85rem; color: var(--role-text-muted);
+    text-align: center; max-width: 70ch; margin: 0 auto; line-height: 1.5; }
 
-  /* ======================= ACCESS-CODE STRIP (folds the Billing-popup redeem pattern) ======================= */
+  /* ======================= STATUS PANEL (shared shell for flow states) ======================= */
+  .panel { display: grid; gap: var(--space-3); max-width: 560px; margin: 0 auto; padding: var(--space-5);
+    background-color: var(--c-paper-deep); background-image: var(--fiber-img), var(--grain-img);
+    background-blend-mode: normal, soft-light; background-size: 170px 170px, 46px 46px;
+    border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-lg); box-shadow: var(--shadow-card); }
+  .panel.pos { border-color: var(--c-teal); }
+  .panel.neg { border-color: var(--c-tomato); }
+  .panelIcon { width: 40px; height: 40px; }
+  .panelIcon.pos { color: var(--c-teal); }
+  .panelIcon.neg { color: var(--c-tomato); }
+  .panelIcon.wait { color: var(--role-text-muted); }
+  .panel h3 { font-family: var(--font-display); font-size: 1.35rem; margin: 0; color: var(--c-ink); }
+  .panel p { font-family: var(--font-body); font-size: 0.95rem; line-height: 1.5; color: var(--role-text-muted); margin: 0; }
+  .btnRow { display: flex; gap: var(--space-3); flex-wrap: wrap; }
+  .btnPrimary { flex: none; font-family: var(--font-display); font-size: 1.02rem; text-align: center;
+    color: var(--c-paper); background-color: var(--c-teal); border: var(--line-bold) solid var(--c-ink);
+    border-radius: var(--radius-md); box-shadow: var(--shadow-card); padding: var(--space-3) var(--space-5);
+    cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2); }
+  .btnPrimary:hover { background-color: var(--role-info); box-shadow: var(--reg-box); text-shadow: 1px 1px 0 rgba(36,31,26,0.35); }
+  .btnGhost { font-family: var(--font-display); font-size: 1rem; text-align: center; color: var(--c-ink);
+    background-color: var(--c-paper); border: var(--line-bold) solid var(--c-ink); border-radius: var(--radius-md);
+    box-shadow: var(--shadow-card); padding: var(--space-3) var(--space-5); cursor: pointer; text-decoration: none;
+    display: inline-flex; align-items: center; justify-content: center; }
+  .btnGhost:hover { background-color: var(--c-paper-deep); box-shadow: var(--reg-box); }
+
+  .spinner { width: 34px; height: 34px; border: 4px solid var(--c-paper-edge); border-top-color: var(--c-teal);
+    border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ======================= ACCESS-CODE STRIP ======================= */
   .codeStrip { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-4);
     background-color: var(--c-paper-deep); background-image: var(--fiber-img), var(--grain-img);
     background-blend-mode: normal, soft-light; background-size: 170px 170px, 46px 46px;
     border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-md);
     box-shadow: var(--shadow-card); padding: var(--space-4) var(--space-5); }
+  .codeStrip.applied { background-color: color-mix(in srgb, var(--c-teal) 12%, var(--c-paper-deep)); }
+  .codeStrip.error { border-color: var(--c-tomato); }
   .codeCopy { min-width: 220px; flex: 1; }
   .codeCopy .t { font-family: var(--font-display); font-size: 1.1rem; color: var(--c-ink); }
   .codeCopy .s { font-family: var(--font-body); font-size: 0.9rem; color: var(--role-text-muted); margin-top: 2px; }
+  .codeCopy .s.err { color: var(--c-tomato); }
   .codeForm { display: flex; gap: var(--space-3); flex-wrap: wrap; }
   .codeForm input { font-family: var(--font-body); font-size: 1rem; color: var(--c-ink);
     background-color: var(--c-paper); border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-md);
     padding: var(--space-3) var(--space-4); min-width: 200px; letter-spacing: 0.04em; }
+  .codeForm input.bad { border-color: var(--c-tomato); }
   .codeForm input:focus { outline: none; border-color: var(--c-teal);
     box-shadow: 0 0 0 3px color-mix(in srgb, var(--c-teal) 28%, transparent); }
   .btnRedeem { font-family: var(--font-display); font-size: 1rem; color: var(--c-ink); background-color: var(--c-paper);
     border: var(--line-bold) solid var(--c-ink); border-radius: var(--radius-md); box-shadow: var(--shadow-card);
-    padding: var(--space-3) var(--space-5); cursor: pointer;
-    transition: background-color var(--dur-fast) var(--ease-snap), box-shadow var(--dur-fast) var(--ease-snap); }
-  .btnRedeem:hover { background-color: color-mix(in srgb, var(--c-teal) 16%, var(--c-paper)); box-shadow: var(--reg-box); }
-
-  /* Applied confirmation state */
-  .codeStrip.applied { background-color: color-mix(in srgb, var(--c-teal) 12%, var(--c-paper-deep)); }
+    padding: var(--space-3) var(--space-5); cursor: pointer; }
+  .btnRedeem:hover { background-color: var(--c-paper-deep); box-shadow: var(--reg-box); }
   .applyMark { display: inline-flex; align-items: center; gap: var(--space-2);
     font-family: var(--font-display); font-size: 1.1rem; color: var(--c-ink); }
   .applyMark svg { width: 22px; height: 22px; color: var(--c-teal); }
   .btnContinue { margin-left: auto; font-family: var(--font-display); font-size: 1.05rem; color: var(--c-paper);
     background-color: var(--c-teal); border: var(--line-bold) solid var(--c-ink); border-radius: var(--radius-md);
     box-shadow: var(--shadow-card); padding: var(--space-3) var(--space-5); cursor: pointer; text-decoration: none;
-    display: inline-flex; align-items: center; gap: var(--space-2);
-    transition: background-color var(--dur-fast) var(--ease-snap), box-shadow var(--dur-fast) var(--ease-snap); }
+    display: inline-flex; align-items: center; gap: var(--space-2); }
   .btnContinue:hover { background-color: var(--role-info); box-shadow: var(--reg-box); text-shadow: 1px 1px 0 rgba(36,31,26,0.35); }
 </style>
 </head>
@@ -92,76 +131,63 @@
 <div class="wrap">
   <div>
     <h1 class="page">Onboarding · Plan &amp; Billing Step</h1>
-    <p class="lede">The step between sign-up and onboarding. Everyone lands here; testers satisfy it
-    with an <strong>access code</strong> and never touch checkout. Tier cards map 1:1 to the homepage
-    Good / Gooder / Goodest matrix (features from the live plan rules; <strong>no prices set yet</strong>).
-    Paid checkout is a <strong>coming-soon stub</strong> — no provider committed. The access-code strip
-    folds in the Billing-popup redeem pattern.</p>
+    <p class="lede">The <code>/plan</code> step between sign-up and onboarding. Everyone lands here; a
+    signed-out homepage pick lands here preselected. Two paid plans only &mdash; Smoldering ($22) and
+    Roaring ($32, top plan) &mdash; in parity with the homepage pricing cards. Billing facts and Terms
+    consent live on the plan cards, so <strong>Start</strong> goes straight to Stripe's secure checkout.
+    Access is unlocked by the signed Stripe webhook, never by the browser returning to a success URL.
+    Testers satisfy the step with an <strong>access code</strong> and never touch checkout. This card
+    covers acquisition; account management (upgrade, downgrade, cancellation, past-due) lives on the
+    Plan &amp; Billing detail card.</p>
   </div>
 
-  <!-- Default state -->
+  <!-- ============ 1. DEFAULT ============ -->
   <div>
-    <p class="stateLabel">Default · choose a plan or redeem a code</p>
-    <div class="scroller"><div class="frame">
+    <p class="stateLabel">1 · Default &middot; pick a plan or redeem a code</p>
+    <div class="scroller"><div class="frame wide">
       <div class="stepHead">
         <h2>Pick where you want to start</h2>
-        <p>You can change plans later. Have an access code? Redeem it below for full access.</p>
+        <p>You can change plans later. Have an access code? Redeem it below for full access, no checkout.</p>
       </div>
-
       <div class="tiers">
-        <!-- Good -->
         <div class="tier">
-          <div>
-            <div class="tierName">Good</div>
-            <div class="tierPrice">Pricing coming soon</div>
+          <div class="tierHead">
+            <div class="tierName">Smoldering</div>
+            <div class="tierTagline">Keep a steady burn under your search.</div>
+            <div class="tierPrice"><span class="amt">$22</span><span class="per">/ month</span></div>
           </div>
           <ul class="tierFeatures">
+            <li class="hero"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg><span><b>20</b> Apply Wizard pursuits a month</span></li>
             <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Career profile in your voice</li>
-            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Work examples, woven into your outreach</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Scan, match ratings, saved jobs, pursuit tracking</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Contact discovery and custom outreach in your voice</li>
           </ul>
-          <button type="button" class="tierBtn ghost">Choose Good</button>
-          <p class="comingSoon">Checkout coming soon</p>
+          <button type="button" class="tierBtn ghost">Start Smoldering</button>
+          <p class="cardDisclose">$22/month, billed monthly. Cancel anytime, effective at period end.</p>
         </div>
-
-        <!-- Gooder -->
         <div class="tier featured">
-          <span class="tierTag">Most popular</span>
-          <div>
-            <div class="tierName">Gooder</div>
-            <div class="tierPrice">Pricing coming soon</div>
+          <span class="tierTag">Top plan</span>
+          <div class="tierHead">
+            <div class="tierName">Roaring</div>
+            <div class="tierTagline">Go all in when the search gets hot.</div>
+            <div class="tierPrice"><span class="amt">$32</span><span class="per">/ month</span></div>
           </div>
           <ul class="tierFeatures">
-            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Everything in Good</li>
-            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Match ratings on every role</li>
-            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Saved Pursuits</li>
-            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Contact discovery: customized outreach</li>
+            <li class="hero"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg><span><b>45</b> Apply Wizard pursuits a month</span></li>
+            <li class="hero"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg><span>Markdown export of your full pursuit history</span></li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Everything in Smoldering</li>
           </ul>
-          <button type="button" class="tierBtn teal">Choose Gooder</button>
-          <p class="comingSoon">Checkout coming soon</p>
-        </div>
-
-        <!-- Goodest -->
-        <div class="tier">
-          <div>
-            <div class="tierName">Goodest</div>
-            <div class="tierPrice">Pricing coming soon</div>
-          </div>
-          <ul class="tierFeatures">
-            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Everything in Gooder</li>
-            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Generate custom outreach (1 per contact)</li>
-            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Pursuit tracking</li>
-            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Export history</li>
-            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Pursue up to 50 jobs each month</li>
-          </ul>
-          <button type="button" class="tierBtn ghost">Choose Goodest</button>
-          <p class="comingSoon">Checkout coming soon</p>
+          <button type="button" class="tierBtn teal">Start Roaring</button>
+          <p class="cardDisclose">$32/month, billed monthly. Cancel anytime, effective at period end.</p>
         </div>
       </div>
-
+      <p class="consentLine">Taxes are shown at checkout. Starting a plan means you agree to the
+      <a class="termsLink" href="/legal/terms">Terms</a>, <a class="termsLink" href="/legal/privacy">Privacy Policy</a>,
+      and <a class="termsLink" href="/legal/billing">Billing Terms</a>. Payment is handled on Stripe's secure checkout.</p>
       <div class="codeStrip">
         <div class="codeCopy">
           <div class="t">Have an access code?</div>
-          <div class="s">Testers get full access with a code &mdash; no checkout.</div>
+          <div class="s">Testers get full access with a code. No checkout.</div>
         </div>
         <div class="codeForm">
           <input type="text" placeholder="Enter access code" aria-label="Access code" />
@@ -171,20 +197,109 @@
     </div></div>
   </div>
 
-  <!-- Applied state -->
+  <!-- ============ 2. CREATING / REDIRECTING ============ -->
   <div>
-    <p class="stateLabel">Code applied &middot; full access, continue to onboarding</p>
-    <div class="scroller"><div class="frame">
+    <p class="stateLabel">2 · Creating checkout &middot; redirecting to Stripe</p>
+    <div class="panel" style="text-align:center; justify-items:center;">
+      <div class="spinner" role="status" aria-label="Loading"></div>
+      <h3>Taking you to secure checkout</h3>
+      <p>Hang tight while we open Stripe. Don't refresh or use the back button.</p>
+    </div>
+  </div>
+
+  <!-- ============ 3. RETURN, WEBHOOK PROCESSING ============ -->
+  <div>
+    <p class="stateLabel">3 · Payment received &middot; finishing setup (webhook pending)</p>
+    <div class="panel" style="text-align:center; justify-items:center;">
+      <div class="spinner" role="status" aria-label="Finishing"></div>
+      <h3>Payment received. Setting up your plan.</h3>
+      <p>This usually takes a few seconds. Your plan unlocks once payment is confirmed, not just because
+      you landed back here. This page refreshes on its own.</p>
+      <a class="btnGhost" href="#">Refresh now</a>
+    </div>
+  </div>
+
+  <!-- ============ 4. ACTIVE ============ -->
+  <div>
+    <p class="stateLabel">4 · Subscription active</p>
+    <div class="panel pos" style="text-align:center; justify-items:center;">
+      <svg class="panelIcon pos" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="8 12 11 15 16 9"/></svg>
+      <h3>You're Roaring</h3>
+      <p>45 Apply Wizard pursuits are ready this period. You can manage billing anytime in Profile &rarr; Plan.</p>
+      <a class="btnPrimary" href="#">Start building your profile
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+      </a>
+    </div>
+  </div>
+
+  <!-- ============ 5. CHECKOUT CANCELED ============ -->
+  <div>
+    <p class="stateLabel neg">5 · Checkout canceled &middot; no charge</p>
+    <div class="panel" style="text-align:center; justify-items:center;">
+      <svg class="panelIcon wait" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+      <h3>OK, nevermind</h3>
+      <p>No payment was made. Your plan is still open. Pick back up whenever you're ready.</p>
+      <a class="btnGhost" href="#">Back to plans</a>
+    </div>
+  </div>
+
+  <!-- ============ 6. ACCESS CODE APPLIED ============ -->
+  <div>
+    <p class="stateLabel">6 · Access code applied &middot; full access</p>
+    <div class="scroller"><div class="frame wide">
       <div class="codeStrip applied">
         <span class="applyMark">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="8 12 11 15 16 9"/></svg>
-          Access code applied &mdash; full access unlocked
+          Access code applied. Full access unlocked.
         </span>
         <a class="btnContinue" href="#">Continue to onboarding
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
         </a>
       </div>
     </div></div>
+  </div>
+
+  <!-- ============ 7. ACCESS CODE ERROR ============ -->
+  <div>
+    <p class="stateLabel neg">7 · Access code not accepted (invalid / expired / used up)</p>
+    <div class="scroller"><div class="frame wide">
+      <div class="codeStrip error">
+        <div class="codeCopy">
+          <div class="t">That code didn't work</div>
+          <div class="s err">This code is invalid, expired, or already used up. Check it and try again, or choose a plan above.</div>
+        </div>
+        <div class="codeForm">
+          <input type="text" class="bad" value="FRIENDS-2024" aria-label="Access code" />
+          <button type="button" class="btnRedeem">Redeem</button>
+        </div>
+      </div>
+    </div></div>
+  </div>
+
+  <!-- ============ 8. ALREADY SUBSCRIBED ============ -->
+  <div>
+    <p class="stateLabel">8 · Already subscribed &middot; reached /plan with an active plan</p>
+    <div class="panel pos" style="text-align:center; justify-items:center;">
+      <svg class="panelIcon pos" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="8 12 11 15 16 9"/></svg>
+      <h3>You're already Smoldering</h3>
+      <p>No need to pick again. Change plans, see usage, or manage billing in Profile &rarr; Plan.</p>
+      <div class="btnRow" style="justify-content:center;">
+        <a class="btnPrimary" href="#">Go to Profile &rarr; Plan</a>
+        <a class="btnGhost" href="#">Continue to onboarding</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 9. STRIPE UNAVAILABLE ============ -->
+  <div>
+    <p class="stateLabel neg">9 · Checkout temporarily unavailable</p>
+    <div class="panel neg" style="text-align:center; justify-items:center;">
+      <svg class="panelIcon neg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      <h3>Checkout is having a moment</h3>
+      <p>We couldn't reach secure checkout just now, and you were not charged. Give it another try in a
+      minute. Your plan choice is saved.</p>
+      <a class="btnPrimary" href="#">Try again</a>
+    </div>
   </div>
 </div>
 </body>

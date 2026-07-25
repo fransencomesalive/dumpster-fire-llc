@@ -80,6 +80,14 @@
       "group": "Patterns"
     },
     {
+      "path": "components/homepage-pricing.html",
+      "group": "Patterns"
+    },
+    {
+      "path": "components/plan-billing-detail.html",
+      "group": "Onboarding"
+    },
+    {
       "group": "Components",
       "path": "components/feedback.html"
     },

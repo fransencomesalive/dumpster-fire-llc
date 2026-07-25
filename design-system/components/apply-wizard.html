@@ -520,6 +520,133 @@
       </div>
     </div>
 
+    <!-- ================================================================
+         APPLY WIZARD · USAGE LIMIT STATES (Smoldering / Roaring metering)
+         Added 2026-07-24. The usage COUNT never appears in normal wizard
+         states. These are the only two contextual exceptions (plan §3.3):
+         (1) the zero-remaining gate when advancing Review -> Contacts, which
+         makes no provider call and no debit; and (2) a quiet, one-time
+         final-use note in Contacts. No meter and no running counter live
+         anywhere in the wizard. -->
+
+    <!-- ZERO REMAINING · Smoldering · Review -> Contacts blocked (no provider call, no charge) -->
+    <p class="dsStepLabel">Step 1 of 4 · Review · No pursuits left (Smoldering)</p>
+    <div class="modalBox">
+      <div class="modalHeader">
+        <h4 class="modalTitle">Human Path: Senior Producer</h4>
+        <button type="button" class="modalClose" aria-label="Close">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+      </div>
+      <div class="wizardSteps" aria-label="Human Path steps">
+        <button type="button" class="wizardStep wizardStepActive"><span>1</span>Review</button>
+        <button type="button" class="wizardStep" disabled><span>2</span>Contacts</button>
+        <button type="button" class="wizardStep" disabled><span>3</span>Outreach</button>
+        <button type="button" class="wizardStep" disabled><span>4</span>Track</button>
+      </div>
+      <div class="modalStack">
+        <div class="ds-callout">Used 'em all up, but good news is your reset is on Aug 12. This one won't run and you won't be charged, and your saved pursuits stay open.</div>
+        <section>
+          <strong>Wish you had more?</strong>
+          <p>Roaring includes 45 Apply Wizard pursuits a month, plus Markdown export of your pursuit history.</p>
+        </section>
+      </div>
+      <div class="modalFooter">
+        <a href="#" class="linkOpen footerSpacer">Open job posting
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" /></svg></a>
+        <button type="button" class="modalBtnClose">See my plan</button>
+        <button type="button" class="modalBtnSave">Upgrade to Roaring</button>
+      </div>
+    </div>
+
+    <!-- ZERO REMAINING · payment inactive variant · billing-management action -->
+    <p class="dsStepLabel">Step 1 of 4 · Review · No new pursuits (payment inactive)</p>
+    <div class="modalBox">
+      <div class="modalHeader">
+        <h4 class="modalTitle">Human Path: Senior Producer</h4>
+        <button type="button" class="modalClose" aria-label="Close">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+      </div>
+      <div class="wizardSteps" aria-label="Human Path steps">
+        <button type="button" class="wizardStep wizardStepActive"><span>1</span>Review</button>
+        <button type="button" class="wizardStep" disabled><span>2</span>Contacts</button>
+        <button type="button" class="wizardStep" disabled><span>3</span>Outreach</button>
+        <button type="button" class="wizardStep" disabled><span>4</span>Track</button>
+      </div>
+      <div class="modalStack">
+        <div class="ds-callout">Your plan is paused because your last payment didn't go through. New Apply Wizard pursuits are on hold until that's sorted out. Nothing runs here and you won't be charged. Your saved pursuits stay open.</div>
+      </div>
+      <div class="modalFooter">
+        <a href="#" class="linkOpen footerSpacer">Open job posting
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" /></svg></a>
+        <button type="button" class="modalBtnClose">See billing</button>
+        <button type="button" class="modalBtnSave">Update payment</button>
+      </div>
+    </div>
+
+    <!-- FINAL-USE CONFIRMATION · Contacts · quiet one-time note (NOT a counter) -->
+    <p class="dsStepLabel">Step 2 of 4 · Contacts · Last pursuit of the period (quiet, one-time)</p>
+    <div class="modalBox">
+      <div class="modalHeader">
+        <h4 class="modalTitle">Human Path: Senior Producer</h4>
+        <button type="button" class="modalClose" aria-label="Close">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+      </div>
+      <div class="wizardSteps" aria-label="Human Path steps">
+        <button type="button" class="wizardStep"><span>1</span>Review</button>
+        <button type="button" class="wizardStep wizardStepActive"><span>2</span>Contacts</button>
+        <button type="button" class="wizardStep"><span>3</span>Outreach</button>
+        <button type="button" class="wizardStep"><span>4</span>Track</button>
+      </div>
+      <div class="modalStack">
+        <p class="formNotice">That was the last pursuit for this month, but it'll reset on Aug 12. But finish this one!</p>
+        <section>
+          <strong>Human Path</strong>
+          <p>We found people at this company who may be useful for outreach. Check their LinkedIn profiles to confirm their current role and&nbsp;relevance.</p>
+          <p class="formSuccess">Found 2 potential contacts.</p>
+        </section>
+        <label class="contactSuggestion">
+          <input type="checkbox" checked />
+          <span>
+            <span class="copyRecipient">
+              <strong>Sam Lewis</strong>
+              <a href="#" class="seeProfileBtn">LI Profile
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" /></svg></a>
+            </span>
+            <em>VP, Brand &amp; Creative · Possible Hiring&nbsp;Manager</em>
+            <b>&#9733;&#9733;&#9733;&#9734;&#9734; · medium&nbsp;confidence</b>
+            <small>Direct management or hiring authority for this opening is not confirmed.</small>
+          </span>
+        </label>
+        <label class="contactSuggestion">
+          <input type="checkbox" />
+          <span>
+            <span class="copyRecipient">
+              <strong>Willem Blom</strong>
+              <a href="#" class="seeProfileBtn">LI Profile
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" /></svg></a>
+            </span>
+            <em>Recruiter</em>
+            <b>&#9733;&#9733;&#9733;&#9734;&#9734; · medium&nbsp;confidence</b>
+            <small>Recruiting responsibility for this specific opening is not confirmed.</small>
+          </span>
+        </label>
+      </div>
+      <div class="modalFooter">
+        <a href="#" class="linkOpen footerSpacer">Open job posting
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" /></svg></a>
+        <button type="button" class="modalBtnSave">Continue</button>
+      </div>
+    </div>
+
     <!-- ================= STEP 3 of 4 · OUTREACH ================= -->
     <p class="dsStepLabel">Step 3 of 4 · Outreach</p>
     <div class="feedbackFlip">
