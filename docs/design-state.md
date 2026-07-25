@@ -1,6 +1,6 @@
 # Design State — CANONICAL SOURCE OF TRUTH
 
-Date verified: 2026-06-26 (against code, not other docs)
+Date verified: 2026-07-24 (pricing cards); 2026-06-26 (foundation audit)
 Repo: `dumpster-fire-llc` (canonical; Lab26 is legacy/reference only)
 
 > This file supersedes the design sections of every other doc. If another doc disagrees
@@ -9,6 +9,31 @@ Repo: `dumpster-fire-llc` (canonical; Lab26 is legacy/reference only)
 > listed commands before trusting them in a new session — do not re-derive design state
 > from `design-implementation-handoff.md`, `restart-handoff.md`, or
 > `project-operating-state.md`; those are superseded for design state.
+
+## 2026-07-24 - Smoldering / Roaring pricing cards approved and synced
+
+Commit `c536002` is the approved pricing and billing design source. The cards were registered with
+Claude Design project `3af2f1ea-428c-49b3-8b02-c066ec0c7452` and mirrored into the repository:
+
+- `components/homepage-pricing.html`
+- `components/plan-billing-step.html`
+- `components/plan-billing-detail.html`
+- `components/apply-wizard.html`
+- `components/export.html`
+- `_ds_manifest.json`
+
+The approved design contract includes:
+
+- Smoldering and Roaring homepage pricing;
+- plan acquisition, Stripe return, access-code, active, canceled, and unavailable states;
+- quiet Profile Plan/Billing usage and lifecycle states;
+- Apply Wizard zero-remaining, payment-inactive, and final-use exception states only;
+- Roaring Markdown export and Smoldering locked states.
+
+These cards are approved design sources, not production implementation. The production homepage,
+plan flow, Profile Plan/Billing surface, Apply Wizard pricing states, and export surface remain
+unchanged until their Codex port is separately scoped. Any port must preserve design-system and
+production parity and complete the full design-sync checklist.
 
 ## Why this exists
 
@@ -50,11 +75,14 @@ zero dark literals). Bring every other public surface to that same standard.
 ### Design system — COMPLETE & COHERENT (`design-system/`)
 - `tokens/tokens.css` — full paper-light tokens (paper/ink + tomato/teal/mustard/bluebird/
   rose accents, type scale, spacing, radius, inked borders, grain+fiber texture,
-  registration misprint, hard-offset shadows). Accent strategy: teal-forward; tomato =
-  primary CTA + destructive only; mustard = new/weird flags only; red + yellow never co-star.
+  registration misprint, hard-offset shadows). Current action roles are defined in
+  `docs/design-canon.md`: teal = affirmative/proceed/done, tomato = negative/destructive,
+  mustard = Save and utility actions. The old tomato-primary and red/yellow exclusion rules are
+  retired.
 - `lib/base.css` — primitives: `.ds-btn`, `.ds-link`, `.ds-surface`, `.ds-subhead`,
   `.ds-halftone`.
-- 20 component cards + `scan-page` pattern. Synced to Claude Design `3af2f1ea`.
+- 48 manifest cards, including the approved pricing set above. Synced to Claude Design
+  `3af2f1ea-428c-49b3-8b02-c066ec0c7452`.
 
 ### Production — LIVE
 `www.thejobmarketisadumpsterfire.com` → HTTP 200 (verified `curl -I`).
@@ -118,9 +146,9 @@ Randall per surface.)
   person + generate a message in the user's voice). Loop = Build profile / Scan real sources / 1:1
   outreach / Track your pursuits. Cut the Onboarding process section and the ranked-matches step
   (not a homepage focus per Randall). Features + pricing tiers tightened; hero subhead kept; Human
-  Path demo kept. GAP FLAGGED: contact discovery (the "find the person" half of the lead promise)
-  is not built — `unavailableHumanPathProvider` stub, no provider selected; message generation IS
-  built. Needs a contact-discovery provider decision + integration to make the homepage lead real.
+  Path demo kept. The former unavailable-provider gap is resolved: direct Exa People Search is live
+  with lane-aware discovery and persisted normalized contacts. Pricing copy remains stale until the
+  approved 2026-07-24 homepage-pricing card is ported.
 - [ ] Step 3.5 — future public pages from tokens + primitives + cards.
 
 Every surface checked at 320 / 375 / 390 / 1280 / 1440 against its DS card: no overflow,

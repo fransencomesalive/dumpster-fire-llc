@@ -1,6 +1,34 @@
 # Current State
 
-## 2026-07-24 - Smoldering / Roaring subscription initiative approved
+## 2026-07-24 - Smoldering / Roaring Phase 1, Phase 2A, and design handoff
+
+The pricing initiative now has one unified implementation state:
+
+- Codex Phase 1 is committed as `3a3453d`, deployed, and backed by production migrations
+  `20260724000200` through `20260724000500`.
+- Claude’s five approved pricing/billing cards are committed as `c536002`, registered with Claude
+  Design, and mirrored into `design-system/`.
+- Codex Phase 2A adds the locally verified, backward-compatible
+  `20260724000600_subscription_billing_two_tier.sql` contract and its isolated PostgreSQL harness.
+- Phase 2A has not been applied to production and the application does not call the new RPCs yet.
+- No production pricing UI, CSS, public copy, legal copy, Stripe integration, or Markdown export
+  backend has been implemented.
+
+Phase 2A establishes the two-tier catalog, conservative subscription-source backfill, Stripe-ready
+identity and lifecycle fields, fail-closed missing-subscription behavior, service-only atomic
+access-code redemption, one-use-per-pursuit Apply Wizard metering, contacts-only legacy backfill,
+service-only atomic Human Path persistence, UTC internal entitlement periods, and Stripe period
+enforcement. It deliberately preserves legacy pursuit, Human Path, and outreach behavior for a
+flagged application cutover.
+
+The full release check now runs the Phase 2A migration harness. The final local verification passed
+three idempotent migration applications, the legacy Saved Pursuits harness, all 32 fixture suites,
+typecheck, lint with four pre-existing warnings and zero errors, and the production build.
+
+The exact Phase 2B starting point and remaining production boundaries are in
+`docs/next-session.md`.
+
+## 2026-07-24 - Smoldering / Roaring subscription initiative approved (historical kickoff)
 
 The next production initiative is fully specified in
 `docs/subscription-billing-production-plan-2026-07-24.md`.
@@ -24,10 +52,9 @@ Terms/Privacy/Billing/Support requirements, Claude Design ownership, Codex imple
 ownership, migrations, test-mode validation, release sequencing, rollback, and post-launch
 observation.
 
-Implementation has not started. The immediate backend slice is the provider-cost telemetry
-schema/boundary/tests. The independent Claude lane begins with the Smoldering/Roaring plan-billing
-card and a dedicated two-tier homepage-pricing card. Exact ownership and starting files are in
-`docs/next-session.md`.
+This was the original kickoff state. It is superseded by the completed Phase 1, approved Claude
+design work, and locally verified Phase 2A state above. Exact ownership and the current starting
+point are in `docs/next-session.md`.
 
 ## 2026-07-24 - Human Path production provider replaced with direct Exa discovery
 

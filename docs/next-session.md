@@ -1,268 +1,178 @@
-# Next Session - Starting Point
+# Next Session: Smoldering / Roaring Phase 2B
 
-_Updated 2026-07-24. Read `docs/project-operating-state.md` Session Start
-Protocol and `AGENTS.md` first. This file names the immediate next work only._
+_Updated 2026-07-24. Read `AGENTS.md` and follow the Session Start Protocol in
+`docs/project-operating-state.md` before editing._
 
-## START HERE: Smoldering / Roaring production initiative
+## Session check
 
-The next product initiative is approved and specified in:
+1. Run `git pull`.
+2. Run `git status --short --branch`.
+3. Confirm the active branch is `main`.
+4. Read `docs/subscription-billing-production-plan-2026-07-24.md`.
+5. Re-check production migration history before creating or applying any migration.
+6. Name the exact Phase 2B files and obtain scoped approval before editing.
 
-`docs/subscription-billing-production-plan-2026-07-24.md`
+## Unified pricing initiative state
 
-Approved retail contract:
+The approved retail contract is:
 
-- **Smoldering:** $22/month, 20 successful new Apply Wizard pursuits per Stripe billing period.
-- **Roaring:** $32/month, 45 successful new Apply Wizard pursuits per Stripe billing period plus
-  Markdown pursuit-history export.
+- Smoldering: $22/month for 20 successful new Apply Wizard pursuits.
+- Roaring: $32/month for 45 successful new Apply Wizard pursuits plus Markdown pursuit-history
+  export.
 - Roaring is the top plan.
-- No free retail tier.
-- No membership/initiation fee.
-- No usage rollover.
-- No retail overages at launch.
-- Both plans include the complete profile, scan/matching, saved jobs, contact discovery, outreach,
-  and pursuit-tracking workflow.
-- One Apply Wizard use is charged only when a new pursuit successfully persists at least one useful
-  contact. Failed, empty, cached, repeated, and revisited pursuits do not consume another use.
-- The usage count is quiet and deliberately discoverable in Profile → Plan. It is not persistent in
-  the dashboard, navigation, job cards, or normal Apply Wizard.
-- Existing internal tester access codes remain outside the public retail plan matrix.
+- No free retail tier, one-time membership fee, rollover, or retail overages.
+- A use is consumed only when a new pursuit atomically persists at least one useful contact.
+- Failed, empty, cached, repeated, and revisited pursuits do not consume another use.
+- The usage counter is quiet and appears only on deliberate Plan/Billing surfaces.
+- Tester remains an internal access-code entitlement outside the retail plan matrix.
 
-`AGENTS.md` now contains the Smoldering/Roaring vocabulary as an advisory standing instruction. The
-old Good/Gooder/Goodest names still exist in production code and design cards because implementation
-has not started. Do not treat those stale live strings as approved product direction.
+### Codex Phase 1: deployed
 
-### Immediate task
+Commit `3a3453d` added provider cost telemetry, safe rate-card estimation, source-content reuse,
+posting-refinement backoff, extraction claims, and the first unit-economics report.
 
-Kick off Phase 1 from the production plan: **provider cost telemetry foundation**.
+Production migrations are applied, recorded, and postflight-verified through:
 
-First backend slice:
+- `20260724000200_provider_usage_events.sql`
+- `20260724000300_jobs_source_content_hash.sql`
+- `20260724000400_posting_refinement_backoff.sql`
+- `20260724000500_job_link_extraction_claims.sql`
 
-1. Add `supabase/migrations/20260724000200_provider_usage_events.sql`.
-2. Add a small provider-usage type/repository boundary under `lib/costs/`.
-3. Store operational units and estimated cost only:
-   - provider category;
-   - operation/model/version;
-   - request and token/cache units;
-   - result count and outcome;
-   - integer estimated-cost micros;
-   - rate-card version;
-   - user/pursuit/job correlation IDs when applicable;
-   - timestamp.
-4. Never store raw prompts, resume text, generated messages, contact results, Exa highlights, or
-   provider response bodies in the cost table.
-5. Add a focused migration harness and framework-neutral unit tests before instrumenting production
-   call sites.
-6. Stop after the schema/boundary/test slice and report the exact next instrumentation call sites.
+The Phase 1 application release is deployed. The first production unit-economics report returned
+zero provider events because no post-deploy paid-provider workflow had yet generated telemetry.
+Do not treat that zero-event sample as a real pricing baseline.
 
-Likely first-slice files:
+Known Phase 1 limitations:
 
-- `supabase/migrations/20260724000200_provider_usage_events.sql`
-- `lib/costs/provider-usage.ts`
-- new focused migration and TypeScript fixture tests
-- `package.json` only if a focused test command is added
+- An already-ingested URL is not refetched merely because its remote content later changes.
+- Identical content arriving concurrently at different URLs can still produce duplicate provider
+  work.
 
-This slice is backend/data only. It does not authorize UI, CSS, design-card, pricing-copy, legal-copy,
-Stripe live configuration, or production migration changes.
+### Claude pricing design: approved and synced
 
-### Claude Design lane
+Commit `c536002` contains five approved pricing/billing design cards. They were registered with the
+Claude Design project and mirrored into the repository:
 
-Claude can begin the non-overlapping design workstream in Claude Design project
-`3af2f1ea-428c-49b3-8b02-c066ec0c7452` while the backend slice proceeds.
-
-Claude starts with:
-
-1. Revise `design-system/components/plan-billing-step.html` from three stale tiers to the approved
-   Smoldering/Roaring contract.
-2. Create or revise an explicit homepage-pricing design card grounded in the current live pricing
-   section, because no dedicated approved two-tier homepage-pricing card exists.
-3. Then design the quiet Profile → Plan usage detail, the Apply Wizard final-use/zero-use states,
-   and the Roaring Markdown-export states listed in plan Section 13.
-4. Present every design review as a numbered list.
-5. Do not edit production UI or public copy until Randall approves the exact Claude Design result.
-6. Complete the full design-sync checklist for every approved card.
-
-Claude-owned likely files:
-
+- `design-system/components/homepage-pricing.html`
 - `design-system/components/plan-billing-step.html`
-- `design-system/components/onboarding-account-bar.html`
+- `design-system/components/plan-billing-detail.html`
 - `design-system/components/apply-wizard.html`
 - `design-system/components/export.html`
-- a new approved homepage-pricing card
 - `design-system/_ds_manifest.json`
 
-Codex must not touch those files while Claude owns the design lane. Claude must not touch the
-backend cost-telemetry files while Codex owns the first backend slice. All work remains on `main`.
+The approved designs cover:
 
-### Not yet authorized or not yet ready
+- two-tier homepage pricing;
+- plan acquisition, checkout return, access-code, active, canceled, and unavailable states;
+- quiet Profile Plan/Billing usage, upgrade, downgrade, cancellation, and payment-recovery states;
+- Apply Wizard zero-use, inactive-payment, and final-use exception states;
+- Roaring Markdown export and Smoldering locked states.
 
-- Do not edit the homepage, plan flow, Profile Plan/Billing popup, Apply Wizard, export UI, or legal
-  pages before their scoped design/copy approvals.
-- Stripe test/live Products, Prices, Portal, webhooks, tax decision, and Vercel secrets remain
-  Randall/manual work at the phases identified in the production plan.
-- The final Terms, Privacy, Billing, and Support language requires Randall approval and a
-  pre-launch legal-counsel checkpoint.
-- Do not apply the provider-usage or subscription migrations to production until their local
-  migration tests, read-only production preflight, and explicit production authorization pass.
+These are design-system sources only. Production UI, CSS, public copy, and legal pages have not
+been ported. Any production port must map exactly to these approved cards and follow the full
+design-sync checklist.
 
-### First-session verification
+### Codex Phase 2A: implemented locally, not applied to production
 
-At the beginning of the next session:
+Phase 2A added:
 
-1. Run the Session Start Protocol.
-2. Confirm `main` and inspect `git status --short --branch`.
-3. Confirm whether Claude or Codex owns the selected lane and list exact files before editing.
-4. Read the full production plan.
-5. Re-check the latest migration number before creating a migration.
-6. Keep the completed Human Path release below as historical context, not the next task.
+- `supabase/migrations/20260724000600_subscription_billing_two_tier.sql`
+- `scripts/test-subscription-billing-two-tier-migration.sh`
+- the `test:migrations:subscription-billing` package command;
+- automatic inclusion of that harness in `release:check`.
 
-## Human Path Exa provider release complete
+The migration contract:
 
-The approved pivot is live. Evaluation evidence and the final architecture decision
-are in:
+- sets `basic` to Smoldering at $22/20/no Markdown;
+- sets `premium` to Roaring at $32/45/Markdown;
+- preserves tester at 25 uses with internal Roaring-equivalent capability;
+- retires `pro` from new entitlement;
+- adds subscription source and Stripe-ready lifecycle fields;
+- conservatively backfills existing tester rows as `access_code` and other pre-Stripe rows as
+  `manual`;
+- prevents access-code writes from replacing a Stripe subscription;
+- removes the database fallback that treated a missing subscription as active `basic`;
+- adds the authoritative `apply_wizard` usage type, lifetime one-use-per-pursuit uniqueness, and
+  immutable pursuit latch;
+- backfills only pursuits with persisted useful contacts;
+- adds service-role-only atomic access-code redemption;
+- adds service-role-only atomic Human Path contact, event, debit, and latch persistence;
+- preserves legacy pursuit, Human Path, and outreach write behavior for the application cutover;
+- keeps authenticated contact reads while making contact mutations service-role-only;
+- uses Stripe half-open billing periods and UTC calendar months for access-code/manual
+  entitlements;
+- discards raw provider contact and diagnostic fields outside the allowlist.
 
-`docs/human-path-retrieval-architecture-plan-2026-07-22.md`
+Verification passed:
 
-Completed:
+- three idempotent migration applications;
+- exact catalog, preservation, backfill, security, period, debit, empty-result, and replay checks;
+- Stripe source and billing-period fail-closed checks;
+- tester UTC renewal regression;
+- legacy Saved Pursuits migration harness;
+- 32 fixture suites;
+- typecheck;
+- lint with four pre-existing warnings and zero errors;
+- production build;
+- full `npm run release:check`.
 
-- Replaced the former OpenAI contact provider with Exa People Search.
-- Removed the old discovery, verification, prompt, parser, reconciliation, cost-estimation, and
-  rejection machinery instead of retaining parallel code.
-- Added three dynamic search lanes derived from the actual job and candidate profile.
-- Added exact current-company matching, direct LinkedIn-only results, deduplication, light ranking,
-  and `other_useful_contact`.
-- Kept missing evidence as unknown and preserved all potentially useful exact-company results.
-- Kept provider responses and highlights request-local. Persisted events now contain only aggregate
-  diagnostics, while normalized contact suggestions remain available for selection and outreach.
-- Replaced the contact-model environment example with `EXA_API_KEY`.
-- Applied the separately approved Apply Wizard accuracy copy to the live modal and its local design
-  card without changing layout, CSS, or behavior.
-- Added and confirmed `EXA_API_KEY` in the Vercel Production environment.
-- Applied, recorded, and postflight-verified
-  `20260724000100_human_path_other_useful_contact.sql` in production.
-- Corrected the fresh Human Path response to return persisted contact suggestions with the database
-  IDs required by contact selection (`e8f3821`).
-- Deployed and verified the release on all production aliases.
+The migration has not been applied to production. No application runtime calls the new RPCs yet.
 
-Verification:
+## Immediate next task: Phase 2B application compatibility cutover
 
-- `npm run test:fixtures`: 29 suites passed.
-- `npm run typecheck`: passed.
-- Focused provider and API fixtures: passed.
-- `npm run test:migrations:human-path-contact-type`: passed.
-- `npm run release:check`: passed, including the Saved Pursuits migration suite, lint with four
-  pre-existing warnings and no errors, and the Next.js production build.
-- Live request-local Autodesk smoke test: all three lanes completed in 3.4 seconds; 30 rows became
-  16 unique exact-company LinkedIn contacts after validation and deduplication.
-- Disposable authenticated production workflow: 19 Autodesk contacts across four classifications,
-  successful likely-hiring-manager selection, one em-dash-free outreach message, and complete
-  cleanup with zero temporary profile, subscription, or pursuit rows remaining.
-- Production bundle readback confirmed the corrected Apply Wizard copy and absence of the old
-  reporting-chain and verified-contact claims.
+Build the application side behind `BILLING_ENABLED=false`. The deployed false path must continue
+to work before migration `00600` exists. Do not apply the migration or enable billing in the same
+task.
 
-Next:
+Required behavior:
 
-1. Claude completes the remote Apply Wizard registration task below.
-2. Do not add another paid verification layer or refine against only the three evaluation jobs.
-3. No additional production test is required for this release unless a new failure is observed.
+1. Add schema-aware subscription types for plan source, Apply Wizard allowance, period, remaining
+   use, and Markdown entitlement.
+2. In the enabled path only, remove the TypeScript missing-subscription-as-active-basic fallback.
+   The false compatibility path remains unchanged until migration and cutover authorization.
+3. In the enabled path only, load database plan entitlements instead of `PLAN_RULES`. Do not remove
+   the legacy false-path rules in this slice.
+4. Route access-code redemption through `redeem_access_code_subscription` only when the new path is
+   enabled.
+5. Add repository mapping for `persist_human_path_generation`, including structured limit,
+   inactive, replay, contact, pursuit, and usage results.
+6. Keep the legacy production path intact while the flag is false.
+7. Add focused tests for false-path compatibility and enabled-path RPC mapping.
+8. Do not change outreach debits or production UI yet. The outreach cutover follows after the
+   Human Path path is proven against the migrated schema.
 
-## Claude pickup — register the Apply Wizard card — COMPLETE (2026-07-24)
+Expected first files:
 
-Remote registration is done. The updated `components/apply-wizard.html` was pushed to the Claude
-Design project `Dumpster Fire Design System` (`3af2f1ea-428c-49b3-8b02-c066ec0c7452`) and
-`register_assets` succeeded (`{"registered":1}`) with:
-- Name: `Apply Wizard`
-- Subtitle: `Potential-contact copy; Possible Hiring Manager; stale verified and reporting-chain claims removed`
-- Viewport: `1280` (reused the existing Apply Wizard asset viewport)
+- `lib/public-profile/subscription/types.ts`
+- `lib/public-profile/subscription/repository.ts`
+- `lib/public-profile/subscription/enforcement.ts`
+- `lib/public-profile/subscription/rules.ts`
+- `lib/account/access-codes.ts`
+- `lib/public-profile/pursuits/types.ts`
+- `lib/public-profile/pursuits/repository.ts`
+- `lib/public-profile/api.ts`
+- `scripts/test-public-profile-subscription.mjs`
+- `scripts/test-public-profile-pursuits.mjs`
+- `scripts/test-public-profile-api.mjs`
 
-Readback of the remote card confirmed the new copy is present — `may be useful for outreach`,
-`No potential contacts turned up for this role`, `Found 2 potential contacts`,
-`Possible Hiring Manager` — and the stale claims are absent — no `reporting chain is built
-automatically`, no `No verified contacts turned up`, no `reporting-chain contacts`, and no
-`Verified` claim on the example contact. The dirty working-tree files (`_ds_manifest.json`,
-`case-study-lockup.html`, `exports/`) were left untouched.
+This list is a handoff, not authorization. Reconfirm the exact slice before editing.
 
-Original task steps (kept for reference):
+## Explicitly still incomplete
 
-1. Open the Claude Design project `Dumpster Fire Design System`, project ID
-   `3af2f1ea-428c-49b3-8b02-c066ec0c7452`, and ground the session with `get_file`.
-2. Push the exact local card `design-system/components/apply-wizard.html`. Its first line already
-   has `<!-- @dsCard group="Components" -->`.
-3. Keep the existing remote manifest entry for `components/apply-wizard.html` in group
-   `Components`. The committed local manifest already contains that entry, so this task requires
-   no local manifest edit.
-4. Run `register_assets` for the Apply Wizard card so the Design System pane refreshes. Use:
-   - Name: `Apply Wizard`
-   - Subtitle: `Potential-contact copy; Possible Hiring Manager; stale verified and reporting-chain claims removed`
-   - Viewport: reuse the existing Apply Wizard asset viewport rather than inventing a new one.
-5. Inspect the refreshed asset in the Design System pane. Confirm these concepts are present:
-   - `We found people at this company who may be useful for outreach.`
-   - `No potential contacts turned up for this role.`
-   - `Found 2 potential contacts.`
-   - `Possible Hiring Manager`
-6. Confirm these stale claims are absent:
-   - `The reporting chain is built automatically`
-   - `No verified contacts turned up`
-   - `reporting-chain contacts`
-   - A visible `Verified` claim on the example contact
-7. Report the exact registered asset and the successful `register_assets` result. Then update
-   `docs/next-session.md` and `docs/current-state.md` to mark remote registration complete. If
-   asked to sync, commit and push those documentation updates directly on `main`.
+- Phase 2B application compatibility and Human Path cutover.
+- A real production unit-economics baseline after post-deploy provider events exist.
+- Outreach entitlement cutover and removal of new retail pursuit/outreach debits.
+- Read-only production preflight immediately before migration authorization.
+- Production application and recording of migration `20260724000600`.
+- Stripe test products, Checkout, Customer Portal, webhook processing, lifecycle tests, and
+  environment secrets.
+- Markdown pursuit-history export backend.
+- Port of Claude’s approved cards to production surfaces.
+- Terms, Privacy, Billing, and Support updates plus the legal-counsel checkpoint.
+- Test-mode end-to-end billing verification and production release authorization.
 
-Working-tree ownership warning: the current changes to `design-system/_ds_manifest.json`,
-`design-system/components/case-study-lockup.html`, and `exports/` belong to unrelated work. Do not
-stage, overwrite, or include them in this task. If the Claude Design tool requires a manifest push,
-use the already committed Apply Wizard entry and coordinate before touching the dirty local
-manifest.
+## Production safety boundary
 
-## Final release verification
-
-- Focused public-profile API and pursuit fixtures: passed.
-- `npm run typecheck`: passed.
-- `npm run lint`: passed with four existing unused-variable warnings and no errors.
-- `git diff --check`: passed.
-- `npm run build`: passed.
-- Rendered Contacts and zero-contact states passed at 320, 375, 390, 1280, and 1440 pixels with no
-  overflow, painted-edge clipping, or copy orphans.
-- Exact production SHA: `e8f38219b5e5284431c6cf7c582aacc0ea938010`.
-- Canonical production root and dashboard: HTTP 200.
-
-The 2026-07-11 priorities below are historical and superseded as the immediate starting point.
-
-## Shipped this session (live on prod)
-
-- **Apply wizard (Human Path 4-step modal).** Phase 0 backend prereqs (`cc84765`) +
-  Phases 1–4 modal (`7d4f8ca`), both pushed and live. Modal ported 1:1 from the approved
-  DS card `design-system/components/apply-wizard.html`.
-- **Onboarding is now the profile edit surface.** Deleted the bespoke dashboard
-  `profile-editor` mode; `/onboarding` is the edit surface (a user who arrives already
-  complete edits in place; first-run users still auto-advance to `/dashboard` on the
-  transition to complete). Dashboard "Edit Career Profile" / "Edit" now navigate to
-  `/onboarding`. "Back to dashboard" added to the account/profile card (shown when
-  complete); Redeem stays there. Reset-profile button removed (server
-  `/api/public-profile/reset` untouched — see Open below).
-
-## Historical Priority 1 — Account-bar / profile-card → action menu
-
-Redesign the account/profile card (DS card `design-system/components/onboarding-account-bar.html`;
-live impl = `accountPanel` in `app/onboarding/OnboardingClient.tsx`) into an **action menu**.
-"Back to dashboard" and "Redeem code" currently sit in this card as placeholders. Randall will
-spec a **future profile page** the menu links to. This is design-gated: work it in the Claude
-Design "Dumpster Fire Design System" project (projectId `3af2f1ea-428c-49b3-8b02-c066ec0c7452`),
-review THERE (never localhost), then implement 1:1 and re-sync per the Full Design-Sync Checklist.
-
-## Historical Priority 2 — Dead-CSS cleanup
-
-Remove the now-unreferenced (0 hits in TSX) CSS left by deleting the profile-editor surface:
-- `app/onboarding/onboarding.module.css`: `.profileEditorMode`, `.profileEditorGrid`,
-  `.authPanelCompact`, `.readinessPanelCompact`, `.readinessStats`, `.authActions`,
-  `.gateNotice`, `.issueCard` (and any descendant selectors / media-query variants).
-- `app/dashboard/dashboard.module.css`: `.editorOverlay`, `.editorBox`, `.editorHeader`,
-  `.editorTitle`, `.editorIntro`, `.editorClose`, `.editorBody`, `.editorNav`, `.editorContent`.
-Verify each class is unreferenced before deleting; keep shared primitives
-(`.primaryButton`, `.secondaryButton`, `.statusLabel/Value/Detail`, etc.).
-
-## Open (Randall directs)
-
-- **Reset-profile functionality.** The button was removed but the server endpoint and the
-  reset flow remain. Randall will say where reset lives so it doesn't cross-contaminate.
-- Pre-existing unused `listField` warning in `OnboardingClient.tsx` (predates this session).
+Do not apply migration `20260724000600`, enable `BILLING_ENABLED`, configure live Stripe, or edit
+protected production UI/copy without a new explicit scope. The current production application
+continues to use the legacy entitlement and metering paths.

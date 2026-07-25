@@ -18,6 +18,15 @@ Canonical planning sources remain:
 
 ## Current Priority
 
+**Update 2026-07-24: Smoldering / Roaring is the active initiative.** Phase 1 provider-cost
+controls are deployed; Claude’s five pricing/billing cards are approved and synced; Phase 2A’s
+two-tier subscription and atomic Apply Wizard migration contract is locally implemented and fully
+verified but not applied to production. The immediate next task is the flagged Phase 2B application
+compatibility cutover in `docs/next-session.md`. Stripe is the selected billing provider, but
+Checkout, Portal, webhooks, test products/prices, tax decisions, and environment configuration are
+not built or configured. The production UI port waits for backend readiness and a separately
+approved mapping to Claude’s cards.
+
 **Update 2026-07-05 — onboarding auth surface shipped (prod `153dbd4`).** The round-4
 onboarding auth DS cards are now built into the live page: login-only signed-out state
 (no dead Save buttons), account panel (email + plan chip + access code), persistent
@@ -36,22 +45,18 @@ What actually remains splits three ways:
    review workflow, subscription upgrade states, profile-management editor follow-ups, onboarding
    quality UI, landing + pricing pages. All need an approved design source before edits (AGENTS.md
    Design Authority + `docs/design-state.md`).
-2. **Decision-blocked:** Human Path contact-discovery provider; billing provider + webhooks;
+2. **Decision/manual-setup blocked:** Stripe products, prices, Portal, webhooks, and tax settings;
    resume storage/parsing provider; Google/Apple OAuth.
 3. **Unblocked backend** (small): pre-launch copy/scaffold audit (Phase 9 verify item); profile
    regeneration action wiring; outreach version pruning, etc.
 
-Next-task selection should pick from #3, or move into #1 once Randall provides/approves design.
+The current next-task selection is Phase 2B in `docs/next-session.md`. Older phase checklists below
+are historical inventory unless a newer dated update explicitly reactivates them.
 
 ## Near-Term (scheduled)
 
-- [ ] **CRITICAL — Randall: repoint the custom domain (found 2026-07-04).**
-  `www.thejobmarketisadumpsterfire.com` + apex serve the Lab26 project (all real routes
-  404; homepage is a ~9-day-old edge-cached copy). The current app is live at
-  `https://dumpster-fire-llc.vercel.app`. In the Vercel dashboard, attach the domains
-  to the `dumpster-fire-llc` project / promote the latest deployment, then verify
-  `/onboarding` returns 200 on the custom domain. Blocks launch invites and the QA
-  widget on the public domain. Details in `docs/current-state.md` (2026-07-04 entry).
+- [x] **Custom domain repointed.** Current production verification returns 200 for the canonical
+  `www` host and Vercel production host; the apex returns the expected redirect to `www`.
 
 ### QA feedback relay — end-to-end go-live (added 2026-07-04)
 
@@ -191,7 +196,10 @@ error — nothing breaks. In order:
 - [ ] Configure Apple OAuth.
 - [ ] Confirm resume file storage provider and retention rules.
 - [ ] Choose resume parsing provider.
-- [ ] Choose billing provider and webhook model.
+- [x] Choose billing provider and webhook model: Stripe Checkout, Customer Portal, and verified
+  webhook mirror, specified in `docs/subscription-billing-production-plan-2026-07-24.md`.
+- [ ] Configure Stripe test products/prices, Portal, webhook endpoint, tax behavior, and required
+  environment secrets.
 
 ## Phase 2 — Onboarding
 
@@ -261,21 +269,16 @@ error — nothing breaks. In order:
 - [x] Add pursuit state tests.
 - [ ] Build pursuit dashboard/list/read UI (design-gated).
 
-## Phase 6 — Human Path Engine  (BOUNDARY DONE — `lib/public-profile/pursuits/human-path.ts`)
+## Phase 6 — Human Path Engine  (EXA PROVIDER LIVE)
 
-- [x] Add contact discovery provider boundary. (`HumanPathProvider` seam; default
-  `unavailableHumanPathProvider`)
+- [x] Add contact discovery provider boundary and direct Exa People Search implementation.
 - [x] Add hiring manager, functional leader, recruiter, and executive sponsor contact types.
   (`HumanPathContact` types)
 - [x] Add confidence scoring and reasoning. (contact confidence + reason fields in the contract)
-- [ ] **NEXT CLAUDE SESSION PRIORITY:** Design the no-verified-contact-route state and fallback
-  action for Human Path contact cards.
-  LinkedIn is preferred, a professional contact page is the only direct fallback, and email is excluded.
-  See `docs/human-path-contact-reachability-design-need-2026-07-20.md`.
+- [x] Design and ship the no-contact recovery state and direct LinkedIn validation surface.
 - [x] Add Human Path usage ledger integration. (`human_path` usage events)
-- [ ] **BLOCKED (decision):** choose + integrate a real contact-discovery provider. Until then the
-  provider degrades gracefully (provider_unavailable). Contact ranking by company context lands with
-  the real provider.
+- [x] Integrate dynamic Hiring Manager, Recruiter, and Functional Leader discovery lanes plus
+  useful adjacent contacts.
 
 ## Phase 7 — Outreach Generation  (BACKEND DONE — `lib/public-profile/outreach-generator.ts`)
 
@@ -287,15 +290,17 @@ error — nothing breaks. In order:
   (`scripts/test-public-profile-outreach`)
 - [ ] Outreach UI + review workflow (design-gated).
 
-## Phase 8 — Subscription System  (ENFORCEMENT DONE — `lib/public-profile/subscription/`)
+## Phase 8 — Subscription System  (LEGACY LIVE; TWO-TIER CUTOVER IN PROGRESS)
 
-- [x] Implement Tester, Basic, and Pro plan rules. (`rules.ts`)
-- [x] Enforce pursuit limits. (`enforcement.ts`)
-- [x] Enforce Human Path limits.
-- [x] Enforce outreach limits.
-- [x] Enforce Pursued Jobs Export gate. (data-returning enforcement)
-- [ ] Add upgrade states for limit reached and Pursued Jobs Export locked (UI, design-gated).
-- [ ] **BLOCKED (decision):** billing provider + webhook processing.
+- [~] Legacy Tester/Basic/Pro/Premium pursuit, Human Path, and outreach counters remain live only
+  until the Smoldering/Roaring Apply Wizard cutover.
+- [x] Implement and locally verify the Phase 2A two-tier database and atomic metering contract.
+- [ ] Implement the flagged Phase 2B application compatibility and Human Path cutover.
+- [ ] Cut outreach over from legacy pursuit/outreach debits to the Apply Wizard latch.
+- [ ] Apply and record migration `20260724000600` after a fresh read-only production preflight and
+  explicit authorization.
+- [ ] Build Stripe Checkout, Portal, verified webhooks, and lifecycle processing.
+- [ ] Build the approved limit, billing, and Markdown export UI states after backend readiness.
 
 ## Phase 9 — Public Site
 
@@ -312,4 +317,4 @@ error — nothing breaks. In order:
 - [ ] Response optimization.
 - [ ] Advanced coaching.
 - [ ] Company intelligence.
-- [ ] Premium tier.
+- [ ] Any retail tier beyond approved top plan Roaring.
