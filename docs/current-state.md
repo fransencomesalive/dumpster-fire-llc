@@ -1,9 +1,11 @@
 # Current State
 
-## 2026-07-25 - Smoldering / Roaring Phase 2B compatibility bridge complete locally
+## 2026-07-25 - Phase 2B deployed flag-off; live migration preflight complete
 
-The application bridge to migration `20260724000600` is implemented and locally verified behind
-`BILLING_ENABLED`, which defaults to false:
+The application bridge to migration `20260724000600` is committed as `b76e7f8`, pushed to
+`origin/main`, and deployed successfully by Vercel. GitHub Actions run `30178555166` passed its
+release check. Production does not define `BILLING_ENABLED`, so the flag resolves false and the
+legacy application paths remain active:
 
 - the false path preserves the deployed `PLAN_RULES`, missing-subscription active-basic fallback,
   legacy access-code writes, and legacy Human Path persistence;
@@ -21,33 +23,39 @@ The application bridge to migration `20260724000600` is implemented and locally 
 
 Verification passed the Phase 2A migration harness, legacy Saved Pursuits migration harness, 33
 fixture suites, typecheck, lint with four pre-existing warnings and zero errors, production build,
-and `git diff --check`.
+and `git diff --check`. Production header checks returned HTTP 200 for `/` and `/plan`. An
+unauthenticated access-code redemption returned 401, and the Human Path route returned the expected
+404 for a nonexistent pursuit without performing a provider call or database write.
 
-This work is not deployed or committed yet. `BILLING_ENABLED` has not been enabled. Production
-migrations `20260724000200` through `20260724000600` remain unapplied and unrecorded. The next
-production step is to deploy this compatibility code with billing false, verify the legacy path,
-then run a fresh read-only migration preflight. Applying any migration still requires explicit
-authorization.
+The read-only production query in `scripts/preflight-subscription-billing.sql` directly confirmed
+that Phase 1 migrations `20260724000200` through `20260724000500` are applied and recorded. Only
+`20260724000600` is absent. No migration was applied and billing was not enabled.
 
-## 2026-07-25 - Phase 1 production migration-state correction
+The preflight found three active `premium` subscriptions. Migration `00600` would classify all
+existing non-tester subscriptions as `manual`, but production also has one premium access code
+with 12 recorded uses and no durable per-user redemption-to-subscription link. The next action is a
+product/operations decision on whether those three legacy accounts should remain manual Roaring
+entitlements or be classified as internal access-code entitlements. After that decision, revise
+the migration if necessary, rerun its local harness and release check, rerun the production
+preflight, and request explicit migration authorization.
 
-Commit `3a3453d` is on `origin/main`, but its migrations `20260724000200` through
-`20260724000500` are **not applied or recorded in production**. A pushed commit or application
-deployment must not be treated as proof that its database migrations ran. Phase 2A migration
-`20260724000600` is also unapplied and unrecorded in production. Re-check production migration
-history immediately before any apply, and require explicit migration authorization.
+The preflight also found 10 current-UTC-month Apply Wizard backfill candidates, all belonging to
+one user. Applying `00600` would create those metering rows. This is evidence for the migration
+review, not authorization to apply it.
 
 ## 2026-07-24 - Smoldering / Roaring Phase 1, Phase 2A, and design handoff
 
 The pricing initiative now has one unified implementation state:
 
-- Codex Phase 1 is committed as `3a3453d` on `origin/main`; migrations `20260724000200` through
-  `20260724000500` exist in the repository but are not applied or recorded in production.
+- Codex Phase 1 is committed as `3a3453d` on `origin/main`; a later live preflight on 2026-07-25
+  confirmed migrations `20260724000200` through `20260724000500` are applied and recorded in
+  production.
 - Claude’s five approved pricing/billing cards are committed as `c536002`, registered with Claude
   Design, and mirrored into `design-system/`.
 - Codex Phase 2A adds the locally verified, backward-compatible
   `20260724000600_subscription_billing_two_tier.sql` contract and its isolated PostgreSQL harness.
-- Phase 2A has not been applied to production and the application does not call the new RPCs yet.
+- Phase 2A has not been applied to production. The later Phase 2B bridge calls its new RPCs only
+  when `BILLING_ENABLED` is true; production currently resolves the flag false.
 - No production pricing UI, CSS, public copy, legal copy, Stripe integration, or Markdown export
   backend has been implemented.
 

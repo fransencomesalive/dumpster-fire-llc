@@ -1,4 +1,4 @@
-# Next Session: Phase 2B Flag-Off Release and Migration Preflight
+# Next Session: Legacy Premium Decision Before Migration 00600
 
 _Updated 2026-07-25. Read `AGENTS.md` and follow the Session Start Protocol in
 `docs/project-operating-state.md` before editing._
@@ -9,8 +9,8 @@ _Updated 2026-07-25. Read `AGENTS.md` and follow the Session Start Protocol in
 2. Run `git status --short --branch`.
 3. Confirm the active branch is `main`.
 4. Read `docs/subscription-billing-production-plan-2026-07-24.md`.
-5. Re-check production migration history before creating or applying any migration.
-6. Name the exact Phase 2B files and obtain scoped approval before editing.
+5. Read `scripts/preflight-subscription-billing.sql` and the 2026-07-25 findings below.
+6. Re-check production migration history immediately before any migration action.
 
 ## Unified pricing initiative state
 
@@ -26,23 +26,23 @@ The approved retail contract is:
 - The usage counter is quiet and appears only on deliberate Plan/Billing surfaces.
 - Tester remains an internal access-code entitlement outside the retail plan matrix.
 
-### Codex Phase 1: committed; production migrations unapplied
+### Codex Phase 1: committed and production schema confirmed
 
 Commit `3a3453d` is on `origin/main`. It added provider cost telemetry, safe rate-card estimation,
 source-content reuse, posting-refinement backoff, extraction claims, and the first unit-economics
 report.
 
-These migration files exist in the repository but are **not applied or recorded in production**:
+The 2026-07-25 read-only production preflight directly confirmed these migration files are applied
+and recorded in production:
 
 - `20260724000200_provider_usage_events.sql`
 - `20260724000300_jobs_source_content_hash.sql`
 - `20260724000400_posting_refinement_backoff.sql`
 - `20260724000500_job_link_extraction_claims.sql`
 
-Do not treat the presence of commit `3a3453d` on the remote, or any application deployment built
-from it, as evidence that its database schema is live. Phase 1's schema-dependent production
-behavior and a real production unit-economics baseline remain unverified until the migrations are
-explicitly authorized, applied, recorded, and postflight-verified.
+The same query confirmed the expected Phase 1 schema objects. This live database evidence
+supersedes the earlier note that the four migrations were unapplied. A real production
+unit-economics baseline still requires provider events accumulated after deployment.
 
 Known Phase 1 limitations:
 
@@ -121,10 +121,11 @@ Verification passed:
 The migration has not been applied to production. At the Phase 2A commit boundary, no application
 runtime called the new RPCs; the local Phase 2B work below adds those calls behind a disabled flag.
 
-### Codex Phase 2B: implemented locally, not deployed
+### Codex Phase 2B: deployed with billing false
 
-The application compatibility bridge is implemented behind `BILLING_ENABLED`, which defaults to
-false. It is currently an uncommitted local change and has not been deployed.
+The application compatibility bridge is committed as `b76e7f8`, pushed to `origin/main`, and
+deployed successfully by Vercel. GitHub Actions run `30178555166` passed. `BILLING_ENABLED` is
+absent from the production environment, so it resolves false and the legacy paths remain active.
 
 Implemented behavior:
 
@@ -169,24 +170,40 @@ Verification passed:
 - production build;
 - `git diff --check`.
 
-## Immediate next task: flag-off release and read-only preflight
+## Production preflight result and immediate decision
 
-1. Review and commit the intended Phase 2B and migration-state documentation changes.
-2. Push `main` and verify CI plus the Vercel deployment.
-3. Confirm production keeps `BILLING_ENABLED` unset or explicitly false.
-4. Verify the deployed access-code and legacy Human Path paths without applying a migration.
-5. Run a fresh read-only production preflight for migrations `20260724000200` through
-   `20260724000600`.
-6. Stop and report the preflight. Do not apply or record any migration without explicit
-   authorization.
+The aggregate-only read-only preflight ran on 2026-07-25:
+
+- migrations `20260724000200` through `20260724000500` are recorded and their schema is present;
+- only `20260724000600` is missing;
+- production has three active `premium` subscriptions;
+- production has one premium access code with 12 recorded uses;
+- production has no durable per-user link from an access-code redemption to a subscription;
+- migration `00600` would classify every existing non-tester subscription as `manual`;
+- 10 contact-backed Apply Wizard uses, all for one user and all in the current UTC month, qualify
+  for the migration backfill.
+
+Randall must decide how the three active legacy `premium` subscriptions should be treated:
+
+1. Preserve them as `manual` Roaring subscriptions.
+2. Classify them as internal `access_code` entitlements.
+
+Do not infer the answer from aggregate code-use counts. After the decision:
+
+1. update migration `00600` and its isolated harness if the selected treatment differs from the
+   current `manual` backfill;
+2. rerun the migration harness and full release check;
+3. rerun `scripts/preflight-subscription-billing.sql`;
+4. request explicit authorization before applying and recording migration `00600`;
+5. postflight the schema, catalog, subscriptions, and Apply Wizard backfill;
+6. only then enable billing for an approved production verification.
 
 ## Explicitly still incomplete
 
-- Phase 2B commit, push, flag-off deployment, and deployed legacy-path verification.
 - Production proof of the enabled Human Path path against migration `00600`.
 - A real production unit-economics baseline after post-deploy provider events exist.
 - Outreach entitlement cutover and removal of new retail pursuit/outreach debits.
-- Read-only production preflight immediately before migration authorization.
+- A fresh read-only production preflight immediately before migration authorization.
 - Production application and recording of migration `20260724000600`.
 - Stripe test products, Checkout, Customer Portal, webhook processing, lifecycle tests, and
   environment secrets.
@@ -198,5 +215,6 @@ Verification passed:
 ## Production safety boundary
 
 Do not apply migration `20260724000600`, enable `BILLING_ENABLED`, configure live Stripe, or edit
-protected production UI/copy without a new explicit scope. The current production application
-continues to use the legacy entitlement and metering paths.
+protected production UI/copy without new explicit scope. The current production application
+continues to use the legacy entitlement and metering paths. The deployed route checks were
+non-mutating only; no authenticated provider-costing Human Path run was performed.

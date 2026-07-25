@@ -88,21 +88,31 @@ apply is the broad-source restoration migration documented below.
   Applied in one transaction through the Supabase Management API and recorded as
   `human_path_other_useful_contact`. Postflight confirmed exactly one migration-history row, the
   seven-value constraint including `other_useful_contact`, and zero invalid existing rows.
-
-## Pending production application (corrected 2026-07-25)
-
-Commit `3a3453d` is on `origin/main`, but the following Phase 1 migrations are **not applied or
-recorded in production**:
-
 - `20260724000200_provider_usage_events.sql`
 - `20260724000300_jobs_source_content_hash.sql`
 - `20260724000400_posting_refinement_backoff.sql`
 - `20260724000500_job_link_extraction_claims.sql`
 
-Phase 2A migration `20260724000600_subscription_billing_two_tier.sql` is also not applied or
-recorded in production. Do not infer database state from Git history or an application deployment.
-Run a fresh read-only production preflight and obtain explicit authorization before applying any
-of these migrations.
+The read-only production preflight on 2026-07-25 directly confirmed all four Phase 1 versions in
+`supabase_migrations.schema_migrations` and confirmed their schema objects: the
+`provider_usage_events` table, `jobs.source_content_hash`, `jobs.refinement_state`, and the
+`job_link_extraction_claims` table. This live database result supersedes the earlier handoff claim
+that these four migrations were unapplied.
+
+## Pending production application (confirmed 2026-07-25)
+
+Only Phase 2A migration `20260724000600_subscription_billing_two_tier.sql` is absent from production
+migration history and schema. The 2026-07-25 read-only preflight confirmed that
+`user_subscriptions.source`, `subscription_plans.apply_wizard_limit_monthly`, and
+`pursuits.apply_wizard_metered_at` are absent.
+
+Do not apply `20260724000600` until the legacy premium-account classification is explicitly
+resolved. Production currently has three active `premium` subscriptions. The migration would
+classify every existing non-tester subscription as `manual`, while aggregate production evidence
+also shows one premium access code with 12 recorded uses. The schema has no durable per-user link
+from an access-code redemption to its subscription, so the provenance of those three rows cannot
+be proved from current production data. Re-run
+`scripts/preflight-subscription-billing.sql` immediately before any authorized apply.
 
 ## How to apply migrations (current method)
 

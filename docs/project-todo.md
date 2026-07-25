@@ -19,16 +19,19 @@ Canonical planning sources remain:
 ## Current Priority
 
 **Update 2026-07-25: Smoldering / Roaring is the active initiative.** Phase 1 provider-cost code is
-on `origin/main` at `3a3453d`, but migrations `20260724000200` through `20260724000500` are not
-applied or recorded in production. Claude’s five pricing/billing cards are approved and synced.
+on `origin/main` at `3a3453d`; a live read-only preflight confirmed migrations `20260724000200`
+through `20260724000500` are applied and recorded in production. Claude’s five pricing/billing
+cards are approved and synced.
 Phase 2A’s two-tier subscription and atomic Apply Wizard migration contract is locally implemented
 and fully verified at `4b4c02e`, but migration `20260724000600` is also not applied or recorded in
-production. Phase 2B’s flag-off application compatibility bridge is implemented and locally
-release-verified but not committed or deployed. The immediate next task is its flag-off release
-followed by a fresh read-only production preflight, as specified in `docs/next-session.md`. Stripe
-is the selected billing provider, but Checkout, Portal, webhooks, test products/prices, tax
-decisions, and environment configuration are not built or configured. The production UI port waits
-for backend readiness and a separately approved mapping to Claude’s cards.
+production. Phase 2B’s flag-off application compatibility bridge is deployed at `b76e7f8`;
+production leaves `BILLING_ENABLED` absent, so the legacy paths remain active. The live preflight
+found three active legacy `premium` subscriptions that migration `00600` would classify as
+`manual`, despite aggregate access-code evidence and no durable per-user provenance link. The
+immediate next task is the explicit account-classification decision in `docs/next-session.md`.
+Stripe is selected, but Checkout, Portal, webhooks, test products/prices, tax decisions, and
+environment configuration are not built or configured. The production UI port waits for backend
+readiness and a separately approved mapping to Claude’s cards.
 
 **Update 2026-07-05 — onboarding auth surface shipped (prod `153dbd4`).** The round-4
 onboarding auth DS cards are now built into the live page: login-only signed-out state
@@ -53,8 +56,9 @@ What actually remains splits three ways:
 3. **Unblocked backend** (small): pre-launch copy/scaffold audit (Phase 9 verify item); profile
    regeneration action wiring; outreach version pruning, etc.
 
-The current next-task selection is Phase 2B in `docs/next-session.md`. Older phase checklists below
-are historical inventory unless a newer dated update explicitly reactivates them.
+The current next-task selection is the migration `00600` legacy-account decision in
+`docs/next-session.md`. Older phase checklists below are historical inventory unless a newer dated
+update explicitly reactivates them.
 
 ## Near-Term (scheduled)
 
@@ -298,7 +302,8 @@ error — nothing breaks. In order:
 - [~] Legacy Tester/Basic/Pro/Premium pursuit, Human Path, and outreach counters remain live only
   until the Smoldering/Roaring Apply Wizard cutover.
 - [x] Implement and locally verify the Phase 2A two-tier database and atomic metering contract.
-- [ ] Implement the flagged Phase 2B application compatibility and Human Path cutover.
+- [x] Implement, deploy, and verify the flagged Phase 2B application compatibility bridge with
+  production billing left false.
 - [ ] Cut outreach over from legacy pursuit/outreach debits to the Apply Wizard latch.
 - [ ] Apply and record migration `20260724000600` after a fresh read-only production preflight and
   explicit authorization.
