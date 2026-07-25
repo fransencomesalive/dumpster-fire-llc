@@ -1,4 +1,5 @@
 import type { CandidateProfileAggregate } from "./types";
+import type { ProviderUsageContext } from "../costs/anthropic-usage";
 
 // Voice-fingerprint pre-pass: distill the raw Voice & Personality inputs into a
 // compact "write like this" block that sits at the top of profile.md. The model
@@ -30,6 +31,7 @@ export type VoiceFingerprintModelCall = (args: {
 
 export type VoiceFingerprintDependencies = {
   callModel?: VoiceFingerprintModelCall;
+  providerUsage?: ProviderUsageContext;
 };
 
 // Register-only extraction (revised 2026-07-14). The original pre-pass lifted exemplar
@@ -124,35 +126,34 @@ function extractJsonObject(raw: string): string | undefined {
 // dependency on it (tests inject callModel and never reach this path). Returns
 // undefined when no API key is configured, so the pipeline degrades to the raw
 // Voice & Personality inputs in profile.md.
-const defaultCallModel: VoiceFingerprintModelCall = async ({ system, user }) => {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    console.info("[llm:voice-fingerprint] skipped: no ANTHROPIC_API_KEY");
-    return undefined;
-  }
-  try {
-    const { default: Anthropic } = await import("@anthropic-ai/sdk");
-    const client = new Anthropic({ apiKey, timeout: 30_000, maxRetries: 1 });
-    const response = await client.messages.create({
-      model: "claude-opus-4-8",
-      max_tokens: 1024,
-      system,
-      messages: [{ role: "user", content: user }],
+function defaultCallModel(
+  providerUsage?: ProviderUsageContext,
+): VoiceFingerprintModelCall {
+  return async ({ system, user }) => {
+    const {
+      ANTHROPIC_MODEL,
+      callMeteredAnthropicText,
+    } = await import("../costs/anthropic-usage");
+    return callMeteredAnthropicText({
+      operation: "voice_fingerprint",
+      logLabel: "voice-fingerprint",
+      usageContext: providerUsage,
+      request: {
+        model: ANTHROPIC_MODEL,
+        max_tokens: 1024,
+        system,
+        messages: [{ role: "user", content: user }],
+      },
     });
-    const textBlock = response.content.find((block) => block.type === "text");
-    return textBlock && "text" in textBlock ? textBlock.text : undefined;
-  } catch (error) {
-    const err = error as { name?: string; status?: number; message?: string };
-    console.error("[llm:voice-fingerprint] call failed", { name: err?.name, status: err?.status, message: err?.message });
-    return undefined;
-  }
-};
+  };
+}
 
 export async function generateVoiceFingerprint(
   input: VoiceFingerprintInput,
   dependencies: VoiceFingerprintDependencies = {},
 ): Promise<VoiceFingerprint | undefined> {
-  const callModel = dependencies.callModel ?? defaultCallModel;
+  const callModel = dependencies.callModel
+    ?? defaultCallModel(dependencies.providerUsage);
   const raw = await callModel({ system: systemPrompt, user: buildVoiceFingerprintUserPrompt(input) });
   if (!raw) return undefined;
   const jsonText = extractJsonObject(raw);

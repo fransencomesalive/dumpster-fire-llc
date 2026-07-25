@@ -1,95 +1,212 @@
-// Phase 2 gap-fill: LLM-extract Responsibilities / Required experience for jobs the heuristic
-// parser left empty, and fill only the empty buckets. Bounded per run (LLM cost). Source-scan
-// preserves these columns (see lib/scan/source-scan.ts) so a fill is not clobbered by the daily scan.
+import { randomUUID } from "node:crypto";
 import type { PublicProfileRepositoryRequest } from "../public-profile/repository";
+import { createBestEffortProviderUsageSink } from "../costs/provider-usage";
 import type { ParsedPosting } from "./sources/parse-posting";
-import { extractPostingSectionsLLM, type PostingExtractInput, type PostingModelCall } from "./sources/llm-extract-posting";
+import {
+  extractPostingSectionsDetailedLLM,
+  type PostingExtractInput,
+  type PostingModelCall,
+  type PostingSectionExtractionResult,
+} from "./sources/llm-extract-posting";
 
-export type JobNeedingSections = {
+export type PostingRefinementClaim = {
   id: string;
   title: string;
-  company_name: string;
+  companyName: string;
   description: string;
-  responsibilities: string[] | null;
-  required_experience: string[] | null;
+  responsibilities: string[];
+  requiredExperience: string[];
+  attemptToken: string;
+  attemptContentHash: string;
+  attemptCount: number;
+};
+
+export type PostingRefinementFinish = {
+  applied: boolean;
+  state: "pending" | "processing" | "retryable" | "partial" | "complete" | "exhausted" | "missing";
+  outcome?: string;
 };
 
 export type PostingRefinementResult = {
   ranAt: string;
   processed: number;
   updated: number;
+  completed: number;
+  retryable: number;
+  exhausted: number;
+  stale: number;
 };
 
 export type PostingRefinementOptions = {
-  loadJobs?: (request: PublicProfileRepositoryRequest, limit: number) => Promise<JobNeedingSections[]>;
+  claimJob?: (
+    request: PublicProfileRepositoryRequest,
+    now: string,
+  ) => Promise<PostingRefinementClaim | undefined>;
+  finishJob?: (
+    request: PublicProfileRepositoryRequest,
+    claim: PostingRefinementClaim,
+    extraction: PostingSectionExtractionResult | { sections: ParsedPosting; outcome: "error" },
+    now: string,
+  ) => Promise<PostingRefinementFinish>;
   extract?: (input: PostingExtractInput) => Promise<ParsedPosting>;
+  extractDetailed?: (
+    input: PostingExtractInput,
+  ) => Promise<PostingSectionExtractionResult>;
   callModel?: PostingModelCall;
   now?: () => string;
   limit?: number;
 };
 
+type ClaimRow = {
+  id: string;
+  title: string;
+  company_name: string;
+  description: string;
+  responsibilities: string[] | null;
+  required_experience: string[] | null;
+  attempt_token: string;
+  attempt_content_hash: string;
+  attempt_count: number;
+};
+
+type FinishRow = {
+  applied: boolean;
+  refinement_state: PostingRefinementFinish["state"];
+  refinement_outcome: string | null;
+};
+
 const DEFAULT_LIMIT = 25;
 
-function qs(params: Record<string, string>) {
-  return `?${new URLSearchParams(params).toString()}`;
+async function defaultClaimJob(
+  request: PublicProfileRepositoryRequest,
+  now: string,
+): Promise<PostingRefinementClaim | undefined> {
+  const rows = await request<ClaimRow[]>("rpc/claim_posting_refinement", {
+    method: "POST",
+    body: { p_now: now },
+  });
+  const row = rows[0];
+  if (!row) return undefined;
+  return {
+    id: row.id,
+    title: row.title,
+    companyName: row.company_name,
+    description: row.description,
+    responsibilities: row.responsibilities ?? [],
+    requiredExperience: row.required_experience ?? [],
+    attemptToken: row.attempt_token,
+    attemptContentHash: row.attempt_content_hash,
+    attemptCount: row.attempt_count,
+  };
 }
 
-async function defaultLoadJobs(
+async function defaultFinishJob(
   request: PublicProfileRepositoryRequest,
-  limit: number,
-): Promise<JobNeedingSections[]> {
-  return request<JobNeedingSections[]>("jobs", {
-    query: qs({
-      or: "(responsibilities.eq.{},required_experience.eq.{})",
-      select: "id,title,company_name,description,responsibilities,required_experience",
-      order: "scraped_at.desc",
-      limit: String(limit),
-    }),
+  claim: PostingRefinementClaim,
+  extraction: PostingSectionExtractionResult | { sections: ParsedPosting; outcome: "error" },
+  now: string,
+): Promise<PostingRefinementFinish> {
+  const rows = await request<FinishRow[]>("rpc/finish_posting_refinement", {
+    method: "POST",
+    body: {
+      p_job_id: claim.id,
+      p_attempt_token: claim.attemptToken,
+      p_attempt_content_hash: claim.attemptContentHash,
+      p_outcome: extraction.outcome,
+      p_responsibilities: extraction.sections.responsibilities,
+      p_required_experience: extraction.sections.requiredExperience,
+      p_now: now,
+    },
   });
+  const row = rows[0];
+  return row
+    ? {
+        applied: row.applied,
+        state: row.refinement_state,
+        outcome: row.refinement_outcome ?? undefined,
+      }
+    : { applied: false, state: "missing" };
+}
+
+function outcomeForSections(sections: ParsedPosting): PostingSectionExtractionResult {
+  const outcome = sections.responsibilities.length > 0
+    && sections.requiredExperience.length > 0
+    ? "complete"
+    : sections.responsibilities.length > 0
+      || sections.requiredExperience.length > 0
+      ? "partial"
+      : "no_fill";
+  return { sections, outcome };
 }
 
 export async function runPostingRefinement(
   request: PublicProfileRepositoryRequest,
   options: PostingRefinementOptions = {},
 ): Promise<PostingRefinementResult> {
-  const now = options.now?.() ?? new Date().toISOString();
-  const loadJobs = options.loadJobs ?? defaultLoadJobs;
+  const ranAt = options.now?.() ?? new Date().toISOString();
   const limit = options.limit ?? DEFAULT_LIMIT;
-  const extract = options.extract
-    ?? ((input: PostingExtractInput) => extractPostingSectionsLLM(input, { callModel: options.callModel }));
+  const claimJob = options.claimJob ?? defaultClaimJob;
+  const finishJob = options.finishJob ?? defaultFinishJob;
+  const requestCorrelationId = randomUUID();
+  const providerUsageSink = createBestEffortProviderUsageSink(request);
+  const result: PostingRefinementResult = {
+    ranAt,
+    processed: 0,
+    updated: 0,
+    completed: 0,
+    retryable: 0,
+    exhausted: 0,
+    stale: 0,
+  };
 
-  const jobs = await loadJobs(request, limit);
-  let updated = 0;
+  for (let index = 0; index < limit; index += 1) {
+    const claim = await claimJob(request, ranAt);
+    if (!claim) break;
+    result.processed += 1;
 
-  for (const job of jobs) {
-    const currentResponsibilities = job.responsibilities ?? [];
-    const currentRequired = job.required_experience ?? [];
+    const input = {
+      title: claim.title,
+      companyName: claim.companyName,
+      description: claim.description,
+    };
+    let extraction:
+      | PostingSectionExtractionResult
+      | { sections: ParsedPosting; outcome: "error" };
+    try {
+      extraction = options.extractDetailed
+        ? await options.extractDetailed(input)
+        : options.extract
+          ? outcomeForSections(await options.extract(input))
+          : await extractPostingSectionsDetailedLLM(input, {
+              callModel: options.callModel,
+              providerUsage: {
+                sink: providerUsageSink,
+                jobId: claim.id,
+                requestCorrelationId,
+              },
+            });
+    } catch {
+      extraction = {
+        sections: { responsibilities: [], requiredExperience: [] },
+        outcome: "error",
+      };
+    }
 
-    const llm = await extract({
-      title: job.title,
-      companyName: job.company_name,
-      description: job.description,
-    });
-
-    // Fill only the empty buckets; never overwrite a bucket the heuristic already populated.
-    const responsibilities = currentResponsibilities.length > 0 ? currentResponsibilities : llm.responsibilities;
-    const requiredExperience = currentRequired.length > 0 ? currentRequired : llm.requiredExperience;
-
-    const filled = responsibilities.length > currentResponsibilities.length
-      || requiredExperience.length > currentRequired.length;
-    if (!filled) continue;
-
-    await request("jobs", {
-      method: "PATCH",
-      query: qs({ id: `eq.${job.id}` }),
-      body: {
-        responsibilities,
-        required_experience: requiredExperience,
-        updated_at: now,
-      },
-    });
-    updated += 1;
+    const finish = await finishJob(request, claim, extraction, ranAt);
+    if (!finish.applied) {
+      result.stale += 1;
+      continue;
+    }
+    const suppliedNewSections =
+      (claim.responsibilities.length === 0
+        && extraction.sections.responsibilities.length > 0)
+      || (claim.requiredExperience.length === 0
+        && extraction.sections.requiredExperience.length > 0);
+    if (suppliedNewSections) result.updated += 1;
+    if (finish.state === "complete") result.completed += 1;
+    if (finish.state === "retryable") result.retryable += 1;
+    if (finish.state === "exhausted") result.exhausted += 1;
   }
 
-  return { ranAt: now, processed: jobs.length, updated };
+  return result;
 }

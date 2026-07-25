@@ -14,6 +14,7 @@ import { generateVoiceProfileBlock } from "./voice-fingerprint";
 import { deriveResumeHighlightsForAggregate } from "./resume-highlights";
 import { loadUsageLedgerForUser } from "./subscription/repository";
 import type { CandidateProfileAggregate, ProfileQuality } from "./types";
+import { createBestEffortProviderUsageSink } from "../costs/provider-usage";
 
 export type PublicProfileServiceDependencies = {
   loadAggregate: (userId: string) => Promise<CandidateProfileAggregate | undefined>;
@@ -107,6 +108,7 @@ async function generateCappedVoiceProfileBlock(
   userId: string,
   aggregate: CandidateProfileAggregate,
   generatedAt: string,
+  requestCorrelationId: string,
 ): Promise<string | undefined> {
   let used = 0;
   try {
@@ -121,7 +123,13 @@ async function generateCappedVoiceProfileBlock(
     return previousVoiceProfileBlock(aggregate.profile.generatedMarkdown);
   }
 
-  const block = await generateVoiceProfileBlock(aggregate);
+  const block = await generateVoiceProfileBlock(aggregate, {
+    providerUsage: {
+      sink: createBestEffortProviderUsageSink(request),
+      userId,
+      requestCorrelationId,
+    },
+  });
   if (block) {
     await request("usage_ledger", {
       method: "POST",
@@ -143,6 +151,7 @@ async function generateCappedResumeHighlights(
   userId: string,
   aggregate: CandidateProfileAggregate,
   generatedAt: string,
+  requestCorrelationId: string,
 ): Promise<Map<string, string[]> | undefined> {
   let used = 0;
   try {
@@ -155,7 +164,13 @@ async function generateCappedResumeHighlights(
   }
   if (used >= RESUME_HIGHLIGHTS_MONTHLY_CAP) return undefined;
 
-  const derived = await deriveResumeHighlightsForAggregate(aggregate);
+  const derived = await deriveResumeHighlightsForAggregate(aggregate, {
+    providerUsage: {
+      sink: createBestEffortProviderUsageSink(request),
+      userId,
+      requestCorrelationId,
+    },
+  });
   if (!derived) return undefined;
 
   await request("usage_ledger", {
@@ -181,7 +196,13 @@ export async function deriveResumeHighlightCountsForUser(
 ): Promise<Record<string, number> | undefined> {
   const aggregate = await loadCandidateProfileAggregate(request, userId);
   if (!aggregate) return undefined;
-  const derived = await generateCappedResumeHighlights(request, userId, aggregate, at);
+  const derived = await generateCappedResumeHighlights(
+    request,
+    userId,
+    aggregate,
+    at,
+    crypto.randomUUID(),
+  );
   const counts: Record<string, number> = {};
   for (const resume of aggregate.resumes) {
     counts[resume.id] = derived?.get(resume.id)?.length ?? resume.highlights.length;
@@ -194,12 +215,25 @@ export async function regeneratePublicProfileForUser(
   userId: string,
   options: CandidateProfileGenerationOptions = {},
 ): Promise<PublicProfileRegenerationResult> {
+  const requestCorrelationId = crypto.randomUUID();
   return regenerateLoadedPublicProfileForUser({
     loadAggregate: (requestedUserId) => loadCandidateProfileAggregate(request, requestedUserId),
     persistGeneration: (generation) => persistCandidateProfileGeneration(request, generation),
     generateVoiceProfileBlock: (aggregate) =>
-      generateCappedVoiceProfileBlock(request, userId, aggregate, options.generatedAt ?? new Date().toISOString()),
+      generateCappedVoiceProfileBlock(
+        request,
+        userId,
+        aggregate,
+        options.generatedAt ?? new Date().toISOString(),
+        requestCorrelationId,
+      ),
     deriveResumeHighlights: (aggregate) =>
-      generateCappedResumeHighlights(request, userId, aggregate, options.generatedAt ?? new Date().toISOString()),
+      generateCappedResumeHighlights(
+        request,
+        userId,
+        aggregate,
+        options.generatedAt ?? new Date().toISOString(),
+        requestCorrelationId,
+      ),
   }, userId, options);
 }

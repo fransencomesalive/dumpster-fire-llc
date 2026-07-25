@@ -6,9 +6,12 @@ const savedPursuitsSuites = [
 ];
 
 const fixtureSuites = [
+  "scripts/test-anthropic-usage.mjs",
   "scripts/test-job-link.mjs",
   "scripts/test-llm-extract-posting.mjs",
   "scripts/test-parse-posting.mjs",
+  "scripts/test-provider-usage.mjs",
+  "scripts/test-subscription-unit-economics.mjs",
   "scripts/test-public-auth-session.mjs",
   "scripts/test-public-jobs-repository.mjs",
   "scripts/test-public-profile-api.mjs",

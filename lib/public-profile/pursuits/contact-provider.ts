@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import type {
   HumanPathContact,
   HumanPathDiagnostics,
@@ -5,11 +6,16 @@ import type {
   HumanPathProvider,
   HumanPathProviderInput,
 } from "./types";
+import type { ProviderUsageSink } from "../../costs/provider-usage";
 
 type UnknownRecord = Record<string, unknown>;
 
 type ExaPeopleSearchResponse = {
   results?: unknown[];
+  requestId?: string;
+  costDollars?: {
+    total?: number;
+  };
 };
 
 export type ExaPeopleSearchCall = (input: {
@@ -22,6 +28,9 @@ export type ExaHumanPathProviderDependencies = {
   fetch?: typeof fetch;
   search?: ExaPeopleSearchCall;
   timeoutMs?: number;
+  recordUsage?: ProviderUsageSink;
+  createId?: () => string;
+  nowMs?: () => number;
 };
 
 type WorkHistoryEntry = {
@@ -54,6 +63,9 @@ const LANES: HumanPathLane[] = [
 
 const RESULTS_PER_LANE = 10;
 const DEFAULT_TIMEOUT_MS = 12_000;
+const EXA_SEARCH_FALLBACK_COST_MICROS = 7_000;
+const EXA_RATE_CARD_VERSION = "exa-search-auto-1-10-v2026-07-24";
+const EXA_MODEL_VERSION = "search:auto:people:highlights";
 
 // Stored on Human Path generation events so cache reads can distinguish this
 // contract from older zero-result provider runs.
@@ -291,8 +303,13 @@ async function requestExaPeople(
     }
     const body: unknown = await response.json();
     const parsed = record(body);
+    const costDollars = record(parsed?.costDollars);
     return {
       results: Array.isArray(parsed?.results) ? parsed.results : [],
+      requestId: stringValue(parsed?.requestId) || undefined,
+      costDollars: typeof costDollars?.total === "number"
+        ? { total: costDollars.total }
+        : undefined,
     };
   } finally {
     clearTimeout(timeout);
@@ -459,10 +476,20 @@ export function createExaHumanPathProvider(
       };
     }
 
+    const requestCorrelationId = dependencies.createId?.() ?? randomUUID();
+    const nowMs = dependencies.nowMs ?? Date.now;
     const runs = await Promise.all(LANES.map(async (lane): Promise<LaneRun> => {
+      const startedAt = nowMs();
       try {
         const response = await search({ lane, query: buildExaPeopleQuery(input, lane) });
         const results = Array.isArray(response.results) ? response.results : [];
+        const reportedCostDollars = response.costDollars?.total;
+        const estimatedCostMicros =
+          typeof reportedCostDollars === "number"
+          && Number.isFinite(reportedCostDollars)
+          && reportedCostDollars >= 0
+            ? Math.round(reportedCostDollars * 1_000_000)
+            : EXA_SEARCH_FALLBACK_COST_MICROS;
         const exactCompanyPeople: DiscoveredPerson[] = [];
         let companyMismatchCount = 0;
         let missingLinkedinCount = 0;
@@ -472,6 +499,32 @@ export function createExaHumanPathProvider(
           if (parsed.companyMismatch) companyMismatchCount += 1;
           if (parsed.missingLinkedin) missingLinkedinCount += 1;
         });
+        if (dependencies.recordUsage) {
+          await dependencies.recordUsage({
+            userId: input.pursuit.userId,
+            pursuitId: input.pursuit.id,
+            jobId: input.job.id,
+            providerCategory: "exa",
+            operation: `human_path_people_search_${lane}`,
+            modelVersion: EXA_MODEL_VERSION,
+            requestCount: 1,
+            inputTokens: 0,
+            outputTokens: 0,
+            cacheWriteTokens: 0,
+            cacheReadTokens: 0,
+            resultCount: results.length,
+            durationMs: Math.max(0, Math.round(nowMs() - startedAt)),
+            outcome: results.length > 0 ? "success" : "empty",
+            estimatedCostMicros,
+            rateCardVersion: EXA_RATE_CARD_VERSION,
+            requestCorrelationId,
+          }).catch((error) => {
+            console.error("[costs] Exa provider usage sink rejected", {
+              operation: `human_path_people_search_${lane}`,
+              errorName: error instanceof Error ? error.name : "UnknownError",
+            });
+          });
+        }
         return {
           lane,
           status: "completed",
@@ -481,6 +534,34 @@ export function createExaHumanPathProvider(
           missingLinkedinCount,
         };
       } catch (error) {
+        if (dependencies.recordUsage) {
+          await dependencies.recordUsage({
+            userId: input.pursuit.userId,
+            pursuitId: input.pursuit.id,
+            jobId: input.job.id,
+            providerCategory: "exa",
+            operation: `human_path_people_search_${lane}`,
+            modelVersion: EXA_MODEL_VERSION,
+            requestCount: 1,
+            inputTokens: 0,
+            outputTokens: 0,
+            cacheWriteTokens: 0,
+            cacheReadTokens: 0,
+            resultCount: 0,
+            durationMs: Math.max(0, Math.round(nowMs() - startedAt)),
+            outcome: "failure",
+            estimatedCostMicros: EXA_SEARCH_FALLBACK_COST_MICROS,
+            rateCardVersion: EXA_RATE_CARD_VERSION,
+            requestCorrelationId,
+          }).catch((usageError) => {
+            console.error("[costs] Exa provider usage sink rejected", {
+              operation: `human_path_people_search_${lane}`,
+              errorName: usageError instanceof Error
+                ? usageError.name
+                : "UnknownError",
+            });
+          });
+        }
         console.error("Human Path Exa search failed.", {
           lane,
           message: error instanceof Error ? error.message : "Unknown provider error.",

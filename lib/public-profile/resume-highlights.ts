@@ -1,4 +1,5 @@
 import type { CandidateProfileAggregate } from "./types";
+import type { ProviderUsageContext } from "../costs/anthropic-usage";
 
 // Résumé-highlights pre-pass: read a résumé's plain text and pull out the short,
 // quotable stat / company / title bullets an outreach message can cite — a
@@ -20,6 +21,7 @@ export type ResumeHighlightsModelCall = (args: {
 
 export type ResumeHighlightsDependencies = {
   callModel?: ResumeHighlightsModelCall;
+  providerUsage?: ProviderUsageContext;
 };
 
 // Cap raised 6 → 12 and fame-bias removed (2026-07-14). The old prompt asked for
@@ -75,29 +77,27 @@ function extractJsonObject(raw: string): string | undefined {
 // Default model call. Lazily imports the SDK so the module has no hard runtime
 // dependency on it (tests inject callModel and never reach this path). Returns
 // undefined when no API key is configured, so the caller keeps cached highlights.
-const defaultCallModel: ResumeHighlightsModelCall = async ({ system, user }) => {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    console.info("[llm:resume-highlights] skipped: no ANTHROPIC_API_KEY");
-    return undefined;
-  }
-  try {
-    const { default: Anthropic } = await import("@anthropic-ai/sdk");
-    const client = new Anthropic({ apiKey, timeout: 30_000, maxRetries: 1 });
-    const response = await client.messages.create({
-      model: "claude-opus-4-8",
-      max_tokens: 1024,
-      system,
-      messages: [{ role: "user", content: user }],
+function defaultCallModel(
+  providerUsage?: ProviderUsageContext,
+): ResumeHighlightsModelCall {
+  return async ({ system, user }) => {
+    const {
+      ANTHROPIC_MODEL,
+      callMeteredAnthropicText,
+    } = await import("../costs/anthropic-usage");
+    return callMeteredAnthropicText({
+      operation: "resume_highlights",
+      logLabel: "resume-highlights",
+      usageContext: providerUsage,
+      request: {
+        model: ANTHROPIC_MODEL,
+        max_tokens: 1024,
+        system,
+        messages: [{ role: "user", content: user }],
+      },
     });
-    const textBlock = response.content.find((block) => block.type === "text");
-    return textBlock && "text" in textBlock ? textBlock.text : undefined;
-  } catch (error) {
-    const err = error as { name?: string; status?: number; message?: string };
-    console.error("[llm:resume-highlights] call failed", { name: err?.name, status: err?.status, message: err?.message });
-    return undefined;
-  }
-};
+  };
+}
 
 // Derive highlights for a single résumé. Returns undefined when the model is
 // unavailable or the response is unusable (caller preserves cached highlights),
@@ -108,7 +108,8 @@ export async function generateResumeHighlights(
   dependencies: ResumeHighlightsDependencies = {},
 ): Promise<string[] | undefined> {
   if (!input.parsedText.trim()) return undefined;
-  const callModel = dependencies.callModel ?? defaultCallModel;
+  const callModel = dependencies.callModel
+    ?? defaultCallModel(dependencies.providerUsage);
   const raw = await callModel({ system: systemPrompt, user: buildResumeHighlightsUserPrompt(input) });
   if (!raw) return undefined;
   const jsonText = extractJsonObject(raw);

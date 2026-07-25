@@ -1,4 +1,5 @@
 import type { ParsingQuality } from "./types";
+import type { ProviderUsageContext } from "../costs/anthropic-usage";
 
 // Résumé PDF scan — scan-and-discard. Claude reads an uploaded PDF natively (no
 // separate parser library, PDF only) and returns its plain text plus a parse-quality
@@ -21,6 +22,7 @@ export type ResumeParseModelCall = (args: {
 
 export type ResumeParseDependencies = {
   callModel?: ResumeParseModelCall;
+  providerUsage?: ProviderUsageContext;
 };
 
 const parsingQualities = new Set<ParsingQuality>(["failed", "weak", "complete"]);
@@ -73,17 +75,21 @@ function extractJsonObject(raw: string): string | undefined {
 // Default model call. Sends the PDF as a base64 document block (native PDF support —
 // no beta header). Lazily imports the SDK so the module has no hard runtime dependency
 // on it (tests inject callModel and never reach this path).
-const defaultCallModel: ResumeParseModelCall = async ({ system, instruction: userInstruction, pdfBase64 }) => {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    console.info("[llm:resume-parse] skipped: no ANTHROPIC_API_KEY");
-    return undefined;
-  }
-  try {
-    const { default: Anthropic } = await import("@anthropic-ai/sdk");
-    const client = new Anthropic({ apiKey, timeout: 60_000, maxRetries: 1 });
-    const response = await client.messages.create({
-      model: "claude-opus-4-8",
+function defaultCallModel(
+  providerUsage?: ProviderUsageContext,
+): ResumeParseModelCall {
+  return async ({ system, instruction: userInstruction, pdfBase64 }) => {
+    const {
+      ANTHROPIC_MODEL,
+      callMeteredAnthropicText,
+    } = await import("../costs/anthropic-usage");
+    return callMeteredAnthropicText({
+      operation: "resume_pdf_parse",
+      logLabel: "resume-parse",
+      timeoutMs: 60_000,
+      usageContext: providerUsage,
+      request: {
+      model: ANTHROPIC_MODEL,
       max_tokens: 8192,
       // No sampling params on this model (temperature is rejected with a 400).
       // Verdict consistency comes from the concrete grade boundaries in the prompt.
@@ -96,16 +102,11 @@ const defaultCallModel: ResumeParseModelCall = async ({ system, instruction: use
             { type: "text", text: userInstruction },
           ],
         },
-      ],
+        ],
+      },
     });
-    const textBlock = response.content.find((block) => block.type === "text");
-    return textBlock && "text" in textBlock ? textBlock.text : undefined;
-  } catch (error) {
-    const err = error as { name?: string; status?: number; message?: string };
-    console.error("[llm:resume-parse] call failed", { name: err?.name, status: err?.status, message: err?.message });
-    return undefined;
-  }
-};
+  };
+}
 
 // Read a résumé PDF (base64) into text + a parse verdict. Returns undefined when the
 // model is unavailable or the response is unusable, so the caller can fall back to the
@@ -114,7 +115,8 @@ export async function generateResumeParse(
   pdfBase64: string,
   dependencies: ResumeParseDependencies = {},
 ): Promise<ResumeParseVerdict | undefined> {
-  const callModel = dependencies.callModel ?? defaultCallModel;
+  const callModel = dependencies.callModel
+    ?? defaultCallModel(dependencies.providerUsage);
   const raw = await callModel({ system: systemPrompt, instruction, pdfBase64 });
   if (!raw) return undefined;
   const jsonText = extractJsonObject(raw);

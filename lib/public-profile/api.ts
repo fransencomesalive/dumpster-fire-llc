@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import {
   getPublicAuthSession,
   type PublicAuthSession,
@@ -52,7 +52,7 @@ import {
   updateOutreachMessage,
 } from "./pursuits/repository";
 import {
-  exaHumanPathProvider,
+  createExaHumanPathProvider,
   HUMAN_PATH_PROVIDER_VERSION,
 } from "./pursuits/contact-provider";
 import {
@@ -120,6 +120,7 @@ import {
   regeneratePublicProfileForUser,
   type PublicProfileRegenerationResult,
 } from "./service";
+import { createBestEffortProviderUsageSink } from "../costs/provider-usage";
 import {
   readVoicePersonalitySectionForUser,
   readFitSignalsSectionForUser,
@@ -1856,7 +1857,10 @@ export async function handlePublicProfilePursuitHumanPathRequest(
     return subscriptionBlockedResponse(enforcement);
   }
 
-  const provider = options.humanPathProvider ?? exaHumanPathProvider;
+  const provider = options.humanPathProvider ?? createExaHumanPathProvider({
+    recordUsage: createBestEffortProviderUsageSink(repositoryRequest),
+    createId: options.createId,
+  });
   const selectedRoleTrack = pursuit.selectedRoleTrackId
     ? aggregate.roleTracks.find((track) => track.id === pursuit.selectedRoleTrackId)
     : undefined;
@@ -2142,6 +2146,11 @@ export async function handlePublicProfilePursuitOutreachRequest(
     }, { status: 400 });
   }
   const validatedPursuitId = pursuitId as string;
+  const providerUsageSink = createBestEffortProviderUsageSink(repositoryRequest);
+  const providerRequestCorrelationId =
+    requestedIdempotencyKey
+    ?? options.createId?.()
+    ?? randomUUID();
 
   const generatedAt = options.now?.() ?? new Date().toISOString();
   const loadPursuit = options.loadPursuit ?? loadPursuitByIdForUser;
@@ -2295,6 +2304,15 @@ export async function handlePublicProfilePursuitOutreachRequest(
           profileMarkdown: outreachInput.profileMarkdown,
           job: outreachInput.job,
           contact: outreachInput.contact,
+        }, {
+          operation: "outreach_regeneration",
+          providerUsage: {
+            sink: providerUsageSink,
+            userId: session.userId,
+            pursuitId: pursuit.id,
+            jobId: job.id,
+            requestCorrelationId: providerRequestCorrelationId,
+          },
         });
       });
     const outreach = await generateOutreachForContact({
@@ -2430,6 +2448,15 @@ export async function handlePublicProfilePursuitOutreachRequest(
       profileMarkdown: outreachInput.profileMarkdown,
       job: outreachInput.job,
       contact: outreachInput.contact,
+    }, {
+      operation: "outreach_generation",
+      providerUsage: {
+        sink: providerUsageSink,
+        userId: session.userId,
+        pursuitId: pursuit.id,
+        jobId: job.id,
+        requestCorrelationId: providerRequestCorrelationId,
+      },
     }));
   const generatedMessages: Array<{
     contact: HumanPathContactSuggestion;
@@ -3335,6 +3362,7 @@ export async function handleResumeUploadsSectionGetRequest(
 export type PublicProfileResumeScanHandlerOptions = {
   env?: NodeJS.ProcessEnv;
   getSession?: (request: Request) => Promise<PublicAuthSession>;
+  repositoryRequest?: PublicProfileRepositoryRequest;
   parseResume?: (pdfBase64: string) => Promise<ResumeParseVerdict | undefined>;
 };
 
@@ -3376,7 +3404,16 @@ export async function handleResumeScanRequest(
   }
 
   const pdfBase64 = Buffer.from(await file.arrayBuffer()).toString("base64");
-  const parseResume = options.parseResume ?? ((data: string) => generateResumeParse(data));
+  const usageRepositoryRequest = repositoryRequestForOptions(options);
+  const parseResume = options.parseResume ?? ((data: string) => generateResumeParse(data, {
+    providerUsage: usageRepositoryRequest
+      ? {
+          sink: createBestEffortProviderUsageSink(usageRepositoryRequest),
+          userId: session.userId,
+          requestCorrelationId: randomUUID(),
+        }
+      : undefined,
+  }));
   const verdict = await parseResume(pdfBase64);
 
   if (!verdict) {
@@ -3957,6 +3994,11 @@ export async function handleOutreachGeneratorRequest(
   const generateOutreach = options.generateOutreach
     ?? ((repoRequest, userId, body) => generateOutreachMessageForUser({
       loadAggregate: (requestedUserId) => loadCandidateProfileAggregate(repoRequest, requestedUserId),
+      providerUsage: {
+        sink: createBestEffortProviderUsageSink(repoRequest),
+        userId,
+        requestCorrelationId: randomUUID(),
+      },
     }, userId, body));
   const result = await generateOutreach(repositoryRequest, session.userId, parsed.value);
 

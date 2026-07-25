@@ -1,5 +1,10 @@
 import assert from "node:assert/strict";
-import { extractPostingSectionsLLM, parsePostingModelJson } from "../lib/scan/sources/llm-extract-posting";
+import {
+  extractPostingSectionsLLM,
+  parseJobPostingModelJsonDetailed,
+  parsePostingModelJson,
+  parsePostingModelJsonDetailed,
+} from "../lib/scan/sources/llm-extract-posting";
 
 // parsePostingModelJson — clean JSON
 const clean = parsePostingModelJson('{"responsibilities":["Own the roadmap","Lead discovery"],"requiredExperience":["5+ years product"]}');
@@ -23,6 +28,28 @@ assert.deepEqual(messy.requiredExperience, []);
 // Garbage / empty
 assert.deepEqual(parsePostingModelJson(undefined), { responsibilities: [], requiredExperience: [] });
 assert.deepEqual(parsePostingModelJson("not json at all"), { responsibilities: [], requiredExperience: [] });
+assert.equal(parsePostingModelJsonDetailed(undefined).outcome, "unavailable");
+assert.equal(parsePostingModelJsonDetailed("not json at all").outcome, "invalid");
+assert.equal(
+  parsePostingModelJsonDetailed('{"responsibilities":[],"requiredExperience":[]}').outcome,
+  "no_fill",
+);
+assert.equal(
+  parsePostingModelJsonDetailed('{"responsibilities":["Lead delivery"],"requiredExperience":[]}').outcome,
+  "partial",
+);
+assert.equal(parseJobPostingModelJsonDetailed(undefined).outcome, "unavailable");
+assert.equal(parseJobPostingModelJsonDetailed("not json").outcome, "invalid");
+assert.equal(
+  parseJobPostingModelJsonDetailed('{"title":"","companyName":"","description":""}').outcome,
+  "no_fill",
+);
+assert.equal(
+  parseJobPostingModelJsonDetailed(
+    '{"title":"Producer","companyName":"Studio","description":"Lead production.","responsibilities":[],"requiredExperience":[]}',
+  ).outcome,
+  "success",
+);
 
 async function main() {
   // Injected callModel

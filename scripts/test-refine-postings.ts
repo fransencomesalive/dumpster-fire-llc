@@ -1,90 +1,165 @@
 import assert from "node:assert/strict";
 import type { PublicProfileRepositoryRequest } from "../lib/public-profile/repository";
-import { runPostingRefinement, type JobNeedingSections } from "../lib/scan/refine-postings";
+import {
+  runPostingRefinement,
+  type PostingRefinementClaim,
+  type PostingRefinementFinish,
+} from "../lib/scan/refine-postings";
 
-const now = "2026-06-30T12:00:00.000Z";
+const now = "2026-07-24T12:00:00.000Z";
 
-type Call = { table: string; method: string; query?: string; body: unknown };
-
-function recordingRequest(): { request: PublicProfileRepositoryRequest; calls: Call[] } {
-  const calls: Call[] = [];
-  const request: PublicProfileRepositoryRequest = async <T>(
-    table: string,
-    options: Parameters<PublicProfileRepositoryRequest>[1],
-  ) => {
-    calls.push({ table, method: options.method ?? "GET", query: options.query, body: options.body });
-    return [] as T;
+function claim(id: string, overrides: Partial<PostingRefinementClaim> = {}): PostingRefinementClaim {
+  return {
+    id,
+    title: "Producer",
+    companyName: "Studio X",
+    description: "Lead useful delivery.",
+    responsibilities: [],
+    requiredExperience: [],
+    attemptToken: `token-${id}`,
+    attemptContentHash: "a".repeat(64),
+    attemptCount: 1,
+    ...overrides,
   };
-  return { request, calls };
 }
 
+const unusedRequest: PublicProfileRepositoryRequest = async <T>() => [] as T;
+
 async function main() {
-  // Both buckets empty -> LLM fills both; PATCH written.
+  // A complete result is finished once and counted as an update.
   {
-    const { request, calls } = recordingRequest();
-    const jobs: JobNeedingSections[] = [{
-      id: "job-1", title: "Producer", company_name: "Studio X",
-      description: "blurb", responsibilities: [], required_experience: [],
-    }];
+    const claims = [claim("job-1")];
+    const finishes: Array<{ claim: PostingRefinementClaim; outcome: string }> = [];
+    const result = await runPostingRefinement(unusedRequest, {
+      now: () => now,
+      claimJob: async () => claims.shift(),
+      extract: async () => ({
+        responsibilities: ["Lead delivery"],
+        requiredExperience: ["Five years"],
+      }),
+      finishJob: async (_request, claimed, extraction) => {
+        finishes.push({ claim: claimed, outcome: extraction.outcome });
+        return { applied: true, state: "complete", outcome: extraction.outcome };
+      },
+    });
+    assert.deepEqual(result, {
+      ranAt: now,
+      processed: 1,
+      updated: 1,
+      completed: 1,
+      retryable: 0,
+      exhausted: 0,
+      stale: 0,
+    });
+    assert.equal(finishes[0]?.claim.attemptToken, "token-job-1");
+    assert.equal(finishes[0]?.outcome, "complete");
+  }
+
+  // Provider failure is recorded as an error and does not abort the next claim.
+  {
+    const claims = [claim("job-error"), claim("job-after-error")];
+    const outcomes: string[] = [];
+    const result = await runPostingRefinement(unusedRequest, {
+      now: () => now,
+      claimJob: async () => claims.shift(),
+      extractDetailed: async (input) => {
+        if (input.title === "Producer" && outcomes.length === 0) {
+          throw new Error("provider unavailable");
+        }
+        return {
+          sections: { responsibilities: [], requiredExperience: [] },
+          outcome: "unavailable",
+        };
+      },
+      finishJob: async (_request, _claim, extraction) => {
+        outcomes.push(extraction.outcome);
+        return { applied: true, state: "retryable", outcome: extraction.outcome };
+      },
+    });
+    assert.deepEqual(outcomes, ["error", "unavailable"]);
+    assert.equal(result.processed, 2);
+    assert.equal(result.retryable, 2);
+    assert.equal(result.updated, 0);
+  }
+
+  // A stale compare-and-swap finish never counts as an update.
+  {
+    const claims = [claim("job-stale")];
+    const result = await runPostingRefinement(unusedRequest, {
+      now: () => now,
+      claimJob: async () => claims.shift(),
+      extract: async () => ({
+        responsibilities: ["Useful"],
+        requiredExperience: ["Useful"],
+      }),
+      finishJob: async (): Promise<PostingRefinementFinish> => ({
+        applied: false,
+        state: "pending",
+      }),
+    });
+    assert.equal(result.stale, 1);
+    assert.equal(result.updated, 0);
+  }
+
+  // The production path calls one claim RPC at a time and forwards its token/hash
+  // to the finish RPC without broad jobs reads or patches.
+  {
+    const calls: Array<{ resource: string; body: unknown }> = [];
+    let claimCount = 0;
+    const request: PublicProfileRepositoryRequest = async <T>(
+      resource: string,
+      options: Parameters<PublicProfileRepositoryRequest>[1],
+    ) => {
+      calls.push({ resource, body: options.body });
+      if (resource === "rpc/claim_posting_refinement") {
+        claimCount += 1;
+        return (claimCount === 1
+          ? [{
+              id: "job-rpc",
+              title: "PM",
+              company_name: "Co",
+              description: "Description",
+              responsibilities: [],
+              required_experience: [],
+              attempt_token: "rpc-token",
+              attempt_content_hash: "b".repeat(64),
+              attempt_count: 2,
+            }]
+          : []) as T;
+      }
+      if (resource === "rpc/finish_posting_refinement") {
+        return [{
+          applied: true,
+          refinement_state: "partial",
+          refinement_outcome: "partial",
+        }] as T;
+      }
+      throw new Error(`Unexpected resource: ${resource}`);
+    };
     const result = await runPostingRefinement(request, {
       now: () => now,
-      loadJobs: async () => jobs,
-      extract: async () => ({ responsibilities: ["Lead delivery"], requiredExperience: ["5 years"] }),
+      extractDetailed: async () => ({
+        sections: { responsibilities: ["Own roadmap"], requiredExperience: [] },
+        outcome: "partial",
+      }),
     });
     assert.equal(result.processed, 1);
     assert.equal(result.updated, 1);
-    const patch = calls.find((call) => call.table === "jobs" && call.method === "PATCH");
-    assert.ok(patch);
-    assert.equal(patch?.query, "?id=eq.job-1");
-    assert.deepEqual(patch?.body, { responsibilities: ["Lead delivery"], required_experience: ["5 years"], updated_at: now });
-  }
-
-  // Only required_experience empty -> keep existing responsibilities, fill only required.
-  {
-    const { request, calls } = recordingRequest();
-    const jobs: JobNeedingSections[] = [{
-      id: "job-2", title: "PM", company_name: "Co",
-      description: "blurb", responsibilities: ["Own the roadmap"], required_experience: [],
-    }];
-    await runPostingRefinement(request, {
-      now: () => now,
-      loadJobs: async () => jobs,
-      extract: async () => ({ responsibilities: ["SHOULD NOT REPLACE"], requiredExperience: ["7 years PM"] }),
-    });
-    const patch = calls.find((call) => call.table === "jobs" && call.method === "PATCH");
-    assert.deepEqual((patch?.body as Record<string, unknown>).responsibilities, ["Own the roadmap"]);
-    assert.deepEqual((patch?.body as Record<string, unknown>).required_experience, ["7 years PM"]);
-  }
-
-  // LLM returns nothing -> no PATCH, not counted as updated.
-  {
-    const { request, calls } = recordingRequest();
-    const jobs: JobNeedingSections[] = [{
-      id: "job-3", title: "x", company_name: "y", description: "z", responsibilities: [], required_experience: [],
-    }];
-    const result = await runPostingRefinement(request, {
-      now: () => now,
-      loadJobs: async () => jobs,
-      extract: async () => ({ responsibilities: [], requiredExperience: [] }),
-    });
-    assert.equal(result.processed, 1);
-    assert.equal(result.updated, 0);
-    assert.equal(calls.some((call) => call.method === "PATCH"), false);
-  }
-
-  // Empty load -> no-op.
-  {
-    const { request, calls } = recordingRequest();
-    const result = await runPostingRefinement(request, { now: () => now, loadJobs: async () => [], extract: async () => ({ responsibilities: [], requiredExperience: [] }) });
-    assert.equal(result.processed, 0);
-    assert.equal(result.updated, 0);
-    assert.equal(calls.length, 0);
+    assert.deepEqual(calls.map((entry) => entry.resource), [
+      "rpc/claim_posting_refinement",
+      "rpc/finish_posting_refinement",
+      "rpc/claim_posting_refinement",
+    ]);
+    const finishBody = calls[1]?.body as Record<string, unknown>;
+    assert.equal(finishBody.p_attempt_token, "rpc-token");
+    assert.equal(finishBody.p_attempt_content_hash, "b".repeat(64));
+    assert.equal(finishBody.p_outcome, "partial");
   }
 
   console.log("refine postings: all assertions passed");
 }
 
-main().catch((error) => {
+void main().catch((error: unknown) => {
   console.error(error);
-  process.exit(1);
+  process.exitCode = 1;
 });

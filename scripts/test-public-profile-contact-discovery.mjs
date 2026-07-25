@@ -128,11 +128,18 @@ const laneResults = {
 };
 
 const queries = new Map();
+const usageEvents = [];
 const result = await createExaHumanPathProvider({
   search: async ({ lane, query }) => {
     queries.set(lane, query);
-    return { results: laneResults[lane] };
+    return {
+      results: laneResults[lane],
+      requestId: `exa-${lane}`,
+      costDollars: lane === "functional_leader" ? undefined : { total: 0.008 },
+    };
   },
+  recordUsage: async (event) => usageEvents.push(event),
+  createId: () => "human-path-correlation-1",
 })(providerInput);
 
 assert.equal(result.status, "generated");
@@ -177,11 +184,38 @@ assert.deepEqual(
     ["functional_leader", "completed", 2, 2, 2],
   ],
 );
+assert.equal(usageEvents.length, 3);
+assert.deepEqual(
+  usageEvents.map((event) => event.operation).sort(),
+  [
+    "human_path_people_search_functional_leader",
+    "human_path_people_search_likely_hiring_manager",
+    "human_path_people_search_recruiter",
+  ],
+);
+assert.equal(
+  usageEvents.every((event) =>
+    event.userId === "user-1"
+    && event.pursuitId === "pursuit-1"
+    && event.jobId === "job-1"
+    && event.requestCorrelationId === "human-path-correlation-1"
+    && event.requestCount === 1),
+  true,
+);
+assert.deepEqual(
+  usageEvents.map((event) => event.estimatedCostMicros).sort(),
+  [7_000, 8_000, 8_000],
+);
+assert.deepEqual(
+  usageEvents.map((event) => event.resultCount).sort((left, right) => left - right),
+  [1, 2, 5],
+);
 
 // A single unavailable lane does not suppress useful results from other lanes.
 const originalConsoleError = console.error;
 console.error = () => {};
 try {
+  const partialUsageEvents = [];
   const partial = await createExaHumanPathProvider({
     search: async ({ lane }) => {
       if (lane === "functional_leader") throw new Error("temporary outage");
@@ -196,12 +230,30 @@ try {
       }
       return { results: [] };
     },
+    recordUsage: async (event) => partialUsageEvents.push(event),
+    createId: () => "human-path-partial",
   })(providerInput);
   assert.equal(partial.status, "generated");
   assert.deepEqual(partial.contacts.map((contact) => contact.name), ["Avery Jordan"]);
   assert.equal(
     partial.diagnostics.lanes.find((lane) => lane.lane === "functional_leader")?.discoveryStatus,
     "provider_unavailable",
+  );
+  assert.equal(partialUsageEvents.length, 3);
+  assert.equal(
+    partialUsageEvents.find((event) =>
+      event.operation.endsWith("functional_leader"))?.outcome,
+    "failure",
+  );
+  assert.equal(
+    partialUsageEvents.find((event) =>
+      event.operation.endsWith("recruiter"))?.outcome,
+    "success",
+  );
+  assert.equal(
+    partialUsageEvents.find((event) =>
+      event.operation.endsWith("likely_hiring_manager"))?.outcome,
+    "empty",
   );
 
   const fullyUnavailable = await createExaHumanPathProvider({
@@ -210,6 +262,14 @@ try {
     },
   })(providerInput);
   assert.equal(fullyUnavailable.status, "provider_unavailable");
+
+  const survivesUsageFailure = await createExaHumanPathProvider({
+    search: async () => ({ results: [] }),
+    recordUsage: async () => {
+      throw new Error("telemetry unavailable");
+    },
+  })(providerInput);
+  assert.equal(survivesUsageFailure.status, "generated");
 } finally {
   console.error = originalConsoleError;
 }

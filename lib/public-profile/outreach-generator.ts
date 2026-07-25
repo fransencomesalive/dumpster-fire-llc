@@ -1,4 +1,5 @@
 import type { CandidateProfileAggregate } from "./types";
+import type { ProviderUsageContext } from "../costs/anthropic-usage";
 
 // Outreach generator (Phase E). Input: profile.md (leads with the distilled
 // Voice Profile) + one job + one contact. Output: one short outreach message
@@ -47,6 +48,8 @@ export type OutreachModelCall = (args: {
 
 export type OutreachGeneratorDependencies = {
   callModel?: OutreachModelCall;
+  providerUsage?: ProviderUsageContext;
+  operation?: "outreach_generation" | "outreach_regeneration";
 };
 
 // v4 prompt, ported 2026-07-14 from the message-gen-refinement harness after Randall's
@@ -229,38 +232,37 @@ function parseInsertedExample(value: unknown): OutreachInsertedExample | null {
   return link ? { oneHitter, link } : { oneHitter };
 }
 
-const defaultCallModel: OutreachModelCall = async ({ system, user, cachePrefix }) => {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    console.info("[llm:outreach] skipped: no ANTHROPIC_API_KEY");
-    return undefined;
-  }
-  try {
-    const { default: Anthropic } = await import("@anthropic-ai/sdk");
-    const client = new Anthropic({ apiKey, timeout: 30_000, maxRetries: 1 });
+function defaultCallModel(
+  providerUsage?: ProviderUsageContext,
+  operation: "outreach_generation" | "outreach_regeneration" = "outreach_generation",
+): OutreachModelCall {
+  return async ({ system, user, cachePrefix }) => {
+    const {
+      ANTHROPIC_MODEL,
+      callMeteredAnthropicText,
+    } = await import("../costs/anthropic-usage");
     // Cache the profile.md prefix (system + profile are contiguous in the prompt prefix,
     // so one breakpoint on the profile block caches both). Job/contact follow uncached.
-    // Note: Opus 4.8 only caches a >=4096-token prefix; smaller profiles silently no-op.
+    // Opus 4.8 requires a 1024-token cacheable prefix; smaller profiles silently no-op.
     const content = cachePrefix
       ? [
           { type: "text" as const, text: cachePrefix, cache_control: { type: "ephemeral" as const } },
           { type: "text" as const, text: user },
         ]
       : user;
-    const response = await client.messages.create({
-      model: "claude-opus-4-8",
-      max_tokens: 1024,
-      system,
-      messages: [{ role: "user", content }],
+    return callMeteredAnthropicText({
+      operation,
+      logLabel: "outreach",
+      usageContext: providerUsage,
+      request: {
+        model: ANTHROPIC_MODEL,
+        max_tokens: 1024,
+        system,
+        messages: [{ role: "user", content }],
+      },
     });
-    const textBlock = response.content.find((block) => block.type === "text");
-    return textBlock && "text" in textBlock ? textBlock.text : undefined;
-  } catch (error) {
-    const err = error as { name?: string; status?: number; message?: string };
-    console.error("[llm:outreach] call failed", { name: err?.name, status: err?.status, message: err?.message });
-    return undefined;
-  }
-};
+  };
+}
 
 function parseOutreachModelResponse(raw: string): OutreachMessage | undefined {
   const jsonText = extractJsonObject(raw);
@@ -281,7 +283,8 @@ export async function generateOutreachMessage(
   input: OutreachGeneratorInput,
   dependencies: OutreachGeneratorDependencies = {},
 ): Promise<OutreachMessage | undefined> {
-  const callModel = dependencies.callModel ?? defaultCallModel;
+  const callModel = dependencies.callModel
+    ?? defaultCallModel(dependencies.providerUsage, dependencies.operation);
   const { cachePrefix, tail } = buildOutreachPromptParts(input);
 
   // Validate-and-retry loop over the hard-rule contract. Unparseable responses retry too;
@@ -360,6 +363,7 @@ export type OutreachGenerationResult =
 export type OutreachServiceDependencies = {
   loadAggregate: (userId: string) => Promise<CandidateProfileAggregate | undefined>;
   callModel?: OutreachModelCall;
+  providerUsage?: ProviderUsageContext;
 };
 
 export async function generateOutreachMessageForUser(
@@ -375,7 +379,10 @@ export async function generateOutreachMessageForUser(
 
   const outreach = await generateOutreachMessage(
     { profileMarkdown, job: request.job, contact: request.contact },
-    { callModel: dependencies.callModel },
+    {
+      callModel: dependencies.callModel,
+      providerUsage: dependencies.providerUsage,
+    },
   );
   if (!outreach) return { status: "model_unavailable", userId };
 

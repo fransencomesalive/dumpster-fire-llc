@@ -88,6 +88,22 @@ apply is the broad-source restoration migration documented below.
   Applied in one transaction through the Supabase Management API and recorded as
   `human_path_other_useful_contact`. Postflight confirmed exactly one migration-history row, the
   seven-value constraint including `other_useful_contact`, and zero invalid existing rows.
+- `20260724000200_provider_usage_events.sql` creates the privacy-safe provider usage ledger used
+  for aggregate unit-economics reporting. The table has RLS enabled, anon cannot select, and the
+  service role can insert. It began with zero production rows.
+- `20260724000300_jobs_source_content_hash.sql` adds the source-content hash used to reuse a
+  successful pasted-job extraction for the same user without storing another provider payload.
+- `20260724000400_posting_refinement_backoff.sql` adds durable content-aware refinement state,
+  single-flight claim and finish RPCs, provider-error backoff, and terminal unchanged-content
+  outcomes. Postflight confirmed all existing jobs have a refinement content hash.
+- `20260724000500_job_link_extraction_claims.sql` creates the service-only pasted-job extraction
+  claim table and claim/finish RPCs. The table has RLS enabled, no anon read, no authenticated RPC
+  execution, and no raw URL, page text, prompt, response, or extracted-posting columns.
+
+All four migrations were applied in order through the Management API, each in its own transaction
+with its `schema_migrations` history row recorded atomically. Production postflight confirmed all
+four versions, nine refinement columns, zero missing refinement hashes, zero initial claim rows,
+and the expected service-role privileges.
 
 ## How to apply migrations (current method)
 

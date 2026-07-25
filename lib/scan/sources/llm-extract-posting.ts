@@ -3,6 +3,11 @@
 // Follows the repo AI convention: injected callModel, lazy Anthropic SDK, claude-opus-4-8,
 // graceful no-key degradation (returns empty so the caller leaves the field empty).
 import type { ParsedPosting } from "./parse-posting";
+import {
+  ANTHROPIC_MODEL,
+  callMeteredAnthropicText,
+  type ProviderUsageContext,
+} from "../../costs/anthropic-usage";
 
 export type PostingModelCall = (input: {
   system: string;
@@ -14,6 +19,18 @@ export type PostingExtractInput = {
   title: string;
   companyName: string;
   description: string;
+};
+
+export type PostingSectionExtractionOutcome =
+  | "complete"
+  | "partial"
+  | "no_fill"
+  | "invalid"
+  | "unavailable";
+
+export type PostingSectionExtractionResult = {
+  sections: ParsedPosting;
+  outcome: PostingSectionExtractionOutcome;
 };
 
 const MAX_ITEMS = 6;
@@ -54,34 +71,39 @@ function buildUserPrompt(input: PostingExtractInput) {
   ].join("\n");
 }
 
-const defaultCallModel: PostingModelCall = async ({ system, user, maxTokens }) => {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    console.info("[llm:posting-extract] skipped: no ANTHROPIC_API_KEY");
-    return undefined;
-  }
-  try {
-    const { default: Anthropic } = await import("@anthropic-ai/sdk");
-    const client = new Anthropic({ apiKey, timeout: 30_000, maxRetries: 1 });
-    const response = await client.messages.create({
-      model: "claude-opus-4-8",
-      max_tokens: maxTokens ?? 1024,
-      system,
-      messages: [{ role: "user", content: user }],
+function defaultCallModel(
+  operation: "pasted_job_extraction" | "posting_section_refinement",
+  providerUsage?: ProviderUsageContext,
+): PostingModelCall {
+  return async ({ system, user, maxTokens }) =>
+    callMeteredAnthropicText({
+      operation,
+      logLabel: "posting-extract",
+      usageContext: providerUsage,
+      request: {
+        model: ANTHROPIC_MODEL,
+        max_tokens: maxTokens ?? 1024,
+        system,
+        messages: [{ role: "user", content: user }],
+      },
     });
-    const textBlock = response.content.find((block) => block.type === "text");
-    return textBlock && "text" in textBlock ? textBlock.text : undefined;
-  } catch (error) {
-    const err = error as { name?: string; status?: number; message?: string };
-    console.error("[llm:posting-extract] call failed", { name: err?.name, status: err?.status, message: err?.message });
-    return undefined;
-  }
-};
+}
 
 export type ExtractedJobPosting = ParsedPosting & {
   title: string;
   companyName: string;
   description: string;
+};
+
+export type JobPostingExtractionOutcome =
+  | "success"
+  | "no_fill"
+  | "invalid"
+  | "unavailable";
+
+export type JobPostingExtractionResult = {
+  posting?: ExtractedJobPosting;
+  outcome: JobPostingExtractionOutcome;
 };
 
 function cleanRequiredText(value: unknown, maxChars: number) {
@@ -90,34 +112,47 @@ function cleanRequiredText(value: unknown, maxChars: number) {
 }
 
 export function parseJobPostingModelJson(raw: string | undefined): ExtractedJobPosting | undefined {
-  if (!raw) return undefined;
+  return parseJobPostingModelJsonDetailed(raw).posting;
+}
+
+export function parseJobPostingModelJsonDetailed(
+  raw: string | undefined,
+): JobPostingExtractionResult {
+  if (raw === undefined) return { outcome: "unavailable" };
   const start = raw.indexOf("{");
   const end = raw.lastIndexOf("}");
-  if (start < 0 || end <= start) return undefined;
+  if (start < 0 || end <= start) return { outcome: "invalid" };
 
   try {
     const parsed = JSON.parse(raw.slice(start, end + 1)) as Record<string, unknown>;
     const title = cleanRequiredText(parsed.title, 300);
     const companyName = cleanRequiredText(parsed.companyName, 300);
     const description = cleanRequiredText(parsed.description, MAX_EXTRACTED_DESCRIPTION_CHARS);
-    if (!title || !companyName || !description) return undefined;
+    if (!title || !companyName || !description) return { outcome: "no_fill" };
 
     return {
-      title,
-      companyName,
-      description,
-      ...parsePostingModelJson(raw),
+      outcome: "success",
+      posting: {
+        title,
+        companyName,
+        description,
+        ...parsePostingModelJson(raw),
+      },
     };
   } catch {
-    return undefined;
+    return { outcome: "invalid" };
   }
 }
 
-export async function extractJobPostingLLM(
+export async function extractJobPostingDetailedLLM(
   input: { sourceUrl: string; pageText: string },
-  dependencies: { callModel?: PostingModelCall } = {},
-): Promise<ExtractedJobPosting | undefined> {
-  const callModel = dependencies.callModel ?? defaultCallModel;
+  dependencies: {
+    callModel?: PostingModelCall;
+    providerUsage?: ProviderUsageContext;
+  } = {},
+): Promise<JobPostingExtractionResult> {
+  const callModel = dependencies.callModel
+    ?? defaultCallModel("pasted_job_extraction", dependencies.providerUsage);
   const raw = await callModel({
     system: FULL_POSTING_SYSTEM_PROMPT,
     user: [
@@ -128,7 +163,17 @@ export async function extractJobPostingLLM(
     ].join("\n"),
     maxTokens: 4096,
   });
-  return parseJobPostingModelJson(raw);
+  return parseJobPostingModelJsonDetailed(raw);
+}
+
+export async function extractJobPostingLLM(
+  input: { sourceUrl: string; pageText: string },
+  dependencies: {
+    callModel?: PostingModelCall;
+    providerUsage?: ProviderUsageContext;
+  } = {},
+): Promise<ExtractedJobPosting | undefined> {
+  return (await extractJobPostingDetailedLLM(input, dependencies)).posting;
 }
 
 function cleanItems(value: unknown): string[] {
@@ -149,27 +194,57 @@ function cleanItems(value: unknown): string[] {
 
 // Pull the JSON object out of a model response (tolerate stray prose or code fences).
 export function parsePostingModelJson(raw: string | undefined): ParsedPosting {
+  return parsePostingModelJsonDetailed(raw).sections;
+}
+
+export function parsePostingModelJsonDetailed(
+  raw: string | undefined,
+): PostingSectionExtractionResult {
   const empty: ParsedPosting = { responsibilities: [], requiredExperience: [] };
-  if (!raw) return empty;
+  if (raw === undefined) return { sections: empty, outcome: "unavailable" };
   const start = raw.indexOf("{");
   const end = raw.lastIndexOf("}");
-  if (start < 0 || end <= start) return empty;
+  if (start < 0 || end <= start) return { sections: empty, outcome: "invalid" };
   try {
     const parsed = JSON.parse(raw.slice(start, end + 1)) as Record<string, unknown>;
-    return {
+    const sections = {
       responsibilities: cleanItems(parsed.responsibilities),
       requiredExperience: cleanItems(parsed.requiredExperience),
     };
+    const outcome = sections.responsibilities.length > 0
+      && sections.requiredExperience.length > 0
+      ? "complete"
+      : sections.responsibilities.length > 0
+        || sections.requiredExperience.length > 0
+        ? "partial"
+        : "no_fill";
+    return { sections, outcome };
   } catch {
-    return empty;
+    return { sections: empty, outcome: "invalid" };
   }
+}
+
+export async function extractPostingSectionsDetailedLLM(
+  input: PostingExtractInput,
+  dependencies: {
+    callModel?: PostingModelCall;
+    providerUsage?: ProviderUsageContext;
+  } = {},
+): Promise<PostingSectionExtractionResult> {
+  const callModel = dependencies.callModel
+    ?? defaultCallModel("posting_section_refinement", dependencies.providerUsage);
+  const raw = await callModel({ system: SYSTEM_PROMPT, user: buildUserPrompt(input) });
+  return parsePostingModelJsonDetailed(raw);
 }
 
 export async function extractPostingSectionsLLM(
   input: PostingExtractInput,
-  dependencies: { callModel?: PostingModelCall } = {},
+  dependencies: {
+    callModel?: PostingModelCall;
+    providerUsage?: ProviderUsageContext;
+  } = {},
 ): Promise<ParsedPosting> {
-  const callModel = dependencies.callModel ?? defaultCallModel;
-  const raw = await callModel({ system: SYSTEM_PROMPT, user: buildUserPrompt(input) });
-  return parsePostingModelJson(raw);
+  return (
+    await extractPostingSectionsDetailedLLM(input, dependencies)
+  ).sections;
 }

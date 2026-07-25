@@ -14,7 +14,10 @@ type RepositoryCall = {
   headers?: Record<string, string>;
 };
 
-function mockRequest(respond: (call: RepositoryCall) => unknown): {
+function mockRequest(
+  respond: (call: RepositoryCall) => unknown,
+  mockOptions: { rpc?: (call: RepositoryCall) => unknown } = {},
+): {
   request: PublicProfileRepositoryRequest;
   calls: RepositoryCall[];
 } {
@@ -31,6 +34,18 @@ function mockRequest(respond: (call: RepositoryCall) => unknown): {
       headers: options.headers,
     };
     calls.push(call);
+    if (table.startsWith("rpc/")) {
+      if (mockOptions.rpc) return mockOptions.rpc(call) as T;
+      if (table === "rpc/claim_job_link_extraction") {
+        return [{
+          claimed: true,
+          claim_token: "00000000-0000-0000-0000-000000000099",
+          claim_state: "claimed",
+          attempt_count: 1,
+        }] as T;
+      }
+      return [{ applied: true, claim_state: "succeeded", last_outcome: "success" }] as T;
+    }
     return respond(call) as T;
   };
   return { request, calls };
@@ -99,9 +114,13 @@ async function main() {
     });
     assert.equal(fetchedUrl, "https://jobs.example.test/openings/123");
     assert.match(modelInput, /Product Director/);
-    const insert = calls.find((call) => call.method === "POST");
+    const insert = calls.find((call) => call.table === "jobs" && call.method === "POST");
     assert.ok(insert);
-    assert.deepEqual(insert.body, {
+    const insertBody = insert.body as Record<string, unknown>;
+    assert.match(String(insertBody.source_content_hash), /^[0-9a-f]{64}$/);
+    const insertWithoutHash = { ...insertBody };
+    delete insertWithoutHash.source_content_hash;
+    assert.deepEqual(insertWithoutHash, {
       source: "user_link",
       source_url: "https://jobs.example.test/openings/123",
       owner_user_id: "user-1",
@@ -114,19 +133,33 @@ async function main() {
       updated_at: now,
     });
     assert.match(insert.query ?? "", /on_conflict=source,source_url,owner_user_id/);
+    const claimCall = calls.find((call) => call.table === "rpc/claim_job_link_extraction");
+    const finishCall = calls.find((call) => call.table === "rpc/finish_job_link_extraction");
+    assert.ok(claimCall);
+    assert.ok(finishCall);
+    assert.match(
+      String((claimCall?.body as Record<string, unknown>).p_source_url_hash),
+      /^[0-9a-f]{64}$/,
+    );
+    assert.equal(
+      JSON.stringify(claimCall?.body).includes("https://jobs.example.test"),
+      false,
+    );
+    assert.equal(
+      (finishCall?.body as Record<string, unknown>).p_outcome,
+      "success",
+    );
     // The dedupe lookup only sees shared-pool rows and the caller's own rows.
     const dedupe = calls.find((call) => call.method === "GET");
     assert.ok(dedupe);
     assert.match(decodeURIComponent(dedupe.query ?? ""), /or=\(owner_user_id\.is\.null,owner_user_id\.eq\.user-1\)/);
   }
 
-  // A client-rendered board shell (Ashby-style): visible text is only an
-  // enable-JavaScript notice, the posting ships in JSON-LD. The model must
-  // receive the JSON-LD content, not the shell text.
+  // A complete JSON-LD JobPosting is deterministic and never calls the model.
   {
     const insertedRow = { id: "job-ld", title: "Brand Project Manager", company_name: "Kit" };
-    const { request } = mockRequest((call) => call.method === "POST" ? [insertedRow] : []);
-    let modelInput = "";
+    const { request, calls } = mockRequest((call) => call.method === "POST" ? [insertedRow] : []);
+    let modeled = false;
     const shellHtml = [
       "<html><head>",
       '<script type="application/ld+json">',
@@ -146,22 +179,76 @@ async function main() {
       request,
       resolveHostname: publicResolver,
       fetchImpl: async () => new Response(shellHtml, { headers: { "Content-Type": "text/html; charset=utf-8" } }),
-      callModel: async ({ user }) => {
-        modelInput = user;
-        return JSON.stringify({
-          title: "Brand Project Manager",
-          companyName: "Kit",
-          description: "Kit is hiring a Brand Project Manager. Run brand production timelines.",
-          responsibilities: ["Run brand production timelines."],
-          requiredExperience: [],
-        });
+      callModel: async () => {
+        modeled = true;
+        throw new Error("Complete JSON-LD must not call the model");
       },
       now: () => now,
     });
     assert.equal(result.status, "ingested");
-    assert.match(modelInput, /Kit is hiring a Brand Project Manager/);
-    assert.match(modelInput, /Job title: Brand Project Manager/);
-    assert.doesNotMatch(modelInput, /enable JavaScript/);
+    assert.equal(modeled, false);
+    assert.equal(
+      calls.some((call) => call.table === "rpc/claim_job_link_extraction"),
+      false,
+    );
+    const insert = calls.find((call) => call.table === "jobs" && call.method === "POST");
+    assert.ok(insert);
+    const body = insert?.body as Record<string, unknown>;
+    assert.equal(body.title, "Brand Project Manager");
+    assert.equal(body.company_name, "Kit");
+    assert.match(String(body.description), /Run brand production timelines/);
+    assert.match(String(body.source_content_hash), /^[0-9a-f]{64}$/);
+  }
+
+  // The same user can reuse a successful extraction for identical content at a
+  // different URL. The new URL still receives its own private jobs row.
+  {
+    const cached = {
+      id: "job-cache-source",
+      title: "Cached Role",
+      company_name: "Cached Co",
+      description: "Own the cached work.",
+      responsibilities: ["Own the cached work."],
+      required_experience: ["Five years of experience."],
+    };
+    const insertedRow = { id: "job-cache-copy", title: "Cached Role", company_name: "Cached Co" };
+    const { request, calls } = mockRequest((call) => {
+      if (call.method === "POST") return [insertedRow];
+      if (decodeURIComponent(call.query ?? "").includes("source_content_hash=eq.")) return [cached];
+      return [];
+    });
+    let modeled = false;
+    const result = await ingestJobFromLink({
+      url: "https://jobs.example.test/cache-copy",
+      userId: "user-cache",
+    }, {
+      request,
+      resolveHostname: publicResolver,
+      fetchImpl: async () => new Response("<h1>Cached Role</h1><p>Own the cached work.</p>", {
+        headers: { "Content-Type": "text/html" },
+      }),
+      callModel: async () => {
+        modeled = true;
+        return undefined;
+      },
+      now: () => now,
+    });
+    assert.equal(result.status, "ingested");
+    assert.equal(modeled, false);
+    assert.equal(
+      calls.some((call) => call.table === "rpc/claim_job_link_extraction"),
+      false,
+    );
+    const cacheLookup = calls.find((call) =>
+      decodeURIComponent(call.query ?? "").includes("source_content_hash=eq."));
+    assert.ok(cacheLookup);
+    assert.match(decodeURIComponent(cacheLookup?.query ?? ""), /owner_user_id=eq\.user-cache/);
+    const insert = calls.find((call) => call.table === "jobs" && call.method === "POST");
+    assert.equal((insert?.body as Record<string, unknown>).source_url, "https://jobs.example.test/cache-copy");
+    assert.deepEqual(
+      (insert?.body as Record<string, unknown>).required_experience,
+      ["Five years of experience."],
+    );
   }
 
   // A known normalized URL returns its existing id without fetch, model, or insert.
@@ -217,7 +304,7 @@ async function main() {
     const dedupe = calls.find((call) => call.method === "GET");
     assert.ok(dedupe);
     assert.match(decodeURIComponent(dedupe.query ?? ""), /or=\(owner_user_id\.is\.null,owner_user_id\.eq\.user-b\)/);
-    const insert = calls.find((call) => call.method === "POST");
+    const insert = calls.find((call) => call.table === "jobs" && call.method === "POST");
     assert.ok(insert);
     assert.equal((insert.body as Record<string, unknown>).owner_user_id, "user-b");
   }
@@ -234,7 +321,49 @@ async function main() {
       callModel: async () => undefined,
     });
     assert.deepEqual(result, { status: "extraction_unavailable" });
-    assert.equal(calls.some((call) => call.method === "POST"), false);
+    assert.equal(calls.some((call) => call.table === "jobs" && call.method === "POST"), false);
+    const finish = calls.find((call) => call.table === "rpc/finish_job_link_extraction");
+    assert.equal((finish?.body as Record<string, unknown>).p_outcome, "unavailable");
+  }
+
+  // A concurrent/busy claim does not call the model. The API rechecks the exact
+  // URL once in case the first worker inserted before finishing its claim.
+  {
+    let modeled = false;
+    const { request, calls } = mockRequest(
+      () => [],
+      {
+        rpc: (call) => call.table === "rpc/claim_job_link_extraction"
+          ? [{
+              claimed: false,
+              claim_token: null,
+              claim_state: "claimed",
+              attempt_count: 1,
+            }]
+          : [],
+      },
+    );
+    const result = await ingestJobFromLink({
+      url: "https://jobs.example.test/busy",
+      userId: "user-busy",
+    }, {
+      request,
+      resolveHostname: publicResolver,
+      fetchImpl: async () => new Response("<h1>Busy role</h1>", {
+        headers: { "Content-Type": "text/html" },
+      }),
+      callModel: async () => {
+        modeled = true;
+        return undefined;
+      },
+      now: () => now,
+    });
+    assert.deepEqual(result, { status: "extraction_unavailable" });
+    assert.equal(modeled, false);
+    assert.equal(
+      calls.filter((call) => call.table === "jobs" && call.method === "GET").length,
+      3,
+    );
   }
 
   // Redirect targets are safety-checked before the next fetch.
@@ -273,7 +402,7 @@ async function main() {
       },
     });
     assert.deepEqual(result, { status: "response_too_large" });
-    assert.equal(calls.some((call) => call.method === "POST"), false);
+    assert.equal(calls.some((call) => call.table === "jobs" && call.method === "POST"), false);
     assert.equal(modeled, false);
   }
 
@@ -292,7 +421,7 @@ async function main() {
       },
     });
     assert.deepEqual(result, { status: "response_too_large" });
-    assert.equal(calls.some((call) => call.method === "POST"), false);
+    assert.equal(calls.some((call) => call.table === "jobs" && call.method === "POST"), false);
   }
 
   // The API handler rejects malformed bodies and preserves response hygiene.
