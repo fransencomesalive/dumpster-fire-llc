@@ -1,4 +1,4 @@
-# Next Session: Migration 00600 Applied; Flag-On Verification Pending
+# Next Session: Phase 2C Outreach Metering Removal
 
 _Updated 2026-07-25. Read `AGENTS.md` and follow the Session Start Protocol in
 `docs/project-operating-state.md` before editing._
@@ -201,19 +201,52 @@ After a fresh preflight and explicit authorization, migration `00600` was applie
 - all expected schema fields and both atomic RPCs;
 - service-role-only execution for code redemption and Human Path persistence.
 
-Production still has no `BILLING_ENABLED` variable, so the deployed application remains on the
-legacy paths. The next step requires separate authorization and an exact rollback plan:
+Randall authorized the controlled flag-on verification. The first attempt failed before
+authentication or a provider call because the disposable fixture referenced two profile columns
+removed by the redesign. Cleanup returned zero, the flag was removed, and a rollback deployment
+completed. The corrected seed-only rehearsal passed while flag-off. The approved retry then passed:
 
-1. enable `BILLING_ENABLED` in production;
-2. redeploy and confirm the canonical routes;
-3. run an authenticated access-code account read and non-costing entitlement check;
-4. run one explicitly approved authenticated Human Path transaction against a suitable pursuit;
-5. verify one atomic contact/event/debit/latch commit and replay behavior;
-6. disable the flag immediately if any check fails.
+- premium access-code plan read;
+- atomic `already_entitled` code response without consuming a code use;
+- Roaring export entitlement;
+- 23 persisted Human Path contacts;
+- one unit Apply Wizard debit, one event, and one pursuit latch;
+- 1 of 45 used with 44 remaining;
+- cached replay with no additional provider call;
+- zero legacy Human Path debits;
+- zero disposable rows after cleanup.
+
+`BILLING_ENABLED` remains enabled in Production. The aggregate postflight still shows the three
+real premium access-code subscriptions and 10 historical Apply Wizard rows, with no malformed,
+duplicate, or unmatched rows.
+
+The checked-in QA harness is `scripts/qa-subscription-flag-on-production.mjs`. Its final local
+release check passed both migration harnesses, all 33 fixture suites, typecheck, lint with four
+pre-existing warnings and zero errors, and the production build.
+
+## Immediate next task: complete Phase 2 metering cutover
+
+The approved product contract has one retail counter. Two legacy outreach-side behaviors remain:
+
+1. `persist_initial_outreach_generation` can still create the retired one-time `pursuit` debit.
+2. Initial outreach still enforces the retired retail `outreach_message` quota.
+
+Implement this as a new post-`00600` migration and a narrow compatibility update. Do not edit or
+re-record the already-applied migration `00600`. Preserve:
+
+- atomic and idempotent initial outreach persistence;
+- one initial message per selected contact;
+- one regeneration per message;
+- historical `pursuit`, `human_path`, and `outreach_message` rows for audit;
+- provider/model telemetry.
+
+Add isolated PostgreSQL regression coverage proving new outreach writes create no pursuit or
+outreach retail debit and cannot bypass the Apply Wizard latch. Run the full release check, deploy
+compatibly, apply the new migration only after a fresh preflight and explicit authorization, and
+repeat authenticated production verification.
 
 ## Explicitly still incomplete
 
-- Production proof of the enabled Human Path path against migration `00600`.
 - A real production unit-economics baseline after post-deploy provider events exist.
 - Outreach entitlement cutover and removal of new retail pursuit/outreach debits.
 - Stripe test products, Checkout, Customer Portal, webhook processing, lifecycle tests, and
@@ -225,7 +258,7 @@ legacy paths. The next step requires separate authorization and an exact rollbac
 
 ## Production safety boundary
 
-Do not enable `BILLING_ENABLED`, configure live Stripe, or edit protected production UI/copy
-without new explicit scope. The current production application continues to use the legacy
-entitlement and metering paths. The deployed route checks were non-mutating only; no authenticated
-provider-costing Human Path run was performed.
+Do not disable `BILLING_ENABLED`, configure live Stripe, or edit protected production UI/copy
+without new explicit scope. Production uses the database-backed entitlement and atomic Apply
+Wizard paths. Stripe Checkout, Portal, and webhooks are not built; flag-on does not make the
+payment system Stripe-ready.

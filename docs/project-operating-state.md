@@ -99,13 +99,13 @@ Not yet built as public workflows:
 > `20260724000500` are applied and recorded in production. Claude's pricing cards are approved and
 > synced at `c536002`. Phase 2A is on `origin/main` at `4b4c02e`; migration
 > `20260724000600` was applied, recorded, and postflight-verified on 2026-07-25. Phase 2B
-> compatibility code is deployed at `b76e7f8` behind `BILLING_ENABLED`; production leaves the flag
-> absent, so it resolves
-> false. Randall decided on 2026-07-25 that the three active pre-Stripe `premium` subscriptions are
+> compatibility code is deployed at `b76e7f8` behind `BILLING_ENABLED`; production now runs with
+> the flag enabled after a controlled authenticated test passed. Randall decided on 2026-07-25
+> that the three active pre-Stripe `premium` subscriptions are
 > internal `access_code` entitlements. Migration `00600` and its harness encode that decision. The
-> immediate task is to obtain explicit authorization for a controlled flag-on authenticated
-> production verification with a rollback plan. Start from `docs/next-session.md`; do not enable
-> billing based only on this handoff.
+> immediate task is Phase 2C: remove the legacy pursuit debit and retail outreach quota from new
+> outreach persistence with a new migration after `00600`. Start from `docs/next-session.md`; do
+> not rewrite the applied migration.
 >
 > **UPDATED 2026-07-24.** The Human Path Exa provider, approved Apply Wizard accuracy copy,
 > production environment, contact-type migration, and persisted-contact-ID handoff are live and

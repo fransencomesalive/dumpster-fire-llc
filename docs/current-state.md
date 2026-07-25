@@ -1,11 +1,11 @@
 # Current State
 
-## 2026-07-25 - Migration 00600 applied and postflight-verified; billing remains false
+## 2026-07-25 - Migration 00600 live; Phase 2B flag-on verification passed
 
 The application bridge to migration `20260724000600` is committed as `b76e7f8`, pushed to
 `origin/main`, and deployed successfully by Vercel. GitHub Actions run `30178555166` passed its
-release check. Production does not define `BILLING_ENABLED`, so the flag resolves false and the
-legacy application paths remain active:
+release check. After the migration and flag-off postflight, Randall authorized a controlled
+production cutover. `BILLING_ENABLED` is now present and true in Vercel production:
 
 - the false path preserves the deployed `PLAN_RULES`, missing-subscription active-basic fallback,
   legacy access-code writes, and legacy Human Path persistence;
@@ -54,9 +54,38 @@ Aggregate postflight `scripts/postflight-subscription-billing.sql` confirmed:
 - anon and authenticated cannot execute the RPCs; service role can;
 - migration history records `20260724000600`.
 
-`BILLING_ENABLED` remains absent in Vercel production, so the application still uses its legacy
-paths. `/` and `/plan` returned HTTP 200 after the apply, and unauthenticated code redemption
-returned 401. No authenticated flag-on Human Path or access-code production test has run yet.
+The first flag-on QA attempt failed before authentication or any provider call because the
+disposable fixture referenced the removed `candidate_profiles.work_authorization` and
+`candidate_profiles.availability` columns. The harness cleaned up to zero, the flag was removed,
+and a rollback deployment restored flag-off production. After correcting the fixture, a billing-off
+seed-and-cleanup rehearsal passed with zero leftovers. Randall's existing approval covered one
+controlled retry.
+
+The retry passed against a disposable confirmed production account:
+
+- the premium `access_code` account read returned `premium`;
+- redeeming the shared premium code returned atomic `already_entitled` without changing its use
+  count;
+- Roaring export entitlement returned `ok`;
+- Human Path returned 23 contacts;
+- the atomic result reported 1 of 45 used and 44 remaining for the UTC month;
+- exactly one Human Path event, one unit `apply_wizard` row, and one pursuit latch committed;
+- no legacy `human_path` debit was written;
+- replay returned the same contacts from cache with no additional provider event;
+- three provider telemetry rows were recorded for the original provider pass;
+- the harness deleted its telemetry before deleting the Auth user, and final cleanup was zero for
+  Auth users, profiles, subscriptions, pursuits, usage, and provider events.
+
+The post-QA aggregate audit remains at three real premium `access_code` subscriptions and 10
+historical Apply Wizard rows, with zero malformed, duplicate, or unmatched rows. `BILLING_ENABLED`
+remains present in Production. `/` and `/plan` return HTTP 200 and unauthenticated code redemption
+returns 401. The final local release check passed both migration harnesses, all 33 fixture suites,
+typecheck, lint with four pre-existing warnings and zero errors, and the production build.
+
+Phase 2 is not complete: initial outreach persistence can still write the retired `pursuit` debit
+and enforce the retired retail `outreach_message` quota. The next backend task is a new
+post-`00600` migration plus compatibility-code update that removes those retail behaviors while
+preserving atomic/idempotent outreach-message persistence and historical telemetry.
 
 ## 2026-07-24 - Smoldering / Roaring Phase 1, Phase 2A, and design handoff
 
@@ -70,7 +99,8 @@ The pricing initiative now has one unified implementation state:
 - Codex Phase 2A adds the locally verified, backward-compatible
   `20260724000600_subscription_billing_two_tier.sql` contract and its isolated PostgreSQL harness.
 - Phase 2A was later applied and recorded in production on 2026-07-25. The Phase 2B bridge calls
-  its new RPCs only when `BILLING_ENABLED` is true; production currently resolves the flag false.
+  its new RPCs only when `BILLING_ENABLED` is true; production now runs with the flag enabled after
+  authenticated verification.
 - No production pricing UI, CSS, public copy, legal copy, Stripe integration, or Markdown export
   backend has been implemented.
 

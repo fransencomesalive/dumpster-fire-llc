@@ -118,8 +118,20 @@ The aggregate-only `scripts/postflight-subscription-billing.sql` check confirmed
 catalog, all expected subscription and metering columns, three active premium `access_code`
 subscriptions, 10 unit Apply Wizard backfill rows for 10 distinct pursuits and one user, matching
 latches for every debit, zero duplicate or malformed rows, both atomic RPCs, and service-role-only
-RPC execution. `BILLING_ENABLED` remained absent after the migration, so applying the schema did
-not activate the new application paths.
+RPC execution.
+
+After a controlled flag-on deployment, the disposable authenticated
+`scripts/qa-subscription-flag-on-production.mjs` harness verified premium access-code entitlement,
+atomic already-entitled redemption, Roaring export, a 23-contact Human Path result, one
+`apply_wizard` debit/event/latch, and cached replay without another provider call. The first
+attempt was rolled back before a provider call because its fixture used two columns removed by the
+profile redesign; the corrected billing-off seed rehearsal and flag-on retry passed. Cleanup
+returned every QA table to zero, and the aggregate postflight remained unchanged. Production now
+runs with `BILLING_ENABLED=true`.
+
+No later migration yet removes the legacy pursuit debit and retail outreach quota from
+`persist_initial_outreach_generation`. That is the next schema migration; do not rewrite or
+re-record `00600`, which is already applied.
 
 ## How to apply migrations (current method)
 

@@ -1222,15 +1222,16 @@ Exit gate: a test pursuit can be reconciled to its provider calls and estimated 
 
 ### Phase 2: Subscription and quota migration
 
-- [ ] Build migration and test harness.
-- [ ] Convert runtime to database-backed entitlements.
-- [ ] Remove no-subscription active-basic fallback.
-- [ ] Add `apply_wizard` usage.
-- [ ] Add atomic Human Path commit RPC.
+- [x] Build migration and test harness.
+- [x] Convert runtime to database-backed entitlements.
+- [x] Remove no-subscription active-basic fallback.
+- [x] Add `apply_wizard` usage.
+- [x] Add atomic Human Path commit RPC.
 - [ ] Remove pursuit debit from outreach RPC.
-- [ ] Stop retail Human Path/outreach quota enforcement.
-- [ ] Preserve testers.
-- [ ] Protect Stripe subscriptions from access-code overwrite.
+- [x] Stop retail Human Path quota enforcement.
+- [ ] Stop retail outreach quota enforcement.
+- [x] Preserve testers.
+- [x] Protect Stripe subscriptions from access-code overwrite.
 
 Exit gate: concurrency, empty-result, replay, period, and plan tests pass.
 
