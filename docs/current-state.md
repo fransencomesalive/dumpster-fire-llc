@@ -1,6 +1,6 @@
 # Current State
 
-## 2026-07-25 - Phase 2B deployed flag-off; live migration preflight complete
+## 2026-07-25 - Migration 00600 applied and postflight-verified; billing remains false
 
 The application bridge to migration `20260724000600` is committed as `b76e7f8`, pushed to
 `origin/main`, and deployed successfully by Vercel. GitHub Actions run `30178555166` passed its
@@ -28,8 +28,8 @@ unauthenticated access-code redemption returned 401, and the Human Path route re
 404 for a nonexistent pursuit without performing a provider call or database write.
 
 The read-only production query in `scripts/preflight-subscription-billing.sql` directly confirmed
-that Phase 1 migrations `20260724000200` through `20260724000500` are applied and recorded. Only
-`20260724000600` is absent. No migration was applied and billing was not enabled.
+that Phase 1 migrations `20260724000200` through `20260724000500` were applied and recorded, with
+only `20260724000600` absent before the approved production apply.
 
 The preflight found three active `premium` subscriptions and one premium access code with 12
 recorded uses. On 2026-07-25 Randall classified those three pre-Stripe accounts as internal
@@ -40,13 +40,23 @@ idempotent applications, including the new legacy premium assertion. The full re
 passed the Saved Pursuits harness, all 33 fixture suites, typecheck, lint with four pre-existing
 warnings and zero errors, and the production build.
 
-After commit, push, and CI verification, the next production step is to rerun the read-only
-preflight and request explicit migration authorization. The decision does not authorize applying
-the migration or enabling billing.
+After explicit authorization, migration `20260724000600_subscription_billing_two_tier.sql` was
+applied through the Supabase Management API and recorded as `subscription_billing_two_tier`.
+Aggregate postflight `scripts/postflight-subscription-billing.sql` confirmed:
 
-The preflight also found 10 current-UTC-month Apply Wizard backfill candidates, all belonging to
-one user. Applying `00600` would create those metering rows. This is evidence for the migration
-review, not authorization to apply it.
+- Smoldering (`basic`) is $22 with 20 Apply Wizard uses and no Markdown export;
+- Roaring (`premium`) is $32 with 45 uses and Markdown export;
+- tester is internal with 25 uses; pro is retired from new entitlement;
+- all three active premium subscriptions are `access_code`;
+- 10 Apply Wizard rows for 10 pursuits and one user were backfilled in the current UTC month;
+- all 10 debits have matching pursuit latches, with zero duplicate, non-unit, or unmatched rows;
+- the Stripe lifecycle columns and both atomic service RPCs exist;
+- anon and authenticated cannot execute the RPCs; service role can;
+- migration history records `20260724000600`.
+
+`BILLING_ENABLED` remains absent in Vercel production, so the application still uses its legacy
+paths. `/` and `/plan` returned HTTP 200 after the apply, and unauthenticated code redemption
+returned 401. No authenticated flag-on Human Path or access-code production test has run yet.
 
 ## 2026-07-24 - Smoldering / Roaring Phase 1, Phase 2A, and design handoff
 
@@ -59,8 +69,8 @@ The pricing initiative now has one unified implementation state:
   Design, and mirrored into `design-system/`.
 - Codex Phase 2A adds the locally verified, backward-compatible
   `20260724000600_subscription_billing_two_tier.sql` contract and its isolated PostgreSQL harness.
-- Phase 2A has not been applied to production. The later Phase 2B bridge calls its new RPCs only
-  when `BILLING_ENABLED` is true; production currently resolves the flag false.
+- Phase 2A was later applied and recorded in production on 2026-07-25. The Phase 2B bridge calls
+  its new RPCs only when `BILLING_ENABLED` is true; production currently resolves the flag false.
 - No production pricing UI, CSS, public copy, legal copy, Stripe integration, or Markdown export
   backend has been implemented.
 

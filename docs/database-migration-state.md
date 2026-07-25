@@ -99,12 +99,11 @@ The read-only production preflight on 2026-07-25 directly confirmed all four Pha
 `job_link_extraction_claims` table. This live database result supersedes the earlier handoff claim
 that these four migrations were unapplied.
 
-## Pending production application (confirmed 2026-07-25)
+## Applied 2026-07-25 (confirmed + recorded in schema_migrations)
 
-Only Phase 2A migration `20260724000600_subscription_billing_two_tier.sql` is absent from production
-migration history and schema. The 2026-07-25 read-only preflight confirmed that
-`user_subscriptions.source`, `subscription_plans.apply_wizard_limit_monthly`, and
-`pursuits.apply_wizard_metered_at` are absent.
+- `20260724000600_subscription_billing_two_tier.sql` was applied through the Supabase Management
+  API after a fresh read-only preflight and explicit authorization. It is recorded as
+  `subscription_billing_two_tier`.
 
 Randall resolved the legacy premium-account classification on 2026-07-25: the three active
 pre-Stripe `premium` subscriptions are internal `access_code` entitlements, not manual Roaring
@@ -113,9 +112,14 @@ subscriptions. Migration `00600` now backfills existing non-Stripe `tester` and 
 legacy premium regression fixture.
 
 This decision uses the known access-code-era operating model because the schema has no durable
-per-user redemption-to-subscription link. Re-run `scripts/preflight-subscription-billing.sql`
-immediately before any authorized apply. Migration application and billing enablement remain
-separate explicit authorization boundaries.
+per-user redemption-to-subscription link.
+
+The aggregate-only `scripts/postflight-subscription-billing.sql` check confirmed the two-tier
+catalog, all expected subscription and metering columns, three active premium `access_code`
+subscriptions, 10 unit Apply Wizard backfill rows for 10 distinct pursuits and one user, matching
+latches for every debit, zero duplicate or malformed rows, both atomic RPCs, and service-role-only
+RPC execution. `BILLING_ENABLED` remained absent after the migration, so applying the schema did
+not activate the new application paths.
 
 ## How to apply migrations (current method)
 

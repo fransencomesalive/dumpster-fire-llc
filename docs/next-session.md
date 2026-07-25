@@ -1,4 +1,4 @@
-# Next Session: Migration 00600 Verification and Authorization
+# Next Session: Migration 00600 Applied; Flag-On Verification Pending
 
 _Updated 2026-07-25. Read `AGENTS.md` and follow the Session Start Protocol in
 `docs/project-operating-state.md` before editing._
@@ -74,7 +74,7 @@ These are design-system sources only. Production UI, CSS, public copy, and legal
 been ported. Any production port must map exactly to these approved cards and follow the full
 design-sync checklist.
 
-### Codex Phase 2A: committed, not applied to production
+### Codex Phase 2A: committed and applied to production
 
 Phase 2A added:
 
@@ -118,8 +118,8 @@ Verification passed:
 - production build;
 - full `npm run release:check`.
 
-The migration has not been applied to production. At the Phase 2A commit boundary, no application
-runtime called the new RPCs; the local Phase 2B work below adds those calls behind a disabled flag.
+The migration was applied and recorded on 2026-07-25 after the verification and authorization
+documented below. The Phase 2B runtime calls the new RPCs only behind the disabled production flag.
 
 ### Codex Phase 2B: deployed with billing false
 
@@ -170,12 +170,12 @@ Verification passed:
 - production build;
 - `git diff --check`.
 
-## Production preflight result and resolved decision
+## Production migration and postflight result
 
 The aggregate-only read-only preflight ran on 2026-07-25:
 
 - migrations `20260724000200` through `20260724000500` are recorded and their schema is present;
-- only `20260724000600` is missing;
+- at preflight time, only `20260724000600` was missing;
 - production has three active `premium` subscriptions;
 - production has one premium access code with 12 recorded uses;
 - production has no durable per-user link from an access-code redemption to a subscription;
@@ -191,22 +191,31 @@ focused harness and full local release check passed after this change: three ide
 applications, the Saved Pursuits harness, 33 fixture suites, typecheck, lint with four pre-existing
 warnings and zero errors, and the production build.
 
-Immediate sequence:
+After a fresh preflight and explicit authorization, migration `00600` was applied and recorded on
+2026-07-25. `scripts/postflight-subscription-billing.sql` confirmed:
 
-1. commit and push the migration decision;
-2. confirm CI and the flag-off Vercel deployment;
-3. rerun `scripts/preflight-subscription-billing.sql`;
-4. request explicit authorization before applying and recording migration `00600`;
-5. postflight the schema, catalog, subscription sources, and Apply Wizard backfill;
-6. only then enable billing for an approved production verification.
+- the expected Smoldering, Roaring, tester, and retired pro catalog;
+- three active premium subscriptions classified as `access_code`;
+- 10 unit Apply Wizard backfill rows for 10 distinct pursuits and one user;
+- zero duplicate, malformed, debit-without-latch, or latch-without-debit rows;
+- all expected schema fields and both atomic RPCs;
+- service-role-only execution for code redemption and Human Path persistence.
+
+Production still has no `BILLING_ENABLED` variable, so the deployed application remains on the
+legacy paths. The next step requires separate authorization and an exact rollback plan:
+
+1. enable `BILLING_ENABLED` in production;
+2. redeploy and confirm the canonical routes;
+3. run an authenticated access-code account read and non-costing entitlement check;
+4. run one explicitly approved authenticated Human Path transaction against a suitable pursuit;
+5. verify one atomic contact/event/debit/latch commit and replay behavior;
+6. disable the flag immediately if any check fails.
 
 ## Explicitly still incomplete
 
 - Production proof of the enabled Human Path path against migration `00600`.
 - A real production unit-economics baseline after post-deploy provider events exist.
 - Outreach entitlement cutover and removal of new retail pursuit/outreach debits.
-- A fresh read-only production preflight immediately before migration authorization.
-- Production application and recording of migration `20260724000600`.
 - Stripe test products, Checkout, Customer Portal, webhook processing, lifecycle tests, and
   environment secrets.
 - Markdown pursuit-history export backend.
@@ -216,7 +225,7 @@ Immediate sequence:
 
 ## Production safety boundary
 
-Do not apply migration `20260724000600`, enable `BILLING_ENABLED`, configure live Stripe, or edit
-protected production UI/copy without new explicit scope. The current production application
-continues to use the legacy entitlement and metering paths. The deployed route checks were
-non-mutating only; no authenticated provider-costing Human Path run was performed.
+Do not enable `BILLING_ENABLED`, configure live Stripe, or edit protected production UI/copy
+without new explicit scope. The current production application continues to use the legacy
+entitlement and metering paths. The deployed route checks were non-mutating only; no authenticated
+provider-costing Human Path run was performed.

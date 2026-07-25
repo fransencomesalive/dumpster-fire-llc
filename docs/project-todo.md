@@ -23,13 +23,15 @@ on `origin/main` at `3a3453d`; a live read-only preflight confirmed migrations `
 through `20260724000500` are applied and recorded in production. Claude’s five pricing/billing
 cards are approved and synced.
 Phase 2A’s two-tier subscription and atomic Apply Wizard migration contract is locally implemented
-and fully verified at `4b4c02e`, but migration `20260724000600` is also not applied or recorded in
-production. Phase 2B’s flag-off application compatibility bridge is deployed at `b76e7f8`;
+and fully verified at `4b4c02e`; migration `20260724000600` was applied, recorded, and
+postflight-verified on 2026-07-25. Phase 2B’s flag-off application compatibility bridge is
+deployed at `b76e7f8`;
 production leaves `BILLING_ENABLED` absent, so the legacy paths remain active. The live preflight
 found three active legacy `premium` subscriptions. Randall classified those pre-Stripe accounts as
 internal `access_code` entitlements on 2026-07-25, and migration `00600` plus its harness now encode
-that decision. The immediate next task is verification and the fresh pre-apply production
-preflight in `docs/next-session.md`.
+that decision. Postflight confirmed all three sources, 10 atomic backfill rows with matching
+latches, the two-tier catalog, and service-only RPC boundaries. The immediate next task is the
+separately authorized flag-on production verification in `docs/next-session.md`.
 Stripe is selected, but Checkout, Portal, webhooks, test products/prices, tax decisions, and
 environment configuration are not built or configured. The production UI port waits for backend
 readiness and a separately approved mapping to Claude’s cards.
@@ -57,7 +59,7 @@ What actually remains splits three ways:
 3. **Unblocked backend** (small): pre-launch copy/scaffold audit (Phase 9 verify item); profile
    regeneration action wiring; outreach version pruning, etc.
 
-The current next-task selection is migration `00600` verification and pre-apply review in
+The current next-task selection is the controlled flag-on production verification in
 `docs/next-session.md`. Older phase checklists below are historical inventory unless a newer dated
 update explicitly reactivates them.
 
@@ -306,8 +308,10 @@ error — nothing breaks. In order:
 - [x] Implement, deploy, and verify the flagged Phase 2B application compatibility bridge with
   production billing left false.
 - [ ] Cut outreach over from legacy pursuit/outreach debits to the Apply Wizard latch.
-- [ ] Apply and record migration `20260724000600` after a fresh read-only production preflight and
-  explicit authorization.
+- [x] Apply, record, and postflight migration `20260724000600` after a fresh read-only production
+  preflight and explicit authorization.
+- [ ] Enable `BILLING_ENABLED` only for an explicitly approved authenticated production
+  verification with immediate rollback criteria.
 - [ ] Build Stripe Checkout, Portal, verified webhooks, and lifecycle processing.
 - [ ] Build the approved limit, billing, and Markdown export UI states after backend readiness.
 
