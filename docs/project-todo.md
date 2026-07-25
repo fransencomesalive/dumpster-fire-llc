@@ -18,14 +18,17 @@ Canonical planning sources remain:
 
 ## Current Priority
 
-**Update 2026-07-24: Smoldering / Roaring is the active initiative.** Phase 1 provider-cost
-controls are deployed; Claude’s five pricing/billing cards are approved and synced; Phase 2A’s
-two-tier subscription and atomic Apply Wizard migration contract is locally implemented and fully
-verified but not applied to production. The immediate next task is the flagged Phase 2B application
-compatibility cutover in `docs/next-session.md`. Stripe is the selected billing provider, but
-Checkout, Portal, webhooks, test products/prices, tax decisions, and environment configuration are
-not built or configured. The production UI port waits for backend readiness and a separately
-approved mapping to Claude’s cards.
+**Update 2026-07-25: Smoldering / Roaring is the active initiative.** Phase 1 provider-cost code is
+on `origin/main` at `3a3453d`, but migrations `20260724000200` through `20260724000500` are not
+applied or recorded in production. Claude’s five pricing/billing cards are approved and synced.
+Phase 2A’s two-tier subscription and atomic Apply Wizard migration contract is locally implemented
+and fully verified at `4b4c02e`, but migration `20260724000600` is also not applied or recorded in
+production. Phase 2B’s flag-off application compatibility bridge is implemented and locally
+release-verified but not committed or deployed. The immediate next task is its flag-off release
+followed by a fresh read-only production preflight, as specified in `docs/next-session.md`. Stripe
+is the selected billing provider, but Checkout, Portal, webhooks, test products/prices, tax
+decisions, and environment configuration are not built or configured. The production UI port waits
+for backend readiness and a separately approved mapping to Claude’s cards.
 
 **Update 2026-07-05 — onboarding auth surface shipped (prod `153dbd4`).** The round-4
 onboarding auth DS cards are now built into the live page: login-only signed-out state

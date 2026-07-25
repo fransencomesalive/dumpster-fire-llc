@@ -1,9 +1,12 @@
 import type { PublicProfileRepositoryRequest } from "../repository";
 import type {
+  ApplyWizardUsage,
+  AtomicHumanPathPersistenceResult,
   CreatePursuitInput,
   GeneratedOutreachDraft,
   HumanPathContact,
   HumanPathContactSuggestion,
+  HumanPathDiagnostics,
   OutreachMessageRecord,
   OutreachMessageFeedback,
   OutreachFeedbackGenerationContext,
@@ -52,6 +55,7 @@ type PursuitRow = {
   outreach_angle: string | null;
   tracking_started_at?: string | null;
   pursuit_metered_at?: string | null;
+  apply_wizard_metered_at?: string | null;
   notes?: string | null;
   job_snapshot?: PursuitJobSnapshot | null;
   selection_snapshot?: PursuitSelectionSnapshot | null;
@@ -164,6 +168,18 @@ type AtomicOutreachGenerationResultRow = {
   outreachDebited: number;
 };
 
+type AtomicHumanPathGenerationResultRow = {
+  status: AtomicHumanPathPersistenceResult["status"];
+  replayed: boolean;
+  cached?: boolean;
+  debitAdded: boolean;
+  pursuit?: PursuitRow;
+  contacts?: ContactSuggestionRow[];
+  contactIds?: string[];
+  usage?: ApplyWizardUsage | null;
+  subscriptionStatus?: string;
+};
+
 type OutreachGenerationRequestRow = {
   id: string;
   pursuit_id: string;
@@ -201,6 +217,7 @@ function mapPursuit(row: PursuitRow): Pursuit {
     outreachAngle: defined(row.outreach_angle),
     trackingStartedAt: defined(row.tracking_started_at),
     pursuitMeteredAt: defined(row.pursuit_metered_at),
+    applyWizardMeteredAt: defined(row.apply_wizard_metered_at),
     notes: defined(row.notes),
     jobSnapshot: defined(row.job_snapshot),
     selectionSnapshot: defined(row.selection_snapshot),
@@ -879,6 +896,91 @@ export async function persistHumanPathGeneration(
     body: contacts.map((contact) => contactSuggestionBody(result.pursuit, contact, result.pursuit.updatedAt)),
   });
   return rows.map(mapContactSuggestion);
+}
+
+export async function persistAtomicHumanPathGeneration(
+  request: PublicProfileRepositoryRequest,
+  input: {
+    pursuitId: string;
+    userId: string;
+    contacts: HumanPathContact[];
+    diagnostics: HumanPathDiagnostics;
+    providerVersion: number;
+    generatedAt: string;
+  },
+): Promise<AtomicHumanPathPersistenceResult> {
+  const response = await request<AtomicHumanPathGenerationResultRow>(
+    "rpc/persist_human_path_generation",
+    {
+      method: "POST",
+      body: {
+        p_pursuit_id: input.pursuitId,
+        p_user_id: input.userId,
+        p_contacts: input.contacts.map((contact) => ({
+          name: contact.name,
+          title: contact.title,
+          company_name: contact.companyName,
+          linkedin_url: contact.linkedinUrl ?? null,
+          professional_contact_url: contact.professionalContactUrl ?? null,
+          contact_type: contact.contactType,
+          confidence: contact.confidence,
+          relevance_reason: contact.relevanceReason,
+          role_connection: contact.roleConnection,
+          verification_notes: contact.verificationNotes,
+        })),
+        p_diagnostics: input.diagnostics,
+        p_provider_version: input.providerVersion,
+        p_generated_at: input.generatedAt,
+      },
+    },
+  );
+
+  if (response.status === "human_path_generated") {
+    if (!response.pursuit || !response.contacts) {
+      throw new Error("persist_human_path_generation returned an incomplete success result");
+    }
+    return {
+      status: response.status,
+      replayed: response.replayed,
+      cached: response.cached === true,
+      debitAdded: response.debitAdded,
+      pursuit: mapPursuit(response.pursuit),
+      contacts: response.contacts.map(mapContactSuggestion),
+      contactIds: response.contactIds ?? response.contacts.map((contact) => contact.id),
+      usage: response.usage ?? undefined,
+    };
+  }
+
+  if (response.status === "limit_reached") {
+    if (!response.usage) {
+      throw new Error("persist_human_path_generation returned limit_reached without usage");
+    }
+    return {
+      status: response.status,
+      replayed: false,
+      debitAdded: false,
+      usage: response.usage,
+    };
+  }
+
+  if (response.status === "subscription_inactive") {
+    const status = response.subscriptionStatus;
+    if (status !== "past_due" && status !== "canceled") {
+      throw new Error("persist_human_path_generation returned an invalid subscription status");
+    }
+    return {
+      status: response.status,
+      replayed: false,
+      debitAdded: false,
+      subscriptionStatus: status,
+    };
+  }
+
+  return {
+    status: response.status,
+    replayed: false,
+    debitAdded: false,
+  };
 }
 
 export async function persistOutreachGeneration(

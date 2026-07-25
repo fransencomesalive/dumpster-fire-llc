@@ -89,15 +89,20 @@ Not yet built as public workflows:
 
 ## Canonical Next Product Task
 
-> **UPDATED 2026-07-24 — NEW IMMEDIATE INITIATIVE.** The Smoldering / Roaring subscription,
+> **UPDATED 2026-07-25 — CURRENT IMMEDIATE INITIATIVE.** The Smoldering / Roaring subscription,
 > Apply Wizard metering, cost telemetry, Markdown export, Stripe billing, public pricing, legal,
 > design, migration, QA, and production-release initiative is approved and specified in
 > `docs/subscription-billing-production-plan-2026-07-24.md`. Smoldering is $22/month for 20
 > successful new Apply Wizard pursuits. Roaring is the $32/month top plan with 45 pursuits and
-> Markdown history export. No free retail tier or membership fee. Implementation has not started.
-> The immediate backend slice is the provider-cost telemetry schema/boundary/tests; the independent
-> Claude Design lane begins with the two-tier plan-billing and homepage-pricing cards. Start from
-> `docs/next-session.md`.
+> Markdown history export. No free retail tier or membership fee. Phase 1 code is on `origin/main`
+> at `3a3453d`, but its migrations `20260724000200` through `20260724000500` are not applied or
+> recorded in production. Claude's pricing cards are approved and synced at `c536002`. Phase 2A is
+> on `origin/main` at `4b4c02e`, but migration `20260724000600` is also not applied or recorded in
+> production. Phase 2B compatibility code is now implemented and locally release-verified behind
+> `BILLING_ENABLED`, which defaults to false, but it is not committed or deployed yet. The immediate
+> task is the flag-off Phase 2B release followed by a fresh read-only production preflight for
+> migrations `20260724000200` through `20260724000600`. Start from `docs/next-session.md`; do not
+> apply a migration based only on this handoff.
 >
 > **UPDATED 2026-07-24.** The Human Path Exa provider, approved Apply Wizard accuracy copy,
 > production environment, contact-type migration, and persisted-contact-ID handoff are live and

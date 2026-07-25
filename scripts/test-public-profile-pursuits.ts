@@ -24,6 +24,7 @@ import {
   loadPursuitEventsForPursuit,
   loadPursuitTrackingEventsForUser,
   loadPursuitsForUser,
+  persistAtomicHumanPathGeneration,
   persistContactSelection,
   persistHumanPathGeneration,
   persistOutreachGeneration,
@@ -446,6 +447,186 @@ async function main() {
     false,
     "a slower empty provider result must not delete contacts from a completed concurrent request",
   );
+
+  const atomicHumanPathCalls: Array<{ table: string; method?: string; body?: unknown }> = [];
+  const atomicHumanPathRequest: PublicProfileRepositoryRequest = async <T>(
+    table: string,
+    options: Parameters<PublicProfileRepositoryRequest>[1],
+  ) => {
+    atomicHumanPathCalls.push({ table, method: options.method, body: options.body });
+    return {
+      status: "human_path_generated",
+      replayed: false,
+      cached: false,
+      debitAdded: true,
+      pursuit: {
+        id: "pursuit-1",
+        user_id: "user-1",
+        profile_id: "profile-1",
+        job_id: "job-1",
+        selected_role_track_id: null,
+        selected_resume_id: null,
+        selected_work_example_id: null,
+        status: "human_path_generated",
+        fit_summary: null,
+        risks: [],
+        recommended_work_example_ids: [],
+        outreach_angle: null,
+        tracking_started_at: null,
+        pursuit_metered_at: null,
+        apply_wizard_metered_at: now,
+        notes: null,
+        job_snapshot: null,
+        selection_snapshot: null,
+        last_activity_at: now,
+        created_at: now,
+        updated_at: now,
+      },
+      contacts: [{
+        id: "contact-atomic-1",
+        name: "Dana Lee",
+        title: "VP Product",
+        company_name: "Useful Studio",
+        linkedin_url: "https://linkedin.example/dana",
+        professional_contact_url: null,
+        email: null,
+        contact_type: "likely_hiring_manager",
+        confidence: "high",
+        relevance_reason: "Owns the program area.",
+        role_connection: "Likely sponsor.",
+        verification_notes: ["Current public profile."],
+        selected_for_outreach: false,
+        created_at: now,
+        updated_at: now,
+      }],
+      contactIds: ["contact-atomic-1"],
+      usage: {
+        used: 20,
+        limit: 20,
+        remaining: 0,
+        periodStart: "2026-06-01T00:00:00.000Z",
+        periodEnd: "2026-07-01T00:00:00.000Z",
+        finalUse: true,
+      },
+    } as T;
+  };
+  const atomicHumanPath = await persistAtomicHumanPathGeneration(
+    atomicHumanPathRequest,
+    {
+      pursuitId: "pursuit-1",
+      userId: "user-1",
+      contacts: [{
+        name: "Dana Lee",
+        title: "VP Product",
+        companyName: "Useful Studio",
+        linkedinUrl: "https://linkedin.example/dana",
+        email: "must-not-persist@example.com",
+        reachability: { method: "linkedin", url: "https://linkedin.example/dana" },
+        contactType: "likely_hiring_manager",
+        confidence: "high",
+        relevanceReason: "Owns the program area.",
+        roleConnection: "Likely sponsor.",
+        verificationNotes: ["Current public profile."],
+      }],
+      diagnostics: {
+        schemaVersion: 2,
+        lanes: [],
+        retrievedCount: 1,
+        exactCompanyCount: 1,
+        returnedCount: 1,
+        excluded: {
+          companyMismatchCount: 0,
+          missingLinkedinCount: 0,
+          duplicateCount: 0,
+        },
+      },
+      providerVersion: 12,
+      generatedAt: now,
+    },
+  );
+  assert.equal(atomicHumanPathCalls.length, 1);
+  assert.equal(atomicHumanPathCalls[0].table, "rpc/persist_human_path_generation");
+  assert.equal(atomicHumanPathCalls[0].method, "POST");
+  const atomicHumanPathBody = atomicHumanPathCalls[0].body as {
+    p_contacts: Array<Record<string, unknown>>;
+    p_provider_version: number;
+  };
+  assert.equal(atomicHumanPathBody.p_provider_version, 12);
+  assert.equal(atomicHumanPathBody.p_contacts[0].company_name, "Useful Studio");
+  assert.equal("email" in atomicHumanPathBody.p_contacts[0], false);
+  assert.equal("reachability" in atomicHumanPathBody.p_contacts[0], false);
+  assert.equal(atomicHumanPath.status, "human_path_generated");
+  if (atomicHumanPath.status === "human_path_generated") {
+    assert.equal(atomicHumanPath.pursuit.applyWizardMeteredAt, now);
+    assert.equal(atomicHumanPath.contacts[0].id, "contact-atomic-1");
+    assert.equal(atomicHumanPath.usage?.finalUse, true);
+  }
+
+  const atomicLimitRequest: PublicProfileRepositoryRequest = async <T>() => ({
+    status: "limit_reached",
+    replayed: false,
+    debitAdded: false,
+    usage: {
+      used: 20,
+      limit: 20,
+      remaining: 0,
+      periodStart: "2026-06-01T00:00:00.000Z",
+      periodEnd: "2026-07-01T00:00:00.000Z",
+      finalUse: false,
+    },
+  }) as T;
+  const atomicLimit = await persistAtomicHumanPathGeneration(atomicLimitRequest, {
+    pursuitId: "pursuit-1",
+    userId: "user-1",
+    contacts: [],
+    diagnostics: {
+      schemaVersion: 2,
+      lanes: [],
+      retrievedCount: 0,
+      exactCompanyCount: 0,
+      returnedCount: 0,
+      excluded: {
+        companyMismatchCount: 0,
+        missingLinkedinCount: 0,
+        duplicateCount: 0,
+      },
+    },
+    providerVersion: 12,
+    generatedAt: now,
+  });
+  assert.equal(atomicLimit.status, "limit_reached");
+
+  const atomicInactiveRequest: PublicProfileRepositoryRequest = async <T>() => ({
+    status: "subscription_inactive",
+    subscriptionStatus: "past_due",
+    replayed: false,
+    debitAdded: false,
+  }) as T;
+  const atomicInactive = await persistAtomicHumanPathGeneration(atomicInactiveRequest, {
+    pursuitId: "pursuit-1",
+    userId: "user-1",
+    contacts: [],
+    diagnostics: {
+      schemaVersion: 2,
+      lanes: [],
+      retrievedCount: 0,
+      exactCompanyCount: 0,
+      returnedCount: 0,
+      excluded: {
+        companyMismatchCount: 0,
+        missingLinkedinCount: 0,
+        duplicateCount: 0,
+      },
+    },
+    providerVersion: 12,
+    generatedAt: now,
+  });
+  assert.deepEqual(atomicInactive, {
+    status: "subscription_inactive",
+    subscriptionStatus: "past_due",
+    replayed: false,
+    debitAdded: false,
+  });
 
   const contactRowsRequest: PublicProfileRepositoryRequest = async <T>() => [{
     id: "contact-1",

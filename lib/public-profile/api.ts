@@ -40,6 +40,7 @@ import {
   loadPursuitTrackingEventsForUser,
   loadPursuitTrackingEventsForUserAndPursuits,
   loadPursuitsForUser,
+  persistAtomicHumanPathGeneration,
   persistContactSelection,
   persistHumanPathGeneration,
   persistOutreachGeneration,
@@ -72,8 +73,10 @@ import type {
   CompleteReviewInput,
   CreatePursuitInput,
   GeneratedOutreachDraft,
+  AtomicHumanPathPersistenceResult,
   HumanPathContact,
   HumanPathContactSuggestion,
+  HumanPathDiagnostics,
   HumanPathProvider,
   OutreachMessageRecord,
   OutreachMessageFeedback,
@@ -93,8 +96,12 @@ import type {
   PursuitSelectionSnapshot,
   SaveOutreachMessageFeedbackInput,
 } from "./pursuits/types";
-import { enforceSubscriptionFeature } from "./subscription/enforcement";
 import {
+  enforceSubscriptionFeature,
+  subscriptionUsagePeriod,
+} from "./subscription/enforcement";
+import {
+  isBillingEnabled,
   loadSubscriptionContextForUser,
   loadUsageLedgerForUser,
 } from "./subscription/repository";
@@ -547,6 +554,17 @@ export type PublicProfilePursuitsHandlerOptions = PublicProfileMatchHandlerOptio
     result: Extract<PursuitTransitionResult, { ok: true }>,
     contacts: HumanPathContact[],
   ) => Promise<HumanPathContactSuggestion[]>;
+  persistAtomicHumanPath?: (
+    request: PublicProfileRepositoryRequest,
+    input: {
+      pursuitId: string;
+      userId: string;
+      contacts: HumanPathContact[];
+      diagnostics: HumanPathDiagnostics;
+      providerVersion: number;
+      generatedAt: string;
+    },
+  ) => Promise<AtomicHumanPathPersistenceResult>;
   loadContactSuggestions?: (
     request: PublicProfileRepositoryRequest,
     pursuitId: string,
@@ -868,14 +886,22 @@ function validateCompleteReviewInput(
 }
 
 function subscriptionBlockedResponse(result: Exclude<SubscriptionEnforcementResult, { status: "allowed" }>) {
-  const status = result.status === "limit_reached" ? 429 : 402;
+  const status = result.status === "limit_reached"
+    ? 429
+    : result.status === "subscription_period_invalid"
+      ? 503
+      : 402;
   const featureName = result.feature === "human_path"
     ? "Human Path"
-    : result.feature === "outreach_message"
-      ? "Outreach"
-      : result.feature === "pursued_jobs_export"
-        ? "Pursued Jobs Export"
-        : "Subscription feature";
+    : result.feature === "apply_wizard"
+      ? "Apply Wizard"
+      : result.feature === "outreach_message"
+        ? "Outreach"
+        : result.feature === "markdown_export"
+          ? "Markdown export"
+          : result.feature === "pursued_jobs_export"
+            ? "Pursued Jobs Export"
+            : "Subscription feature";
   return json({
     error: result.status === "limit_reached"
       ? `${featureName} limit reached.`
@@ -1359,13 +1385,18 @@ export async function handlePublicProfilePursuedJobsExportRequest(
 
   const exportedAt = options.now?.() ?? new Date().toISOString();
 
-  const loadSubscriptionContext = options.loadSubscriptionContext ?? loadSubscriptionContextForUser;
+  const loadSubscriptionContext = options.loadSubscriptionContext;
   const loadUsageEntries = options.loadUsageEntries ?? loadUsageLedgerForUser;
-  const subscriptionContext = await loadSubscriptionContext(repositoryRequest, session.userId);
+  const subscriptionContext = loadSubscriptionContext
+    ? await loadSubscriptionContext(repositoryRequest, session.userId)
+    : await loadSubscriptionContextForUser(repositoryRequest, session.userId, {
+        billingEnabled: isBillingEnabled(options.env),
+      });
+  const subscriptionPeriod = subscriptionUsagePeriod(subscriptionContext, exportedAt);
   const usageEntries = await loadUsageEntries(repositoryRequest, session.userId, {
     at: exportedAt,
-    periodStart: subscriptionContext.currentPeriodStart,
-    periodEnd: subscriptionContext.currentPeriodEnd,
+    periodStart: subscriptionPeriod.start,
+    periodEnd: subscriptionPeriod.end,
   });
   const enforceSubscription = options.enforceSubscription
     ?? ((context, entries, at) => enforceSubscriptionFeature(context, entries, "pursued_jobs_export", { at }));
@@ -1841,19 +1872,28 @@ export async function handlePublicProfilePursuitHumanPathRequest(
     });
   }
 
-  const loadSubscriptionContext = options.loadSubscriptionContext ?? loadSubscriptionContextForUser;
+  const billingEnabled = isBillingEnabled(options.env);
+  const loadSubscriptionContext = options.loadSubscriptionContext;
   const loadUsageEntries = options.loadUsageEntries ?? loadUsageLedgerForUser;
-  const subscriptionContext = await loadSubscriptionContext(repositoryRequest, session.userId);
+  const subscriptionContext = loadSubscriptionContext
+    ? await loadSubscriptionContext(repositoryRequest, session.userId)
+    : await loadSubscriptionContextForUser(repositoryRequest, session.userId, { billingEnabled });
+  const subscriptionPeriod = subscriptionUsagePeriod(subscriptionContext, generatedAt);
   const usageEntries = await loadUsageEntries(repositoryRequest, session.userId, {
     at: generatedAt,
-    periodStart: subscriptionContext.currentPeriodStart,
-    periodEnd: subscriptionContext.currentPeriodEnd,
+    periodStart: subscriptionPeriod.start,
+    periodEnd: subscriptionPeriod.end,
   });
   const enforceSubscription = options.enforceSubscription
-    ?? ((context, entries, at) => enforceSubscriptionFeature(context, entries, "human_path", { at }));
+    ?? ((context, entries, at) => enforceSubscriptionFeature(
+      context,
+      entries,
+      billingEnabled ? "apply_wizard" : "human_path",
+      { at },
+    ));
   const enforcement = enforceSubscription(subscriptionContext, usageEntries, generatedAt);
   if (enforcement.status !== "allowed"
-    && !(refreshStaleEmptyResult && enforcement.status === "limit_reached")) {
+    && !(!billingEnabled && refreshStaleEmptyResult && enforcement.status === "limit_reached")) {
     return subscriptionBlockedResponse(enforcement);
   }
 
@@ -1885,6 +1925,89 @@ export async function handlePublicProfilePursuitHumanPathRequest(
       error: providerResult.reason,
       status: "provider_unavailable",
     }, { status: 503 });
+  }
+
+  if (billingEnabled) {
+    const persistAtomicHumanPath = options.persistAtomicHumanPath ?? persistAtomicHumanPathGeneration;
+    const atomicResult = await persistAtomicHumanPath(repositoryRequest, {
+      pursuitId: pursuit.id,
+      userId: session.userId,
+      contacts: providerResult.contacts,
+      diagnostics: providerResult.diagnostics,
+      providerVersion: HUMAN_PATH_PROVIDER_VERSION,
+      generatedAt,
+    });
+
+    if (atomicResult.status === "limit_reached") {
+      return subscriptionBlockedResponse({
+        status: "limit_reached",
+        feature: "apply_wizard",
+        used: atomicResult.usage.used,
+        limit: atomicResult.usage.limit,
+        remaining: 0,
+      });
+    }
+    if (atomicResult.status === "subscription_missing") {
+      return subscriptionBlockedResponse({
+        status: "subscription_missing",
+        feature: "apply_wizard",
+      });
+    }
+    if (atomicResult.status === "subscription_inactive") {
+      return subscriptionBlockedResponse({
+        status: "subscription_inactive",
+        feature: "apply_wizard",
+        subscriptionStatus: atomicResult.subscriptionStatus,
+      });
+    }
+    if (atomicResult.status === "not_found" || atomicResult.status === "job_not_visible") {
+      return json({
+        error: atomicResult.status === "not_found" ? "Pursuit not found." : "Job not found.",
+        status: atomicResult.status,
+      }, { status: 404 });
+    }
+    if (atomicResult.status === "invalid_pursuit_state") {
+      return json({
+        error: "Could not generate Human Path from the current pursuit state.",
+        status: atomicResult.status,
+      }, { status: 409 });
+    }
+    if (atomicResult.status === "subscription_period_invalid" || atomicResult.status === "plan_missing") {
+      return json({
+        error: "Subscription data is not ready for Apply Wizard.",
+        status: atomicResult.status,
+      }, { status: 503 });
+    }
+    if (atomicResult.status !== "human_path_generated") {
+      return json({
+        error: "Could not persist Human Path.",
+        status: atomicResult.status,
+      }, { status: 503 });
+    }
+
+    const committedSubscription = atomicResult.usage
+      ? {
+          status: "allowed" as const,
+          feature: "apply_wizard" as const,
+          used: atomicResult.usage.used,
+          limit: atomicResult.usage.limit,
+          remaining: atomicResult.usage.remaining,
+        }
+      : enforcement;
+    return json({
+      status: "human_path_generated",
+      profileId: aggregate.profile.id,
+      job,
+      pursuit: atomicResult.pursuit,
+      contacts: atomicResult.contacts,
+      ...(atomicResult.replayed ? {} : { diagnostics: providerResult.diagnostics }),
+      subscription: committedSubscription,
+      applyWizardUsage: atomicResult.usage,
+      cached: atomicResult.cached,
+      raceResolved: atomicResult.replayed,
+      providerVersion: HUMAN_PATH_PROVIDER_VERSION,
+      refreshedStaleEmptyResult: refreshStaleEmptyResult,
+    });
   }
 
   // A second request may have started before the first request committed. Once
@@ -2265,13 +2388,18 @@ export async function handlePublicProfilePursuitOutreachRequest(
       return json({ error: "Human Path contact not found.", status: "not_found" }, { status: 404 });
     }
 
-    const loadSubscriptionContext = options.loadSubscriptionContext ?? loadSubscriptionContextForUser;
+    const loadSubscriptionContext = options.loadSubscriptionContext;
     const loadUsageEntries = options.loadUsageEntries ?? loadUsageLedgerForUser;
-    const subscriptionContext = await loadSubscriptionContext(repositoryRequest, session.userId);
+    const subscriptionContext = loadSubscriptionContext
+      ? await loadSubscriptionContext(repositoryRequest, session.userId)
+      : await loadSubscriptionContextForUser(repositoryRequest, session.userId, {
+          billingEnabled: isBillingEnabled(options.env),
+        });
+    const subscriptionPeriod = subscriptionUsagePeriod(subscriptionContext, generatedAt);
     const usageEntries = await loadUsageEntries(repositoryRequest, session.userId, {
       at: generatedAt,
-      periodStart: subscriptionContext.currentPeriodStart,
-      periodEnd: subscriptionContext.currentPeriodEnd,
+      periodStart: subscriptionPeriod.start,
+      periodEnd: subscriptionPeriod.end,
     });
     const enforceSubscription = options.enforceSubscription
       ?? ((context, entries, at) => enforceSubscriptionFeature(context, entries, "outreach_message", {
@@ -2395,13 +2523,18 @@ export async function handlePublicProfilePursuitOutreachRequest(
     }, { status: 409 });
   }
 
-  const loadSubscriptionContext = options.loadSubscriptionContext ?? loadSubscriptionContextForUser;
+  const loadSubscriptionContext = options.loadSubscriptionContext;
   const loadUsageEntries = options.loadUsageEntries ?? loadUsageLedgerForUser;
-  const subscriptionContext = await loadSubscriptionContext(repositoryRequest, session.userId);
+  const subscriptionContext = loadSubscriptionContext
+    ? await loadSubscriptionContext(repositoryRequest, session.userId)
+    : await loadSubscriptionContextForUser(repositoryRequest, session.userId, {
+        billingEnabled: isBillingEnabled(options.env),
+      });
+  const subscriptionPeriod = subscriptionUsagePeriod(subscriptionContext, generatedAt);
   const usageEntries = await loadUsageEntries(repositoryRequest, session.userId, {
     at: generatedAt,
-    periodStart: subscriptionContext.currentPeriodStart,
-    periodEnd: subscriptionContext.currentPeriodEnd,
+    periodStart: subscriptionPeriod.start,
+    periodEnd: subscriptionPeriod.end,
   });
   const shouldChargePursuit = !pursuit.pursuitMeteredAt;
   if (shouldChargePursuit) {

@@ -61,6 +61,10 @@ import type { ProfileQuality } from "../lib/public-profile/types";
 import { completeCandidateProfileAggregate } from "./fixtures/public-profile";
 
 const now = "2026-06-23T16:00:00.000Z";
+const billingEnabledEnv = {
+  NODE_ENV: "test",
+  BILLING_ENABLED: "true",
+} as NodeJS.ProcessEnv;
 const generationContext: OutreachGenerationContext = {
   schemaVersion: 1,
   generatedAt: now,
@@ -243,6 +247,27 @@ function activeBasicSubscription(overrides: Partial<SubscriptionContext> = {}): 
     status: "active",
     currentPeriodStart: "2026-06-01T00:00:00.000Z",
     currentPeriodEnd: "2026-07-01T00:00:00.000Z",
+    ...overrides,
+  };
+}
+
+function activeSmolderingSubscription(overrides: Partial<SubscriptionContext> = {}): SubscriptionContext {
+  return {
+    planName: "basic",
+    status: "active",
+    source: "stripe",
+    currentPeriodStart: "2026-06-01T00:00:00.000Z",
+    currentPeriodEnd: "2026-07-01T00:00:00.000Z",
+    entitlements: {
+      pursuitLimitMonthly: 0,
+      humanPathLimitMonthly: 0,
+      outreachLimitMonthly: 0,
+      applyWizardLimitMonthly: 20,
+      pursuedJobsExport: false,
+      markdownExport: false,
+      publiclyAvailable: true,
+      internalOnly: false,
+    },
     ...overrides,
   };
 }
@@ -1429,6 +1454,188 @@ async function main() {
   assert.equal((persistedContacts as HumanPathContact[]).length, 1);
   assert.equal(((humanPathJson.contacts as HumanPathContactSuggestion[])[0]).name, "Dana Lee");
   assert.equal(((humanPathJson.contacts as HumanPathContactSuggestion[])[0]).id, "contact-1");
+
+  let enabledProviderCalledAtLimit = false;
+  let enabledAtomicCalledAtLimit = false;
+  const enabledPreflightLimit = await handlePublicProfilePursuitHumanPathRequest(
+    postRequest("pursuits/human-path", { pursuitId: "pursuit-1" }),
+    {
+      env: billingEnabledEnv,
+      now: () => now,
+      getSession: async () => authed(),
+      repositoryRequest,
+      loadAggregate: async () => agg,
+      loadPursuit: async () => savedPursuit({ status: "review_complete" }),
+      loadJob: async () => publicJob(),
+      loadSubscriptionContext: async () => activeSmolderingSubscription(),
+      loadUsageEntries: async () => [usage("apply_wizard", 20)],
+      humanPathProvider: async () => {
+        enabledProviderCalledAtLimit = true;
+        return {
+          status: "generated",
+          contacts: [humanPathContact()],
+          diagnostics: humanPathDiagnostics(),
+        };
+      },
+      persistAtomicHumanPath: async () => {
+        enabledAtomicCalledAtLimit = true;
+        throw new Error("preflight limit must stop before atomic persistence");
+      },
+    },
+  );
+  assert.equal(enabledPreflightLimit.status, 429);
+  const enabledPreflightLimitJson = await body(enabledPreflightLimit);
+  assert.equal(enabledPreflightLimitJson.status, "limit_reached");
+  assert.equal(
+    (enabledPreflightLimitJson.subscription as Record<string, unknown>).feature,
+    "apply_wizard",
+  );
+  assert.equal(enabledProviderCalledAtLimit, false);
+  assert.equal(enabledAtomicCalledAtLimit, false);
+
+  let enabledAtomicInput: unknown;
+  const enabledAtomicSuccess = await handlePublicProfilePursuitHumanPathRequest(
+    postRequest("pursuits/human-path", { pursuitId: "pursuit-1" }),
+    {
+      env: billingEnabledEnv,
+      now: () => now,
+      getSession: async () => authed(),
+      repositoryRequest,
+      loadAggregate: async () => agg,
+      loadPursuit: async () => savedPursuit({
+        status: "review_complete",
+        selectedRoleTrackId: "track-1",
+      }),
+      loadJob: async () => publicJob(),
+      loadSubscriptionContext: async () => activeSmolderingSubscription(),
+      loadUsageEntries: async () => [usage("apply_wizard", 19)],
+      humanPathProvider: async () => ({
+        status: "generated",
+        contacts: [humanPathContact()],
+        diagnostics: humanPathDiagnostics(),
+      }),
+      persistHumanPath: async () => {
+        throw new Error("enabled billing must not use legacy Human Path persistence");
+      },
+      persistAtomicHumanPath: async (_request, input) => {
+        enabledAtomicInput = input;
+        return {
+          status: "human_path_generated",
+          replayed: false,
+          cached: false,
+          debitAdded: true,
+          pursuit: savedPursuit({
+            status: "human_path_generated",
+            applyWizardMeteredAt: now,
+          }),
+          contacts: [contactSuggestion()],
+          contactIds: ["contact-1"],
+          usage: {
+            used: 20,
+            limit: 20,
+            remaining: 0,
+            periodStart: "2026-06-01T00:00:00.000Z",
+            periodEnd: "2026-07-01T00:00:00.000Z",
+            finalUse: true,
+          },
+        };
+      },
+    },
+  );
+  assert.equal(enabledAtomicSuccess.status, 200);
+  assert.equal(
+    (enabledAtomicInput as { providerVersion: number }).providerVersion,
+    12,
+  );
+  assert.equal(
+    (enabledAtomicInput as { contacts: HumanPathContact[] }).contacts.length,
+    1,
+  );
+  const enabledAtomicSuccessJson = await body(enabledAtomicSuccess);
+  assert.equal(enabledAtomicSuccessJson.status, "human_path_generated");
+  assert.equal(enabledAtomicSuccessJson.cached, false);
+  assert.equal(enabledAtomicSuccessJson.raceResolved, false);
+  assert.equal(
+    (enabledAtomicSuccessJson.applyWizardUsage as Record<string, unknown>).finalUse,
+    true,
+  );
+  assert.equal(
+    (enabledAtomicSuccessJson.subscription as Record<string, unknown>).feature,
+    "apply_wizard",
+  );
+  assert.equal("event" in enabledAtomicSuccessJson, false);
+
+  const enabledAtomicLimit = await handlePublicProfilePursuitHumanPathRequest(
+    postRequest("pursuits/human-path", { pursuitId: "pursuit-1" }),
+    {
+      env: billingEnabledEnv,
+      now: () => now,
+      getSession: async () => authed(),
+      repositoryRequest,
+      loadAggregate: async () => agg,
+      loadPursuit: async () => savedPursuit({ status: "review_complete" }),
+      loadJob: async () => publicJob(),
+      loadSubscriptionContext: async () => activeSmolderingSubscription(),
+      loadUsageEntries: async () => [usage("apply_wizard", 19)],
+      humanPathProvider: async () => ({
+        status: "generated",
+        contacts: [humanPathContact()],
+        diagnostics: humanPathDiagnostics(),
+      }),
+      persistAtomicHumanPath: async () => ({
+        status: "limit_reached",
+        replayed: false,
+        debitAdded: false,
+        usage: {
+          used: 20,
+          limit: 20,
+          remaining: 0,
+          periodStart: "2026-06-01T00:00:00.000Z",
+          periodEnd: "2026-07-01T00:00:00.000Z",
+          finalUse: false,
+        },
+      }),
+    },
+  );
+  assert.equal(enabledAtomicLimit.status, 429);
+  assert.equal((await body(enabledAtomicLimit)).status, "limit_reached");
+
+  const enabledAtomicReplay = await handlePublicProfilePursuitHumanPathRequest(
+    postRequest("pursuits/human-path", { pursuitId: "pursuit-1" }),
+    {
+      env: billingEnabledEnv,
+      now: () => now,
+      getSession: async () => authed(),
+      repositoryRequest,
+      loadAggregate: async () => agg,
+      loadPursuit: async () => savedPursuit({ status: "review_complete" }),
+      loadJob: async () => publicJob(),
+      loadSubscriptionContext: async () => activeSmolderingSubscription(),
+      loadUsageEntries: async () => [usage("apply_wizard", 19)],
+      humanPathProvider: async () => ({
+        status: "generated",
+        contacts: [humanPathContact()],
+        diagnostics: humanPathDiagnostics(),
+      }),
+      persistAtomicHumanPath: async () => ({
+        status: "human_path_generated",
+        replayed: true,
+        cached: true,
+        debitAdded: false,
+        pursuit: savedPursuit({
+          status: "human_path_generated",
+          applyWizardMeteredAt: now,
+        }),
+        contacts: [contactSuggestion()],
+        contactIds: ["contact-1"],
+      }),
+    },
+  );
+  assert.equal(enabledAtomicReplay.status, 200);
+  const enabledAtomicReplayJson = await body(enabledAtomicReplay);
+  assert.equal(enabledAtomicReplayJson.cached, true);
+  assert.equal(enabledAtomicReplayJson.raceResolved, true);
+  assert.equal("diagnostics" in enabledAtomicReplayJson, false);
 
   let currentEmptyProviderCalled = false;
   const currentEmptyCached = await handlePublicProfilePursuitHumanPathRequest(

@@ -1,11 +1,48 @@
 # Current State
 
+## 2026-07-25 - Smoldering / Roaring Phase 2B compatibility bridge complete locally
+
+The application bridge to migration `20260724000600` is implemented and locally verified behind
+`BILLING_ENABLED`, which defaults to false:
+
+- the false path preserves the deployed `PLAN_RULES`, missing-subscription active-basic fallback,
+  legacy access-code writes, and legacy Human Path persistence;
+- the enabled path loads plan source, Stripe lifecycle fields, database plan entitlements,
+  Apply Wizard allowance/usage, and Markdown entitlement from the migrated schema;
+- enabled missing subscriptions and invalid Stripe periods fail closed;
+- access-code/manual periods derive from the current UTC calendar month;
+- enabled access-code redemption uses `redeem_access_code_subscription`;
+- enabled Human Path preflights `apply_wizard` usage and uses
+  `persist_human_path_generation` as the single atomic contact, pursuit, event, debit, and latch
+  commit;
+- the RPC mapping preserves structured success, replay, contact, pursuit, usage, limit, inactive,
+  missing-subscription, invalid-period, invalid-state, and visibility outcomes;
+- provider contact email and request-only reachability objects are not sent to persistence.
+
+Verification passed the Phase 2A migration harness, legacy Saved Pursuits migration harness, 33
+fixture suites, typecheck, lint with four pre-existing warnings and zero errors, production build,
+and `git diff --check`.
+
+This work is not deployed or committed yet. `BILLING_ENABLED` has not been enabled. Production
+migrations `20260724000200` through `20260724000600` remain unapplied and unrecorded. The next
+production step is to deploy this compatibility code with billing false, verify the legacy path,
+then run a fresh read-only migration preflight. Applying any migration still requires explicit
+authorization.
+
+## 2026-07-25 - Phase 1 production migration-state correction
+
+Commit `3a3453d` is on `origin/main`, but its migrations `20260724000200` through
+`20260724000500` are **not applied or recorded in production**. A pushed commit or application
+deployment must not be treated as proof that its database migrations ran. Phase 2A migration
+`20260724000600` is also unapplied and unrecorded in production. Re-check production migration
+history immediately before any apply, and require explicit migration authorization.
+
 ## 2026-07-24 - Smoldering / Roaring Phase 1, Phase 2A, and design handoff
 
 The pricing initiative now has one unified implementation state:
 
-- Codex Phase 1 is committed as `3a3453d`, deployed, and backed by production migrations
-  `20260724000200` through `20260724000500`.
+- Codex Phase 1 is committed as `3a3453d` on `origin/main`; migrations `20260724000200` through
+  `20260724000500` exist in the repository but are not applied or recorded in production.
 - Claude’s five approved pricing/billing cards are committed as `c536002`, registered with Claude
   Design, and mirrored into `design-system/`.
 - Codex Phase 2A adds the locally verified, backward-compatible

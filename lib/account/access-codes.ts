@@ -4,6 +4,7 @@ import {
   getPublicProfileRepositoryConfig,
   type PublicProfileRepositoryRequest,
 } from "../public-profile/repository";
+import { isBillingEnabled } from "../public-profile/subscription/repository";
 
 // Access-code redemption: an authenticated user submits an invite code and is
 // provisioned onto the code's subscription plan (e.g. free "tester" access).
@@ -29,6 +30,27 @@ export type RedeemAccessCodeHandlerOptions = {
   repositoryRequest?: PublicProfileRepositoryRequest;
 };
 
+export type AtomicAccessCodeRedemptionResult =
+  | {
+      status: "redeemed";
+      redeemed: true;
+      planCode: string;
+      periodStart: string;
+      periodEnd: string;
+      usesRemaining: number | null;
+    }
+  | {
+      status:
+        | "stripe_subscription_exists"
+        | "already_entitled"
+        | "invalid_code"
+        | "expired_code"
+        | "exhausted_code"
+        | "plan_missing";
+      redeemed: false;
+      source?: string;
+    };
+
 function json(body: unknown, init: ResponseInit = {}) {
   return Response.json(body, {
     ...init,
@@ -42,6 +64,20 @@ function qs(params: Record<string, string>) {
 
 export function normalizeAccessCode(value: unknown) {
   return typeof value === "string" ? value.trim().toUpperCase().replace(/\s+/g, "") : "";
+}
+
+export async function redeemAccessCodeSubscription(
+  request: PublicProfileRepositoryRequest,
+  input: { userId: string; code: string; now: string },
+) {
+  return request<AtomicAccessCodeRedemptionResult>("rpc/redeem_access_code_subscription", {
+    method: "POST",
+    body: {
+      p_user_id: input.userId,
+      p_code: input.code,
+      p_now: input.now,
+    },
+  });
 }
 
 export async function handleRedeemAccessCodeRequest(
@@ -78,6 +114,48 @@ export async function handleRedeemAccessCodeRequest(
   }
 
   const now = options.now?.() ?? new Date().toISOString();
+  if (isBillingEnabled(options.env)) {
+    const result = await redeemAccessCodeSubscription(repositoryRequest, {
+      userId: session.userId,
+      code,
+      now,
+    });
+    if (result.status === "redeemed") {
+      return json({
+        status: "redeemed",
+        planName: result.planCode,
+        periodStart: result.periodStart,
+        periodEnd: result.periodEnd,
+        usesRemaining: result.usesRemaining,
+      });
+    }
+    if (result.status === "invalid_code") {
+      return json({ error: "That code did not match anything.", status: result.status }, { status: 404 });
+    }
+    if (result.status === "expired_code") {
+      return json({ error: "That code has expired.", status: result.status }, { status: 410 });
+    }
+    if (result.status === "exhausted_code") {
+      return json({ error: "That code has already been fully used.", status: result.status }, { status: 410 });
+    }
+    if (result.status === "plan_missing") {
+      return json({ error: "The plan behind this code is not available.", status: result.status }, { status: 500 });
+    }
+    if (result.status === "stripe_subscription_exists") {
+      return json({
+        error: "This account already has a paid subscription.",
+        status: result.status,
+      }, { status: 409 });
+    }
+    if (result.status === "already_entitled") {
+      return json({
+        error: "This account already has active access.",
+        status: result.status,
+      }, { status: 409 });
+    }
+    return json({ error: "Could not redeem that code.", status: "redemption_failed" }, { status: 503 });
+  }
+
   const codes = await repositoryRequest<AccessCodeRow[]>("access_codes", {
     query: qs({ code: `eq.${code}`, limit: "1" }),
   });

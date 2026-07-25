@@ -13,7 +13,7 @@ export type PursuitStatus =
   | "expired"
   | "deleted";
 
-export type PursuitUsageType = "pursuit" | "human_path" | "outreach_message";
+export type PursuitUsageType = "pursuit" | "human_path" | "outreach_message" | "apply_wizard";
 
 export type PursuitTrackingAction =
   | "outreach_sent"
@@ -112,6 +112,7 @@ export type Pursuit = {
   outreachAngle?: string;
   trackingStartedAt?: string;
   pursuitMeteredAt?: string;
+  applyWizardMeteredAt?: string;
   notes?: string;
   jobSnapshot?: PursuitJobSnapshot;
   selectionSnapshot?: PursuitSelectionSnapshot;
@@ -292,6 +293,50 @@ export type HumanPathContactSuggestion = HumanPathContact & {
   createdAt: string;
   updatedAt: string;
 };
+
+export type ApplyWizardUsage = {
+  used: number;
+  limit: number;
+  remaining: number;
+  periodStart: string;
+  periodEnd: string;
+  finalUse: boolean;
+};
+
+export type AtomicHumanPathPersistenceResult =
+  | {
+      status: "human_path_generated";
+      replayed: boolean;
+      cached: boolean;
+      debitAdded: boolean;
+      pursuit: Pursuit;
+      contacts: HumanPathContactSuggestion[];
+      contactIds: string[];
+      usage?: ApplyWizardUsage;
+    }
+  | {
+      status: "limit_reached";
+      replayed: false;
+      debitAdded: false;
+      usage: ApplyWizardUsage;
+    }
+  | {
+      status: "subscription_inactive";
+      replayed: false;
+      debitAdded: false;
+      subscriptionStatus: "past_due" | "canceled";
+    }
+  | {
+      status:
+        | "subscription_missing"
+        | "subscription_period_invalid"
+        | "plan_missing"
+        | "not_found"
+        | "invalid_pursuit_state"
+        | "job_not_visible";
+      replayed: false;
+      debitAdded: false;
+    };
 
 export type OutreachRecipientType =
   | "likely_hiring_manager"

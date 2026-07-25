@@ -6,6 +6,7 @@ const savedPursuitsSuites = [
 ];
 
 const fixtureSuites = [
+  "scripts/test-account-access-codes.mjs",
   "scripts/test-anthropic-usage.mjs",
   "scripts/test-job-link.mjs",
   "scripts/test-llm-extract-posting.mjs",

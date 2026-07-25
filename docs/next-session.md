@@ -1,6 +1,6 @@
-# Next Session: Smoldering / Roaring Phase 2B
+# Next Session: Phase 2B Flag-Off Release and Migration Preflight
 
-_Updated 2026-07-24. Read `AGENTS.md` and follow the Session Start Protocol in
+_Updated 2026-07-25. Read `AGENTS.md` and follow the Session Start Protocol in
 `docs/project-operating-state.md` before editing._
 
 ## Session check
@@ -26,21 +26,23 @@ The approved retail contract is:
 - The usage counter is quiet and appears only on deliberate Plan/Billing surfaces.
 - Tester remains an internal access-code entitlement outside the retail plan matrix.
 
-### Codex Phase 1: deployed
+### Codex Phase 1: committed; production migrations unapplied
 
-Commit `3a3453d` added provider cost telemetry, safe rate-card estimation, source-content reuse,
-posting-refinement backoff, extraction claims, and the first unit-economics report.
+Commit `3a3453d` is on `origin/main`. It added provider cost telemetry, safe rate-card estimation,
+source-content reuse, posting-refinement backoff, extraction claims, and the first unit-economics
+report.
 
-Production migrations are applied, recorded, and postflight-verified through:
+These migration files exist in the repository but are **not applied or recorded in production**:
 
 - `20260724000200_provider_usage_events.sql`
 - `20260724000300_jobs_source_content_hash.sql`
 - `20260724000400_posting_refinement_backoff.sql`
 - `20260724000500_job_link_extraction_claims.sql`
 
-The Phase 1 application release is deployed. The first production unit-economics report returned
-zero provider events because no post-deploy paid-provider workflow had yet generated telemetry.
-Do not treat that zero-event sample as a real pricing baseline.
+Do not treat the presence of commit `3a3453d` on the remote, or any application deployment built
+from it, as evidence that its database schema is live. Phase 1's schema-dependent production
+behavior and a real production unit-economics baseline remain unverified until the migrations are
+explicitly authorized, applied, recorded, and postflight-verified.
 
 Known Phase 1 limitations:
 
@@ -72,7 +74,7 @@ These are design-system sources only. Production UI, CSS, public copy, and legal
 been ported. Any production port must map exactly to these approved cards and follow the full
 design-sync checklist.
 
-### Codex Phase 2A: implemented locally, not applied to production
+### Codex Phase 2A: committed, not applied to production
 
 Phase 2A added:
 
@@ -116,50 +118,72 @@ Verification passed:
 - production build;
 - full `npm run release:check`.
 
-The migration has not been applied to production. No application runtime calls the new RPCs yet.
+The migration has not been applied to production. At the Phase 2A commit boundary, no application
+runtime called the new RPCs; the local Phase 2B work below adds those calls behind a disabled flag.
 
-## Immediate next task: Phase 2B application compatibility cutover
+### Codex Phase 2B: implemented locally, not deployed
 
-Build the application side behind `BILLING_ENABLED=false`. The deployed false path must continue
-to work before migration `00600` exists. Do not apply the migration or enable billing in the same
-task.
+The application compatibility bridge is implemented behind `BILLING_ENABLED`, which defaults to
+false. It is currently an uncommitted local change and has not been deployed.
 
-Required behavior:
+Implemented behavior:
 
-1. Add schema-aware subscription types for plan source, Apply Wizard allowance, period, remaining
-   use, and Markdown entitlement.
-2. In the enabled path only, remove the TypeScript missing-subscription-as-active-basic fallback.
-   The false compatibility path remains unchanged until migration and cutover authorization.
-3. In the enabled path only, load database plan entitlements instead of `PLAN_RULES`. Do not remove
-   the legacy false-path rules in this slice.
-4. Route access-code redemption through `redeem_access_code_subscription` only when the new path is
-   enabled.
-5. Add repository mapping for `persist_human_path_generation`, including structured limit,
-   inactive, replay, contact, pursuit, and usage results.
-6. Keep the legacy production path intact while the flag is false.
-7. Add focused tests for false-path compatibility and enabled-path RPC mapping.
-8. Do not change outreach debits or production UI yet. The outreach cutover follows after the
-   Human Path path is proven against the migrated schema.
+1. Schema-aware subscription types and database mapping cover plan source, Stripe lifecycle,
+   Apply Wizard allowance/usage, periods, and Markdown entitlement.
+2. Enabled missing subscriptions fail closed; the false path retains the active-basic fallback.
+3. Enabled enforcement uses database plan entitlements; the false path retains `PLAN_RULES`.
+4. Enabled access-code redemption uses `redeem_access_code_subscription`.
+5. Enabled Human Path uses `apply_wizard` preflight and the atomic
+   `persist_human_path_generation` RPC.
+6. Structured RPC results cover limit, inactive, replay, contacts, pursuit, usage, invalid period,
+   invalid state, and visibility outcomes.
+7. Stripe periods fail closed; access-code/manual periods derive from the current UTC month.
+8. The false path keeps legacy access-code, Human Path, pursuit, and outreach behavior.
+9. Outreach debits and production UI remain unchanged.
 
-Expected first files:
+Changed application and test files:
 
+- `.env.example`
 - `lib/public-profile/subscription/types.ts`
 - `lib/public-profile/subscription/repository.ts`
 - `lib/public-profile/subscription/enforcement.ts`
-- `lib/public-profile/subscription/rules.ts`
 - `lib/account/access-codes.ts`
 - `lib/public-profile/pursuits/types.ts`
 - `lib/public-profile/pursuits/repository.ts`
 - `lib/public-profile/api.ts`
-- `scripts/test-public-profile-subscription.mjs`
-- `scripts/test-public-profile-pursuits.mjs`
-- `scripts/test-public-profile-api.mjs`
+- `scripts/test-account-access-codes.ts`
+- `scripts/test-account-access-codes.mjs`
+- `scripts/test-public-profile-subscription.ts`
+- `scripts/test-public-profile-pursuits.ts`
+- `scripts/test-public-profile-api.ts`
+- `scripts/test-fixtures.mjs`
+- `package.json`
 
-This list is a handoff, not authorization. Reconfirm the exact slice before editing.
+Verification passed:
+
+- Phase 2A migration harness;
+- legacy Saved Pursuits migration harness;
+- 33 fixture suites;
+- typecheck;
+- lint with four pre-existing warnings and zero errors;
+- production build;
+- `git diff --check`.
+
+## Immediate next task: flag-off release and read-only preflight
+
+1. Review and commit the intended Phase 2B and migration-state documentation changes.
+2. Push `main` and verify CI plus the Vercel deployment.
+3. Confirm production keeps `BILLING_ENABLED` unset or explicitly false.
+4. Verify the deployed access-code and legacy Human Path paths without applying a migration.
+5. Run a fresh read-only production preflight for migrations `20260724000200` through
+   `20260724000600`.
+6. Stop and report the preflight. Do not apply or record any migration without explicit
+   authorization.
 
 ## Explicitly still incomplete
 
-- Phase 2B application compatibility and Human Path cutover.
+- Phase 2B commit, push, flag-off deployment, and deployed legacy-path verification.
+- Production proof of the enabled Human Path path against migration `00600`.
 - A real production unit-economics baseline after post-deploy provider events exist.
 - Outreach entitlement cutover and removal of new retail pursuit/outreach debits.
 - Read-only production preflight immediately before migration authorization.
