@@ -31,13 +31,18 @@ The read-only production query in `scripts/preflight-subscription-billing.sql` d
 that Phase 1 migrations `20260724000200` through `20260724000500` are applied and recorded. Only
 `20260724000600` is absent. No migration was applied and billing was not enabled.
 
-The preflight found three active `premium` subscriptions. Migration `00600` would classify all
-existing non-tester subscriptions as `manual`, but production also has one premium access code
-with 12 recorded uses and no durable per-user redemption-to-subscription link. The next action is a
-product/operations decision on whether those three legacy accounts should remain manual Roaring
-entitlements or be classified as internal access-code entitlements. After that decision, revise
-the migration if necessary, rerun its local harness and release check, rerun the production
-preflight, and request explicit migration authorization.
+The preflight found three active `premium` subscriptions and one premium access code with 12
+recorded uses. On 2026-07-25 Randall classified those three pre-Stripe accounts as internal
+`access_code` entitlements, not manual Roaring subscriptions. Migration `00600` and its isolated
+harness now encode that decision by backfilling existing non-Stripe `tester` and `premium` rows as
+`access_code`; other pre-Stripe plan rows remain `manual`. The focused harness passed three
+idempotent applications, including the new legacy premium assertion. The full release check also
+passed the Saved Pursuits harness, all 33 fixture suites, typecheck, lint with four pre-existing
+warnings and zero errors, and the production build.
+
+After commit, push, and CI verification, the next production step is to rerun the read-only
+preflight and request explicit migration authorization. The decision does not authorize applying
+the migration or enabling billing.
 
 The preflight also found 10 current-UTC-month Apply Wizard backfill candidates, all belonging to
 one user. Applying `00600` would create those metering rows. This is evidence for the migration

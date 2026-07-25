@@ -106,13 +106,16 @@ migration history and schema. The 2026-07-25 read-only preflight confirmed that
 `user_subscriptions.source`, `subscription_plans.apply_wizard_limit_monthly`, and
 `pursuits.apply_wizard_metered_at` are absent.
 
-Do not apply `20260724000600` until the legacy premium-account classification is explicitly
-resolved. Production currently has three active `premium` subscriptions. The migration would
-classify every existing non-tester subscription as `manual`, while aggregate production evidence
-also shows one premium access code with 12 recorded uses. The schema has no durable per-user link
-from an access-code redemption to its subscription, so the provenance of those three rows cannot
-be proved from current production data. Re-run
-`scripts/preflight-subscription-billing.sql` immediately before any authorized apply.
+Randall resolved the legacy premium-account classification on 2026-07-25: the three active
+pre-Stripe `premium` subscriptions are internal `access_code` entitlements, not manual Roaring
+subscriptions. Migration `00600` now backfills existing non-Stripe `tester` and `premium` rows as
+`access_code`; other pre-Stripe plans remain `manual`. The isolated migration harness includes a
+legacy premium regression fixture.
+
+This decision uses the known access-code-era operating model because the schema has no durable
+per-user redemption-to-subscription link. Re-run `scripts/preflight-subscription-billing.sql`
+immediately before any authorized apply. Migration application and billing enablement remain
+separate explicit authorization boundaries.
 
 ## How to apply migrations (current method)
 

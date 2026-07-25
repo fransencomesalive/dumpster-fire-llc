@@ -204,6 +204,7 @@ PAID_USER="20000000-0000-0000-0000-000000000003"
 NO_SUB_USER="20000000-0000-0000-0000-000000000004"
 NEW_TESTER_USER="20000000-0000-0000-0000-000000000005"
 PAST_DUE_USER="20000000-0000-0000-0000-000000000006"
+LEGACY_PREMIUM_USER="20000000-0000-0000-0000-000000000007"
 TESTER_JOB="30000000-0000-0000-0000-000000000001"
 EMPTY_JOB="30000000-0000-0000-0000-000000000002"
 NEW_JOB="30000000-0000-0000-0000-000000000003"
@@ -232,13 +233,15 @@ PAID_PURSUIT="40000000-0000-0000-0000-000000000006"
     ('$PAID_USER'),
     ('$NO_SUB_USER'),
     ('$NEW_TESTER_USER'),
-    ('$PAST_DUE_USER');
+    ('$PAST_DUE_USER'),
+    ('$LEGACY_PREMIUM_USER');
 
   insert into public.user_subscriptions (
     user_id, plan_id, status, current_period_start, current_period_end
   ) values
     ('$TESTER_USER', '$TESTER_PLAN', 'active', null, null),
-    ('$PRO_USER', '$PRO_PLAN', 'active', null, null);
+    ('$PRO_USER', '$PRO_PLAN', 'active', null, null),
+    ('$LEGACY_PREMIUM_USER', '$PREMIUM_PLAN', 'active', null, null);
 
   insert into public.access_codes (
     id, code, plan_name, max_uses, use_count, expires_at
@@ -347,12 +350,17 @@ fi
 PRESERVED="$("${PSQL[@]}" -At -F '|' -c "
   select
     (select count(*) from public.subscription_plans where id in ('$TESTER_PLAN', '$PRO_PLAN')),
-    (select count(*) from public.user_subscriptions where user_id in ('$TESTER_USER', '$PRO_USER')),
+    (
+      select count(*)
+      from public.user_subscriptions
+      where user_id in ('$TESTER_USER', '$PRO_USER', '$LEGACY_PREMIUM_USER')
+    ),
     (select source from public.user_subscriptions where user_id = '$TESTER_USER'),
+    (select source from public.user_subscriptions where user_id = '$LEGACY_PREMIUM_USER'),
     (select source from public.user_subscriptions where user_id = '$PRO_USER');
 ")"
-if [[ "$PRESERVED" != "2|2|access_code|manual" ]]; then
-  echo "Tester/pro preservation or source backfill failed: $PRESERVED"
+if [[ "$PRESERVED" != "2|3|access_code|access_code|manual" ]]; then
+  echo "Legacy subscription preservation or source backfill failed: $PRESERVED"
   exit 1
 fi
 

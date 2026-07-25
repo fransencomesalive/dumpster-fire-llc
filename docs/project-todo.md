@@ -26,9 +26,10 @@ Phase 2A’s two-tier subscription and atomic Apply Wizard migration contract is
 and fully verified at `4b4c02e`, but migration `20260724000600` is also not applied or recorded in
 production. Phase 2B’s flag-off application compatibility bridge is deployed at `b76e7f8`;
 production leaves `BILLING_ENABLED` absent, so the legacy paths remain active. The live preflight
-found three active legacy `premium` subscriptions that migration `00600` would classify as
-`manual`, despite aggregate access-code evidence and no durable per-user provenance link. The
-immediate next task is the explicit account-classification decision in `docs/next-session.md`.
+found three active legacy `premium` subscriptions. Randall classified those pre-Stripe accounts as
+internal `access_code` entitlements on 2026-07-25, and migration `00600` plus its harness now encode
+that decision. The immediate next task is verification and the fresh pre-apply production
+preflight in `docs/next-session.md`.
 Stripe is selected, but Checkout, Portal, webhooks, test products/prices, tax decisions, and
 environment configuration are not built or configured. The production UI port waits for backend
 readiness and a separately approved mapping to Claude’s cards.
@@ -56,7 +57,7 @@ What actually remains splits three ways:
 3. **Unblocked backend** (small): pre-launch copy/scaffold audit (Phase 9 verify item); profile
    regeneration action wiring; outreach version pruning, etc.
 
-The current next-task selection is the migration `00600` legacy-account decision in
+The current next-task selection is migration `00600` verification and pre-apply review in
 `docs/next-session.md`. Older phase checklists below are historical inventory unless a newer dated
 update explicitly reactivates them.
 

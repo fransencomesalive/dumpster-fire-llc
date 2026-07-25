@@ -94,13 +94,14 @@ alter table public.user_subscriptions
   add column if not exists latest_invoice_id text,
   add column if not exists last_stripe_event_created_at timestamptz;
 
--- Existing rows have no Stripe identifiers. Tester is an internal
--- access-code entitlement; all other pre-Stripe rows remain explicitly manual.
+-- Existing tester and premium rows were provisioned during the access-code
+-- era. Preserve them as internal access-code entitlements. Other pre-Stripe
+-- rows remain explicitly manual.
 update public.user_subscriptions as subscriptions
 set source = 'access_code'
 from public.subscription_plans as plans
 where plans.id = subscriptions.plan_id
-  and plans.name = 'tester'
+  and plans.name in ('tester', 'premium')
   and subscriptions.source = 'manual'
   and subscriptions.stripe_customer_id is null
   and subscriptions.stripe_subscription_id is null;

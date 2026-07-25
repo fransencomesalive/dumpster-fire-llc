@@ -1,4 +1,4 @@
-# Next Session: Legacy Premium Decision Before Migration 00600
+# Next Session: Migration 00600 Verification and Authorization
 
 _Updated 2026-07-25. Read `AGENTS.md` and follow the Session Start Protocol in
 `docs/project-operating-state.md` before editing._
@@ -90,8 +90,8 @@ The migration contract:
 - preserves tester at 25 uses with internal Roaring-equivalent capability;
 - retires `pro` from new entitlement;
 - adds subscription source and Stripe-ready lifecycle fields;
-- conservatively backfills existing tester rows as `access_code` and other pre-Stripe rows as
-  `manual`;
+- backfills existing non-Stripe tester and premium rows as `access_code`, following Randall's
+  2026-07-25 legacy-account decision; other pre-Stripe rows remain `manual`;
 - prevents access-code writes from replacing a Stripe subscription;
 - removes the database fallback that treated a missing subscription as active `basic`;
 - adds the authoritative `apply_wizard` usage type, lifetime one-use-per-pursuit uniqueness, and
@@ -170,7 +170,7 @@ Verification passed:
 - production build;
 - `git diff --check`.
 
-## Production preflight result and immediate decision
+## Production preflight result and resolved decision
 
 The aggregate-only read-only preflight ran on 2026-07-25:
 
@@ -179,23 +179,25 @@ The aggregate-only read-only preflight ran on 2026-07-25:
 - production has three active `premium` subscriptions;
 - production has one premium access code with 12 recorded uses;
 - production has no durable per-user link from an access-code redemption to a subscription;
-- migration `00600` would classify every existing non-tester subscription as `manual`;
+- before Randall's decision, migration `00600` would have classified the three premium
+  subscriptions as `manual`;
 - 10 contact-backed Apply Wizard uses, all for one user and all in the current UTC month, qualify
   for the migration backfill.
 
-Randall must decide how the three active legacy `premium` subscriptions should be treated:
+Randall selected internal `access_code` entitlement treatment on 2026-07-25. Migration `00600`
+now backfills existing non-Stripe `tester` and `premium` subscriptions as `access_code`; other
+pre-Stripe plans remain `manual`. Its isolated harness includes a legacy premium fixture. The
+focused harness and full local release check passed after this change: three idempotent migration
+applications, the Saved Pursuits harness, 33 fixture suites, typecheck, lint with four pre-existing
+warnings and zero errors, and the production build.
 
-1. Preserve them as `manual` Roaring subscriptions.
-2. Classify them as internal `access_code` entitlements.
+Immediate sequence:
 
-Do not infer the answer from aggregate code-use counts. After the decision:
-
-1. update migration `00600` and its isolated harness if the selected treatment differs from the
-   current `manual` backfill;
-2. rerun the migration harness and full release check;
+1. commit and push the migration decision;
+2. confirm CI and the flag-off Vercel deployment;
 3. rerun `scripts/preflight-subscription-billing.sql`;
 4. request explicit authorization before applying and recording migration `00600`;
-5. postflight the schema, catalog, subscriptions, and Apply Wizard backfill;
+5. postflight the schema, catalog, subscription sources, and Apply Wizard backfill;
 6. only then enable billing for an approved production verification.
 
 ## Explicitly still incomplete

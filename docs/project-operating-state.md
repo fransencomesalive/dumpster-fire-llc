@@ -100,10 +100,11 @@ Not yet built as public workflows:
 > synced at `c536002`. Phase 2A is on `origin/main` at `4b4c02e`, but migration
 > `20260724000600` is not applied or recorded in production. Phase 2B compatibility code is
 > deployed at `b76e7f8` behind `BILLING_ENABLED`; production leaves the flag absent, so it resolves
-> false. The immediate task is to resolve how the three active legacy `premium` subscriptions
-> should be classified before migration `00600`: manual Roaring or internal access-code
-> entitlement. Start from `docs/next-session.md`; do not apply a migration based only on this
-> handoff.
+> false. Randall decided on 2026-07-25 that the three active pre-Stripe `premium` subscriptions are
+> internal `access_code` entitlements. Migration `00600` and its harness encode that decision. The
+> immediate task is to complete verification, rerun the read-only preflight, and request explicit
+> migration authorization. Start from `docs/next-session.md`; do not apply a migration based only
+> on this handoff.
 >
 > **UPDATED 2026-07-24.** The Human Path Exa provider, approved Apply Wizard accuracy copy,
 > production environment, contact-type migration, and persisted-contact-ID handoff are live and
