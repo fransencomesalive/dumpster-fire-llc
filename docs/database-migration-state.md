@@ -137,10 +137,21 @@ signature, requires the Apply Wizard latch for new messages, writes zero retired
 stops new pursuit/outreach ledger writes, and makes `apply_wizard` the only database-enforced
 retail quota. Historical rows and replay metadata remain intact.
 
+The aggregate-only production preflight run after the compatible application deployment confirmed:
+
+- `20260725000100` migration-record count: 0;
+- five historical generation requests, all with positive legacy debit metadata;
+- eight historical `pursuit` ledger rows;
+- eight historical `outreach_message` ledger rows totaling 11 messages;
+- 11 persisted outreach messages;
+- zero duplicate contact messages;
+- zero outreach pursuits without an Apply Wizard latch;
+- three active premium `access_code` subscriptions.
+
 Before any apply:
 
-1. Run `scripts/preflight-outreach-metering-removal.sql` read-only against production.
-2. Confirm `20260725000100` is absent from migration history.
+1. Re-run `scripts/preflight-outreach-metering-removal.sql` if production state may have changed.
+2. Confirm `20260725000100` remains absent from migration history.
 3. Obtain explicit production-apply authorization.
 4. Apply the exact migration and record it as `outreach_metering_removal`.
 5. Run `scripts/postflight-outreach-metering-removal.sql`.

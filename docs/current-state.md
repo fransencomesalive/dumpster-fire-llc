@@ -38,7 +38,12 @@ checked in as `scripts/preflight-outreach-metering-removal.sql` and
 
 Production remains on migration `00600` with `BILLING_ENABLED=true`. Migration
 `20260725000100` has not been applied or recorded in production, and no authenticated Phase 2C
-production transaction has run. Those steps require a fresh preflight and explicit authorization.
+production transaction has run. The aggregate-only preflight after the compatible deployment
+confirmed migration-record count zero, five historical generation requests with positive legacy
+debit metadata, eight historical pursuit rows, eight historical outreach rows totaling 11
+messages, 11 persisted outreach messages, zero duplicate contact messages, and zero outreach
+pursuits missing an Apply Wizard latch. Production has three active premium `access_code`
+subscriptions. Applying and recording `20260725000100` still requires explicit authorization.
 
 ## 2026-07-25 - Migration 00600 live; Phase 2B flag-on verification passed
 

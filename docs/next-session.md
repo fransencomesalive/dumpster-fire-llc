@@ -261,11 +261,23 @@ Local verification passed:
 ## Immediate next task: authorized production Phase 2C apply
 
 Production still runs migration `00600` with `BILLING_ENABLED=true`. Migration
-`20260725000100` is not applied or recorded. The next action is:
+`20260725000100` is not applied or recorded. The aggregate-only preflight after the compatible
+deployment found:
 
-1. Run the Phase 2C aggregate-only preflight and confirm migration/version truth.
-2. Review the aggregate findings.
-3. Obtain explicit authorization for the production apply.
+- migration-record count zero;
+- five historical generation requests with positive legacy debit metadata;
+- eight historical pursuit rows;
+- eight historical outreach rows totaling 11 messages;
+- 11 persisted outreach messages;
+- zero duplicate contact messages;
+- zero outreach pursuits without an Apply Wizard latch;
+- three active premium `access_code` subscriptions.
+
+The next action is:
+
+1. Re-run the aggregate-only preflight if production state may have changed.
+2. Obtain explicit authorization for the production apply.
+3. Confirm the exact migration file and expected postflight conditions.
 4. Apply and record the exact migration.
 5. Run the aggregate postflight.
 6. Run one disposable authenticated initial-outreach plus regeneration transaction.
