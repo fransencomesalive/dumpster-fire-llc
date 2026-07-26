@@ -1,4 +1,4 @@
-# Next Session: Phase 2C Production Apply and Verification
+# Next Session: Phase 3 Stripe Test-Mode Backend
 
 _Updated 2026-07-25. Read `AGENTS.md` and follow the Session Start Protocol in
 `docs/project-operating-state.md` before editing._
@@ -9,8 +9,8 @@ _Updated 2026-07-25. Read `AGENTS.md` and follow the Session Start Protocol in
 2. Run `git status --short --branch`.
 3. Confirm the active branch is `main`.
 4. Read `docs/subscription-billing-production-plan-2026-07-24.md`.
-5. Read `scripts/preflight-outreach-metering-removal.sql` and the Phase 2C state below.
-6. Re-check production migration history immediately before any migration action.
+5. Read the Phase 2C production result and Phase 3 starting point below.
+6. Read the relevant server/API guides in `node_modules/next/dist/docs/` before implementation.
 
 ## Unified pricing initiative state
 
@@ -224,9 +224,9 @@ The checked-in QA harness is `scripts/qa-subscription-flag-on-production.mjs`. I
 release check passed both migration harnesses, all 33 fixture suites, typecheck, lint with four
 pre-existing warnings and zero errors, and the production build.
 
-## Phase 2C implementation state
+## Phase 2C production result
 
-The backend cutover is implemented and locally verified:
+The backend cutover is implemented, migrated, and production-verified:
 
 - new migration: `supabase/migrations/20260725000100_outreach_metering_removal.sql`;
 - isolated harness: `scripts/test-outreach-metering-removal-migration.sh`;
@@ -258,36 +258,38 @@ Local verification passed:
 - production build;
 - `git diff --check`.
 
-## Immediate next task: authorized production Phase 2C apply
+After explicit authorization, `20260725000100` was applied and recorded as
+`outreach_metering_removal`. Postflight proved the Apply Wizard-only quota function, latch
+requirement, zero legacy usage writes, nonnegative compatibility metadata, service-role-only RPC,
+unchanged historical rows, and zero duplicate contact messages.
 
-Production still runs migration `00600` with `BILLING_ENABLED=true`. Migration
-`20260725000100` is not applied or recorded. The aggregate-only preflight after the compatible
-deployment found:
+The first authenticated QA attempt passed Human Path and initial outreach but regeneration failed
+before persistence because the model's last retry was 873 characters against the 750-character
+limit. Cleanup returned all disposable state to zero, and postflight remained green. Randall
+explicitly authorized one additional provider-costing retry. It passed with 19 contacts, one Apply
+Wizard debit, cached replay, one zero-debit outreach request, no legacy pursuit/outreach rows, one
+in-place regeneration, a rejected second regeneration, 736- and 721-character messages, and full
+cleanup. The final aggregate audit found zero disposable QA Auth users and profiles. Canonical `/`
+and `/plan` return HTTP 200.
 
-- migration-record count zero;
-- five historical generation requests with positive legacy debit metadata;
-- eight historical pursuit rows;
-- eight historical outreach rows totaling 11 messages;
-- 11 persisted outreach messages;
-- zero duplicate contact messages;
-- zero outreach pursuits without an Apply Wizard latch;
-- three active premium `access_code` subscriptions.
+## Immediate next task: Phase 3 Stripe test-mode backend
 
-The next action is:
+Start with the backend-only Phase 3 checklist in
+`docs/subscription-billing-production-plan-2026-07-24.md`:
 
-1. Re-run the aggregate-only preflight if production state may have changed.
-2. Obtain explicit authorization for the production apply.
-3. Confirm the exact migration file and expected postflight conditions.
-4. Apply and record the exact migration.
-5. Run the aggregate postflight.
-6. Run one disposable authenticated initial-outreach plus regeneration transaction.
-7. Prove zero new `pursuit` and `outreach_message` rows, zero duplicate messages, one in-place
-   regeneration, unchanged Apply Wizard count, retained provider telemetry, and complete cleanup.
+1. Verify the current Next.js server/API conventions from `node_modules/next/dist/docs/`.
+2. Inspect existing subscription repositories, migration contracts, and environment conventions.
+3. Specify the pinned Stripe SDK, server-only configuration, and test price allowlist.
+4. Implement test-mode Checkout, Portal, plan-change, signed webhook, event-idempotency,
+   reconciliation, and account subscription/usage APIs.
+5. Exercise the lifecycle in Stripe test mode before any live configuration or UI port.
+
+No live Stripe configuration, product creation, secrets, public UI, CSS, or copy change is
+authorized by this handoff.
 
 ## Explicitly still incomplete
 
 - A real production unit-economics baseline after post-deploy provider events exist.
-- Production apply and authenticated verification of the locally complete Phase 2C cutover.
 - Stripe test products, Checkout, Customer Portal, webhook processing, lifecycle tests, and
   environment secrets.
 - Markdown pursuit-history export backend.

@@ -129,15 +129,14 @@ profile redesign; the corrected billing-off seed rehearsal and flag-on retry pas
 returned every QA table to zero, and the aggregate postflight remained unchanged. Production now
 runs with `BILLING_ENABLED=true`.
 
-## Pending production apply: Phase 2C
+## Applied 2026-07-25: Phase 2C
 
-`20260725000100_outreach_metering_removal.sql` is implemented and locally release-verified but is
-not applied or recorded in production. It replaces the existing outreach RPC with the same
-signature, requires the Apply Wizard latch for new messages, writes zero retired debit metadata,
-stops new pursuit/outreach ledger writes, and makes `apply_wizard` the only database-enforced
-retail quota. Historical rows and replay metadata remain intact.
+`20260725000100_outreach_metering_removal.sql` was applied through the Supabase Management API
+after a fresh read-only preflight and explicit authorization. It is recorded as
+`outreach_metering_removal`; the exact applied file had SHA-256
+`0cc207e57131cb67fd753b0853cd2f7b3599a0237e679e9afbf3f628fbeda1e2`.
 
-The aggregate-only production preflight run after the compatible application deployment confirmed:
+The aggregate-only production preflight confirmed:
 
 - `20260725000100` migration-record count: 0;
 - five historical generation requests, all with positive legacy debit metadata;
@@ -148,14 +147,19 @@ The aggregate-only production preflight run after the compatible application dep
 - zero outreach pursuits without an Apply Wizard latch;
 - three active premium `access_code` subscriptions.
 
-Before any apply:
+`scripts/postflight-outreach-metering-removal.sql` then confirmed one migration record, the
+nonnegative request-debit constraint, Apply Wizard-only quota enforcement, an Apply Wizard latch
+requirement in the outreach RPC, no legacy usage insert in that RPC, service-role-only execution,
+unchanged historical counts, and zero duplicate contact messages.
 
-1. Re-run `scripts/preflight-outreach-metering-removal.sql` if production state may have changed.
-2. Confirm `20260725000100` remains absent from migration history.
-3. Obtain explicit production-apply authorization.
-4. Apply the exact migration and record it as `outreach_metering_removal`.
-5. Run `scripts/postflight-outreach-metering-removal.sql`.
-6. Repeat one authenticated initial-outreach and regeneration verification with disposable cleanup.
+The authenticated disposable production harness verified one Apply Wizard debit, zero new pursuit
+or outreach debits, zero-debit request metadata, idempotent initial replay, one in-place
+regeneration, rejection of a second regeneration, retained provider telemetry, and complete
+cleanup. The first attempt failed before regeneration persistence because the model's final retry
+was 873 characters against the 750-character hard limit; cleanup and postflight both passed.
+Randall explicitly authorized one additional provider-costing retry, which passed with 736- and
+721-character messages. The final aggregate cleanup audit found zero disposable QA Auth users and
+profiles.
 
 Do not rewrite or re-record `00600`, which is already applied.
 

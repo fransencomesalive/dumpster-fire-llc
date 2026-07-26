@@ -159,12 +159,11 @@ async function qaSnapshot(userId, pursuitId) {
           and subscriptions.source = 'access_code'
           and plans.name = 'premium'
       ),
-      'pursuitGenerated', exists (
-        select 1
+      'pursuitStatus', (
+        select status
         from public.pursuits
         where id = ${sqlLiteral(pursuitId)}::uuid
           and user_id = ${sqlLiteral(userId)}::uuid
-          and status = 'human_path_generated'
       ),
       'pursuitLatched', exists (
         select 1
@@ -203,6 +202,57 @@ async function qaSnapshot(userId, pursuitId) {
         where user_id = ${sqlLiteral(userId)}::uuid
           and related_pursuit_id = ${sqlLiteral(pursuitId)}::uuid
           and usage_type = 'human_path'
+      ),
+      'legacyPursuitRows', (
+        select count(*)::integer
+        from public.usage_ledger
+        where user_id = ${sqlLiteral(userId)}::uuid
+          and related_pursuit_id = ${sqlLiteral(pursuitId)}::uuid
+          and usage_type = 'pursuit'
+      ),
+      'legacyOutreachRows', (
+        select count(*)::integer
+        from public.usage_ledger
+        where user_id = ${sqlLiteral(userId)}::uuid
+          and related_pursuit_id = ${sqlLiteral(pursuitId)}::uuid
+          and usage_type = 'outreach_message'
+      ),
+      'outreachGenerationRequests', (
+        select count(*)::integer
+        from public.pursuit_outreach_generation_requests
+        where user_id = ${sqlLiteral(userId)}::uuid
+          and pursuit_id = ${sqlLiteral(pursuitId)}::uuid
+      ),
+      'zeroDebitOutreachRequests', (
+        select count(*)::integer
+        from public.pursuit_outreach_generation_requests
+        where user_id = ${sqlLiteral(userId)}::uuid
+          and pursuit_id = ${sqlLiteral(pursuitId)}::uuid
+          and not pursuit_debit_added
+          and outreach_debit_quantity = 0
+      ),
+      'outreachMessages', (
+        select count(*)::integer
+        from public.outreach_messages
+        where pursuit_id = ${sqlLiteral(pursuitId)}::uuid
+      ),
+      'outreachRegenerationTotal', (
+        select coalesce(sum(regeneration_count), 0)::integer
+        from public.outreach_messages
+        where pursuit_id = ${sqlLiteral(pursuitId)}::uuid
+      ),
+      'outreachEvents', (
+        select count(*)::integer
+        from public.pursuit_events
+        where pursuit_id = ${sqlLiteral(pursuitId)}::uuid
+          and event_type = 'outreach_generated'
+      ),
+      'meteredOutreachEvents', (
+        select count(*)::integer
+        from public.pursuit_events
+        where pursuit_id = ${sqlLiteral(pursuitId)}::uuid
+          and event_type = 'outreach_generated'
+          and usage_type is not null
       ),
       'providerEventCount', (
         select count(*)::integer
@@ -293,7 +343,9 @@ try {
       full_name,
       preferred_name,
       location,
-      email
+      email,
+      generated_markdown,
+      markdown_generated_at
     ) values (
       ${sqlLiteral(profileId)}::uuid,
       ${sqlLiteral(userId)}::uuid,
@@ -301,7 +353,9 @@ try {
       'Subscription QA',
       'QA',
       'Denver, CO',
-      ${sqlLiteral(email)}
+      ${sqlLiteral(email)},
+      '# Subscription QA\n\nHuman program leader who turns ambiguous cross-functional work into clear operating plans and measurable delivery.',
+      clock_timestamp()
     );
 
     insert into public.profile_quality (
@@ -470,7 +524,7 @@ try {
 
   const finalSnapshot = await qaSnapshot(userId, pursuitId);
   expect(finalSnapshot?.subscriptionCount === 1, "QA subscription source or plan was incorrect");
-  expect(finalSnapshot?.pursuitGenerated === true, "QA pursuit did not reach human_path_generated");
+  expect(finalSnapshot?.pursuitStatus === "human_path_generated", "QA pursuit did not reach human_path_generated");
   expect(finalSnapshot?.pursuitLatched === true, "QA pursuit was not metering-latched");
   expect(finalSnapshot?.contactCount > 0, "QA pursuit persisted no contacts");
   expect(finalSnapshot?.eventCount === 1, "QA pursuit did not persist exactly one Human Path event");
@@ -481,6 +535,160 @@ try {
     finalSnapshot?.providerEventCount === firstSnapshot.providerEventCount,
     "Cached replay caused another provider call",
   );
+
+  const selectedContactId = firstHumanPath.body.contacts[0]?.id;
+  expect(typeof selectedContactId === "string", "Flag-on Human Path returned no persisted contact id");
+
+  const selection = await appRequest(
+    "/api/public-profile/pursuits/contacts",
+    token,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        pursuitId,
+        contactIds: [selectedContactId],
+      }),
+    },
+  );
+  expect(selection.status === 200, `Contact selection returned HTTP ${selection.status}`);
+  expect(selection.body?.status === "outreach_ready", "Contact selection did not return outreach_ready");
+
+  const initialOutreachKey = `phase-2c-production-${randomUUID()}`;
+  const initialOutreach = await appRequest(
+    "/api/public-profile/pursuits/outreach",
+    token,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        pursuitId,
+        idempotencyKey: initialOutreachKey,
+      }),
+    },
+  );
+  expect(
+    initialOutreach.status === 200,
+    `Initial outreach returned HTTP ${initialOutreach.status} (${initialOutreach.body?.status ?? "unknown"})`,
+  );
+  expect(initialOutreach.body?.status === "outreach_generated", "Initial outreach status was unexpected");
+  expect(
+    Array.isArray(initialOutreach.body?.messages)
+      && initialOutreach.body.messages.length === 1,
+    "Initial outreach did not persist exactly one message",
+  );
+  expect(
+    initialOutreach.body?.metering?.pursuitDebited === false
+      && initialOutreach.body?.metering?.outreachDebited === 0,
+    "Initial outreach returned nonzero retired metering",
+  );
+
+  const outreachMessageId = initialOutreach.body.messages[0]?.id;
+  expect(typeof outreachMessageId === "string", "Initial outreach returned no persisted message id");
+
+  const initialOutreachSnapshot = await qaSnapshot(userId, pursuitId);
+  expect(initialOutreachSnapshot?.pursuitStatus === "outreach_ready", "Initial outreach changed pursuit status unexpectedly");
+  expect(initialOutreachSnapshot?.applyWizardRows === 1, "Initial outreach changed Apply Wizard rows");
+  expect(initialOutreachSnapshot?.applyWizardQuantity === 1, "Initial outreach changed Apply Wizard quantity");
+  expect(initialOutreachSnapshot?.legacyPursuitRows === 0, "Initial outreach wrote a retired pursuit debit");
+  expect(initialOutreachSnapshot?.legacyOutreachRows === 0, "Initial outreach wrote a retired outreach debit");
+  expect(initialOutreachSnapshot?.outreachGenerationRequests === 1, "Initial outreach request count was not one");
+  expect(initialOutreachSnapshot?.zeroDebitOutreachRequests === 1, "Initial outreach request did not persist zero debit metadata");
+  expect(initialOutreachSnapshot?.outreachMessages === 1, "Initial outreach message count was not one");
+  expect(initialOutreachSnapshot?.outreachRegenerationTotal === 0, "Initial outreach was already regenerated");
+  expect(initialOutreachSnapshot?.outreachEvents === 1, "Initial outreach event count was not one");
+  expect(initialOutreachSnapshot?.meteredOutreachEvents === 0, "Initial outreach event retained a retail usage type");
+  expect(
+    initialOutreachSnapshot?.providerEventCount > finalSnapshot.providerEventCount,
+    "Initial outreach recorded no provider telemetry",
+  );
+
+  const initialOutreachReplay = await appRequest(
+    "/api/public-profile/pursuits/outreach",
+    token,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        pursuitId,
+        idempotencyKey: initialOutreachKey,
+      }),
+    },
+  );
+  expect(initialOutreachReplay.status === 200, `Initial outreach replay returned HTTP ${initialOutreachReplay.status}`);
+  expect(initialOutreachReplay.body?.replayed === true, "Initial outreach replay was not identified as replayed");
+  expect(
+    Array.isArray(initialOutreachReplay.body?.messages)
+      && initialOutreachReplay.body.messages.length === 1
+      && initialOutreachReplay.body.messages[0]?.id === outreachMessageId,
+    "Initial outreach replay returned different persisted messages",
+  );
+
+  const replayOutreachSnapshot = await qaSnapshot(userId, pursuitId);
+  expect(
+    replayOutreachSnapshot?.providerEventCount === initialOutreachSnapshot.providerEventCount,
+    "Initial outreach replay caused another provider call",
+  );
+  expect(replayOutreachSnapshot?.outreachGenerationRequests === 1, "Initial outreach replay added a request");
+  expect(replayOutreachSnapshot?.outreachMessages === 1, "Initial outreach replay added a message");
+  expect(replayOutreachSnapshot?.outreachEvents === 1, "Initial outreach replay added an event");
+
+  const regeneration = await appRequest(
+    "/api/public-profile/pursuits/outreach",
+    token,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        pursuitId,
+        regenerate: true,
+        previousMessageId: outreachMessageId,
+      }),
+    },
+  );
+  expect(
+    regeneration.status === 200,
+    `Outreach regeneration returned HTTP ${regeneration.status} (${regeneration.body?.status ?? "unknown"})`,
+  );
+  expect(regeneration.body?.status === "outreach_regenerated", "Outreach regeneration status was unexpected");
+  expect(regeneration.body?.message?.id === outreachMessageId, "Outreach regeneration created a new message row");
+  expect(regeneration.body?.message?.regenerationCount === 1, "Outreach regeneration count was not one");
+
+  const regenerationSnapshot = await qaSnapshot(userId, pursuitId);
+  expect(regenerationSnapshot?.applyWizardRows === 1, "Regeneration changed Apply Wizard rows");
+  expect(regenerationSnapshot?.applyWizardQuantity === 1, "Regeneration changed Apply Wizard quantity");
+  expect(regenerationSnapshot?.legacyPursuitRows === 0, "Regeneration wrote a retired pursuit debit");
+  expect(regenerationSnapshot?.legacyOutreachRows === 0, "Regeneration wrote a retired outreach debit");
+  expect(regenerationSnapshot?.outreachGenerationRequests === 1, "Regeneration added an initial-outreach request");
+  expect(regenerationSnapshot?.zeroDebitOutreachRequests === 1, "Regeneration changed zero-debit request metadata");
+  expect(regenerationSnapshot?.outreachMessages === 1, "Regeneration created another message row");
+  expect(regenerationSnapshot?.outreachRegenerationTotal === 1, "Regeneration did not update the message in place");
+  expect(regenerationSnapshot?.outreachEvents === 2, "Regeneration event count was not two");
+  expect(regenerationSnapshot?.meteredOutreachEvents === 0, "Regeneration event retained a retail usage type");
+  expect(
+    regenerationSnapshot?.providerEventCount > replayOutreachSnapshot.providerEventCount,
+    "Regeneration recorded no provider telemetry",
+  );
+
+  const secondRegeneration = await appRequest(
+    "/api/public-profile/pursuits/outreach",
+    token,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        pursuitId,
+        regenerate: true,
+        previousMessageId: outreachMessageId,
+      }),
+    },
+  );
+  expect(secondRegeneration.status === 409, `Second regeneration returned HTTP ${secondRegeneration.status}`);
+  expect(secondRegeneration.body?.status === "already_regenerated", "Second regeneration was not rejected");
+
+  const phase2cSnapshot = await qaSnapshot(userId, pursuitId);
+  expect(
+    phase2cSnapshot?.providerEventCount === regenerationSnapshot.providerEventCount,
+    "Rejected second regeneration caused another provider call",
+  );
+  expect(phase2cSnapshot?.outreachMessages === 1, "Rejected second regeneration changed message count");
+  expect(phase2cSnapshot?.outreachRegenerationTotal === 1, "Rejected second regeneration changed the message");
+  expect(phase2cSnapshot?.outreachEvents === 2, "Rejected second regeneration added an event");
 
   cleanupResult = await cleanup(userId);
   userId = undefined;
@@ -494,13 +702,27 @@ try {
     contactCount: firstHumanPath.body.contacts.length,
     applyWizardUsage: firstHumanPath.body.applyWizardUsage,
     replayCached: replay.body.cached,
-    providerEventCount: finalSnapshot.providerEventCount,
+    providerEventCount: phase2cSnapshot.providerEventCount,
     atomicPersistence: {
       eventCount: finalSnapshot.eventCount,
       applyWizardRows: finalSnapshot.applyWizardRows,
       applyWizardQuantity: finalSnapshot.applyWizardQuantity,
       pursuitLatched: finalSnapshot.pursuitLatched,
       legacyHumanPathRows: finalSnapshot.legacyHumanPathRows,
+    },
+    outreachPersistence: {
+      selectedContacts: 1,
+      generationRequests: phase2cSnapshot.outreachGenerationRequests,
+      zeroDebitRequests: phase2cSnapshot.zeroDebitOutreachRequests,
+      messages: phase2cSnapshot.outreachMessages,
+      regenerations: phase2cSnapshot.outreachRegenerationTotal,
+      events: phase2cSnapshot.outreachEvents,
+      meteredEvents: phase2cSnapshot.meteredOutreachEvents,
+      legacyPursuitRows: phase2cSnapshot.legacyPursuitRows,
+      legacyOutreachRows: phase2cSnapshot.legacyOutreachRows,
+      secondRegenerationRejected: secondRegeneration.body.status,
+      initialMessageLength: initialOutreach.body.messages[0].message.length,
+      regeneratedMessageLength: regeneration.body.message.message.length,
     },
     cleanup: cleanupResult,
   }, null, 2));

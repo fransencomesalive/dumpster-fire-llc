@@ -103,11 +103,13 @@ Not yet built as public workflows:
 > the flag enabled after a controlled authenticated test passed. Randall decided on 2026-07-25
 > that the three active pre-Stripe `premium` subscriptions are
 > internal `access_code` entitlements. Migration `00600` and its harness encode that decision.
-> Phase 2C is locally implemented and release-verified as the new, unapplied
-> `20260725000100_outreach_metering_removal.sql` migration plus a compatible billing-enabled app
-> update. The immediate task is a fresh aggregate production preflight, explicit apply
-> authorization, migration apply/record, postflight, and one authenticated disposable outreach
-> verification. Start from `docs/next-session.md`; do not rewrite the applied migration `00600`.
+> Phase 2C is implemented, applied, recorded, postflight-verified, and authenticated-production
+> verified as `20260725000100_outreach_metering_removal.sql` plus its compatible billing-enabled
+> app update. One explicitly authorized retry verified initial outreach, idempotent replay, one
+> in-place regeneration, rejection of a second regeneration, zero retired debit rows, retained
+> telemetry, and complete disposable cleanup. The immediate task is the backend-only Phase 3
+> Stripe test-mode implementation. Start from `docs/next-session.md`; do not rewrite the applied
+> migrations or configure live Stripe.
 >
 > **UPDATED 2026-07-24.** The Human Path Exa provider, approved Apply Wizard accuracy copy,
 > production environment, contact-type migration, and persisted-contact-ID handoff are live and

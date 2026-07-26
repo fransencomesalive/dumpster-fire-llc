@@ -1235,6 +1235,11 @@ Exit gate: a test pursuit can be reconciled to its provider calls and estimated 
 
 Exit gate: concurrency, empty-result, replay, period, and plan tests pass.
 
+Production status 2026-07-25: complete. Migration `20260725000100` is applied and recorded.
+Aggregate postflight and disposable authenticated QA verified one Apply Wizard debit, zero retired
+outreach debits, idempotent replay, one allowed in-place regeneration, second-regeneration
+rejection, retained provider telemetry, and complete cleanup.
+
 ### Phase 3: Stripe test-mode backend
 
 - [ ] Install/pin Stripe SDK.

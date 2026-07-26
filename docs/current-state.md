@@ -1,10 +1,10 @@
 # Current State
 
-## 2026-07-25 - Phase 2C outreach metering cutover verified locally
+## 2026-07-25 - Phase 2C outreach metering cutover live and verified
 
-Phase 2C is implemented as the new, unapplied
-`20260725000100_outreach_metering_removal.sql` migration plus a billing-enabled application
-compatibility update. It does not rewrite the already-applied migration `00600`.
+Phase 2C is implemented and live as
+`20260725000100_outreach_metering_removal.sql` plus a billing-enabled application compatibility
+update. It does not rewrite the already-applied migration `00600`.
 
 The new migration keeps the existing
 `persist_initial_outreach_generation(uuid,uuid,jsonb,text)` signature and service-role boundary.
@@ -30,20 +30,45 @@ Apply Wizard latch, Apply Wizard quota enforcement, retired quota removal, and s
 execution. Focused flag-on API tests prove neither initial outreach nor regeneration loads or
 enforces legacy quotas and both produce zero usage events.
 
-The full `npm run release:check` passed both subscription migration harnesses, the legacy Saved
+The pre-apply `npm run release:check` passed both subscription migration harnesses, the legacy Saved
 Pursuits migration harness, all 33 fixture suites, typecheck, lint with four pre-existing warnings
 and zero errors, and the production build. Aggregate-only preflight and postflight scripts are
 checked in as `scripts/preflight-outreach-metering-removal.sql` and
 `scripts/postflight-outreach-metering-removal.sql`.
 
-Production remains on migration `00600` with `BILLING_ENABLED=true`. Migration
-`20260725000100` has not been applied or recorded in production, and no authenticated Phase 2C
-production transaction has run. The aggregate-only preflight after the compatible deployment
-confirmed migration-record count zero, five historical generation requests with positive legacy
-debit metadata, eight historical pursuit rows, eight historical outreach rows totaling 11
-messages, 11 persisted outreach messages, zero duplicate contact messages, and zero outreach
-pursuits missing an Apply Wizard latch. Production has three active premium `access_code`
-subscriptions. Applying and recording `20260725000100` still requires explicit authorization.
+After a fresh read-only preflight and explicit authorization, the exact migration was applied and
+recorded as `outreach_metering_removal`. Its SHA-256 was
+`0cc207e57131cb67fd753b0853cd2f7b3599a0237e679e9afbf3f628fbeda1e2`. Aggregate postflight
+confirmed one migration-history record, a nonnegative outreach-debit constraint, Apply
+Wizard-only quota enforcement, the required Apply Wizard latch, no legacy usage insert in the
+outreach RPC, and service-role-only RPC execution. The historical baseline remained five positive
+generation requests, eight pursuit rows, eight outreach rows totaling 11, and zero duplicate
+contact messages.
+
+The first authenticated Phase 2C production QA attempt reached Human Path and initial outreach,
+then regeneration failed before persistence with HTTP 503 because the model's final retry still
+produced 873 characters against the 750-character hard limit. This was a stochastic generation
+failure, not a metering or database failure. Automatic cleanup succeeded, an aggregate audit found
+zero disposable Auth users and profiles, and the postflight remained green.
+
+Randall then explicitly authorized one additional provider-costing retry. It passed:
+
+- Human Path returned 19 contacts and consumed exactly one of 45 Apply Wizard uses;
+- cached Human Path replay caused no additional provider call;
+- one selected contact produced one initial message and one generation-request row;
+- the request stored `pursuit_debit_added = false` and `outreach_debit_quantity = 0`;
+- initial outreach and regeneration wrote zero legacy pursuit or outreach ledger rows;
+- the outreach events had no retail usage type;
+- initial-outreach replay added no request, message, event, or provider call;
+- one in-place regeneration succeeded, and a second regeneration was rejected as
+  `already_regenerated` without another provider call;
+- generated message lengths were 736 and 721 characters;
+- automatic cleanup returned Auth users, profiles, subscriptions, pursuits, usage rows, and
+  provider telemetry to zero.
+
+The final read-only audit found zero disposable QA Auth users and profiles, one recorded migration,
+unchanged historical data, and all Phase 2C schema/RPC invariants intact. Canonical `/` and `/plan`
+both return HTTP 200. `BILLING_ENABLED` remains enabled.
 
 ## 2026-07-25 - Migration 00600 live; Phase 2B flag-on verification passed
 
@@ -127,9 +152,8 @@ remains present in Production. `/` and `/plan` return HTTP 200 and unauthenticat
 returns 401. The final local release check passed both migration harnesses, all 33 fixture suites,
 typecheck, lint with four pre-existing warnings and zero errors, and the production build.
 
-This section records the pre-Phase 2C production state. The local Phase 2C implementation above
-removes those behaviors after its new migration is applied; production still runs the `00600`
-RPC until that separately authorized apply.
+This section records the pre-Phase 2C production state and is superseded by the live Phase 2C
+result at the top of this document.
 
 ## 2026-07-24 - Smoldering / Roaring Phase 1, Phase 2A, and design handoff
 

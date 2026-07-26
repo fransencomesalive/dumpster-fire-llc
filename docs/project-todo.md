@@ -32,9 +32,11 @@ internal `access_code` entitlements on 2026-07-25, and migration `00600` plus it
 that decision. Postflight confirmed all three sources, 10 atomic backfill rows with matching
 latches, the two-tier catalog, and service-only RPC boundaries. Flag-on QA confirmed a 23-contact
 atomic Human Path commit and cached replay with complete disposable cleanup. Phase 2C is now
-implemented and locally release-verified as migration `20260725000100` plus the billing-enabled
-compatibility update. Its production preflight, apply/record, postflight, and authenticated
-outreach verification remain the immediate next task in `docs/next-session.md`.
+implemented, applied, recorded, postflight-verified, and authenticated-production verified as
+migration `20260725000100` plus the billing-enabled compatibility update. Production QA proved
+one Apply Wizard debit, zero retired pursuit/outreach debits, idempotent initial replay, one
+in-place regeneration, rejection of a second regeneration, and complete cleanup. The immediate
+next task in `docs/next-session.md` is the backend-only Phase 3 Stripe test-mode implementation.
 Stripe is selected, but Checkout, Portal, webhooks, test products/prices, tax decisions, and
 environment configuration are not built or configured. The production UI port waits for backend
 readiness and a separately approved mapping to Claude’s cards.
@@ -62,7 +64,7 @@ What actually remains splits three ways:
 3. **Unblocked backend** (small): pre-launch copy/scaffold audit (Phase 9 verify item); profile
    regeneration action wiring; outreach version pruning, etc.
 
-The current next-task selection is Phase 2C outreach metering removal in
+The current next-task selection is the Phase 3 Stripe test-mode backend in
 `docs/next-session.md`. Older phase checklists below are historical inventory unless a newer dated
 update explicitly reactivates them.
 
@@ -303,14 +305,14 @@ error — nothing breaks. In order:
   (`scripts/test-public-profile-outreach`)
 - [ ] Outreach UI + review workflow (design-gated).
 
-## Phase 8 — Subscription System  (LEGACY LIVE; TWO-TIER CUTOVER IN PROGRESS)
+## Phase 8 — Subscription System  (TWO-TIER METERING LIVE; STRIPE INCOMPLETE)
 
-- [~] Legacy Tester/Basic/Pro/Premium pursuit, Human Path, and outreach counters remain live only
-  until the Smoldering/Roaring Apply Wizard cutover.
+- [x] Preserve historical legacy counter rows while removing legacy retail quota writes from the
+  billing-enabled Apply Wizard path.
 - [x] Implement and locally verify the Phase 2A two-tier database and atomic metering contract.
 - [x] Implement, deploy, and authenticate-verify the Phase 2B application compatibility bridge
   with production billing enabled.
-- [ ] Cut outreach over from legacy pursuit/outreach debits to the Apply Wizard latch.
+- [x] Cut outreach over from legacy pursuit/outreach debits to the Apply Wizard latch.
 - [x] Apply, record, and postflight migration `20260724000600` after a fresh read-only production
   preflight and explicit authorization.
 - [x] Enable `BILLING_ENABLED` through an explicitly approved authenticated production
