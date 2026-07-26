@@ -2254,6 +2254,82 @@ async function main() {
   assert.deepEqual((persistedDrafts as GeneratedOutreachDraft[]).map((draft) => draft.recipientType), ["likely_hiring_manager", "recruiter"]);
   assert.equal((persistedDrafts as GeneratedOutreachDraft[])[0].selectedWorkExampleId, "example-1");
 
+  let billingOutreachTransition: Extract<PursuitTransitionResult, { ok: true }> | undefined;
+  const billingOutreachGenerated = await handlePublicProfilePursuitOutreachRequest(
+    postRequest("pursuits/outreach", { pursuitId: "pursuit-1" }),
+    {
+      env: billingEnabledEnv,
+      now: () => now,
+      getSession: async () => authed(),
+      repositoryRequest,
+      loadAggregate: async () => agg,
+      loadPursuit: async () => savedPursuit({
+        status: "outreach_ready",
+        applyWizardMeteredAt: now,
+      }),
+      loadInitialOutreachCommit: noInitialOutreachCommit,
+      loadJob: async () => publicJob(),
+      loadOutreachMessages: async () => [],
+      loadContactSuggestions: async () => [
+        contactSuggestion({ selectedForOutreach: true }),
+        contactSuggestion({
+          id: "contact-2",
+          name: "Riley Chen",
+          contactType: "recruiter",
+          selectedForOutreach: true,
+        }),
+      ],
+      loadSubscriptionContext: async () => {
+        throw new Error("billing-enabled outreach must not load legacy subscription enforcement");
+      },
+      loadUsageEntries: async () => {
+        throw new Error("billing-enabled outreach must not load legacy usage");
+      },
+      enforcePursuitSubscription: () => {
+        throw new Error("billing-enabled outreach must not enforce pursuit quota");
+      },
+      enforceSubscription: () => {
+        throw new Error("billing-enabled outreach must not enforce outreach quota");
+      },
+      generateOutreachForContact: async (input) => ({
+        message: `Hi ${input.contact.name ?? input.contact.role}.`,
+        insertedExample: null,
+      }),
+      persistOutreach: async (_request, result, drafts) => {
+        billingOutreachTransition = result;
+        return {
+          status: "committed",
+          pursuit: result.pursuit,
+          messages: drafts.map((draft, index) => ({
+            id: `billing-message-${index + 1}`,
+            pursuitId: result.pursuit.id,
+            contactSuggestionId: draft.contactSuggestionId,
+            recipientType: draft.recipientType,
+            channel: "other",
+            message: draft.message,
+            status: "draft",
+            createdAt: now,
+            updatedAt: now,
+          })),
+          pursuitDebited: false,
+          outreachDebited: 0,
+        };
+      },
+    },
+  );
+  assert.equal(billingOutreachGenerated.status, 200);
+  assert.deepEqual(billingOutreachTransition?.usageEvents, []);
+  assert.equal(billingOutreachTransition?.event.usageType, undefined);
+  const billingOutreachJson = await body(billingOutreachGenerated);
+  assert.deepEqual(billingOutreachJson.metering, {
+    pursuitDebited: false,
+    outreachDebited: 0,
+  });
+  assert.deepEqual(billingOutreachJson.subscription, {
+    status: "allowed",
+    feature: "outreach_message",
+  });
+
   const initialPersistenceFailed = await handlePublicProfilePursuitOutreachRequest(
     postRequest("pursuits/outreach", { pursuitId: "pursuit-1" }),
     {
@@ -2402,6 +2478,61 @@ async function main() {
   assert.equal(pursuitOutreachRegeneratedJson.status, "outreach_regenerated");
   assert.equal((pursuitOutreachRegeneratedJson.message as OutreachMessageRecord).message, "Replacement message.");
   assert.equal((pursuitOutreachRegeneratedJson.message as OutreachMessageRecord).regenerationCount, 1);
+
+  let billingRegenerationTransition: Extract<PursuitTransitionResult, { ok: true }> | undefined;
+  const billingOutreachRegenerated = await handlePublicProfilePursuitOutreachRequest(
+    postRequest("pursuits/outreach", {
+      pursuitId: "pursuit-1",
+      regenerate: true,
+      previousMessageId: "message-1",
+    }),
+    {
+      env: billingEnabledEnv,
+      now: () => now,
+      getSession: async () => authed(),
+      repositoryRequest,
+      loadAggregate: async () => agg,
+      loadPursuit: async () => savedPursuit({
+        status: "outreach_ready",
+        applyWizardMeteredAt: now,
+      }),
+      loadJob: async () => publicJob(),
+      loadOutreachMessage: async () => originalMessage,
+      loadContactSuggestions: async () => [
+        contactSuggestion({ selectedForOutreach: true }),
+      ],
+      loadSubscriptionContext: async () => {
+        throw new Error("billing-enabled regeneration must not load legacy subscription enforcement");
+      },
+      loadUsageEntries: async () => {
+        throw new Error("billing-enabled regeneration must not load legacy usage");
+      },
+      enforceSubscription: () => {
+        throw new Error("billing-enabled regeneration must not enforce outreach quota");
+      },
+      generateOutreachForContact: async () => ({
+        message: "Billing replacement message.",
+        insertedExample: null,
+      }),
+      persistOutreachRegeneration: async (_request, result, input) => {
+        billingRegenerationTransition = result;
+        return {
+          ...originalMessage,
+          message: input.message,
+          previousMessage: input.previousMessage,
+          regenerationCount: 1,
+          updatedAt: input.updatedAt,
+        };
+      },
+    },
+  );
+  assert.equal(billingOutreachRegenerated.status, 200);
+  assert.deepEqual(billingRegenerationTransition?.usageEvents, []);
+  assert.equal(billingRegenerationTransition?.event.usageType, undefined);
+  assert.deepEqual((await body(billingOutreachRegenerated)).subscription, {
+    status: "allowed",
+    feature: "outreach_message",
+  });
 
   let duplicateRegenerationGenerated = false;
   const duplicateRegeneration = await handlePublicProfilePursuitOutreachRequest(postRequest("pursuits/outreach", {

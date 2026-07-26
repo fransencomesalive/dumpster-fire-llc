@@ -1,5 +1,45 @@
 # Current State
 
+## 2026-07-25 - Phase 2C outreach metering cutover verified locally
+
+Phase 2C is implemented as the new, unapplied
+`20260725000100_outreach_metering_removal.sql` migration plus a billing-enabled application
+compatibility update. It does not rewrite the already-applied migration `00600`.
+
+The new migration keeps the existing
+`persist_initial_outreach_generation(uuid,uuid,jsonb,text)` signature and service-role boundary.
+For new requests it:
+
+- requires the pursuit's immutable `apply_wizard_metered_at` latch;
+- keeps pursuit locking, one initial message per contact, and idempotent replay;
+- writes `pursuit_debit_added = false` and `outreach_debit_quantity = 0`;
+- writes no new `pursuit` or `outreach_message` usage rows;
+- records the outreach event with no retail usage type;
+- preserves all historical messages, generation requests, and positive debit metadata;
+- makes `apply_wizard` the only usage type enforced by the database quota trigger.
+
+When `BILLING_ENABLED=true`, initial outreach and the one allowed regeneration now skip legacy
+pursuit/outreach preflight enforcement and create no in-memory legacy usage event. The false path
+retains its legacy behavior for deployment compatibility. Deploying the application before the
+migration remains compatible with current production: the old same-signature RPC continues to
+return its actual legacy debit metadata until the new migration is applied.
+
+The isolated PostgreSQL harness applies the new migration three times and proves historical replay,
+zero-debit new writes, multi-contact persistence, idempotent replay, no partial write without the
+Apply Wizard latch, Apply Wizard quota enforcement, retired quota removal, and service-only RPC
+execution. Focused flag-on API tests prove neither initial outreach nor regeneration loads or
+enforces legacy quotas and both produce zero usage events.
+
+The full `npm run release:check` passed both subscription migration harnesses, the legacy Saved
+Pursuits migration harness, all 33 fixture suites, typecheck, lint with four pre-existing warnings
+and zero errors, and the production build. Aggregate-only preflight and postflight scripts are
+checked in as `scripts/preflight-outreach-metering-removal.sql` and
+`scripts/postflight-outreach-metering-removal.sql`.
+
+Production remains on migration `00600` with `BILLING_ENABLED=true`. Migration
+`20260725000100` has not been applied or recorded in production, and no authenticated Phase 2C
+production transaction has run. Those steps require a fresh preflight and explicit authorization.
+
 ## 2026-07-25 - Migration 00600 live; Phase 2B flag-on verification passed
 
 The application bridge to migration `20260724000600` is committed as `b76e7f8`, pushed to
@@ -82,10 +122,9 @@ remains present in Production. `/` and `/plan` return HTTP 200 and unauthenticat
 returns 401. The final local release check passed both migration harnesses, all 33 fixture suites,
 typecheck, lint with four pre-existing warnings and zero errors, and the production build.
 
-Phase 2 is not complete: initial outreach persistence can still write the retired `pursuit` debit
-and enforce the retired retail `outreach_message` quota. The next backend task is a new
-post-`00600` migration plus compatibility-code update that removes those retail behaviors while
-preserving atomic/idempotent outreach-message persistence and historical telemetry.
+This section records the pre-Phase 2C production state. The local Phase 2C implementation above
+removes those behaviors after its new migration is applied; production still runs the `00600`
+RPC until that separately authorized apply.
 
 ## 2026-07-24 - Smoldering / Roaring Phase 1, Phase 2A, and design handoff
 

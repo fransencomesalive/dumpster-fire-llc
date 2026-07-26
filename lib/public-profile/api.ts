@@ -2281,6 +2281,7 @@ export async function handlePublicProfilePursuitOutreachRequest(
   if (!pursuit) {
     return json({ error: "Pursuit not found.", status: "not_found" }, { status: 404 });
   }
+  const billingEnabled = isBillingEnabled(options.env);
 
   // A client retry after a committed response was lost must not depend on the
   // candidate profile, live posting, selected-contact set, or model being unchanged.
@@ -2388,27 +2389,33 @@ export async function handlePublicProfilePursuitOutreachRequest(
       return json({ error: "Human Path contact not found.", status: "not_found" }, { status: 404 });
     }
 
-    const loadSubscriptionContext = options.loadSubscriptionContext;
-    const loadUsageEntries = options.loadUsageEntries ?? loadUsageLedgerForUser;
-    const subscriptionContext = loadSubscriptionContext
-      ? await loadSubscriptionContext(repositoryRequest, session.userId)
-      : await loadSubscriptionContextForUser(repositoryRequest, session.userId, {
-          billingEnabled: isBillingEnabled(options.env),
-        });
-    const subscriptionPeriod = subscriptionUsagePeriod(subscriptionContext, generatedAt);
-    const usageEntries = await loadUsageEntries(repositoryRequest, session.userId, {
-      at: generatedAt,
-      periodStart: subscriptionPeriod.start,
-      periodEnd: subscriptionPeriod.end,
-    });
-    const enforceSubscription = options.enforceSubscription
-      ?? ((context, entries, at) => enforceSubscriptionFeature(context, entries, "outreach_message", {
-        at,
-        quantity: 1,
-      }));
-    const enforcement = enforceSubscription(subscriptionContext, usageEntries, generatedAt);
-    if (enforcement.status !== "allowed") {
-      return subscriptionBlockedResponse(enforcement);
+    let enforcement: SubscriptionEnforcementResult = {
+      status: "allowed",
+      feature: "outreach_message",
+    };
+    if (!billingEnabled) {
+      const loadSubscriptionContext = options.loadSubscriptionContext;
+      const loadUsageEntries = options.loadUsageEntries ?? loadUsageLedgerForUser;
+      const subscriptionContext = loadSubscriptionContext
+        ? await loadSubscriptionContext(repositoryRequest, session.userId)
+        : await loadSubscriptionContextForUser(repositoryRequest, session.userId, {
+            billingEnabled: false,
+          });
+      const subscriptionPeriod = subscriptionUsagePeriod(subscriptionContext, generatedAt);
+      const usageEntries = await loadUsageEntries(repositoryRequest, session.userId, {
+        at: generatedAt,
+        periodStart: subscriptionPeriod.start,
+        periodEnd: subscriptionPeriod.end,
+      });
+      const enforceSubscription = options.enforceSubscription
+        ?? ((context, entries, at) => enforceSubscriptionFeature(context, entries, "outreach_message", {
+          at,
+          quantity: 1,
+        }));
+      enforcement = enforceSubscription(subscriptionContext, usageEntries, generatedAt);
+      if (enforcement.status !== "allowed") {
+        return subscriptionBlockedResponse(enforcement);
+      }
     }
 
     const result = transitionPursuit(pursuit, "outreach_generated", generatedAt, {
@@ -2416,6 +2423,7 @@ export async function handlePublicProfilePursuitOutreachRequest(
       messageCount: 1,
       previousMessageId: previousMessage.id,
       regenerate: true,
+      chargeUsage: !billingEnabled,
     });
     if (result.ok === false) {
       return json({
@@ -2523,49 +2531,56 @@ export async function handlePublicProfilePursuitOutreachRequest(
     }, { status: 409 });
   }
 
-  const loadSubscriptionContext = options.loadSubscriptionContext;
-  const loadUsageEntries = options.loadUsageEntries ?? loadUsageLedgerForUser;
-  const subscriptionContext = loadSubscriptionContext
-    ? await loadSubscriptionContext(repositoryRequest, session.userId)
-    : await loadSubscriptionContextForUser(repositoryRequest, session.userId, {
-        billingEnabled: isBillingEnabled(options.env),
-      });
-  const subscriptionPeriod = subscriptionUsagePeriod(subscriptionContext, generatedAt);
-  const usageEntries = await loadUsageEntries(repositoryRequest, session.userId, {
-    at: generatedAt,
-    periodStart: subscriptionPeriod.start,
-    periodEnd: subscriptionPeriod.end,
-  });
-  const shouldChargePursuit = !pursuit.pursuitMeteredAt;
-  if (shouldChargePursuit) {
-    const enforcePursuitSubscription = options.enforcePursuitSubscription
-      ?? ((context, entries, at) => enforceSubscriptionFeature(context, entries, "pursuit", {
-        at,
-        quantity: 1,
-      }));
-    const pursuitEnforcement = enforcePursuitSubscription(
-      subscriptionContext,
-      usageEntries,
-      generatedAt,
-    );
-    if (pursuitEnforcement.status !== "allowed") {
-      return subscriptionBlockedResponse(pursuitEnforcement);
+  let enforcement: SubscriptionEnforcementResult = {
+    status: "allowed",
+    feature: "outreach_message",
+  };
+  const shouldChargePursuit = !billingEnabled && !pursuit.pursuitMeteredAt;
+  if (!billingEnabled) {
+    const loadSubscriptionContext = options.loadSubscriptionContext;
+    const loadUsageEntries = options.loadUsageEntries ?? loadUsageLedgerForUser;
+    const subscriptionContext = loadSubscriptionContext
+      ? await loadSubscriptionContext(repositoryRequest, session.userId)
+      : await loadSubscriptionContextForUser(repositoryRequest, session.userId, {
+          billingEnabled: false,
+        });
+    const subscriptionPeriod = subscriptionUsagePeriod(subscriptionContext, generatedAt);
+    const usageEntries = await loadUsageEntries(repositoryRequest, session.userId, {
+      at: generatedAt,
+      periodStart: subscriptionPeriod.start,
+      periodEnd: subscriptionPeriod.end,
+    });
+    if (shouldChargePursuit) {
+      const enforcePursuitSubscription = options.enforcePursuitSubscription
+        ?? ((context, entries, at) => enforceSubscriptionFeature(context, entries, "pursuit", {
+          at,
+          quantity: 1,
+        }));
+      const pursuitEnforcement = enforcePursuitSubscription(
+        subscriptionContext,
+        usageEntries,
+        generatedAt,
+      );
+      if (pursuitEnforcement.status !== "allowed") {
+        return subscriptionBlockedResponse(pursuitEnforcement);
+      }
     }
-  }
-  const enforceSubscription = options.enforceSubscription
-    ?? ((context, entries, at) => enforceSubscriptionFeature(context, entries, "outreach_message", {
-      at,
-      quantity: contactsToGenerate.length,
-    }));
-  const enforcement = enforceSubscription(subscriptionContext, usageEntries, generatedAt);
-  if (enforcement.status !== "allowed") {
-    return subscriptionBlockedResponse(enforcement);
+    const enforceSubscription = options.enforceSubscription
+      ?? ((context, entries, at) => enforceSubscriptionFeature(context, entries, "outreach_message", {
+        at,
+        quantity: contactsToGenerate.length,
+      }));
+    enforcement = enforceSubscription(subscriptionContext, usageEntries, generatedAt);
+    if (enforcement.status !== "allowed") {
+      return subscriptionBlockedResponse(enforcement);
+    }
   }
 
   const result = transitionPursuit(pursuit, "outreach_generated", generatedAt, {
     contactIds: contactsToGenerate.map((contact) => contact.id),
     messageCount: contactsToGenerate.length,
     chargePursuit: shouldChargePursuit,
+    chargeUsage: !billingEnabled,
   });
   if (result.ok === false) {
     return json({
@@ -2666,7 +2681,7 @@ export async function handlePublicProfilePursuitOutreachRequest(
     subscription: enforcement,
     metering: {
       pursuitDebited: persistedCommit?.pursuitDebited ?? shouldChargePursuit,
-      outreachDebited: persistedCommit?.outreachDebited ?? drafts.length,
+      outreachDebited: persistedCommit?.outreachDebited ?? (billingEnabled ? 0 : drafts.length),
     },
   });
 }

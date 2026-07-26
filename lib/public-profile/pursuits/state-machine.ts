@@ -188,7 +188,7 @@ export function transitionPursuit(
   };
   const usageType = eventType === "human_path_generated" && payload.chargeUsage !== false
     ? "human_path"
-    : eventType === "outreach_generated"
+    : eventType === "outreach_generated" && payload.chargeUsage !== false
       ? "outreach_message"
       : undefined;
   const quantity = eventType === "outreach_generated" && typeof payload.messageCount === "number"

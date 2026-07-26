@@ -102,10 +102,12 @@ Not yet built as public workflows:
 > compatibility code is deployed at `b76e7f8` behind `BILLING_ENABLED`; production now runs with
 > the flag enabled after a controlled authenticated test passed. Randall decided on 2026-07-25
 > that the three active pre-Stripe `premium` subscriptions are
-> internal `access_code` entitlements. Migration `00600` and its harness encode that decision. The
-> immediate task is Phase 2C: remove the legacy pursuit debit and retail outreach quota from new
-> outreach persistence with a new migration after `00600`. Start from `docs/next-session.md`; do
-> not rewrite the applied migration.
+> internal `access_code` entitlements. Migration `00600` and its harness encode that decision.
+> Phase 2C is locally implemented and release-verified as the new, unapplied
+> `20260725000100_outreach_metering_removal.sql` migration plus a compatible billing-enabled app
+> update. The immediate task is a fresh aggregate production preflight, explicit apply
+> authorization, migration apply/record, postflight, and one authenticated disposable outreach
+> verification. Start from `docs/next-session.md`; do not rewrite the applied migration `00600`.
 >
 > **UPDATED 2026-07-24.** The Human Path Exa provider, approved Apply Wizard accuracy copy,
 > production environment, contact-type migration, and persisted-contact-ID handoff are live and

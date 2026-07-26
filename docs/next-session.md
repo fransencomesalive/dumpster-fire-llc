@@ -1,4 +1,4 @@
-# Next Session: Phase 2C Outreach Metering Removal
+# Next Session: Phase 2C Production Apply and Verification
 
 _Updated 2026-07-25. Read `AGENTS.md` and follow the Session Start Protocol in
 `docs/project-operating-state.md` before editing._
@@ -9,7 +9,7 @@ _Updated 2026-07-25. Read `AGENTS.md` and follow the Session Start Protocol in
 2. Run `git status --short --branch`.
 3. Confirm the active branch is `main`.
 4. Read `docs/subscription-billing-production-plan-2026-07-24.md`.
-5. Read `scripts/preflight-subscription-billing.sql` and the 2026-07-25 findings below.
+5. Read `scripts/preflight-outreach-metering-removal.sql` and the Phase 2C state below.
 6. Re-check production migration history immediately before any migration action.
 
 ## Unified pricing initiative state
@@ -224,31 +224,58 @@ The checked-in QA harness is `scripts/qa-subscription-flag-on-production.mjs`. I
 release check passed both migration harnesses, all 33 fixture suites, typecheck, lint with four
 pre-existing warnings and zero errors, and the production build.
 
-## Immediate next task: complete Phase 2 metering cutover
+## Phase 2C implementation state
 
-The approved product contract has one retail counter. Two legacy outreach-side behaviors remain:
+The backend cutover is implemented and locally verified:
 
-1. `persist_initial_outreach_generation` can still create the retired one-time `pursuit` debit.
-2. Initial outreach still enforces the retired retail `outreach_message` quota.
+- new migration: `supabase/migrations/20260725000100_outreach_metering_removal.sql`;
+- isolated harness: `scripts/test-outreach-metering-removal-migration.sh`;
+- read-only production preflight: `scripts/preflight-outreach-metering-removal.sql`;
+- aggregate postflight: `scripts/postflight-outreach-metering-removal.sql`;
+- billing-enabled compatibility changes in `lib/public-profile/api.ts` and
+  `lib/public-profile/pursuits/state-machine.ts`;
+- focused flag-on coverage in `scripts/test-public-profile-api.ts`;
+- automatic release-gate coverage through `package.json`.
 
-Implement this as a new post-`00600` migration and a narrow compatibility update. Do not edit or
-re-record the already-applied migration `00600`. Preserve:
+The same-signature RPC now requires the Apply Wizard latch, persists messages atomically and
+idempotently, returns zero retired debit metadata for new requests, and writes no new
+`pursuit`/`outreach_message` ledger row. Historical requests retain their original replay
+metadata. Billing-enabled initial outreach and regeneration skip legacy application quota checks
+and usage events. Provider/model telemetry remains unchanged.
 
-- atomic and idempotent initial outreach persistence;
-- one initial message per selected contact;
-- one regeneration per message;
-- historical `pursuit`, `human_path`, and `outreach_message` rows for audit;
-- provider/model telemetry.
+Local verification passed:
 
-Add isolated PostgreSQL regression coverage proving new outreach writes create no pursuit or
-outreach retail debit and cannot bypass the Apply Wizard latch. Run the full release check, deploy
-compatibly, apply the new migration only after a fresh preflight and explicit authorization, and
-repeat authenticated production verification.
+- three idempotent Phase 2C migration applications;
+- historical positive-debit replay preservation;
+- multi-contact zero-debit persistence and identical no-write replay;
+- unlatched pursuit rejection with zero partial state;
+- Apply Wizard-only quota enforcement;
+- service-role-only RPC execution;
+- legacy Saved Pursuits migration harness;
+- 33 fixture suites;
+- typecheck;
+- lint with four pre-existing warnings and zero errors;
+- production build;
+- `git diff --check`.
+
+## Immediate next task: authorized production Phase 2C apply
+
+Production still runs migration `00600` with `BILLING_ENABLED=true`. Migration
+`20260725000100` is not applied or recorded. The next action is:
+
+1. Run the Phase 2C aggregate-only preflight and confirm migration/version truth.
+2. Review the aggregate findings.
+3. Obtain explicit authorization for the production apply.
+4. Apply and record the exact migration.
+5. Run the aggregate postflight.
+6. Run one disposable authenticated initial-outreach plus regeneration transaction.
+7. Prove zero new `pursuit` and `outreach_message` rows, zero duplicate messages, one in-place
+   regeneration, unchanged Apply Wizard count, retained provider telemetry, and complete cleanup.
 
 ## Explicitly still incomplete
 
 - A real production unit-economics baseline after post-deploy provider events exist.
-- Outreach entitlement cutover and removal of new retail pursuit/outreach debits.
+- Production apply and authenticated verification of the locally complete Phase 2C cutover.
 - Stripe test products, Checkout, Customer Portal, webhook processing, lifecycle tests, and
   environment secrets.
 - Markdown pursuit-history export backend.

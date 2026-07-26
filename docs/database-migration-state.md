@@ -129,9 +129,24 @@ profile redesign; the corrected billing-off seed rehearsal and flag-on retry pas
 returned every QA table to zero, and the aggregate postflight remained unchanged. Production now
 runs with `BILLING_ENABLED=true`.
 
-No later migration yet removes the legacy pursuit debit and retail outreach quota from
-`persist_initial_outreach_generation`. That is the next schema migration; do not rewrite or
-re-record `00600`, which is already applied.
+## Pending production apply: Phase 2C
+
+`20260725000100_outreach_metering_removal.sql` is implemented and locally release-verified but is
+not applied or recorded in production. It replaces the existing outreach RPC with the same
+signature, requires the Apply Wizard latch for new messages, writes zero retired debit metadata,
+stops new pursuit/outreach ledger writes, and makes `apply_wizard` the only database-enforced
+retail quota. Historical rows and replay metadata remain intact.
+
+Before any apply:
+
+1. Run `scripts/preflight-outreach-metering-removal.sql` read-only against production.
+2. Confirm `20260725000100` is absent from migration history.
+3. Obtain explicit production-apply authorization.
+4. Apply the exact migration and record it as `outreach_metering_removal`.
+5. Run `scripts/postflight-outreach-metering-removal.sql`.
+6. Repeat one authenticated initial-outreach and regeneration verification with disposable cleanup.
+
+Do not rewrite or re-record `00600`, which is already applied.
 
 ## How to apply migrations (current method)
 

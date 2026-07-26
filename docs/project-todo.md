@@ -31,8 +31,10 @@ found three active legacy `premium` subscriptions. Randall classified those pre-
 internal `access_code` entitlements on 2026-07-25, and migration `00600` plus its harness now encode
 that decision. Postflight confirmed all three sources, 10 atomic backfill rows with matching
 latches, the two-tier catalog, and service-only RPC boundaries. Flag-on QA confirmed a 23-contact
-atomic Human Path commit and cached replay with complete disposable cleanup. The immediate next
-task is Phase 2C outreach metering removal in `docs/next-session.md`.
+atomic Human Path commit and cached replay with complete disposable cleanup. Phase 2C is now
+implemented and locally release-verified as migration `20260725000100` plus the billing-enabled
+compatibility update. Its production preflight, apply/record, postflight, and authenticated
+outreach verification remain the immediate next task in `docs/next-session.md`.
 Stripe is selected, but Checkout, Portal, webhooks, test products/prices, tax decisions, and
 environment configuration are not built or configured. The production UI port waits for backend
 readiness and a separately approved mapping to Claude’s cards.

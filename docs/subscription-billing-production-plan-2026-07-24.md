@@ -1227,9 +1227,9 @@ Exit gate: a test pursuit can be reconciled to its provider calls and estimated 
 - [x] Remove no-subscription active-basic fallback.
 - [x] Add `apply_wizard` usage.
 - [x] Add atomic Human Path commit RPC.
-- [ ] Remove pursuit debit from outreach RPC.
+- [x] Remove pursuit debit from outreach RPC.
 - [x] Stop retail Human Path quota enforcement.
-- [ ] Stop retail outreach quota enforcement.
+- [x] Stop retail outreach quota enforcement.
 - [x] Preserve testers.
 - [x] Protect Stripe subscriptions from access-code overwrite.
 
