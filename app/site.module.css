@@ -2085,143 +2085,218 @@
   margin-top: var(--space-6);
 }
 
-.publicLandingTierTableWrap {
+.publicLandingPricingSection {
+  scroll-margin-top: 90px;
+}
+
+.publicLandingPricingHead {
+  display: grid;
+  gap: var(--space-2);
+  text-align: center;
+}
+
+.publicLandingPricingHead h2 {
+  margin: 0;
+}
+
+.publicLandingPricingHead p {
+  max-width: 60ch;
+  margin: 0 auto;
+  color: var(--role-text-muted);
+  font-family: var(--font-body);
+}
+
+.publicLandingPricingGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: stretch;
+  gap: var(--space-4);
   margin-top: 42px;
-  border: var(--line-bold) solid var(--c-ink);
+}
+
+.publicLandingPricingCard {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-5) var(--space-5) var(--space-6);
+  border: var(--line-reg) solid var(--c-ink);
   border-radius: var(--radius-lg);
   background-color: var(--c-paper-deep);
   background-image: var(--fiber-img), var(--grain-img);
   background-blend-mode: normal, soft-light;
   background-size: 170px 170px, 46px 46px;
   box-shadow: var(--shadow-card);
-  overflow: hidden;
 }
 
-.publicLandingTierTable {
-  width: 100%;
-  border-collapse: collapse;
+.publicLandingPricingFeatured {
+  border-width: var(--line-bold);
 }
 
-.publicLandingTierTable th,
-.publicLandingTierTable td {
-  padding: 16px 18px;
-  text-align: center;
-  vertical-align: middle;
+.publicLandingPricingTag {
+  position: absolute;
+  top: calc(-1 * var(--space-3));
+  left: 50%;
+  padding: 3px var(--space-3);
+  transform: translateX(-50%);
+  border: var(--line-reg) solid var(--c-ink);
+  border-radius: var(--radius-pill);
+  background-color: var(--c-teal);
+  box-shadow: var(--shadow-card);
+  color: var(--c-paper);
+  font-family: var(--font-subhead);
+  font-size: 0.7rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  white-space: nowrap;
 }
 
-/* Column-first reading: ink verticals between tier columns, faint row rules */
-.publicLandingTierTable th + th,
-.publicLandingTierTable td + td,
-.publicLandingTierTable tbody th + td {
-  border-left: var(--line-reg) solid var(--c-ink);
+.publicLandingPricingCardHead {
+  display: grid;
+  gap: var(--space-1);
 }
 
-.publicLandingTierTable tbody th,
-.publicLandingTierTable tbody td {
-  border-top: 1px solid var(--c-ink-faint);
-}
-
-/* Printed header band: ink field, paper knockout */
-.publicLandingTierTable thead th {
-  padding-top: 18px;
-  padding-bottom: 16px;
-  background: var(--c-ink);
-}
-
-.publicLandingTierTable thead th + th {
-  border-left-color: var(--c-paper);
-}
-
-.publicLandingTierTable tbody th {
-  text-align: left;
+.publicLandingPricingCardHead h3 {
+  margin: 0;
   color: var(--c-ink);
-  font-size: 16px;
-  font-weight: 800;
-  line-height: 1.35;
-}
-
-/* Goodest column carries the teal field (selected/positive) */
-.publicLandingTierTable thead th:last-child {
-  background: var(--c-teal);
-}
-
-.publicLandingTierTable tbody th:last-child,
-.publicLandingTierTable tbody td:last-child {
-  background: rgb(31 158 150 / 0.12);
-}
-
-.publicLandingTierName {
-  display: block;
-  color: var(--c-paper);
   font-family: var(--font-display);
-  font-size: clamp(19px, 2vw, 25px);
-  font-weight: 900;
-  letter-spacing: 0.01em;
-  line-height: 1.1;
-}
-
-.publicLandingTierPrice {
-  display: block;
-  margin-top: 4px;
-  color: var(--c-paper);
-  font-family: var(--font-display);
-  font-size: 14px;
-  font-weight: 800;
-  opacity: 0.85;
-}
-
-.publicLandingTierYes {
-  color: var(--c-teal);
-  font-size: 20px;
-  font-weight: 900;
+  font-size: 1.7rem;
   line-height: 1;
 }
 
-.publicLandingTierNo {
-  display: inline-block;
-  width: 14px;
-  height: 3px;
-  border-radius: 1.5px;
-  background: var(--c-ink-faint);
-  vertical-align: middle;
+.publicLandingPricingCardHead p {
+  margin: 0;
+  color: var(--role-text-muted);
+  font-family: var(--font-body);
+  font-size: 0.95rem;
 }
 
-.publicLandingTierValue {
+.publicLandingPricingPrice {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  margin-top: var(--space-2);
+}
+
+.publicLandingPricingPrice span {
   color: var(--c-ink);
   font-family: var(--font-display);
-  font-size: 19px;
-  font-weight: 900;
+  font-size: 2.4rem;
+  line-height: 1;
 }
 
-@media (max-width: 560px) {
-  .publicLandingTierTable th,
-  .publicLandingTierTable td {
-    padding: 12px 6px;
+.publicLandingPricingPrice small {
+  color: var(--role-text-muted);
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+}
+
+.publicLandingPricingFeatures {
+  display: grid;
+  flex: 1;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.publicLandingPricingFeatures li {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  color: var(--c-ink);
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+}
+
+.publicLandingPricingFeatures svg {
+  width: 17px;
+  height: 17px;
+  flex: none;
+  margin-top: 2px;
+  color: var(--c-teal);
+}
+
+.publicLandingPricingHero {
+  font-family: var(--font-subhead) !important;
+}
+
+.publicLandingPricingHero b {
+  font-weight: 700;
+}
+
+.publicLandingPricingMeter {
+  margin: calc(-1 * var(--space-1)) 0 0 25px;
+  color: var(--role-text-faint);
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
+.publicLandingPricingMeter a {
+  color: var(--c-ink);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+
+.publicLandingPricingMeter a:hover {
+  text-decoration-thickness: 2px;
+}
+
+.publicLandingPricingButton {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  padding: var(--space-3);
+  border: var(--line-bold) solid var(--c-ink);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
+  font-family: var(--font-display);
+  font-size: 1.02rem;
+  text-align: center;
+  text-decoration: none;
+  transition: background-color var(--dur-fast) var(--ease-snap), box-shadow var(--dur-fast) var(--ease-snap);
+}
+
+.publicLandingPricingButtonTeal {
+  background-color: var(--c-teal);
+  color: var(--c-paper);
+}
+
+.publicLandingPricingButtonTeal:hover {
+  background-color: var(--role-info);
+  box-shadow: var(--reg-box);
+  text-shadow: 1px 1px 0 rgba(36, 31, 26, 0.35);
+}
+
+.publicLandingPricingButtonGhost {
+  background-color: var(--c-paper);
+  color: var(--c-ink);
+}
+
+.publicLandingPricingButtonGhost:hover {
+  background-color: var(--c-paper-deep);
+  box-shadow: var(--reg-box);
+}
+
+.publicLandingPricingFine {
+  max-width: 68ch;
+  margin: var(--space-5) auto 0;
+  color: var(--role-text-muted);
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  line-height: 1.5;
+  text-align: center;
+}
+
+@media (max-width: 700px) {
+  .publicLandingPricingSection {
+    scroll-margin-top: 190px;
   }
 
-  .publicLandingTierTable tbody th {
-    padding-left: 10px;
-    font-size: 12.5px;
-  }
-
-  .publicLandingTierTable thead th:first-child {
-    width: 34%;
-  }
-
-  .publicLandingTierName {
-    font-size: 13px;
-  }
-
-  .publicLandingTierPrice {
-    font-size: 10.5px;
-  }
-
-  .publicLandingTierYes {
-    font-size: 16px;
-  }
-
-  .publicLandingTierValue {
-    font-size: 14px;
+  .publicLandingPricingGrid {
+    grid-template-columns: 1fr;
   }
 }
 

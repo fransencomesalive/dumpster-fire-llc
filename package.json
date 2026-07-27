@@ -21,14 +21,17 @@
     "test:migrations:posting-refinement-backoff": "bash scripts/test-posting-refinement-backoff-migration.sh",
     "test:migrations:subscription-billing": "bash scripts/test-subscription-billing-two-tier-migration.sh",
     "test:migrations:outreach-metering": "bash scripts/test-outreach-metering-removal-migration.sh",
+    "test:migrations:stripe-billing": "bash scripts/test-stripe-billing-migration.sh",
     "test:fixtures": "node scripts/test-fixtures.mjs",
-    "release:check": "npm run test:migrations:subscription-billing && npm run test:migrations:outreach-metering && node scripts/release-check.mjs",
+    "release:check": "npm run test:migrations:subscription-billing && npm run test:migrations:outreach-metering && npm run test:migrations:stripe-billing && node scripts/release-check.mjs",
     "test:job-link": "node scripts/test-job-link.mjs",
     "test:provider-anthropic": "node scripts/test-anthropic-usage.mjs",
     "test:matching": "node scripts/test-public-profile-matching.mjs",
     "test:provider-usage": "node scripts/test-provider-usage.mjs",
     "test:unit-economics": "node scripts/test-subscription-unit-economics.mjs",
+    "test:stripe-billing": "node scripts/test-stripe-billing.mjs",
     "report:unit-economics": "node scripts/report-subscription-unit-economics.mjs",
+    "report:stripe-reconciliation": "node scripts/reconcile-stripe-subscriptions.mjs",
     "test:public-jobs": "node scripts/test-public-jobs-repository.mjs",
     "test:public-export": "node scripts/test-public-profile-export.mjs",
     "test:public-regeneration": "node scripts/test-public-profile-regeneration.mjs",
@@ -46,7 +49,8 @@
     "nodemailer": "^9.0.3",
     "openai": "^6.27.0",
     "react": "19.2.7",
-    "react-dom": "19.2.7"
+    "react-dom": "19.2.7",
+    "stripe": "22.1.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

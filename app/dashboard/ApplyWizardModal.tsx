@@ -87,6 +87,21 @@ type TrackingResponse = {
   tracking: PursuitTrackingState;
   history: PursuitHistoryEntry[];
 };
+type AccountUsageResponse = {
+  subscriptionStatus?: string;
+  status?: string;
+  remaining?: number;
+  periodEnd?: string;
+};
+type ApplyWizardUsageResponse = {
+  applyWizardUsage?: {
+    finalUse: boolean;
+    periodEnd: string;
+  };
+};
+type UsageGate =
+  | { kind: "limit"; periodEnd?: string }
+  | { kind: "inactive" };
 type MessageFeedbackTarget = Pick<
   OutreachMessageRecord,
   "id" | "regenerationCount" | "updatedAt"
@@ -141,6 +156,13 @@ function formatHistoryTime(entry: PursuitHistoryEntry): string {
   if (sameDay) return `Today · ${time}`;
   const day = date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   return `${day} · ${time}`;
+}
+
+function formatResetDay(value?: string): string {
+  if (!value) return "your next reset";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "your next reset";
+  return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
 const EXTERNAL_LINK_ICON = (
@@ -296,7 +318,10 @@ export default function ApplyWizardModal({
   const [selectedContactIds, setSelectedContactIds] = useState<Set<string>>(new Set());
   const [providerUnavailable, setProviderUnavailable] = useState(false);
   const [noContactsFound, setNoContactsFound] = useState(false);
+  const [usageGate, setUsageGate] = useState<UsageGate | null>(null);
+  const [finalUsePeriodEnd, setFinalUsePeriodEnd] = useState<string | null>(null);
   const actionInFlightRef = useRef<SingleFlightState>({ active: false });
+  const reviewCommittedRef = useRef(false);
   const [messages, setMessages] = useState<OutreachMessageRecord[]>([]);
   const [regeneratingId, setRegeneratingId] = useState<string | null>(null);
   // Tracking: `tracking` is the last committed server state; `draft` is the in-progress
@@ -605,25 +630,68 @@ export default function ApplyWizardModal({
   function submitReview() {
     if (!pursuitId) return;
     run(async () => {
-      await api(`/api/public-profile/pursuits/review`, "POST", {
-        pursuitId,
-        selectedRoleTrackId: selectedRoleTrackId ?? undefined,
-      });
+      const account = await api<AccountUsageResponse>("/api/account/plan", "GET").catch(() => null);
+      const status = account?.subscriptionStatus || account?.status;
+      if (status === "past_due" || status === "canceled") {
+        setUsageGate({ kind: "inactive" });
+        return;
+      }
+      if (typeof account?.remaining === "number" && account.remaining <= 0) {
+        setUsageGate({ kind: "limit", periodEnd: account.periodEnd });
+        return;
+      }
+      setUsageGate(null);
+      if (!reviewCommittedRef.current) {
+        await api(`/api/public-profile/pursuits/review`, "POST", {
+          pursuitId,
+          selectedRoleTrackId: selectedRoleTrackId ?? undefined,
+        });
+        reviewCommittedRef.current = true;
+      }
       setStep(2);
       setReached((r) => (r < 2 ? 2 : r));
-      if (contacts.length === 0) await discoverContacts(pursuitId);
+      if (contacts.length === 0) {
+        const discovered = await discoverContacts(pursuitId);
+        if (!discovered) {
+          setStep(1);
+          setReached(1);
+        }
+      }
     });
   }
 
-  async function discoverContacts(id: string) {
+  async function discoverContacts(id: string): Promise<boolean> {
     setProviderUnavailable(false);
     setNoContactsFound(false);
     try {
-      await api(`/api/public-profile/pursuits/human-path`, "POST", { pursuitId: id });
+      const generated = await api<ApplyWizardUsageResponse>(
+        `/api/public-profile/pursuits/human-path`,
+        "POST",
+        { pursuitId: id },
+      );
+      if (generated.applyWizardUsage?.finalUse) {
+        setFinalUsePeriodEnd(generated.applyWizardUsage.periodEnd);
+      }
     } catch (err) {
       if (err instanceof PublicProfileApiError && err.status === 503) {
-        setProviderUnavailable(true);
-        return;
+        const body = err.body as { status?: string } | null;
+        if (body?.status === "provider_unavailable") {
+          setProviderUnavailable(true);
+          return true;
+        }
+      }
+      if (err instanceof PublicProfileApiError && (err.status === 429 || err.status === 402)) {
+        const body = err.body as {
+          status?: string;
+          subscription?: { status?: string };
+        } | null;
+        const account = await api<AccountUsageResponse>("/api/account/plan", "GET").catch(() => null);
+        if (body?.subscription?.status === "limit_reached" || body?.status === "limit_reached") {
+          setUsageGate({ kind: "limit", periodEnd: account?.periodEnd });
+        } else {
+          setUsageGate({ kind: "inactive" });
+        }
+        return false;
       }
       throw err;
     }
@@ -631,11 +699,19 @@ export default function ApplyWizardModal({
     setSelectedContactIds(new Set(
       data.contacts.filter((contact) => contact.confidence === "high").map((contact) => contact.id),
     ));
+    return true;
   }
 
   function retryContacts() {
     if (!pursuitId) return;
-    run(() => discoverContacts(pursuitId));
+    run(async () => {
+      await discoverContacts(pursuitId);
+    });
+  }
+
+  function openAccountPanel(panel: "plan" | "billing") {
+    window.sessionStorage.setItem("df-open-account-popup", panel);
+    window.location.assign("/onboarding");
   }
 
   function toggleContact(id: string) {
@@ -804,7 +880,19 @@ export default function ApplyWizardModal({
     </div>
   );
 
-  const footer = (
+  const footer = usageGate ? (
+    <div className={styles.modalFooter}>
+      {sourceUrl ? (
+        <a href={sourceUrl} target="_blank" rel="noreferrer" className={`${styles.linkOpen} ${styles.footerSpacer}`}>Open job posting{EXTERNAL_LINK_ICON}</a>
+      ) : <span className={styles.footerSpacer} />}
+      <button type="button" className={styles.modalBtnClose} onClick={() => openAccountPanel(usageGate.kind === "limit" ? "plan" : "billing")}>
+        {usageGate.kind === "limit" ? "See my plan" : "See billing"}
+      </button>
+      <button type="button" className={styles.modalBtnSave} onClick={() => openAccountPanel(usageGate.kind === "limit" ? "plan" : "billing")}>
+        {usageGate.kind === "limit" ? "Upgrade to Roaring" : "Update payment"}
+      </button>
+    </div>
+  ) : (
     <div className={styles.modalFooter}>
       {sourceUrl ? (
         <a href={sourceUrl} target="_blank" rel="noreferrer" className={`${styles.linkOpen} ${styles.footerSpacer}`}>Open job posting{EXTERNAL_LINK_ICON}</a>
@@ -946,7 +1034,21 @@ export default function ApplyWizardModal({
           </div>
         ) : (
           <>
-            {mode === "stepper" && step === 1 && match ? (
+            {mode === "stepper" && step === 1 && usageGate ? (
+              <div className={styles.modalStack}>
+                <div className="ds-callout">
+                  {usageGate.kind === "limit"
+                    ? `Used 'em all up, but good news is your reset is on ${formatResetDay(usageGate.periodEnd)}. This one won't run and you won't be charged, and your saved pursuits stay open.`
+                    : "Your plan is paused because your last payment didn't go through. New Apply Wizard pursuits are on hold until that's sorted out. Nothing runs here and you won't be charged. Your saved pursuits stay open."}
+                </div>
+                {usageGate.kind === "limit" ? (
+                  <section>
+                    <strong>Wish you had more?</strong>
+                    <p>Roaring includes 45 Apply Wizard pursuits a month, plus Markdown export of your pursuit history.</p>
+                  </section>
+                ) : null}
+              </div>
+            ) : mode === "stepper" && step === 1 && match ? (
               <div className={styles.modalStack}>
                 <section className={styles.modeSection}>
                   <div className={styles.modeSelector} aria-label="Choose role track">
@@ -984,6 +1086,9 @@ export default function ApplyWizardModal({
 
             {mode === "stepper" && step === 2 ? (
               <div className={styles.modalStack}>
+                {finalUsePeriodEnd ? (
+                  <p className={styles.formNotice}>That was the last pursuit for this month, but it&apos;ll reset on {formatResetDay(finalUsePeriodEnd)}. But finish this one!</p>
+                ) : null}
                 <section>
                   <strong>Human Path</strong>
                   <p>We found people at this company who may be useful for outreach. Check their LinkedIn profiles to confirm their current role and&nbsp;relevance.</p>

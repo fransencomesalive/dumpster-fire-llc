@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import {
+  handleGetAccountPlanRequest,
   handleRedeemAccessCodeRequest,
   normalizeAccessCode,
 } from "../lib/account/access-codes";
@@ -163,6 +164,78 @@ async function main() {
   });
   assert.equal(stripeConflict.status, 409);
   assert.equal((await body(stripeConflict)).status, "stripe_subscription_exists");
+
+  const accountPlanRequest: PublicProfileRepositoryRequest = async <T>(table: string) => {
+    if (table === "user_subscriptions") {
+      return [{
+        plan_id: "plan-premium",
+        status: "active",
+        source: "stripe",
+        current_period_start: "2026-07-01T00:00:00.000Z",
+        current_period_end: "2026-08-01T00:00:00.000Z",
+        cancel_at_period_end: false,
+        canceled_at: null,
+        stripe_customer_id: "cus_test",
+        stripe_subscription_id: "sub_test",
+        stripe_price_id: "price_premium",
+        stripe_status_raw: "active",
+      }] as T;
+    }
+    if (table === "subscription_plans") {
+      return [{
+        id: "plan-premium",
+        name: "premium",
+        pursuit_limit_monthly: null,
+        human_path_limit_monthly: null,
+        outreach_limit_monthly: null,
+        apply_wizard_limit_monthly: 45,
+        profile_export: true,
+        markdown_export: true,
+        publicly_available: true,
+        internal_only: false,
+      }] as T;
+    }
+    if (table === "usage_ledger") {
+      return [
+        {
+          usage_type: "apply_wizard",
+          quantity: 1,
+          created_at: "2026-07-10T00:00:00.000Z",
+        },
+        {
+          usage_type: "apply_wizard",
+          quantity: 1,
+          created_at: "2026-07-11T00:00:00.000Z",
+        },
+      ] as T;
+    }
+    throw new Error(`Unexpected table ${table}`);
+  };
+  const accountPlan = await handleGetAccountPlanRequest(
+    new Request("https://app.example/api/account/plan"),
+    {
+      env: billingEnabledEnv,
+      now: () => now,
+      getSession: async () => authenticated(),
+      repositoryRequest: accountPlanRequest,
+    },
+  );
+  assert.equal(accountPlan.status, 200);
+  const accountPlanJson = await body(accountPlan);
+  assert.equal(accountPlanJson.publicPlanName, "Roaring");
+  assert.equal(accountPlanJson.status, "active");
+  assert.equal(accountPlanJson.planCode, "premium");
+  assert.equal(accountPlanJson.subscriptionStatus, "active");
+  assert.equal(accountPlanJson.used, 2);
+  assert.equal(accountPlanJson.limit, 45);
+  assert.equal(accountPlanJson.remaining, 43);
+  assert.equal(accountPlanJson.periodStart, "2026-07-01T00:00:00.000Z");
+  assert.equal(accountPlanJson.periodEnd, "2026-08-01T00:00:00.000Z");
+  assert.equal(accountPlanJson.hasBillingManagement, true);
+  assert.deepEqual(accountPlanJson.usage, {
+    applyWizard: { used: 2, limit: 45, remaining: 43 },
+  });
+  assert.equal(accountPlanJson.markdownExport, true);
 
   console.log("account access codes: all assertions passed");
 }

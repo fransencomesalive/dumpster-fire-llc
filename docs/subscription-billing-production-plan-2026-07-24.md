@@ -438,9 +438,10 @@ Do not return separate customer-facing Human Path or outreach allowances.
 
 In Stripe test mode first:
 
-1. Complete business/public details.
-2. Set the public Terms URL.
-3. Set the public Privacy URL.
+1. Complete business/public details when the sandbox represents a real legal entity. The
+   dedicated Dumpster Fire sandbox intentionally defers this until the business becomes real.
+2. Set the public Terms URL when Stripe exposes the legal fields.
+3. Set the public Privacy URL when Stripe exposes the legal fields.
 4. Create two recurring monthly Products/Prices:
    - $22 USD/month;
    - $32 USD/month.
@@ -457,6 +458,11 @@ In Stripe test mode first:
 
 Repeat with live-mode Products, Prices, Portal configuration, and webhook only after the full test-mode gate passes.
 
+Sandbox exception approved 2026-07-27: Stripe routes the dedicated sandbox's Public details link
+to incomplete business onboarding and does not expose the legal URL fields independently. Local
+test Checkout may omit Terms consent through the explicit test-key-only configuration described
+below. This exception does not apply to live Checkout.
+
 ### 7.2 Required environment variables
 
 Server only:
@@ -467,6 +473,8 @@ Server only:
 - `STRIPE_PRICE_PREMIUM_MONTHLY`
 - `STRIPE_PORTAL_CONFIGURATION_ID` if a dedicated configuration is used
 - `STRIPE_TAX_ENABLED` after the tax decision
+- `STRIPE_CHECKOUT_TERMS_CONSENT`, defaulting to `required`; `omit` is allowed only with a
+  Stripe test-mode secret key for the dedicated sandbox
 - `BILLING_ENABLED` as the controlled production launch switch
 
 Public/base URL:
@@ -490,8 +498,10 @@ Requirements:
 - prevent duplicate active/incomplete subscriptions;
 - `mode=subscription`;
 - one line item, quantity one;
-- Terms consent required in Checkout;
-- Terms and Privacy URLs configured in Stripe Public details;
+- Terms consent required in live Checkout;
+- the dedicated incomplete-business sandbox may omit Terms consent only through
+  `STRIPE_CHECKOUT_TERMS_CONSENT=omit`;
+- Terms and Privacy URLs configured in live Stripe Public details;
 - tax behavior controlled by the approved environment setting;
 - `client_reference_id` and metadata bind the session to the authenticated user ID and internal plan code;
 - success and cancel URLs return to the plan flow;
@@ -919,8 +929,11 @@ Update `app/legal/billing/page.tsx` with the exact commercial mechanics:
 
 ### 12.4 Checkout disclosure and consent
 
-- Configure Stripe Checkout to require Terms acceptance.
-- Configure valid Terms and Privacy URLs in Stripe Public details.
+- Configure live Stripe Checkout to require Terms acceptance.
+- Configure valid Terms and Privacy URLs in live Stripe Public details.
+- The dedicated test sandbox may omit Checkout Terms consent only while Stripe hides those legal
+  fields behind incomplete business onboarding. This is a test-only exception, not the live
+  billing contract.
 - The in-app pre-Checkout review must visibly disclose price, cadence, automatic renewal, allowance, and cancellation path.
 - Access-code tester language must not describe a public free tier.
 - If counsel recommends an additional explicit in-app acceptance record for access-code users, that is a new gate and requires Randall's separate approval before implementation.
@@ -1242,17 +1255,25 @@ rejection, retained provider telemetry, and complete cleanup.
 
 ### Phase 3: Stripe test-mode backend
 
-- [ ] Install/pin Stripe SDK.
-- [ ] Add server config and price allowlist.
-- [ ] Add Checkout endpoint.
-- [ ] Add Portal endpoint.
-- [ ] Add plan-change endpoint.
-- [ ] Add signed webhook endpoint.
-- [ ] Add event idempotency.
-- [ ] Add reconciliation report.
-- [ ] Add subscription/usage account API.
+- [x] Install/pin Stripe SDK.
+- [x] Add server config and price allowlist.
+- [x] Add Checkout endpoint.
+- [x] Add Portal endpoint.
+- [x] Add plan-change endpoint.
+- [x] Add signed webhook endpoint.
+- [x] Add event idempotency.
+- [x] Add reconciliation report.
+- [x] Add subscription/usage account API.
 
 Exit gate: Stripe CLI/test-mode exercises the complete subscription lifecycle.
+
+Local status 2026-07-27: complete. Authenticated test-mode QA verified paid Checkout, signed
+webhook persistence, Portal creation/configuration, immediate upgrade, period-end downgrade and
+idempotent replay, cancellation and reversal, final cancellation, duplicate event replay,
+account usage/entitlement changes, reconciliation, and disposable-data cleanup. The real
+downgrade pass found and fixed an invalid `end_behavior: "renew"` value; Stripe requires
+`release` for this continuing-subscription schedule. The full release gate passed after the fix.
+These changes remain uncommitted, undeployed, and unapplied to production.
 
 ### Phase 4: Markdown export backend
 

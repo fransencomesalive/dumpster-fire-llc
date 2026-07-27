@@ -28,25 +28,47 @@ const operatingLoop = [
 const humanPathSteps = ["Profile", "Pursuits", "Your Human", "Message", "Records"];
 const humanPathSlideCount = 5;
 
-const subscriptionTiers = [
-  { name: "Good", price: "" },
-  { name: "Gooder", price: "" },
-  { name: "Goodest", price: "" },
-];
+const pricingPlans = [
+  {
+    code: "basic",
+    name: "Smoldering",
+    tagline: "Keep a steady burn under your\u00a0search.",
+    price: "22",
+    allowance: "20",
+    featured: false,
+    features: [
+      "Career profile in your voice",
+      "Scan real job boards and career\u00a0pages",
+      "Match ratings on every role",
+      "Saved jobs and pursuit\u00a0tracking",
+      "Contact discovery and custom outreach in your voice",
+    ],
+  },
+  {
+    code: "premium",
+    name: "Roaring",
+    tagline: "Go all in when the search gets hot.",
+    price: "32",
+    allowance: "45",
+    featured: true,
+    features: [
+      "Markdown export of your full pursuit\u00a0history",
+      "Career profile in your voice",
+      "Scan real job boards and career\u00a0pages",
+      "Match ratings on every role",
+      "Saved jobs and pursuit\u00a0tracking",
+      "Contact discovery and custom outreach in your voice",
+    ],
+  },
+] as const;
 
-type TierCell = boolean | string;
-
-const subscriptionFeatures: { label: string; tiers: [TierCell, TierCell, TierCell] }[] = [
-  { label: "Career profile in your voice", tiers: [true, true, true] },
-  { label: "Work examples, woven into your outreach", tiers: [true, true, true] },
-  { label: "Match ratings on every role", tiers: [false, true, true] },
-  { label: "Saved jobs", tiers: [false, true, true] },
-  { label: "Contact discovery: customized outreach", tiers: [false, true, true] },
-  { label: "Generate custom outreach (1 per contact)", tiers: [false, false, true] },
-  { label: "Pursuit tracking", tiers: [false, false, true] },
-  { label: "Export history", tiers: [false, false, true] },
-  { label: "Jobs you can pursue each month", tiers: [false, false, "50"] },
-];
+function PricingCheck() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <polyline points="20 6 9 17 4 12" />
+    </svg>
+  );
+}
 
 export default function HomePage() {
   return (
@@ -300,43 +322,55 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section id="subscription" className={styles.publicLandingSection} aria-labelledby="subscription-title">
-        <div className={styles.publicLandingSectionIntro}>
-          <h2 id="subscription-title">Subscription tiers.</h2>
+      <section id="subscription" className={`${styles.publicLandingSection} ${styles.publicLandingPricingSection}`} aria-labelledby="subscription-title">
+        <div className={styles.publicLandingPricingHead}>
+          <h2 id="subscription-title">Two ways to&nbsp;pursue.</h2>
+          <p>Both plans give you the whole workflow. The difference is how many pursuits you run a month, and whether you can take your history with you.</p>
         </div>
-        <div className={styles.publicLandingTierTableWrap}>
-          <table className={styles.publicLandingTierTable}>
-            <thead>
-              <tr>
-                <th scope="col" aria-label="Feature" />
-                {subscriptionTiers.map((tier) => (
-                  <th scope="col" key={tier.name}>
-                    <span className={styles.publicLandingTierName}>{tier.name}</span>
-                    {tier.price ? <span className={styles.publicLandingTierPrice}>{tier.price}</span> : null}
-                  </th>
+        <div className={styles.publicLandingPricingGrid}>
+          {pricingPlans.map((plan) => (
+            <article
+              className={`${styles.publicLandingPricingCard} ${plan.featured ? styles.publicLandingPricingFeatured : ""}`}
+              key={plan.code}
+            >
+              {plan.featured ? <span className={styles.publicLandingPricingTag}>Top plan</span> : null}
+              <div className={styles.publicLandingPricingCardHead}>
+                <h3>{plan.name}</h3>
+                <p>{plan.tagline}</p>
+                <div className={styles.publicLandingPricingPrice}>
+                  <span>${plan.price}</span>
+                  <small>/ month</small>
+                </div>
+              </div>
+              <ul className={styles.publicLandingPricingFeatures}>
+                <li className={styles.publicLandingPricingHero}>
+                  <PricingCheck />
+                  <span><b>{plan.allowance}</b> Apply Wizard pursuits a month</span>
+                </li>
+                {plan.features.map((feature) => (
+                  <li className={feature.startsWith("Markdown") ? styles.publicLandingPricingHero : undefined} key={feature}>
+                    <PricingCheck />
+                    <span>{feature}</span>
+                  </li>
                 ))}
-              </tr>
-            </thead>
-            <tbody>
-              {subscriptionFeatures.map((feature) => (
-                <tr key={feature.label}>
-                  <th scope="row">{feature.label}</th>
-                  {feature.tiers.map((cell, index) => (
-                    <td key={subscriptionTiers[index].name}>
-                      {cell === true ? (
-                        <span className={styles.publicLandingTierYes} role="img" aria-label="Included">✓</span>
-                      ) : cell === false ? (
-                        <span className={styles.publicLandingTierNo} role="img" aria-label="Not included" />
-                      ) : (
-                        <span className={styles.publicLandingTierValue}>{cell}</span>
-                      )}
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
+              </ul>
+              <p className={styles.publicLandingPricingMeter}>
+                One pursuit counts only when a search lands at least one useful contact.{" "}
+                <Link href="/legal/billing">How a pursuit is counted</Link>
+              </p>
+              <Link
+                className={`${styles.publicLandingPricingButton} ${plan.featured ? styles.publicLandingPricingButtonTeal : styles.publicLandingPricingButtonGhost}`}
+                href={`/plan?plan=${plan.code}`}
+              >
+                Start {plan.name}
+              </Link>
+            </article>
+          ))}
         </div>
+        <p className={styles.publicLandingPricingFine}>
+          Billed monthly. No free tier, no setup fee, no overage charges, and nothing rolls over.
+          Cancel whenever you want; it takes effect at the end of the period you already paid for. Taxes may apply.
+        </p>
       </section>
 
       <section className={styles.publicLandingFinal} aria-label="Request Dumpster Fire access">

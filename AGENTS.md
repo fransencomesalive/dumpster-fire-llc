@@ -32,6 +32,23 @@ When the user says `sync`, Codex must:
 
 Do not say or imply that work is synced unless the commit and push both succeeded.
 
+### Session Closure
+
+When the user says to close or end the current session, or clearly states that the session is
+finished, Codex must:
+- Update the persistent handoff/context documents with completed work, verification evidence,
+  remaining risks, preserved phase/task state, and the next immediate starting point.
+- Complete the full `sync` protocol itself, including staging intended changes, committing, and
+  pushing `main`.
+- Never assign the Git or memory-sync steps back to the user.
+- Report the branch, remote, commit hash, push result, and any remaining dirty or untracked files.
+
+Do not say or imply that a session is closed until the memory/context update, commit, and push have
+all succeeded. If any step fails, report the exact repository state and the remaining action.
+
+Enforcement class: **advisory**. This instruction is persistent repository guidance that an agent
+can technically ignore; it is not a blocking hook.
+
 ### No Branches — All Work On `main` (hard rule)
 
 Standing rule (Randall, 2026-07-06): **branch usage is eliminated. Never create, switch

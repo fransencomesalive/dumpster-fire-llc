@@ -39,6 +39,7 @@ const fixtureSuites = [
   "scripts/test-scan-sources.mjs",
   "scripts/test-single-flight.mjs",
   "scripts/test-source-scan.mjs",
+  "scripts/test-stripe-billing.mjs",
 ];
 
 const selectedSuites = process.argv.includes("--saved-pursuits")

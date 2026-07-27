@@ -4,7 +4,15 @@ import {
   getPublicProfileRepositoryConfig,
   type PublicProfileRepositoryRequest,
 } from "../public-profile/repository";
-import { isBillingEnabled } from "../public-profile/subscription/repository";
+import {
+  isBillingEnabled,
+  loadSubscriptionContextForUser,
+  loadUsageLedgerForUser,
+} from "../public-profile/subscription/repository";
+import {
+  subscriptionUsagePeriod,
+  summarizeSubscriptionUsage,
+} from "../public-profile/subscription/enforcement";
 
 // Access-code redemption: an authenticated user submits an invite code and is
 // provisioned onto the code's subscription plan (e.g. free "tester" access).
@@ -219,6 +227,7 @@ type UserSubscriptionRow = {
 
 export type GetAccountPlanHandlerOptions = {
   env?: NodeJS.ProcessEnv;
+  now?: () => string;
   getSession?: (request: Request) => Promise<PublicAuthSession>;
   repositoryRequest?: PublicProfileRepositoryRequest;
 };
@@ -247,6 +256,56 @@ export async function handleGetAccountPlanRequest(
       return json({ error: "Account storage is not configured." }, { status: 503 });
     }
     repositoryRequest = createPublicProfileRepositoryRequest(config);
+  }
+
+  if (isBillingEnabled(options.env)) {
+    const now = options.now?.() ?? new Date().toISOString();
+    const context = await loadSubscriptionContextForUser(
+      repositoryRequest,
+      session.userId,
+      { billingEnabled: true },
+    );
+    const periodStart = context.source === "stripe"
+      ? context.currentPeriodStart
+      : undefined;
+    const periodEnd = context.source === "stripe"
+      ? context.currentPeriodEnd
+      : undefined;
+    const entries = context.status === "missing"
+      ? []
+      : await loadUsageLedgerForUser(repositoryRequest, session.userId, {
+        at: now,
+        periodStart,
+        periodEnd,
+      });
+    const usage = summarizeSubscriptionUsage(context, entries, now);
+    const period = subscriptionUsagePeriod(context, now);
+    const publicPlanName = context.planName === "basic"
+      ? "Smoldering"
+      : context.planName === "premium" || context.planName === "tester"
+        ? "Roaring"
+        : null;
+    return json({
+      email: session.email ?? null,
+      planName: context.planName,
+      planCode: context.planName,
+      publicPlanName,
+      status: context.status,
+      subscriptionStatus: context.status,
+      source: context.source ?? null,
+      used: usage.applyWizard.used,
+      limit: usage.applyWizard.limit ?? 0,
+      remaining: usage.applyWizard.remaining ?? 0,
+      periodStart: period.start,
+      periodEnd: period.end,
+      cancelAtPeriodEnd: context.cancelAtPeriodEnd ?? false,
+      canceledAt: context.canceledAt ?? null,
+      usage: {
+        applyWizard: usage.applyWizard,
+      },
+      markdownExport: usage.markdownExport.unlocked,
+      hasBillingManagement: context.source === "stripe" && Boolean(context.stripeCustomerId),
+    });
   }
 
   const subscriptions = await repositoryRequest<UserSubscriptionRow[]>("user_subscriptions", {

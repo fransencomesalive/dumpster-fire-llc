@@ -18,6 +18,18 @@ Canonical planning sources remain:
 
 ## Current Priority
 
+**Update 2026-07-27: Phase 3 Stripe test-mode backend and lifecycle gate are complete locally.**
+The dedicated Dumpster Fire sandbox `acct_1TxaWWJtJtSFf8Kw` passed paid Checkout, signed webhook
+persistence, Portal, upgrade, scheduled downgrade and replay, cancellation and reversal, final
+cancellation, duplicate-event replay, account usage, reconciliation, and disposable-data cleanup.
+Real lifecycle QA found an invalid subscription-schedule `end_behavior: "renew"`; the corrected
+`release` behavior passed against Stripe and is regression-covered. The sandbox-only Checkout
+Terms omission is explicit, accepts only a test secret key, and defaults live Checkout to required.
+The separately approved production UI port is also in the dirty working tree; Markdown export
+remains deferred. The full release gate passes. The exact evidence and remaining production gaps
+are at the top of `docs/next-session.md`. Nothing from Phase 3 is committed, pushed, deployed, or
+applied to production.
+
 **Update 2026-07-25: Smoldering / Roaring is the active initiative.** Phase 1 provider-cost code is
 on `origin/main` at `3a3453d`; a live read-only preflight confirmed migrations `20260724000200`
 through `20260724000500` are applied and recorded in production. Claude’s five pricing/billing
@@ -35,11 +47,9 @@ atomic Human Path commit and cached replay with complete disposable cleanup. Pha
 implemented, applied, recorded, postflight-verified, and authenticated-production verified as
 migration `20260725000100` plus the billing-enabled compatibility update. Production QA proved
 one Apply Wizard debit, zero retired pursuit/outreach debits, idempotent initial replay, one
-in-place regeneration, rejection of a second regeneration, and complete cleanup. The immediate
-next task in `docs/next-session.md` is the backend-only Phase 3 Stripe test-mode implementation.
-Stripe is selected, but Checkout, Portal, webhooks, test products/prices, tax decisions, and
-environment configuration are not built or configured. The production UI port waits for backend
-readiness and a separately approved mapping to Claude’s cards.
+in-place regeneration, rejection of a second regeneration, and complete cleanup. At that
+2026-07-25 pause point, the immediate next task was the backend-only Phase 3 Stripe test-mode
+implementation. The newer 2026-07-27 update above supersedes that starting point.
 
 **Update 2026-07-05 — onboarding auth surface shipped (prod `153dbd4`).** The round-4
 onboarding auth DS cards are now built into the live page: login-only signed-out state
@@ -59,8 +69,9 @@ What actually remains splits three ways:
    review workflow, subscription upgrade states, profile-management editor follow-ups, onboarding
    quality UI, landing + pricing pages. All need an approved design source before edits (AGENTS.md
    Design Authority + `docs/design-state.md`).
-2. **Decision/manual-setup blocked:** Stripe products, prices, Portal, webhooks, and tax settings;
-   resume storage/parsing provider; Google/Apple OAuth.
+2. **Decision/manual-setup blocked:** live Stripe account/business details, products, prices,
+   Portal, webhooks, legal URLs, tax settings, and secrets; resume storage/parsing provider;
+   Google/Apple OAuth.
 3. **Unblocked backend** (small): pre-launch copy/scaffold audit (Phase 9 verify item); profile
    regeneration action wiring; outreach version pruning, etc.
 
@@ -213,8 +224,9 @@ error — nothing breaks. In order:
 - [ ] Choose resume parsing provider.
 - [x] Choose billing provider and webhook model: Stripe Checkout, Customer Portal, and verified
   webhook mirror, specified in `docs/subscription-billing-production-plan-2026-07-24.md`.
-- [ ] Configure Stripe test products/prices, Portal, webhook endpoint, tax behavior, and required
-  environment secrets.
+- [ ] Configure Stripe live products/prices, Portal, webhook endpoint, business/legal details,
+  tax behavior, and required production environment secrets. Test-mode catalog, Portal, local
+  webhook forwarding, and gitignored test secrets are complete.
 
 ## Phase 2 — Onboarding
 
@@ -305,7 +317,7 @@ error — nothing breaks. In order:
   (`scripts/test-public-profile-outreach`)
 - [ ] Outreach UI + review workflow (design-gated).
 
-## Phase 8 — Subscription System  (TWO-TIER METERING LIVE; STRIPE INCOMPLETE)
+## Phase 8 — Subscription System  (TWO-TIER METERING LIVE; STRIPE LOCAL-READY)
 
 - [x] Preserve historical legacy counter rows while removing legacy retail quota writes from the
   billing-enabled Apply Wizard path.
@@ -317,7 +329,8 @@ error — nothing breaks. In order:
   preflight and explicit authorization.
 - [x] Enable `BILLING_ENABLED` through an explicitly approved authenticated production
   verification with tested rollback criteria.
-- [ ] Build Stripe Checkout, Portal, verified webhooks, and lifecycle processing.
+- [x] Build and test-mode verify Stripe Checkout, Portal, signed webhooks, lifecycle processing,
+  idempotency, and reconciliation locally. Not committed, deployed, or enabled in production.
 - [ ] Build the approved limit, billing, and Markdown export UI states after backend readiness.
 
 ## Phase 9 — Public Site

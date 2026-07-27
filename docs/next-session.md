@@ -1,7 +1,123 @@
-# Next Session: Phase 3 Stripe Test-Mode Backend
+# Next Session: Phase 4 Markdown Export Backend
 
-_Updated 2026-07-25. Read `AGENTS.md` and follow the Session Start Protocol in
+_Updated 2026-07-27. Read `AGENTS.md` and follow the Session Start Protocol in
 `docs/project-operating-state.md` before editing._
+
+## 2026-07-27 pause point
+
+Phase 3 and the separately approved production UI port are implemented locally. The complete
+Stripe sandbox lifecycle exit gate passed on 2026-07-27. Nothing from this work has been
+committed, pushed, deployed, or applied to production.
+
+Verified local/backend state:
+
+- Stripe SDK `22.1.1`, configuration, exact-account validation, price allowlist, Checkout, Portal,
+  plan-change, signed webhook, idempotency, reconciliation, and account subscription/usage code
+  exist in the dirty working tree.
+- The Phase 3 target is the dedicated **Dumpster Fire sandbox**
+  `acct_1TxaWWJtJtSFf8Kw`. The primary Dumpster Fire account
+  `acct_1TxaN3JzLRNdHYq3` remains the later live-account target.
+- `.env.local` is gitignored and contains the sandbox test secret, exact sandbox account ID,
+  sandbox price IDs, Portal configuration ID, and the most recent sandbox Stripe CLI webhook
+  secret. Never print or commit the secret values.
+- Sandbox resources are tagged with `project=dumpster_fire_llc`,
+  `integration=subscription_billing`, `environment=sandbox`,
+  `account_context=dumpster_fire_sandbox`, and the sandbox account ID.
+- Smoldering sandbox Product/Price: `prod_UxWMgxEgvnNs3r` /
+  `price_1TxbKCJtJtSFf8Kwh6OoBQfO`.
+- Roaring sandbox Product/Price: `prod_UxWMNcOUMPH6kg` /
+  `price_1TxbKEJtJtSFf8KwSvD6Mb37`.
+- Dedicated sandbox Portal configuration: `bpc_1TxbKGJtJtSFf8KwJvIJIZCM`. It enables payment
+  method updates, invoice history, and cancellation at period end, while disabling uncontrolled
+  Portal plan switching.
+- The original primary-account test resources were left intact. Do not use or delete them without
+  explicit scope.
+- Local Supabase uses `supabase/config.toml`; Analytics is disabled because its optional Vector
+  service cannot mount Colima's socket. `.env.development.local` is gitignored and overrides
+  Supabase with the local stack while enabling local billing and Checkout.
+- A clean `supabase db reset` applied every migration through
+  `20260726000100_stripe_billing_backend.sql`. The postflight passed schema, RPC security,
+  migration history, and service-role repository-read checks.
+- Fresh-install testing exposed missing `service_role` `SELECT` grants on
+  `user_subscriptions`, `subscription_plans`, and `usage_ledger`. The Phase 3 migration,
+  postflight, and isolated migration harness now encode the fix; the corrected harness passes.
+- The approved Smoldering/Roaring homepage pricing, plan selection and return states, Profile
+  Plan/Billing/change-plan modals, and Apply Wizard zero-use, inactive-payment, and final-use
+  states are ported to production components. Markdown export itself remains deferred.
+- Responsive browser QA passed at 320, 375, 390, 1280, and 1440 pixels for the pricing, plan,
+  Profile Plan modal, and Apply Wizard zero-use surfaces, with no page-width overflow.
+- `npm run release:check` passed after the UI port and again after the authenticated Stripe
+  lifecycle fix. It included all billing migration harnesses, 34 fixture suites, typecheck, lint
+  with four existing warnings and zero errors, and the production build.
+
+Corrected Stripe Dashboard finding and sandbox decision:
+
+- Checkout reached the correct sandbox but Stripe rejected required Terms consent because the
+  sandbox business profile is incomplete.
+- The current Stripe Dashboard does not expose an independent editable Public details page for
+  this sandbox. **Payments > Checkout and Payment Links > Public information > Public details**
+  routes into **Business details**, where Stripe shows **Your business information is incomplete**
+  and **Add business information**. The Account Status representative-review item is complete;
+  it is not the missing Checkout configuration.
+- Randall chose not to complete a fictional sandbox business onboarding. The local development
+  environment now explicitly sets `STRIPE_CHECKOUT_TERMS_CONSENT=omit`.
+- Application configuration defaults Checkout Terms consent to `required`. `omit` is accepted
+  only with a Stripe test-mode secret key; a live key is rejected. The Checkout request entirely
+  omits `consent_collection` in this sandbox mode.
+- Live Checkout must remain `required`. Before live launch, complete the live account business
+  details and configure:
+  - Terms: `https://www.thejobmarketisadumpsterfire.com/legal/terms`
+  - Privacy: `https://www.thejobmarketisadumpsterfire.com/legal/privacy`
+- Both legal URLs returned HTTP 200 on 2026-07-26.
+- Focused Stripe billing regressions, TypeScript, and the full `npm run release:check` gate passed
+  on 2026-07-27 after this change.
+
+Authenticated Stripe lifecycle evidence:
+
+- Checkout Session `cs_test_a1Snsv4QHixNMfVWf8Q6h9gWaXowHvSwYVgYk0bXtpz0IROEdME0Xkqc5D`
+  completed and was paid in test mode. Its metadata contained the correct project, user, plan,
+  contract, environment, and integration tags.
+- Signed Stripe CLI forwarding delivered lifecycle webhooks to localhost with HTTP 200. The local
+  subscription mirror became active Smoldering with 20 uses.
+- Customer Portal Session creation passed. The dedicated Portal configuration was read back as
+  active with invoice history, payment-method update, and period-end cancellation enabled, while
+  uncontrolled subscription updates remained disabled.
+- Immediate Smoldering-to-Roaring upgrade passed. The local account API changed to 45 uses and
+  enabled Markdown export.
+- The first real downgrade attempt exposed the root cause
+  `end_behavior: "renew"`: Stripe accepts only `release` or `cancel`. The implementation now uses
+  `release`, regression coverage pins that contract, and the corrected real downgrade created a
+  two-phase schedule: current Roaring, next-period Smoldering. A replay returned
+  `alreadyScheduled: true` without creating another schedule.
+- Period-end cancellation kept current Roaring access while setting `cancelAtPeriodEnd=true`.
+  Reversal cleared both `cancelAtPeriodEnd` and `canceledAt`. Immediate final cancellation changed
+  the local mirror to `canceled`.
+- One already-processed signed Checkout event was replayed twice with Stripe SDK's official
+  signature generator. Both responses were HTTP 200 with `duplicate=true`; the audit record
+  remained one processed row with `attempt_count=1`.
+- Reconciliation passed before and after cancellation: one checked, one matched, zero mismatches,
+  zero errors.
+- The disposable local auth user and subscription mirror were removed. The disposable Stripe
+  customer `cus_Uxm5O3NapWg9YX` was deleted after its subscription was canceled. Shared products,
+  prices, Portal configuration, and Stripe event history were untouched. The local
+  `stripe_webhook_events` table retains 34 processed audit rows.
+
+Remaining production-readiness gaps:
+
+- All Phase 3 backend, migration, documentation, and approved UI-port changes remain dirty and
+  uncommitted. Nothing has been pushed or deployed.
+- The Stripe backend migration is not applied to production, and production Checkout remains off.
+- Live-mode Stripe Products, Prices, Portal, webhook, keys, completed business details, legal URLs,
+  required Terms consent, invoice/failure emails, and the tax decision remain Phase 9 work.
+- Markdown export behavior remains Phase 4.
+
+Exact next starting point:
+
+1. Run the Session Start Protocol and inspect the dirty working tree.
+2. Review the complete Phase 3/UI diff. Do not claim handoff or sync until a real commit exists;
+   use the repository `handoff` or `sync` protocol only when Randall requests it.
+3. If continuing implementation before handoff, the next scoped phase is Phase 4 Markdown export
+   backend. Do not expand into live Stripe setup or production deployment without explicit scope.
 
 ## Session check
 
@@ -70,9 +186,10 @@ The approved designs cover:
 - Apply Wizard zero-use, inactive-payment, and final-use exception states;
 - Roaring Markdown export and Smoldering locked states.
 
-These are design-system sources only. Production UI, CSS, public copy, and legal pages have not
-been ported. Any production port must map exactly to these approved cards and follow the full
-design-sync checklist.
+The production port is now implemented locally for homepage pricing, plan acquisition and return
+states, Profile Plan/Billing/change-plan states, and Apply Wizard usage states. It maps to the
+approved cards above and is not committed, pushed, or deployed. Markdown export remains deferred,
+and the legal pages were not changed.
 
 ### Codex Phase 2A: committed and applied to production
 
@@ -272,34 +389,25 @@ in-place regeneration, a rejected second regeneration, 736- and 721-character me
 cleanup. The final aggregate audit found zero disposable QA Auth users and profiles. Canonical `/`
 and `/plan` return HTTP 200.
 
-## Immediate next task: Phase 3 Stripe test-mode backend
+## Immediate next task: Phase 4 Markdown export backend
 
-Start with the backend-only Phase 3 checklist in
-`docs/subscription-billing-production-plan-2026-07-24.md`:
+The Phase 3 backend, authenticated Stripe sandbox lifecycle, and approved billing UI port are
+complete locally. Resume from the exact starting point at the top of this document. After review
+and any requested handoff/sync, the next implementation phase is the Markdown export backend.
 
-1. Verify the current Next.js server/API conventions from `node_modules/next/dist/docs/`.
-2. Inspect existing subscription repositories, migration contracts, and environment conventions.
-3. Specify the pinned Stripe SDK, server-only configuration, and test price allowlist.
-4. Implement test-mode Checkout, Portal, plan-change, signed webhook, event-idempotency,
-   reconciliation, and account subscription/usage APIs.
-5. Exercise the lifecycle in Stripe test mode before any live configuration or UI port.
-
-No live Stripe configuration, product creation, secrets, public UI, CSS, or copy change is
-authorized by this handoff.
+No live Stripe configuration, live product creation, production secret change, deployment, or
+production enablement is authorized by this handoff.
 
 ## Explicitly still incomplete
 
 - A real production unit-economics baseline after post-deploy provider events exist.
-- Stripe test products, Checkout, Customer Portal, webhook processing, lifecycle tests, and
-  environment secrets.
 - Markdown pursuit-history export backend.
-- Port of Claude’s approved cards to production surfaces.
 - Terms, Privacy, Billing, and Support updates plus the legal-counsel checkpoint.
-- Test-mode end-to-end billing verification and production release authorization.
+- Production Stripe configuration, end-to-end verification, and release authorization.
 
 ## Production safety boundary
 
 Do not disable `BILLING_ENABLED`, configure live Stripe, or edit protected production UI/copy
 without new explicit scope. Production uses the database-backed entitlement and atomic Apply
-Wizard paths. Stripe Checkout, Portal, and webhooks are not built; flag-on does not make the
-payment system Stripe-ready.
+Wizard paths. The new Stripe Checkout, Portal, webhook, and production UI work exists only in the
+dirty local tree and is not deployed.
