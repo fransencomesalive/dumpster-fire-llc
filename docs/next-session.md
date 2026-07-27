@@ -1,4 +1,4 @@
-# Next Session: Phase 4 Markdown Export Backend
+# Next Session: Site Bug, Phase 4 Preserved
 
 _Updated 2026-07-27. Read `AGENTS.md` and follow the Session Start Protocol in
 `docs/project-operating-state.md` before editing._
@@ -6,14 +6,15 @@ _Updated 2026-07-27. Read `AGENTS.md` and follow the Session Start Protocol in
 ## 2026-07-27 pause point
 
 Phase 3 and the separately approved production UI port are implemented locally. The complete
-Stripe sandbox lifecycle exit gate passed on 2026-07-27. Nothing from this work has been
-committed, pushed, deployed, or applied to production.
+Stripe sandbox lifecycle exit gate passed on 2026-07-27. The implementation and persistent
+session-closure rule are committed on `main` at `ae1ca43`. Nothing has been deployed or applied to
+production.
 
 Verified local/backend state:
 
 - Stripe SDK `22.1.1`, configuration, exact-account validation, price allowlist, Checkout, Portal,
   plan-change, signed webhook, idempotency, reconciliation, and account subscription/usage code
-  exist in the dirty working tree.
+  are included in commit `ae1ca43`.
 - The Phase 3 target is the dedicated **Dumpster Fire sandbox**
   `acct_1TxaWWJtJtSFf8Kw`. The primary Dumpster Fire account
   `acct_1TxaN3JzLRNdHYq3` remains the later live-account target.
@@ -104,8 +105,6 @@ Authenticated Stripe lifecycle evidence:
 
 Remaining production-readiness gaps:
 
-- All Phase 3 backend, migration, documentation, and approved UI-port changes remain dirty and
-  uncommitted. Nothing has been pushed or deployed.
 - The Stripe backend migration is not applied to production, and production Checkout remains off.
 - Live-mode Stripe Products, Prices, Portal, webhook, keys, completed business details, legal URLs,
   required Terms consent, invoice/failure emails, and the tax decision remain Phase 9 work.
@@ -113,11 +112,13 @@ Remaining production-readiness gaps:
 
 Exact next starting point:
 
-1. Run the Session Start Protocol and inspect the dirty working tree.
-2. Review the complete Phase 3/UI diff. Do not claim handoff or sync until a real commit exists;
-   use the repository `handoff` or `sync` protocol only when Randall requests it.
-3. If continuing implementation before handoff, the next scoped phase is Phase 4 Markdown export
-   backend. Do not expand into live Stripe setup or production deployment without explicit scope.
+1. Start the new site-bug session with `session check`, run the Session Start Protocol, and confirm
+   `main` is clean and includes `ae1ca43` plus the following session-memory commit.
+2. Get Randall's bug report, reproduce it at the correct layer, and keep the bug fix scoped to the
+   diagnosed cause.
+3. Preserve the phase list. Phase 4 Markdown export remains the next planned implementation phase
+   after the bug session; do not begin it without explicit scope.
+4. Do not expand into live Stripe setup or production deployment without explicit scope.
 
 ## Session check
 
@@ -188,8 +189,8 @@ The approved designs cover:
 
 The production port is now implemented locally for homepage pricing, plan acquisition and return
 states, Profile Plan/Billing/change-plan states, and Apply Wizard usage states. It maps to the
-approved cards above and is not committed, pushed, or deployed. Markdown export remains deferred,
-and the legal pages were not changed.
+approved cards above and is committed in `ae1ca43` but not deployed. Markdown export remains
+deferred, and the legal pages were not changed.
 
 ### Codex Phase 2A: committed and applied to production
 
@@ -389,11 +390,12 @@ in-place regeneration, a rejected second regeneration, 736- and 721-character me
 cleanup. The final aggregate audit found zero disposable QA Auth users and profiles. Canonical `/`
 and `/plan` return HTTP 200.
 
-## Immediate next task: Phase 4 Markdown export backend
+## Immediate next task: site bug session
 
 The Phase 3 backend, authenticated Stripe sandbox lifecycle, and approved billing UI port are
-complete locally. Resume from the exact starting point at the top of this document. After review
-and any requested handoff/sync, the next implementation phase is the Markdown export backend.
+committed on `main`. Resume from the exact starting point at the top of this document and diagnose
+the site bug Randall supplies. Phase 4 Markdown export remains preserved as the next planned phase
+after the bug work.
 
 No live Stripe configuration, live product creation, production secret change, deployment, or
 production enablement is authorized by this handoff.
@@ -409,5 +411,5 @@ production enablement is authorized by this handoff.
 
 Do not disable `BILLING_ENABLED`, configure live Stripe, or edit protected production UI/copy
 without new explicit scope. Production uses the database-backed entitlement and atomic Apply
-Wizard paths. The new Stripe Checkout, Portal, webhook, and production UI work exists only in the
-dirty local tree and is not deployed.
+Wizard paths. The new Stripe Checkout, Portal, webhook, and production UI work is committed on
+`main` but is not deployed.

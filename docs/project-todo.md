@@ -25,10 +25,10 @@ cancellation, duplicate-event replay, account usage, reconciliation, and disposa
 Real lifecycle QA found an invalid subscription-schedule `end_behavior: "renew"`; the corrected
 `release` behavior passed against Stripe and is regression-covered. The sandbox-only Checkout
 Terms omission is explicit, accepts only a test secret key, and defaults live Checkout to required.
-The separately approved production UI port is also in the dirty working tree; Markdown export
+The separately approved production UI port is included in commit `ae1ca43`; Markdown export
 remains deferred. The full release gate passes. The exact evidence and remaining production gaps
-are at the top of `docs/next-session.md`. Nothing from Phase 3 is committed, pushed, deployed, or
-applied to production.
+are at the top of `docs/next-session.md`. Nothing from Phase 3 is deployed or applied to
+production.
 
 **Update 2026-07-25: Smoldering / Roaring is the active initiative.** Phase 1 provider-cost code is
 on `origin/main` at `3a3453d`; a live read-only preflight confirmed migrations `20260724000200`

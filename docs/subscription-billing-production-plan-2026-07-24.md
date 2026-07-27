@@ -1273,7 +1273,8 @@ idempotent replay, cancellation and reversal, final cancellation, duplicate even
 account usage/entitlement changes, reconciliation, and disposable-data cleanup. The real
 downgrade pass found and fixed an invalid `end_behavior: "renew"` value; Stripe requires
 `release` for this continuing-subscription schedule. The full release gate passed after the fix.
-These changes remain uncommitted, undeployed, and unapplied to production.
+The implementation is committed on `main` at `ae1ca43`; it remains undeployed and unapplied to
+production.
 
 ### Phase 4: Markdown export backend
 
