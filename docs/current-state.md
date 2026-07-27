@@ -1,5 +1,33 @@
 # Current State
 
+## 2026-07-27 - Site bug fixes committed for production
+
+Code commit `a54e3ff` contains the approved feedback, Saved Pursuits, Role Track, navigation, and
+Human Path bug fixes from the 2026-07-27 site-bug session.
+
+The Human Path failure was an Exa-provider regression, not a shortage of LinkedIn contacts. The
+provider migration had removed the posting-backed employer-identity resolver and then rejected all
+Haldren and Keller Executive Search profiles as company mismatches. Provider version 13 restores a
+narrow deterministic resolver for explicit relationships in the current posting. It keeps the
+existing three search lanes, does not add an AI or verification pass, preserves exact-company
+behavior for ordinary jobs, rejects unrelated clients, and keeps empty results unmetered. A real
+three-search Exa smoke test returned three contacts for the reported posting.
+
+The same release:
+
+- fixes false feedback stale-draft conflicts caused only by equivalent timestamp serialization;
+- removes the incorrect exclamation icon from feedback error alerts in production and the design
+  system;
+- preserves Saved Pursuits state in the temporary compatibility table;
+- prevents alternate Role Track titles from leaking into generated outreach;
+- adds the approved Dashboard and Run scan actions to Saved Pursuits without auto-running a scan.
+
+The full release gate passed all migration harnesses, all 34 fixture suites, TypeScript, lint with
+four pre-existing warnings and zero errors, and a production build. Responsive QA passed at 320,
+375, 390, 1280, and 1440 pixels. The local design-system mirrors match production. Claude Design
+remote card registration remains unverified because no Claude Design document session was
+connected.
+
 ## 2026-07-25 - Phase 2C outreach metering cutover live and verified
 
 Phase 2C is implemented and live as

@@ -3,6 +3,46 @@
 _Updated 2026-07-27. Read `AGENTS.md` and follow the Session Start Protocol in
 `docs/project-operating-state.md` before editing._
 
+## 2026-07-27 site bug release
+
+The approved site-bug session is implemented in code commit `a54e3ff`
+(`Fix reported dashboard and pursuit bugs`). The release contains only the reported fixes:
+
+- feedback saves compare timestamps by instant, so equivalent database timestamp formatting no
+  longer creates a false stale-draft error;
+- feedback error notices use the approved resume-upload alert treatment without the exclamation
+  icon, with matching production and design-system files;
+- creating a pursuit also maintains the temporary `saved_jobs` compatibility row, so returning
+  from Saved Pursuits preserves the saved state;
+- outreach generation receives the selected Role Track, rejects titles from alternate tracks, and
+  never persists a message that still violates a hard generation rule after retries;
+- Saved Pursuits includes the approved Dashboard and Run scan actions above its heading, and the
+  Run scan shortcut focuses the existing dashboard action without automatically spending a scan;
+- Human Path accepts a finite set of employer identities only when the current posting explicitly
+  states the relationship. Ordinary exact-company searches are unchanged, no extra search pass is
+  added, unrelated client-company contacts remain excluded, and empty results remain unmetered.
+
+Verification completed before the release commit:
+
+- the full `npm run release:check` gate passed all billing and Saved Pursuits migration harnesses,
+  all 34 fixture suites, TypeScript, lint with four pre-existing warnings and zero errors, and the
+  production build;
+- a real three-lane Exa smoke test for the Haldren/Keller posting returned three useful contacts
+  without an additional provider pass;
+- responsive rendered QA passed at 320, 375, 390, 1280, and 1440 pixels without horizontal
+  overflow, clipped actions, or orphaned alert copy;
+- dashboard and styleguide localhost header checks returned HTTP 200;
+- `git diff --check` passed and the added lines contain no em dashes.
+
+The local production/design-system parity files are committed. Remote `register_assets` for the
+touched Claude Design cards was not available because this Codex session had no connected Claude
+Design document session. Do not describe that remote card state as synced until it is registered
+and read back.
+
+The next planned product task remains Phase 4 Markdown export. Start by confirming production is
+serving `a54e3ff` or a later `main` commit and that the repository is clean, then return to the
+preserved Phase 4 plan. Do not expand into live Stripe setup without explicit scope.
+
 ## 2026-07-27 pause point
 
 Phase 3 and the separately approved production UI port are implemented locally. The complete
