@@ -219,10 +219,10 @@
      (0/500 -> 500/500) and the input can't reflow while typing (Randall 2026-07-21). */
   .seCount { flex:none; min-width:3.8rem; text-align:right; font-variant-numeric:tabular-nums;
     font-family:var(--font-ui), Inter, system-ui, sans-serif; font-size:0.74rem; color:var(--role-text-faint); }
-  .feedbackAlert { display:flex; align-items:flex-start; gap:var(--space-2); font-family:var(--font-body); font-size:0.88rem;
-    color:var(--c-ink); background-color:var(--c-paper); border:var(--line-reg) solid var(--c-tomato);
-    border-left:var(--line-bold) solid var(--c-tomato); border-radius:var(--radius-md); padding:var(--space-2) var(--space-3); }
-  .feedbackAlert svg { flex:none; width:16px; height:16px; color:var(--c-tomato); margin-top:1px; }
+  .feedbackAlert { font-family:var(--font-body); font-size:0.92rem; color:var(--role-text-muted);
+    background-color:color-mix(in srgb, var(--c-tomato) 10%, var(--c-paper));
+    border:var(--line-reg) solid var(--c-ink); border-left:6px solid var(--c-tomato);
+    border-radius:var(--radius-md); padding:var(--space-3) var(--space-4); }
   .feedbackAlert p { margin:0; }
   .feedbackFooter { display:flex; flex-wrap:wrap; align-items:center; justify-content:flex-end; gap:var(--space-2); }
   .btnGhost { font-family:var(--font-display); font-size:0.95rem; color:var(--c-ink); background-color:var(--c-paper);
@@ -502,7 +502,6 @@
                   <span class="seCount" data-se-count>0/500</span>
                 </div>
                 <div class="feedbackAlert" data-alert hidden>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
                   <p>That didn't save. Your selections are still here, give it another go.</p>
                 </div>
                 <div class="feedbackFooter">

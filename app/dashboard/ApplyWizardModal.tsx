@@ -19,6 +19,7 @@ import type {
   Pursuit,
   PursuitHistoryEntry,
 } from "@/lib/public-profile/pursuits/types";
+import { relatedEmployerSearchTarget } from "@/lib/public-profile/pursuits/employer-identities";
 import { runSingleFlight, type SingleFlightState } from "@/lib/public-profile/single-flight";
 import {
   PURSUIT_TRACKING_ACTIONS,
@@ -817,8 +818,12 @@ export default function ApplyWizardModal({
 
   const title = job?.title ?? posting?.title ?? "Saved posting";
   const company = job?.companyName ?? posting?.companyName ?? null;
+  const jobDescription = job?.description ?? "";
   const sourceUrl = job?.sourceUrl ?? posting?.sourceUrl ?? null;
-  const linkedInSearch = linkedInBooleanSearch(title, company);
+  const relatedEmployer = company
+    ? relatedEmployerSearchTarget({ companyName: company, description: jobDescription })
+    : undefined;
+  const linkedInSearch = linkedInBooleanSearch(title, relatedEmployer?.name ?? company);
   const jobMetaLine = [company, job?.compensationText ?? posting?.compensation, job?.location ?? posting?.location, job?.remoteType ?? posting?.remoteType]
     .filter(Boolean)
     .join(" · ");
@@ -993,7 +998,6 @@ export default function ApplyWizardModal({
         </div>
         {fbError ? (
           <div className={styles.feedbackAlert} role="alert">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
             <p>{fbError}</p>
           </div>
         ) : null}
@@ -1096,7 +1100,13 @@ export default function ApplyWizardModal({
                     <p className={styles.formNotice}>Contact discovery is unavailable right now. Try again in a moment.</p>
                   ) : noContactsFound ? (
                     <>
-                      <p className={styles.formNotice}>No potential contacts turned up for this role. Use the preloaded LinkedIn search, or open the job posting and look for a current team leader or recruiter.</p>
+                      <p className={styles.formNotice}>
+                        {relatedEmployer ? (
+                          <>We couldn&apos;t verify a useful contact for this opening. The posting connects {company} to {relatedEmployer.name}, so this LinkedIn search looks for relevant people there. This did not count toward your Apply Wizard total.</>
+                        ) : (
+                          <>No potential contacts turned up for this role. Use the preloaded LinkedIn search, or open the job posting and look for a current team leader or recruiter. This did not count toward your Apply Wizard total.</>
+                        )}
+                      </p>
                       <a href={linkedInSearch.url} target="_blank" rel="noreferrer" className={styles.seeProfileBtn} aria-label={`Search LinkedIn people with: ${linkedInSearch.query}`}>Search LinkedIn{EXTERNAL_LINK_ICON}</a>
                     </>
                   ) : contacts.length > 0 ? (

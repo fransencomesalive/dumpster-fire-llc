@@ -430,7 +430,6 @@ function JobCard({
             </div>
             {errored ? (
               <div className={jobsStyles.feedbackAlert} role="alert">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
                 <p>That didn&apos;t save. Your selections are still here, give it another go.</p>
               </div>
             ) : null}
@@ -666,6 +665,18 @@ export default function DashboardClient() {
       });
     })();
   }, [router]);
+
+  // Saved Pursuits links directly to the existing scan action. The hash is a focus target,
+  // not an instruction to run a scan: navigation and refresh must never spend a scan.
+  useEffect(() => {
+    if (guardState.status !== "complete" || window.location.hash !== "#dashboard-run-scan") return;
+    const frame = window.requestAnimationFrame(() => {
+      const scanButton = document.getElementById("dashboard-run-scan");
+      scanButton?.scrollIntoView({ block: "center" });
+      scanButton?.focus({ preventScroll: true });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [guardState.status]);
 
   async function runScan() {
     const accessToken = readPublicProfileAccessToken();
@@ -1075,7 +1086,7 @@ export default function DashboardClient() {
                   <span><strong>{jobsResponse?.summary.totalJobs ?? 0}</strong> active jobs</span>
                   <span><strong>{jobsResponse?.summary.savedJobs ?? 0}</strong> saved</span>
                 </div>
-                <button className={jobsStyles.scanNowBtn} disabled={jobsBusy} onClick={runScan} type="button">
+                <button id="dashboard-run-scan" className={jobsStyles.scanNowBtn} disabled={jobsBusy} onClick={runScan} type="button">
                   {scanProgress.status === "running" ? "Scanning…" : "Run scan"}
                 </button>
                 <button className={jobsStyles.scanSecondaryBtn} onClick={() => router.push("/saved-pursuits")} type="button">

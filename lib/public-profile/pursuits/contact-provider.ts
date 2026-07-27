@@ -7,6 +7,11 @@ import type {
   HumanPathProviderInput,
 } from "./types";
 import type { ProviderUsageSink } from "../../costs/provider-usage";
+import {
+  normalizedCompanyKey,
+  resolveEmployerIdentities,
+  type EmployerIdentity,
+} from "./employer-identities";
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -42,6 +47,7 @@ type WorkHistoryEntry = {
 type DiscoveredPerson = {
   name: string;
   title: string;
+  companyName: string;
   linkedinUrl: string;
   lanes: Map<HumanPathLane, number>;
 };
@@ -69,7 +75,7 @@ const EXA_MODEL_VERSION = "search:auto:people:highlights";
 
 // Stored on Human Path generation events so cache reads can distinguish this
 // contract from older zero-result provider runs.
-export const HUMAN_PATH_PROVIDER_VERSION = 12;
+export const HUMAN_PATH_PROVIDER_VERSION = 13;
 
 const LANE_QUERY: Record<HumanPathLane, string> = {
   likely_hiring_manager:
@@ -84,18 +90,6 @@ const RECRUITING_TITLE =
   /\b(recruiter|recruiting|talent acquisition|talent partner|talent scout|sourcer|staffing partner)\b/i;
 const LEADERSHIP_TITLE =
   /\b(chief|head|director|vice president|vp|president|managing director|general manager|senior manager|group lead|team lead)\b/i;
-const COMPANY_SUFFIXES = new Set([
-  "co",
-  "company",
-  "corp",
-  "corporation",
-  "inc",
-  "incorporated",
-  "limited",
-  "llc",
-  "ltd",
-  "plc",
-]);
 const RANK_STOP_WORDS = new Set([
   "a",
   "an",
@@ -119,20 +113,6 @@ function record(value: unknown): UnknownRecord | undefined {
 
 function stringValue(value: unknown): string {
   return typeof value === "string" ? value.replace(/\s+/g, " ").trim() : "";
-}
-
-function normalizedCompany(value: string): string {
-  const words = value
-    .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/&/g, " and ")
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean);
-  while (words.length > 1 && COMPANY_SUFFIXES.has(words.at(-1)!)) words.pop();
-  return words.join("");
 }
 
 function normalizedLinkedinProfile(value: unknown): string {
@@ -197,7 +177,7 @@ function titleFromResult(resultTitle: unknown, name: string): string {
 
 function personFromResult(
   value: unknown,
-  expectedCompany: string,
+  expectedCompanies: EmployerIdentity[],
   lane: HumanPathLane,
   rank: number,
 ): {
@@ -211,9 +191,14 @@ function personFromResult(
     return { companyMismatch: true, missingLinkedin: false };
   }
 
-  const expectedCompanyKey = normalizedCompany(expectedCompany);
+  let matchedIdentity: EmployerIdentity | undefined;
   const currentRole = workHistory(properties.workHistory)
-    .find((role) => role.current && normalizedCompany(role.companyName) === expectedCompanyKey);
+    .find((role) => {
+      if (!role.current) return false;
+      matchedIdentity = expectedCompanies.find((identity) =>
+        normalizedCompanyKey(identity.name) === normalizedCompanyKey(role.companyName));
+      return Boolean(matchedIdentity);
+    });
   if (!currentRole) {
     return { companyMismatch: true, missingLinkedin: false };
   }
@@ -232,6 +217,9 @@ function personFromResult(
     person: {
       name,
       title: currentRole.title || titleFromResult(result.title, name) || "Current employee",
+      companyName: matchedIdentity?.relationship === "primary"
+        ? matchedIdentity.name
+        : currentRole.companyName,
       linkedinUrl,
       lanes: new Map([[lane, rank]]),
     },
@@ -262,9 +250,19 @@ function compactContext(input: HumanPathProviderInput): string {
 }
 
 export function buildExaPeopleQuery(input: HumanPathProviderInput, lane: HumanPathLane): string {
+  const employerIdentities = resolveEmployerIdentities(input.job);
+  const employerContext = employerIdentities.length > 1
+    ? [
+        `Employer identities explicitly stated in the posting: ${employerIdentities
+          .map((identity) => identity.name)
+          .join(", ")}.`,
+        `The opening is for ${input.job.companyName}, not for one of its clients.`,
+        "Treat only current employees of those stated identities as company matches.",
+      ].join(" ")
+    : `Employer: ${input.job.companyName}.`;
   return [
     LANE_QUERY[lane],
-    `Employer: ${input.job.companyName}.`,
+    employerContext,
     `Opening: ${input.job.title}.`,
     "Return people involved in the employer's hiring path, not candidates who might apply for the job.",
     compactContext(input),
@@ -423,7 +421,7 @@ function toContact(person: DiscoveredPerson, input: HumanPathProviderInput): Hum
   return {
     name: person.name,
     title: person.title,
-    companyName: input.job.companyName,
+    companyName: person.companyName,
     linkedinUrl: person.linkedinUrl,
     reachability: { method: "linkedin", url: person.linkedinUrl },
     contactType: type,
@@ -478,6 +476,7 @@ export function createExaHumanPathProvider(
 
     const requestCorrelationId = dependencies.createId?.() ?? randomUUID();
     const nowMs = dependencies.nowMs ?? Date.now;
+    const employerIdentities = resolveEmployerIdentities(input.job);
     const runs = await Promise.all(LANES.map(async (lane): Promise<LaneRun> => {
       const startedAt = nowMs();
       try {
@@ -494,7 +493,7 @@ export function createExaHumanPathProvider(
         let companyMismatchCount = 0;
         let missingLinkedinCount = 0;
         results.forEach((result, index) => {
-          const parsed = personFromResult(result, input.job.companyName, lane, index + 1);
+          const parsed = personFromResult(result, employerIdentities, lane, index + 1);
           if (parsed.person) exactCompanyPeople.push(parsed.person);
           if (parsed.companyMismatch) companyMismatchCount += 1;
           if (parsed.missingLinkedin) missingLinkedinCount += 1;

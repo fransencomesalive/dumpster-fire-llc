@@ -1,8 +1,45 @@
 import assert from "node:assert/strict";
-import {
+import { spawnSync } from "node:child_process";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { pathToFileURL } from "node:url";
+
+const rootDir = process.cwd();
+const outDir = path.join(tmpdir(), "public-profile-contact-discovery-test-build");
+const compile = spawnSync("npx", [
+  "tsc",
+  "--target",
+  "ES2022",
+  "--module",
+  "commonjs",
+  "--moduleResolution",
+  "node",
+  "--esModuleInterop",
+  "--skipLibCheck",
+  "--lib",
+  "ES2022,DOM",
+  "--outDir",
+  outDir,
+  "lib/public-profile/pursuits/contact-provider.ts",
+  "lib/public-profile/pursuits/employer-identities.ts",
+], {
+  cwd: rootDir,
+  stdio: "inherit",
+});
+if (compile.status !== 0) process.exit(compile.status ?? 1);
+
+const {
   buildExaPeopleQuery,
   createExaHumanPathProvider,
-} from "../lib/public-profile/pursuits/contact-provider.ts";
+} = await import(pathToFileURL(
+  path.join(outDir, "public-profile/pursuits/contact-provider.js"),
+).href);
+const {
+  relatedEmployerSearchTarget,
+  resolveEmployerIdentities,
+} = await import(pathToFileURL(
+  path.join(outDir, "public-profile/pursuits/employer-identities.js"),
+).href);
 
 const pursuit = {
   id: "pursuit-1",
@@ -153,6 +190,11 @@ assert.equal(contactsByName.get("Morgan Bell")?.contactType, "functional_leader"
 assert.equal(contactsByName.get("Riley Chen")?.contactType, "other_useful_contact");
 assert.equal(contactsByName.get("Riley Chen")?.confidence, "low");
 assert.equal(
+  contactsByName.get("Priya Shah")?.companyName,
+  "Care Labs",
+  "ordinary exact-company results retain the job's existing company label",
+);
+assert.equal(
   contactsByName.get("Priya Shah")?.linkedinUrl,
   "https://www.linkedin.com/in/priya-shah",
 );
@@ -209,6 +251,119 @@ assert.deepEqual(
 assert.deepEqual(
   usageEvents.map((event) => event.resultCount).sort((left, right) => left - right),
   [1, 2, 5],
+);
+
+// Posting-backed employer relationships extend only this job's accepted
+// identities. They do not weaken the exact-company boundary for normal jobs.
+const brandedProviderInput = {
+  ...providerInput,
+  job: {
+    ...providerInput.job,
+    id: "job-branded-employer",
+    title: "Senior Program Manager",
+    companyName: "Haldren Group",
+    description: [
+      "Haldren is a premier recruitment agency and brand of Keller Executive Search, specializing in executive search.",
+      "This is a position within Haldren and not with one of its clients.",
+      "Lead cross-functional programs and governance across the United States.",
+    ].join(" "),
+  },
+  candidateContext: {
+    ...providerInput.candidateContext,
+    roleTrackName: "Program Management",
+    targetTitles: ["Senior Program Manager", "Program Director"],
+  },
+};
+
+assert.deepEqual(
+  resolveEmployerIdentities(brandedProviderInput.job).map(({ name, relationship }) => ({
+    name,
+    relationship,
+  })),
+  [
+    { name: "Haldren Group", relationship: "primary" },
+    { name: "Haldren", relationship: "posting_name" },
+    { name: "Keller Executive Search", relationship: "brand" },
+  ],
+);
+assert.equal(
+  relatedEmployerSearchTarget(brandedProviderInput.job)?.name,
+  "Keller Executive Search",
+);
+
+const brandedQueries = [];
+const brandedResult = await createExaHumanPathProvider({
+  search: async ({ lane, query }) => {
+    brandedQueries.push({ lane, query });
+    if (lane === "recruiter") {
+      return {
+        results: [
+          personResult({
+            name: "Kate Coleby",
+            title: "Senior Recruiter",
+            company: "Keller Executive Search",
+          }),
+          personResult({
+            name: "Unrelated Recruiter",
+            title: "Senior Recruiter",
+            company: "Client Company",
+          }),
+        ],
+      };
+    }
+    if (lane === "functional_leader") {
+      return {
+        results: [personResult({
+          name: "Haldren Leader",
+          title: "Managing Director",
+          company: "Haldren",
+        })],
+      };
+    }
+    return { results: [] };
+  },
+})(brandedProviderInput);
+
+assert.equal(brandedQueries.length, 3, "posting-backed identities add no provider pass");
+assert.equal(
+  brandedQueries.every(({ query }) =>
+    query.includes("Haldren Group")
+    && query.includes("Haldren")
+    && query.includes("Keller Executive Search")
+    && query.includes("not for one of its clients")),
+  true,
+);
+assert.equal(brandedResult.status, "generated");
+assert.deepEqual(
+  brandedResult.contacts.map(({ name, companyName }) => ({ name, companyName })),
+  [
+    { name: "Haldren Leader", companyName: "Haldren" },
+    { name: "Kate Coleby", companyName: "Keller Executive Search" },
+  ],
+);
+assert.equal(brandedResult.diagnostics.retrievedCount, 3);
+assert.equal(brandedResult.diagnostics.exactCompanyCount, 2);
+assert.equal(brandedResult.diagnostics.excluded.companyMismatchCount, 1);
+
+const ambiguousRelationshipJob = {
+  ...brandedProviderInput.job,
+  description: "Haldren partners with Keller Executive Search and works with clients worldwide.",
+};
+assert.deepEqual(
+  resolveEmployerIdentities(ambiguousRelationshipJob).map(({ name }) => name),
+  ["Haldren Group"],
+  "vague partnerships never become accepted employer identities",
+);
+assert.equal(relatedEmployerSearchTarget(ambiguousRelationshipJob), undefined);
+
+const unrelatedRelationshipJob = {
+  ...brandedProviderInput.job,
+  description: "Example Client is a brand of Unrelated Holdings. This role is at Haldren.",
+};
+assert.deepEqual(
+  resolveEmployerIdentities(unrelatedRelationshipJob).map(({ name }) => name),
+  ["Haldren Group"],
+  "an explicit relationship about another company never expands the target employer",
 );
 
 // A single unavailable lane does not suppress useful results from other lanes.

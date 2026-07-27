@@ -161,10 +161,10 @@
   .seCount { flex: none; font-family: var(--font-ui); font-size: 0.74rem; color: var(--role-text-faint); }
 
   /* Error · tomato, keeps selections; Save retries */
-  .feedbackAlert { display: flex; align-items: flex-start; gap: var(--space-2); font-family: var(--font-body); font-size: 0.88rem;
-    color: var(--c-ink); background-color: var(--c-paper); border: var(--line-reg) solid var(--c-tomato);
-    border-left: var(--line-bold) solid var(--c-tomato); border-radius: var(--radius-md); padding: var(--space-2) var(--space-3); }
-  .feedbackAlert svg { flex: none; width: 16px; height: 16px; color: var(--c-tomato); margin-top: 1px; }
+  .feedbackAlert { font-family: var(--font-body); font-size: 0.92rem; color: var(--role-text-muted);
+    background-color: color-mix(in srgb, var(--c-tomato) 10%, var(--c-paper));
+    border: var(--line-reg) solid var(--c-ink); border-left: 6px solid var(--c-tomato);
+    border-radius: var(--radius-md); padding: var(--space-3) var(--space-4); }
   .feedbackAlert p { margin: 0; }
 
   /* Footer · Close (ghost) + Save (teal proceed CTA). No divider. */
@@ -321,7 +321,6 @@
               <span class="seCount" data-se-count>0/500</span>
             </div>
             <div class="feedbackAlert" data-alert hidden>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
               <p>That didn't save. Your selections are still here, give it another go.</p>
             </div>
             <div class="feedbackFooter">
@@ -396,7 +395,6 @@
               <span class="seCount" data-se-count>0/500</span>
             </div>
             <div class="feedbackAlert" data-alert hidden>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
               <p>That didn't save. Your selections are still here, give it another go.</p>
             </div>
             <div class="feedbackFooter">
@@ -484,7 +482,7 @@
             <span class="chip" aria-pressed="false">Wrong Industry</span>
           </div>
           <div class="seRow"><input type="checkbox" disabled /><label>Something Else</label><input type="text" class="seInput" placeholder="Tell us what missed" disabled /><span class="seCount">0/500</span></div>
-          <div class="feedbackAlert"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><p>That didn't save. Your selections are still here, give it another go.</p></div>
+          <div class="feedbackAlert"><p>That didn't save. Your selections are still here, give it another go.</p></div>
           <div class="feedbackFooter"><span class="btnGhost">Close</span><span class="btnPrimary">Save feedback</span></div>
         </div></div>
       </div>

@@ -145,6 +145,14 @@ export default function SavedPursuitsClient() {
       <SiteHeader profileHref="/onboarding" />
       <main className={styles.page}>
         <header className={styles.topBar}>
+          <nav className={styles.pageActions} aria-label="Saved Pursuits shortcuts">
+            <Link className={`${styles.pageAction} ${styles.dashboardAction}`} href="/dashboard">
+              Dashboard
+            </Link>
+            <Link className={`${styles.pageAction} ${styles.scanAction}`} href="/dashboard#dashboard-run-scan">
+              Run scan
+            </Link>
+          </nav>
           <h1 className={styles.topTitle}>Saved Pursuits</h1>
           <p className={styles.topLede}>
             Everything you have saved or started, in one place. Switch between Saved for later

@@ -290,10 +290,10 @@
   .seInput { grid-column: 2; width: 100%; }
   .seCount { grid-column: 3; }
 }
-.feedbackAlert { display: flex; align-items: flex-start; gap: var(--space-2); font-family: var(--font-body); font-size: 0.88rem;
-  color: var(--c-ink); background-color: var(--c-paper); border: var(--line-reg) solid var(--c-tomato);
-  border-left: var(--line-bold) solid var(--c-tomato); border-radius: var(--radius-md); padding: var(--space-2) var(--space-3); }
-.feedbackAlert svg { flex: none; width: 16px; height: 16px; color: var(--c-tomato); margin-top: 1px; }
+.feedbackAlert { font-family: var(--font-body); font-size: 0.92rem; color: var(--role-text-muted);
+  background-color: color-mix(in srgb, var(--c-tomato) 10%, var(--c-paper));
+  border: var(--line-reg) solid var(--c-ink); border-left: 6px solid var(--c-tomato);
+  border-radius: var(--radius-md); padding: var(--space-3) var(--space-4); }
 .feedbackAlert p { margin: 0; }
 .feedbackFooter { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--space-2);
   margin-top: var(--space-2); }

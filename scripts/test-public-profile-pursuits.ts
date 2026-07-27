@@ -404,7 +404,16 @@ async function main() {
   });
   assert.equal(calls[0].table, "pursuits");
   assert.equal(calls[0].method, "POST");
-  assert.equal(calls[1].table, "pursuit_events");
+  assert.equal(calls[1].table, "saved_jobs");
+  assert.equal(calls[1].method, "POST");
+  assert.deepEqual(calls[1].body, {
+    user_id: "user-1",
+    profile_id: "profile-1",
+    job_id: "job-2",
+    created_at: now,
+    updated_at: now,
+  });
+  assert.equal(calls[2].table, "pursuit_events");
   assert.equal(calls.some((call) => call.table === "usage_ledger"), false);
 
   if (!reviewed.ok) throw new Error("reviewed pursuit should be available for repository test");
@@ -540,7 +549,7 @@ async function main() {
           duplicateCount: 0,
         },
       },
-      providerVersion: 12,
+      providerVersion: 13,
       generatedAt: now,
     },
   );
@@ -551,7 +560,7 @@ async function main() {
     p_contacts: Array<Record<string, unknown>>;
     p_provider_version: number;
   };
-  assert.equal(atomicHumanPathBody.p_provider_version, 12);
+  assert.equal(atomicHumanPathBody.p_provider_version, 13);
   assert.equal(atomicHumanPathBody.p_contacts[0].company_name, "Useful Studio");
   assert.equal("email" in atomicHumanPathBody.p_contacts[0], false);
   assert.equal("reachability" in atomicHumanPathBody.p_contacts[0], false);
@@ -591,7 +600,7 @@ async function main() {
         duplicateCount: 0,
       },
     },
-    providerVersion: 12,
+    providerVersion: 13,
     generatedAt: now,
   });
   assert.equal(atomicLimit.status, "limit_reached");
@@ -618,7 +627,7 @@ async function main() {
         duplicateCount: 0,
       },
     },
-    providerVersion: 12,
+    providerVersion: 13,
     generatedAt: now,
   });
   assert.deepEqual(atomicInactive, {

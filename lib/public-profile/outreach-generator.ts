@@ -20,8 +20,15 @@ export type OutreachContact = {
   seniority?: string;
 };
 
+export type OutreachRoleTrack = {
+  name: string;
+  targetTitles: string[];
+  otherTrackTitles: string[];
+};
+
 export type OutreachGeneratorInput = {
   profileMarkdown: string;
+  roleTrack?: OutreachRoleTrack;
   job: OutreachJob;
   contact: OutreachContact;
 };
@@ -141,9 +148,10 @@ const systemPrompt = [
 // ---- Hard-rule contract (message-gen-refinement, 2026-07-14). Prompt-only enforcement
 // measurably leaked in the harness (750-cap and invented-count violations recurred across
 // rounds), so every generated message is validated and regenerated when it breaks a hard
-// rule. All checks are PROFILE-INDEPENDENT — they hold for any user's career. A message
-// still violating after MAX_GENERATION_ATTEMPTS is returned anyway (the user can edit a
-// near-miss; a hard failure helps no one) and the violations are logged.
+// rule. The structural checks hold for every profile; role-title isolation is derived from
+// the current user's selected and alternate tracks rather than hard-coded career vocabulary.
+// A message still violating after MAX_GENERATION_ATTEMPTS is not returned, and the violations
+// are logged.
 const MAX_GENERATION_ATTEMPTS = 3;
 const MESSAGE_HARD_CAP = 750;
 const NUMBER_WORDS = [
@@ -170,7 +178,11 @@ function ungroundedNumbers(message: string, profileMarkdown: string): string[] {
   return [...new Set(found)];
 }
 
-export function outreachHardRuleViolations(outreach: OutreachMessage, profileMarkdown: string): string[] {
+export function outreachHardRuleViolations(
+  outreach: OutreachMessage,
+  profileMarkdown: string,
+  context?: Pick<OutreachGeneratorInput, "roleTrack" | "job" | "contact">,
+): string[] {
   const violations: string[] = [];
   const body = outreach.message;
   if (body.length > MESSAGE_HARD_CAP) violations.push(`over_${MESSAGE_HARD_CAP}_characters(${body.length})`);
@@ -179,6 +191,17 @@ export function outreachHardRuleViolations(outreach: OutreachMessage, profileMar
   if (link && !body.includes(link)) violations.push("example_link_missing_from_body");
   const numbers = ungroundedNumbers(body, profileMarkdown);
   if (numbers.length > 0) violations.push(`ungrounded_numbers(${numbers.join("/")})`);
+  if (context?.roleTrack) {
+    const normalizedBody = body.toLocaleLowerCase();
+    const allowedTitleContext = `${context.job.title}\n${context.contact.role}`.toLocaleLowerCase();
+    const leakedTitle = context.roleTrack.otherTrackTitles.find((title) => {
+      const normalizedTitle = title.trim().toLocaleLowerCase();
+      return normalizedTitle
+        && normalizedBody.includes(normalizedTitle)
+        && !allowedTitleContext.includes(normalizedTitle);
+    });
+    if (leakedTitle) violations.push(`other_role_track_title(${leakedTitle})`);
+  }
   return violations;
 }
 
@@ -192,11 +215,24 @@ export function buildOutreachPromptParts(input: OutreachGeneratorInput) {
     `Role: ${input.contact.role}`,
     input.contact.seniority ? `Seniority: ${input.contact.seniority}` : undefined,
   ].filter(Boolean).join("\n");
+  const selectedRoleTrack = input.roleTrack
+    ? [
+        "## Selected Role Track",
+        `Name: ${input.roleTrack.name}`,
+        `Target titles: ${input.roleTrack.targetTitles.length > 0 ? input.roleTrack.targetTitles.join(", ") : input.roleTrack.name}`,
+        "Treat this as the candidate's application identity for this message. Do not describe the candidate using titles from any other Role Track. Other profile sections may supply factual experience, but not an alternate application title.",
+        ...(input.roleTrack.otherTrackTitles.length > 0
+          ? [`Titles belonging to other Role Tracks: ${input.roleTrack.otherTrackTitles.join(", ")}`]
+          : []),
+        "",
+      ]
+    : [];
   const cachePrefix = [
     "## Profile",
     input.profileMarkdown.trim(),
   ].join("\n");
   const tail = [
+    ...selectedRoleTrack,
     "## Job",
     `Title: ${input.job.title}`,
     `Company: ${input.job.company}`,
@@ -295,7 +331,7 @@ export async function generateOutreachMessage(
     if (!raw) break;
     const outreach = parseOutreachModelResponse(raw);
     if (!outreach) continue;
-    const violations = outreachHardRuleViolations(outreach, input.profileMarkdown);
+    const violations = outreachHardRuleViolations(outreach, input.profileMarkdown, input);
     if (violations.length === 0) return outreach;
     lastViolations = violations;
   }

@@ -118,6 +118,7 @@ import {
   type OutreachGenerationResult,
   type OutreachJob,
   type OutreachMessage,
+  type OutreachRoleTrack,
 } from "./outreach-generator";
 import { evaluateMatch } from "./matching/engine";
 import type { MatchJob, MatchResult } from "./matching/types";
@@ -589,6 +590,7 @@ export type PublicProfilePursuitsHandlerOptions = PublicProfileMatchHandlerOptio
   ) => Promise<void>;
   generateOutreachForContact?: (input: {
     profileMarkdown: string;
+    roleTrack?: OutreachRoleTrack;
     job: OutreachJob;
     contact: OutreachContact;
     contactSuggestion: HumanPathContactSuggestion;
@@ -2369,6 +2371,35 @@ export async function handlePublicProfilePursuitOutreachRequest(
   if (!job) {
     return json({ error: "Job not found.", status: "not_found" }, { status: 404 });
   }
+  const selectedRoleTrack = aggregate.roleTracks.find(
+    (track) => track.id === pursuit.selectedRoleTrackId,
+  );
+  const selectedRoleTrackTitles = new Set(
+    selectedRoleTrack
+      ? [selectedRoleTrack.name, ...selectedRoleTrack.targetTitles]
+          .map((title) => title.trim().toLocaleLowerCase())
+          .filter(Boolean)
+      : [],
+  );
+  const otherTrackTitles: string[] = [];
+  const seenOtherTrackTitles = new Set<string>();
+  for (const track of aggregate.roleTracks) {
+    if (!selectedRoleTrack || track.id === selectedRoleTrack.id) continue;
+    for (const title of [track.name, ...track.targetTitles]) {
+      const trimmed = title.trim();
+      const key = trimmed.toLocaleLowerCase();
+      if (!key || selectedRoleTrackTitles.has(key) || seenOtherTrackTitles.has(key)) continue;
+      seenOtherTrackTitles.add(key);
+      otherTrackTitles.push(trimmed);
+    }
+  }
+  const outreachRoleTrack: OutreachRoleTrack | undefined = selectedRoleTrack
+    ? {
+        name: selectedRoleTrack.name,
+        targetTitles: [...selectedRoleTrack.targetTitles],
+        otherTrackTitles,
+      }
+    : undefined;
 
   const loadContactSuggestions = options.loadContactSuggestions ?? loadContactSuggestionsForPursuit;
   if (regenerate) {
@@ -2438,6 +2469,7 @@ export async function handlePublicProfilePursuitOutreachRequest(
         // TODO(message-gen-track): consume previousMessage in the approved regeneration prompt.
         return generateOutreachMessage({
           profileMarkdown: outreachInput.profileMarkdown,
+          roleTrack: outreachInput.roleTrack,
           job: outreachInput.job,
           contact: outreachInput.contact,
         }, {
@@ -2453,6 +2485,7 @@ export async function handlePublicProfilePursuitOutreachRequest(
       });
     const outreach = await generateOutreachForContact({
       profileMarkdown,
+      roleTrack: outreachRoleTrack,
       job: outreachJobFromPublicJob(job),
       contact: outreachContactFromSuggestion(contactSuggestion),
       contactSuggestion,
@@ -2594,6 +2627,7 @@ export async function handlePublicProfilePursuitOutreachRequest(
   const generateOutreachForContact = options.generateOutreachForContact
     ?? ((outreachInput) => generateOutreachMessage({
       profileMarkdown: outreachInput.profileMarkdown,
+      roleTrack: outreachInput.roleTrack,
       job: outreachInput.job,
       contact: outreachInput.contact,
     }, {
@@ -2613,6 +2647,7 @@ export async function handlePublicProfilePursuitOutreachRequest(
   for (const contactSuggestion of contactsToGenerate) {
     const outreach = await generateOutreachForContact({
       profileMarkdown,
+      roleTrack: outreachRoleTrack,
       job: outreachJob,
       contact: outreachContactFromSuggestion(contactSuggestion),
       contactSuggestion,
@@ -2837,6 +2872,12 @@ function parseOutreachMessageFeedback(input: Record<string, unknown> | null) {
   return { issues, reasonCodes, notes, expectedMessageRevision, expectedMessageUpdatedAt };
 }
 
+function timestampsRepresentSameInstant(left: string, right: string) {
+  const leftTime = Date.parse(left);
+  const rightTime = Date.parse(right);
+  return Number.isFinite(leftTime) && Number.isFinite(rightTime) && leftTime === rightTime;
+}
+
 // Feedback is intentionally observational. Saving it snapshots the exact current draft and
 // revision without changing the outreach message, pursuit, regeneration allowance, or usage.
 export async function handlePublicProfilePursuitOutreachMessageFeedbackRequest(
@@ -2883,7 +2924,7 @@ export async function handlePublicProfilePursuitOutreachMessageFeedbackRequest(
 
   if (
     (message.regenerationCount ?? 0) !== parsed.expectedMessageRevision
-    || message.updatedAt !== parsed.expectedMessageUpdatedAt
+    || !timestampsRepresentSameInstant(message.updatedAt, parsed.expectedMessageUpdatedAt)
   ) {
     return json({
       error: "This draft changed after feedback was opened. Return to the message and try again.",

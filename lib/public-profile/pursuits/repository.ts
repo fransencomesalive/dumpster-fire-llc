@@ -806,6 +806,22 @@ export async function persistPursuitTransition(
       headers: { Prefer: "resolution=merge-duplicates" },
       body: pursuitRowBody(result.pursuit),
     });
+    if (result.pursuit.jobId) {
+      // The pursuit is canonical Saved-for-Later state. Keep the temporary saved_jobs
+      // compatibility row in sync until dashboard reads retire that legacy table.
+      await request("saved_jobs", {
+        method: "POST",
+        query: "?on_conflict=user_id,job_id",
+        headers: { Prefer: "resolution=merge-duplicates" },
+        body: {
+          user_id: result.pursuit.userId,
+          profile_id: result.pursuit.profileId,
+          job_id: result.pursuit.jobId,
+          created_at: result.pursuit.createdAt,
+          updated_at: result.pursuit.updatedAt,
+        },
+      });
+    }
   } else {
     await request("pursuits", {
       method: "PATCH",

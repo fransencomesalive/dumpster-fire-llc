@@ -31,10 +31,22 @@ assert.ok(generated.insertedExample);
 assert.equal(generated.insertedExample.oneHitter, "Cut workflow turnaround 40% in two quarters.");
 assert.equal(generated.insertedExample.link, "https://example.com/phred");
 
-// 2. The user prompt carries profile + job + contact.
-const prompt = buildOutreachUserPrompt({ profileMarkdown: "PROFILE_MD", job, contact });
+// 2. The user prompt carries profile + selected role track + job + contact. Other tracks can
+// remain in the full profile as factual history, but they are not alternate application titles.
+const prompt = buildOutreachUserPrompt({
+  profileMarkdown: "PROFILE_MD\n## Role Tracks\n### Executive Producer\nTarget titles:\n- Executive Producer",
+  roleTrack: {
+    name: "Program Director",
+    targetTitles: ["Program Director", "Program Operations Lead"],
+    otherTrackTitles: ["Executive Producer"],
+  },
+  job,
+  contact,
+});
 assert.match(prompt, /PROFILE_MD/);
 assert.match(prompt, /Program Director/);
+assert.match(prompt, /Program Operations Lead/);
+assert.match(prompt, /Do not describe the candidate using titles from any other Role Track/);
 assert.match(prompt, /Hiring Manager/);
 assert.match(prompt, /Dana/);
 
@@ -77,7 +89,32 @@ const cleanJson = JSON.stringify({ message: "Hi Dana, direct note about the role
   assert.equal(retried.message.includes("—"), false);
 }
 
-// 4c. Hard-rule contract: after exhausting attempts, no violating near-miss is returned.
+// 4c. Role-track isolation is enforced after generation, not left to prompt compliance alone.
+{
+  const responses = [
+    JSON.stringify({ message: "Hi Dana, my Executive Producer background maps well to this work.", insertedExample: null }),
+    JSON.stringify({ message: "Hi Dana, my program leadership background maps well to this work.", insertedExample: null }),
+  ];
+  let calls = 0;
+  const trackScoped = await generateOutreachMessage(
+    {
+      profileMarkdown: "## Role Tracks\n### Executive Producer\n### Program Director",
+      roleTrack: {
+        name: "Program Director",
+        targetTitles: ["Program Director"],
+        otherTrackTitles: ["Executive Producer"],
+      },
+      job,
+      contact,
+    },
+    { callModel: async () => { calls += 1; return responses.shift(); } },
+  );
+  assert.equal(calls, 2, "an alternate Role Track title must trigger a retry");
+  assert.ok(trackScoped);
+  assert.equal(trackScoped.message.includes("Executive Producer"), false);
+}
+
+// 4d. Hard-rule contract: after exhausting attempts, no violating near-miss is returned.
 {
   let calls = 0;
   const stubborn = await generateOutreachMessage(
@@ -88,7 +125,7 @@ const cleanJson = JSON.stringify({ message: "Hi Dana, direct note about the role
   assert.equal(stubborn, undefined, "hard-rule violations must never reach persistence or an API response");
 }
 
-// 4d. Violation detection: cap, em dash, missing example link, ungrounded numbers.
+// 4e. Violation detection: cap, em dash, missing example link, ungrounded numbers.
 const profileWithNumbers = "## Résumé\n- Cut workflow turnaround 40% in two quarters (15+ years).";
 assert.deepEqual(outreachHardRuleViolations({ message: "Hi Dana, I cut turnaround 40% and the write-up is at https://x.co/a. Worth a chat?", insertedExample: { oneHitter: "x", link: "https://x.co/a" } }, profileWithNumbers), []);
 assert.ok(outreachHardRuleViolations({ message: "x".repeat(751), insertedExample: null }, profileWithNumbers)[0].startsWith("over_750_characters"));

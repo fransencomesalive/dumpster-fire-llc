@@ -847,14 +847,14 @@ async function main() {
         pursuitId: "pursuit-1",
         userId: "user-1",
         eventType: "human_path_generated",
-        payload: { contactCount: 0, providerVersion: 12 },
+        payload: { contactCount: 0, providerVersion: 13 },
         createdAt: now,
       }],
     },
   );
   const pursuitReadCurrentEmptyJson = await body(pursuitReadCurrentEmptyHumanPath);
   assert.equal(pursuitReadCurrentEmptyJson.humanPathNeedsRefresh, false);
-  assert.equal(pursuitReadCurrentEmptyJson.humanPathProviderVersion, 12);
+  assert.equal(pursuitReadCurrentEmptyJson.humanPathProviderVersion, 13);
 
   const pursuitReadRaceCorruptedHumanPath = await handlePublicProfilePursuitReadRequest(
     getRequest("pursuits/pursuit-1"),
@@ -871,20 +871,20 @@ async function main() {
         pursuitId: "pursuit-1",
         userId: "user-1",
         eventType: "human_path_generated",
-        payload: { contactCount: 1, contacts: [humanPathContact()], providerVersion: 12 },
+        payload: { contactCount: 1, contacts: [humanPathContact()], providerVersion: 13 },
         createdAt: "2026-06-22T00:00:00.000Z",
       }, {
         pursuitId: "pursuit-1",
         userId: "user-1",
         eventType: "human_path_generated",
-        payload: { contactCount: 0, contacts: [], providerVersion: 12 },
+        payload: { contactCount: 0, contacts: [], providerVersion: 13 },
         createdAt: "2026-06-22T00:01:00.000Z",
       }],
     },
   );
   const pursuitReadRaceCorruptedJson = await body(pursuitReadRaceCorruptedHumanPath);
   assert.equal(pursuitReadRaceCorruptedJson.humanPathNeedsRefresh, false);
-  assert.equal(pursuitReadRaceCorruptedJson.humanPathProviderVersion, 12);
+  assert.equal(pursuitReadRaceCorruptedJson.humanPathProviderVersion, 13);
 
   const pursuitReadForeignPrivateJob = await handlePublicProfilePursuitReadRequest(
     getRequest("pursuits/pursuit-private"),
@@ -1435,7 +1435,7 @@ async function main() {
   assert.equal((humanPathJson.event as Record<string, unknown>).usageType, "human_path");
   assert.equal(
     (humanPathJson.event as { payload: Record<string, unknown> }).payload.providerVersion,
-    12,
+    13,
   );
   assert.equal(
     (humanPathJson.event as { payload: Record<string, unknown> }).payload.chargeUsage,
@@ -1545,7 +1545,7 @@ async function main() {
   assert.equal(enabledAtomicSuccess.status, 200);
   assert.equal(
     (enabledAtomicInput as { providerVersion: number }).providerVersion,
-    12,
+    13,
   );
   assert.equal(
     (enabledAtomicInput as { contacts: HumanPathContact[] }).contacts.length,
@@ -1651,7 +1651,7 @@ async function main() {
         pursuitId: "pursuit-1",
         userId: "user-1",
         eventType: "human_path_generated",
-        payload: { contactCount: 0, providerVersion: 12 },
+        payload: { contactCount: 0, providerVersion: 13 },
         createdAt: now,
       }],
       loadContactSuggestions: async () => [],
@@ -1669,7 +1669,7 @@ async function main() {
   assert.equal(currentEmptyCached.status, 200);
   const currentEmptyJson = await body(currentEmptyCached);
   assert.equal(currentEmptyJson.cached, true);
-  assert.equal(currentEmptyJson.providerVersion, 12);
+  assert.equal(currentEmptyJson.providerVersion, 13);
   assert.equal((currentEmptyJson.contacts as unknown[]).length, 0);
   assert.equal(currentEmptyProviderCalled, false);
 
@@ -1691,14 +1691,14 @@ async function main() {
           contactCount: 1,
           contacts: [humanPathContact()],
           diagnostics: humanPathDiagnostics(),
-          providerVersion: 12,
+          providerVersion: 13,
         },
         createdAt: "2026-06-22T00:00:00.000Z",
       }, {
         pursuitId: "pursuit-1",
         userId: "user-1",
         eventType: "human_path_generated",
-        payload: { contactCount: 0, contacts: [], providerVersion: 12 },
+        payload: { contactCount: 0, contacts: [], providerVersion: 13 },
         createdAt: "2026-06-22T00:01:00.000Z",
       }],
       loadContactSuggestions: async () => [],
@@ -1738,7 +1738,7 @@ async function main() {
         pursuitId: "pursuit-1",
         userId: "user-1",
         eventType: "human_path_generated",
-        payload: { contactCount: 1, providerVersion: 12 },
+        payload: { contactCount: 1, providerVersion: 13 },
         createdAt: now,
       }],
       loadContactSuggestions: async () => [contactSuggestion()],
@@ -1783,7 +1783,7 @@ async function main() {
         pursuitId: "pursuit-1",
         userId: "user-1",
         eventType: "human_path_generated",
-        payload: { contactCount: 1, providerVersion: 12 },
+        payload: { contactCount: 1, providerVersion: 13 },
         createdAt: now,
       }],
       loadContactSuggestions: async () => [contactSuggestion()],
@@ -1855,7 +1855,7 @@ async function main() {
   assert.equal((staleRefreshJson.contacts as unknown[]).length, 1);
   assert.equal(staleRefreshPersisted?.usageEvents.length, 0);
   assert.equal(staleRefreshPersisted?.event.usageType, undefined);
-  assert.equal(staleRefreshPersisted?.event.payload.providerVersion, 12);
+  assert.equal(staleRefreshPersisted?.event.payload.providerVersion, 13);
   assert.deepEqual(staleRefreshPersisted?.event.payload.diagnostics, humanPathDiagnostics());
 
   // ---- Pursuit contact selection route ----
@@ -2241,6 +2241,12 @@ async function main() {
     periodEnd: "2026-07-01T00:00:00.000Z",
   });
   assert.equal(generatedForContacts.length, 2);
+  assert.deepEqual(
+    (generatedForContacts[0] as {
+      roleTrack?: { name: string; targetTitles: string[]; otherTrackTitles: string[] };
+    }).roleTrack,
+    { name: "Program Director", targetTitles: ["Program Director"], otherTrackTitles: [] },
+  );
   assert.equal(pursuitEnforcementCalls, 1);
   assert.equal(persistedGenerationKey, "initial-outreach:pursuit-1:contact-1:contact-2");
   const pursuitOutreachJson = await body(pursuitOutreachGenerated);
@@ -2780,7 +2786,9 @@ async function main() {
       reasonCodes: ["personal_voice_mismatch", "awkward_to_read", "personal_voice_mismatch"],
       notes: "  Opening feels stiff.  ",
       expectedMessageRevision: 1,
-      expectedMessageUpdatedAt: now,
+      // Postgres and JSON clients can serialize the same instant differently. That formatting
+      // difference must not turn unchanged feedback into a false stale-draft conflict.
+      expectedMessageUpdatedAt: "2026-06-23T16:00:00+00:00",
     }),
     "message-1",
     {
