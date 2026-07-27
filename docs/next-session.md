@@ -39,6 +39,38 @@ touched Claude Design cards was not available because this Codex session had no 
 Design document session. Do not describe that remote card state as synced until it is registered
 and read back.
 
+### Claude Design follow-up for Claude
+
+Randall wants Claude to complete this in the next Claude session. This is a remote design-system
+sync task only. Production is already live at code commit `a54e3ff`; do not revise the approved
+layout, copy, CSS, behavior, or production components while completing the sync.
+
+Use Claude Design project `3af2f1ea-428c-49b3-8b02-c066ec0c7452` and bring these committed local
+mirrors into remote parity:
+
+1. `design-system/components/apply-wizard.html`
+   - feedback alerts no longer include the exclamation icon;
+   - the Human Path empty state explains the posting-backed Keller Executive Search fallback and
+     that an empty result did not count toward the Apply Wizard total.
+2. `design-system/components/dashboard-jobs.html`
+   - feedback alerts no longer include the exclamation icon.
+3. `design-system/components/feedback.html`
+   - feedback alerts no longer include the exclamation icon.
+4. `design-system/patterns/saved-pursuits-page.html`
+   - Dashboard and Run scan actions appear above the Saved Pursuits heading using the approved
+     mustard utility and teal proceed button roles.
+
+Follow the full design-sync checklist:
+
+1. Read each committed card and confirm its first-line `@dsCard` marker.
+2. Confirm every card remains present in `design-system/_ds_manifest.json`.
+3. Push the exact committed card state to the Claude Design project without creative changes.
+4. Run `register_assets` for every card above with an accurate change subtitle and viewport.
+5. Read the remote cards and asset registrations back to verify project, card content, manifest
+   presence, and refreshed registration.
+6. Record the successful remote sync and readback in this handoff. If any remote content differs,
+   stop and report the discrepancy instead of changing production to match stale remote content.
+
 The next planned product task remains Phase 4 Markdown export. Start by confirming production is
 serving `a54e3ff` or a later `main` commit and that the repository is clean, then return to the
 preserved Phase 4 plan. Do not expand into live Stripe setup without explicit scope.
