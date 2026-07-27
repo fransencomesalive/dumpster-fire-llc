@@ -22,16 +22,15 @@
     padding-bottom:var(--space-4); border-bottom:var(--line-reg) solid var(--c-ink); }
   .pageActions { display:flex; align-items:center; flex-wrap:wrap; gap:var(--space-3); margin-bottom:var(--space-4); }
   .pageAction { box-sizing:border-box; min-height:46px; display:inline-flex; align-items:center; justify-content:center;
-    font-family:var(--font-display); font-size:1rem; text-decoration:none; white-space:nowrap;
+    gap:var(--space-2); font-family:var(--font-display); font-size:1rem; text-decoration:none; white-space:nowrap;
     border-radius:var(--radius-md); box-shadow:var(--shadow-card); padding:var(--space-2) var(--space-4);
     transition:box-shadow var(--dur-fast) var(--ease-snap), background-color var(--dur-fast) var(--ease-snap); }
   .pageAction:hover { box-shadow:var(--reg-box); }
   .pageAction:focus-visible { outline:3px solid var(--c-bluebird); outline-offset:3px; }
-  .dashboardAction { color:var(--c-ink); background-color:var(--c-mustard); border:var(--line-reg) solid var(--c-ink); }
-  .scanAction { color:var(--role-action-text); background-color:var(--role-action);
-    background-image:var(--fiber-img), var(--grain-img); background-blend-mode:normal, soft-light;
-    background-size:170px 170px, 46px 46px; border:var(--line-bold) solid var(--c-ink); }
-  .scanAction:hover { background-color:var(--role-info); text-shadow:1px 1px 0 rgba(36,31,26,0.35); }
+  /* Both shortcuts are mustard utility actions (Dashboard, Edit Profile): mustard carries
+     utility + every Edit control, on ink text. Edit Profile returns to the profile form. */
+  .utilityAction { color:var(--c-ink); background-color:var(--c-mustard); border:var(--line-reg) solid var(--c-ink); }
+  .utilityAction svg { flex:none; }
   .topTitle { margin:0; font-family:var(--font-display); font-size:var(--type-h2); color:var(--c-ink); }
   .topLede { margin:4px 0 0; font-family:var(--font-body); color:var(--role-text-muted); max-width:52ch; }
 
@@ -171,8 +170,8 @@
 <body>
 <header class="topBar">
   <nav class="pageActions" aria-label="Saved Pursuits shortcuts">
-    <a class="pageAction dashboardAction" href="#">Dashboard</a>
-    <a class="pageAction scanAction" href="#">Run scan</a>
+    <a class="pageAction utilityAction" href="#">Dashboard</a>
+    <a class="pageAction utilityAction" href="#"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>Edit Profile</a>
   </nav>
   <h1 class="topTitle">Saved Pursuits</h1>
   <p class="topLede">Everything you have saved or started, in one place. Switch between Saved for later (unstarted and in progress) and Applied (anything you have tracked).</p>
@@ -359,8 +358,8 @@
   <div class="phoneFrame">
     <p class="phoneCap">375px · default view</p>
     <nav class="pageActions" aria-label="Saved Pursuits shortcuts">
-      <a class="pageAction dashboardAction" href="#">Dashboard</a>
-      <a class="pageAction scanAction" href="#">Run scan</a>
+      <a class="pageAction utilityAction" href="#">Dashboard</a>
+      <a class="pageAction utilityAction" href="#"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>Edit Profile</a>
     </nav>
     <h1 class="mTitle">Saved Pursuits</h1>
     <div class="bucketToggle" role="tablist" aria-label="Choose bucket">
@@ -383,8 +382,8 @@
   <div class="phoneFrame w320">
     <p class="phoneCap">320px · Applied selected, no overflow</p>
     <nav class="pageActions" aria-label="Saved Pursuits shortcuts">
-      <a class="pageAction dashboardAction" href="#">Dashboard</a>
-      <a class="pageAction scanAction" href="#">Run scan</a>
+      <a class="pageAction utilityAction" href="#">Dashboard</a>
+      <a class="pageAction utilityAction" href="#"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>Edit Profile</a>
     </nav>
     <h1 class="mTitle">Saved Pursuits</h1>
     <div class="bucketToggle" role="tablist" aria-label="Choose bucket">

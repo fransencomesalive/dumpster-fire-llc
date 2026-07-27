@@ -666,18 +666,6 @@ export default function DashboardClient() {
     })();
   }, [router]);
 
-  // Saved Pursuits links directly to the existing scan action. The hash is a focus target,
-  // not an instruction to run a scan: navigation and refresh must never spend a scan.
-  useEffect(() => {
-    if (guardState.status !== "complete" || window.location.hash !== "#dashboard-run-scan") return;
-    const frame = window.requestAnimationFrame(() => {
-      const scanButton = document.getElementById("dashboard-run-scan");
-      scanButton?.scrollIntoView({ block: "center" });
-      scanButton?.focus({ preventScroll: true });
-    });
-    return () => window.cancelAnimationFrame(frame);
-  }, [guardState.status]);
-
   async function runScan() {
     const accessToken = readPublicProfileAccessToken();
     if (!accessToken) {
@@ -1086,11 +1074,18 @@ export default function DashboardClient() {
                   <span><strong>{jobsResponse?.summary.totalJobs ?? 0}</strong> active jobs</span>
                   <span><strong>{jobsResponse?.summary.savedJobs ?? 0}</strong> saved</span>
                 </div>
-                <button id="dashboard-run-scan" className={jobsStyles.scanNowBtn} disabled={jobsBusy} onClick={runScan} type="button">
+                <button className={jobsStyles.scanNowBtn} disabled={jobsBusy} onClick={runScan} type="button">
                   {scanProgress.status === "running" ? "Scanning…" : "Run scan"}
                 </button>
                 <button className={jobsStyles.scanSecondaryBtn} onClick={() => router.push("/saved-pursuits")} type="button">
                   View Saved Pursuits
+                </button>
+                <button className={`${jobsStyles.scanSecondaryBtn} ${jobsStyles.editProfileBtn}`} onClick={() => router.push("/onboarding")} type="button">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M12 20h9" />
+                    <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+                  </svg>
+                  Edit Profile
                 </button>
               </div>
 

@@ -146,11 +146,15 @@ export default function SavedPursuitsClient() {
       <main className={styles.page}>
         <header className={styles.topBar}>
           <nav className={styles.pageActions} aria-label="Saved Pursuits shortcuts">
-            <Link className={`${styles.pageAction} ${styles.dashboardAction}`} href="/dashboard">
+            <Link className={`${styles.pageAction} ${styles.utilityAction}`} href="/dashboard">
               Dashboard
             </Link>
-            <Link className={`${styles.pageAction} ${styles.scanAction}`} href="/dashboard#dashboard-run-scan">
-              Run scan
+            <Link className={`${styles.pageAction} ${styles.utilityAction}`} href="/onboarding">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M12 20h9" />
+                <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+              </svg>
+              Edit Profile
             </Link>
           </nav>
           <h1 className={styles.topTitle}>Saved Pursuits</h1>

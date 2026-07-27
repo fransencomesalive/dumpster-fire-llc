@@ -261,6 +261,10 @@
   .scanSecondaryBtn { display:block; width:100%; box-sizing:border-box; text-align:center; font-family:var(--font-display);
     font-size:0.95rem; color:var(--c-ink); background:var(--c-mustard); border:var(--line-reg) solid var(--c-ink);
     border-radius:var(--radius-md); box-shadow:var(--shadow-card); padding:var(--space-2) var(--space-4); cursor:pointer; text-decoration:none; }
+  /* Stacked mustard utility actions in Overview (View Saved Pursuits, Edit Profile). */
+  .scanSecondaryBtn + .scanSecondaryBtn { margin-top:var(--space-3); }
+  .editProfileBtn { display:flex; align-items:center; justify-content:center; gap:var(--space-2); }
+  .editProfileBtn svg { flex:none; }
   .configStats { display:grid; grid-template-columns:1fr 1fr; gap:var(--space-4) var(--space-3); }
   .configStat { display:flex; flex-direction:column; gap:2px; min-width:0; }
   /* Reconciled to the job-meta treatment (Randall 2026-07-21): label matches .jobMetaGrid dt,
@@ -597,6 +601,7 @@
         </div>
         <button type="button" class="scanNowBtn">Run scan</button>
         <button type="button" class="scanSecondaryBtn">View Saved Pursuits</button>
+        <button type="button" class="scanSecondaryBtn editProfileBtn"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>Edit Profile</button>
       </div>
 
       <div class="sflipScene" data-sflip>

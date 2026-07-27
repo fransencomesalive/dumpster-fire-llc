@@ -39,6 +39,9 @@ touched Claude Design cards was not available because this Codex session had no 
 Design document session. Do not describe that remote card state as synced until it is registered
 and read back.
 
+**Resolved 2026-07-27 (Claude session).** The remote design sync below is complete and verified.
+See "Claude Design remote sync result" at the end of this section.
+
 ### Claude Design follow-up for Claude
 
 Randall wants Claude to complete this in the next Claude session. This is a remote design-system
@@ -70,6 +73,90 @@ Follow the full design-sync checklist:
    presence, and refreshed registration.
 6. Record the successful remote sync and readback in this handoff. If any remote content differs,
    stop and report the discrepancy instead of changing production to match stale remote content.
+
+### Claude Design remote sync result (2026-07-27, Claude session)
+
+Completed. No design, copy, CSS, layout, or production file was changed; this was a push of the
+already-committed `a54e3ff` card state plus registration and readback.
+
+Project verified before writing: `3af2f1ea-428c-49b3-8b02-c066ec0c7452`, "Dumpster Fire Design
+System", `PROJECT_TYPE_DESIGN_SYSTEM`, `canEdit: true`.
+
+Plan `plan_3af2f1ea428c49b3_7eceab2f0a8a` wrote 5 files from `design-system/` with zero deletes:
+the four cards plus `_ds_manifest.json`. `register_assets` returned 4 registered cards with change
+subtitles at viewport width 1280:
+
+- `components/apply-wizard.html` (Components): icon-free feedback alert; Human Path empty state
+  explains the posting-backed search company and that it did not count toward the total.
+- `components/dashboard-jobs.html` (Components): icon-free feedback alert.
+- `components/feedback.html` (Components): icon-free feedback alert, all states.
+- `patterns/saved-pursuits-page.html` (Patterns): Dashboard/Run scan actions above the heading.
+
+Readback evidence, all four cards fetched from the project after the write and compared against the
+committed local mirrors:
+
+- `patterns/saved-pursuits-page.html`, `components/feedback.html`,
+  `components/dashboard-jobs.html`, and `components/apply-wizard.html` each came back
+  byte-identical to the local file, `truncated: false`, with the first-line `@dsCard` marker intact
+  (27,138 / 44,380 / 61,280 / 93,650 bytes respectively).
+- Change-specific confirmations in the remote content: no `<svg>` inside any `feedbackAlert` block;
+  the new alert treatment (`color-mix(in srgb, var(--c-tomato) 10%, var(--c-paper))` plus a 6px
+  tomato left border) present in both `dashboard-jobs` and `feedback`; the Keller Executive Search
+  empty-state copy, the "did not count toward your Apply Wizard total" sentence, and the Keller
+  LinkedIn query present in `apply-wizard` with the old OpenAI query gone; the `pageActions` nav
+  present in the Saved Pursuits top bar and in both the 375 and 320 frames.
+- `_ds_manifest.json` was read before the push and already listed all four cards; the local manifest
+  (48 cards, unchanged since `c536002`) was pushed in the same plan.
+
+No remote discrepancy was found, so no production file needed reconciling.
+
+### Edit Profile shortcut correction (2026-07-27, approved by Randall in session)
+
+Randall's correction to the `a54e3ff` Saved Pursuits buttons: the Dashboard button was right, the
+Run scan button should never have been there. It is replaced by an Edit Profile action that returns
+the user to the profile form, and the same action is added to the dashboard Overview card.
+
+Approved direction, given item by item in session: keep mustard; use the edit pencil icon inside the
+button; remove the now-dead scan focus plumbing; leave the retired `patterns/scan-page.html` card
+stale.
+
+Implemented:
+
+- `app/saved-pursuits/SavedPursuitsClient.tsx`: the Run scan shortcut is now Edit Profile linking to
+  `/onboarding`, carrying the canonical edit pencil.
+- `app/saved-pursuits/saved-pursuits.module.css`: `.dashboardAction` and the removed teal
+  `.scanAction` collapse into one shared mustard `.utilityAction`; `.pageAction` gains a
+  `var(--space-2)` icon gap.
+- `app/dashboard/DashboardClient.tsx`: the Overview card gains an Edit Profile button under View
+  Saved Pursuits, reusing the existing mustard `.scanSecondaryBtn` primitive. The
+  `#dashboard-run-scan` hash-focus effect and the matching button id, both added in `a54e3ff` only
+  to serve the removed Saved Pursuits link, are deleted.
+- `app/dashboard/dashboard.module.css`: a stacking gap for adjacent mustard utility buttons plus
+  `.editProfileBtn` icon centering.
+- Design-system parity in the same pass: `patterns/saved-pursuits-page.html` (top bar plus the 375
+  and 320 frames) and `components/dashboard-jobs.html` (Overview card).
+
+Verification:
+
+- typecheck clean; lint 0 errors with the same four pre-existing warnings; production build passed.
+- Rendered QA in headless Chrome at 320, 375, 390, 1280, and 1440 pixels. Both controls measure
+  mustard `rgb(224, 165, 47)` on ink text, the pencil sits left of the label, and the two Overview
+  buttons are equal width with a `var(--space-3)` gap. The nav wraps to two full-height 46px rows at
+  320 and sits on one row from 375 up.
+- Pre-existing and unchanged by this work: both demo cards overflow a 320-pixel viewport by 43 and 9
+  pixels because of their fixed-width phone/demo frames. Rendering the committed `HEAD` cards
+  produced the identical 43 and 9 pixel values. Not fixed here, per bug-fix scope discipline.
+- Claude Design sync completed under plan `plan_3af2f1ea428c49b3_b0af61535e9a`: 2 writes, 2 assets
+  registered, and both cards read back byte-identical to the local mirrors with `truncated: false`.
+
+### Pinned, not acted on: profile vs onboarding naming
+
+Randall's observation, logged as a potential scope change and explicitly not implemented: now that
+Edit Profile sends a logged-in user to `/onboarding`, that surface is editing a finished profile
+rather than onboarding a new user, so it should probably present as **Profile** when the user is
+signed in. Anything here needs its own approved scope and design direction. Likely surfaces to
+consider: the route itself, the page title and heading, the `SiteHeader` profile link label, and any
+remaining copy that calls the surface onboarding. No decision has been made.
 
 The next planned product task remains Phase 4 Markdown export. Start by confirming production is
 serving `a54e3ff` or a later `main` commit and that the repository is clean, then return to the
