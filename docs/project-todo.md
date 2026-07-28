@@ -18,6 +18,15 @@ Canonical planning sources remain:
 
 ## Current Priority
 
+**Update 2026-07-28: the first-user scan blocker is fixed and production verified.** Dashboard
+loads and Run scan now use the same authoritative Supabase session, so a missing legacy
+local-storage token mirror cannot silently prevent an authenticated scan request. The permanent
+production browser harness removes that mirror, clicks the real control, requires HTTP 200,
+verifies persisted results after reload, and cleans up its disposable user. The final production
+run returned and rendered 75 matches with no browser errors; Larissa's named account also has 75
+active results. Phase 4 Markdown export returns to the front of the planned product queue. The
+Next.js `16.2.10` to `16.2.12` security maintenance remains a separate known task.
+
 **Update 2026-07-27: Phase 3 Stripe test-mode backend and lifecycle gate are complete locally.**
 The dedicated Dumpster Fire sandbox `acct_1TxaWWJtJtSFf8Kw` passed paid Checkout, signed webhook
 persistence, Portal, upgrade, scheduled downgrade and replay, cancellation and reversal, final
@@ -75,9 +84,8 @@ What actually remains splits three ways:
 3. **Unblocked backend** (small): pre-launch copy/scaffold audit (Phase 9 verify item); profile
    regeneration action wiring; outreach version pruning, etc.
 
-The current next-task selection is the Phase 3 Stripe test-mode backend in
-`docs/next-session.md`. Older phase checklists below are historical inventory unless a newer dated
-update explicitly reactivates them.
+The current next-task selection is Phase 4 Markdown export in `docs/next-session.md`. Older phase
+checklists below are historical inventory unless a newer dated update explicitly reactivates them.
 
 ## Near-Term (scheduled)
 

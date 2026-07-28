@@ -1,5 +1,37 @@
 # Current State
 
+## 2026-07-28 - First-user production scan failure resolved
+
+Larissa Fransen's complete production profile could load the dashboard but clicking Run scan sent
+no request and returned her to onboarding. The dashboard load trusted the authoritative Supabase
+session while the click handler trusted only the legacy
+`dumpster-fire-public-access-token` local-storage mirror. A missing mirror therefore made an
+authenticated user appear signed out only at action time.
+
+Code commit `b64b23128c74b547ee0fe7a2091c3d6150feb2ac` makes the live Supabase session authoritative for
+the scan action and retains the mirrored token only as a compatibility fallback. Scan API failures
+now return safe traceable references. The release also adds focused auth/API regressions and the
+permanent `scripts/qa/production-scan-browser.mjs` production test. That harness signs in a
+disposable complete user with zero results, removes the legacy mirror, clicks the real Run scan
+control, requires one successful request, verifies persisted results after reload, and audits
+complete fixture cleanup.
+
+The full release check passed all migration harnesses, all 34 fixture suites, TypeScript, lint with
+four pre-existing warnings and zero errors, and the production build. The final production-browser
+run on commit `1f0e21a784290503b0590b87de7eea0a96ad0627` sent exactly one
+`POST /api/jobs/scan`, returned HTTP 200, persisted and re-rendered 75 matches, recorded no console
+or page errors, and left zero disposable account, profile, or result rows. Larissa's named account
+was remediated through the same scan service and independently confirmed with 75 active results.
+
+The durable Production Scan Verification rule is in `AGENTS.md`. Its enforcement class is
+advisory. It forbids calling the scan path verified based only on fixtures, dry-runs, builds, or
+HTTP reachability; verification requires the real authenticated production control, request,
+response, persistence, and reload rendering.
+
+Separate known maintenance: `npm audit --omit=dev` reports high-severity production advisories in
+Next.js `16.2.10` and the Next.js dependency path through `sharp`. Next.js `16.2.12` is the
+available fix path and was intentionally not mixed into the scan bug release.
+
 ## 2026-07-27 - Site bug fixes committed for production
 
 Code commit `a54e3ff` contains the approved feedback, Saved Pursuits, Role Track, navigation, and

@@ -1,4 +1,4 @@
-# Next Session: Site Bug, Phase 4 Preserved
+# Next Session: Scan Failure Resolved, Phase 4 Next
 
 _Updated 2026-07-28. Read `AGENTS.md` and follow the Session Start Protocol in
 `docs/project-operating-state.md` before editing._
@@ -22,7 +22,7 @@ the dashboard loaded from the authoritative Supabase session, the legacy mirrore
 handler redirected to onboarding without dispatching a request or recording an error. The
 dashboard load and the scan action were using different authentication authorities.
 
-Implemented locally:
+Implemented and deployed:
 
 - `resolvePublicActionAccessToken` resolves the live Supabase session first and treats the
   local-storage mirror only as a compatibility fallback;
@@ -54,14 +54,16 @@ Verification completed locally:
   same four pre-existing warnings and zero errors, and the production Next.js build.
 
 Production verification completed on code commit
-`b64b23128c74b547ee0fe7a2091c3d6150feb2ac`:
+`b64b23128c74b547ee0fe7a2091c3d6150feb2ac` and was repeated after the documentation release
+`1f0e21a784290503b0590b87de7eea0a96ad0627`:
 
 - Vercel reported the production deployment complete;
 - the unchanged permanent harness ran at the responsive 850 x 567 viewport;
 - its authoritative Supabase session remained valid while the mirrored legacy token was removed;
 - the real Run scan control dispatched exactly one `POST /api/jobs/scan`;
-- production returned HTTP 200 with trace reference
-  `49f0d93f-33da-4288-8b70-bb162f549c8d`;
+- production returned HTTP 200; the final run carried trace reference
+  `1dfcacf2-cf9a-4f2d-9c0a-55894b448fcc` and Vercel request ID
+  `sfo1::iad1::x8nwg-1785272349558-5746e1a7dfad`;
 - the response returned 75 matches, 75 active rows persisted, and the reload rendered the same
   active-result count;
 - the browser recorded zero console errors and zero page errors;
@@ -424,13 +426,12 @@ Remaining production-readiness gaps:
 
 Exact next starting point:
 
-1. Start the new site-bug session with `session check`, run the Session Start Protocol, and confirm
-   `main` is clean and includes `ae1ca43` plus the following session-memory commit.
-2. Get Randall's bug report, reproduce it at the correct layer, and keep the bug fix scoped to the
-   diagnosed cause.
-3. Preserve the phase list. Phase 4 Markdown export remains the next planned implementation phase
-   after the bug session; do not begin it without explicit scope.
-4. Do not expand into live Stripe setup or production deployment without explicit scope.
+1. Run `session check`, follow the Session Start Protocol, and confirm `main` is clean and includes
+   the first-user scan fix plus this session-memory commit.
+2. Confirm production still returns HTTP 200 before beginning new work.
+3. Phase 4 Markdown export is the next planned implementation phase. Do not begin it without
+   explicit scope.
+4. Do not expand into live Stripe setup or production enablement without explicit scope.
 
 ## Session check
 
@@ -702,12 +703,12 @@ in-place regeneration, a rejected second regeneration, 736- and 721-character me
 cleanup. The final aggregate audit found zero disposable QA Auth users and profiles. Canonical `/`
 and `/plan` return HTTP 200.
 
-## Immediate next task: site bug session
+## Immediate next task: Phase 4 Markdown export
 
-The Phase 3 backend, authenticated Stripe sandbox lifecycle, and approved billing UI port are
-committed on `main`. Resume from the exact starting point at the top of this document and diagnose
-the site bug Randall supplies. Phase 4 Markdown export remains preserved as the next planned phase
-after the bug work.
+The first-user scan failure is resolved, deployed, production-browser verified, and remediated for
+the named tester. The Phase 3 backend, authenticated Stripe sandbox lifecycle, and approved billing
+UI port remain committed on `main`. Phase 4 Markdown export is the next planned implementation
+phase and requires explicit scope before work begins.
 
 No live Stripe configuration, live product creation, production secret change, deployment, or
 production enablement is authorized by this handoff.
@@ -718,6 +719,9 @@ production enablement is authorized by this handoff.
 - Markdown pursuit-history export backend.
 - Terms, Privacy, Billing, and Support updates plus the legal-counsel checkpoint.
 - Production Stripe configuration, end-to-end verification, and release authorization.
+- Dependency security maintenance: production `npm audit --omit=dev` reports high-severity
+  advisories through Next.js `16.2.10` and its `sharp` dependency. The available fix path is
+  Next.js `16.2.12`; this was not mixed into the scan bug fix.
 
 ## Production safety boundary
 

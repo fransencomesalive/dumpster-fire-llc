@@ -89,6 +89,15 @@ Not yet built as public workflows:
 
 ## Canonical Next Product Task
 
+> **UPDATED 2026-07-28: CURRENT IMMEDIATE TASK.** The first-user production scan blocker is fixed
+> and verified through the real authenticated dashboard control with the legacy token mirror
+> deliberately absent. The final production run returned, persisted, and re-rendered 75 matches;
+> Larissa's named account was remediated to 75 active results. The next planned product phase is
+> Phase 4 Markdown export. Begin with `docs/next-session.md`, require explicit scope before
+> implementation, and do not expand into live Stripe configuration or production enablement.
+> Next.js `16.2.12` security maintenance is separately recorded and must not be silently folded
+> into unrelated feature work.
+>
 > **UPDATED 2026-07-25 — CURRENT IMMEDIATE INITIATIVE.** The Smoldering / Roaring subscription,
 > Apply Wizard metering, cost telemetry, Markdown export, Stripe billing, public pricing, legal,
 > design, migration, QA, and production-release initiative is approved and specified in
