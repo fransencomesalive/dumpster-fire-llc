@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { getPublicAuthSession, type PublicAuthSession } from "../public-auth/session";
 import {
   createPublicProfileRepositoryRequest,
@@ -155,8 +156,12 @@ function jobLinkErrorResponse(result: Exclude<IngestJobFromLinkResult, { status:
     return json({ error: "That job page could not be fetched.", status: result.status }, { status: 502 });
   }
 
+  // Every failure names its own cause and carries a machine-readable status, so a
+  // report of "it failed" can be traced to one stage without reading server logs.
   return json({
-    error: "Job details could not be extracted right now.",
+    error: "We reached that page, but it sends its posting to the browser only, "
+      + "so there was nothing for us to read. If the company lists this role on its "
+      + "own careers page, that link usually works.",
     status: result.status,
   }, { status: 503 });
 }
@@ -180,11 +185,30 @@ export async function handlePublicJobFromLinkRequest(
   }
 
   const ingest = options.ingestJob ?? ingestJobFromLink;
-  const result = await ingest({ url: body.url, userId: session.userId }, {
-    ...options.jobLinkOptions,
-    request: repositoryRequest,
-    now: options.now,
-  });
+  let result: IngestJobFromLinkResult;
+  try {
+    result = await ingest({ url: body.url, userId: session.userId }, {
+      ...options.jobLinkOptions,
+      request: repositoryRequest,
+      now: options.now,
+    });
+  } catch (error) {
+    // An unhandled throw used to escape as a bare 500 with no JSON body, so the
+    // client could only say "request failed" and the real cause (for example a
+    // database function missing at runtime) was visible in server logs alone.
+    // Always answer with JSON, name the failing stage, and print a reference that
+    // ties the user's report to this exact log line.
+    const reference = randomUUID();
+    console.error(`[job-link] ingest failed reference=${reference}`, error);
+    return json({
+      error: "Saving that job hit a server error before it could be stored. "
+        + "The link itself may be fine. Report this reference so it can be traced: "
+        + reference,
+      status: "ingest_failed",
+      stage: "store",
+      reference,
+    }, { status: 500 });
+  }
   if (result.status !== "ingested" && result.status !== "already_known") {
     return jobLinkErrorResponse(result);
   }

@@ -446,6 +446,39 @@ async function main() {
     assert.deepEqual(await response.json(), { error: "Expected url.", status: "invalid_url" });
   }
 
+  // A throw from the ingest pipeline (for example a database function missing at
+  // runtime) must still answer with JSON naming the failing stage plus a traceable
+  // reference. Before this, it escaped as a bare 500 with no body and the client
+  // could only report a generic failure.
+  {
+    const { request: repositoryRequest } = mockRequest(() => []);
+    const response = await handlePublicJobFromLinkRequest(new Request("https://app.example/api/jobs/from-link", {
+      method: "POST",
+      body: JSON.stringify({ url: "https://jobs.example.test/boom" }),
+      headers: { "Content-Type": "application/json" },
+    }), {
+      getSession: async () => ({ status: "authenticated", userId: "user-api", email: "user@example.test" }),
+      repositoryRequest,
+      ingestJob: async () => {
+        throw new Error('Supabase POST jobs failed (404): {"code":"42883"}');
+      },
+    });
+    assert.equal(response.status, 500);
+    assert.equal(response.headers.get("cache-control"), "no-store");
+    const body = await response.json() as {
+      error?: string;
+      status?: string;
+      stage?: string;
+      reference?: string;
+    };
+    assert.equal(body.status, "ingest_failed");
+    assert.equal(body.stage, "store");
+    assert.match(body.reference ?? "", /^[0-9a-f-]{36}$/);
+    assert.match(body.error ?? "", /server error/i);
+    // The raw database text must not leak to the user; the reference carries it.
+    assert.equal(/42883|Supabase/.test(body.error ?? ""), false);
+  }
+
   console.log("job link ingestion: all assertions passed");
 }
 

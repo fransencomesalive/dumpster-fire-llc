@@ -60,7 +60,13 @@ export async function requestPublicProfileApi<T>(
   }
 
   if (!response.ok) {
-    throw new PublicProfileApiError("Public profile API request failed.", response.status, body);
+    // Include the HTTP status: when a route fails before it can answer with JSON
+    // there is no body to read, and a bare "request failed" is undiagnosable.
+    throw new PublicProfileApiError(
+      `Public profile API request failed (HTTP ${response.status}).`,
+      response.status,
+      body,
+    );
   }
 
   return body as T;

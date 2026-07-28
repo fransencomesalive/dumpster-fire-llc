@@ -914,8 +914,14 @@ export default function DashboardClient() {
         accessToken,
       });
     } catch (error) {
-      const body = error instanceof PublicProfileApiError ? error.body as { error?: string } | null : null;
-      setPursueLinkError(body?.error ?? (error instanceof Error ? error.message : "That link could not be read."));
+      // Show the server's own explanation. Fall back to the HTTP status rather
+      // than a generic string so a failure can always be reported precisely.
+      const body = error instanceof PublicProfileApiError
+        ? error.body as { error?: string; status?: string } | null
+        : null;
+      const detail = body?.error
+        ?? (error instanceof Error ? error.message : "That link could not be read.");
+      setPursueLinkError(body?.status ? `${detail} (${body.status})` : detail);
     } finally {
       setPursueLinkBusy(false);
     }
