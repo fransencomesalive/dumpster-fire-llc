@@ -152,6 +152,17 @@ function jobLinkErrorResponse(result: Exclude<IngestJobFromLinkResult, { status:
     return json({ error: "That URL did not return a supported job page.", status: result.status }, { status: 415 });
   }
 
+  // Naming the board is the point: a generic extraction failure makes a page that
+  // looks fine in a browser seem arbitrarily rejected.
+  if (result.status === "board_unsupported") {
+    return json({
+      error: `Postings on ${result.board} are only visible after signing in, so we can't read them. `
+        + "If the company also lists this role on its own careers page, that link usually works.",
+      status: result.status,
+      board: result.board,
+    }, { status: 422 });
+  }
+
   if (result.status === "fetch_failed") {
     return json({ error: "That job page could not be fetched.", status: result.status }, { status: 502 });
   }

@@ -9,6 +9,8 @@ import {
 } from "../scan/sources/llm-extract-posting";
 import { parsePosting } from "../scan/sources/parse-posting";
 import { textFromHtml } from "../scan/sources/connectors";
+import { resolveBoardFromUrl, type ResolvedBoard } from "../scan/sources/board-registry";
+import { fetchBoardPosting, type BoardPostingDependencies } from "./board-posting";
 import { assertSafePublicUrl, type HostnameResolver } from "../scan/sources/url-safety";
 
 type StoredJob = {
@@ -37,6 +39,9 @@ export type IngestJobFromLinkResult =
   | { status: "unsupported_content" }
   | { status: "response_too_large" }
   | { status: "extraction_unavailable" }
+  // A board we deliberately do not read (login-gated). `board` is the hostname so
+  // the user can be told which one, instead of a generic extraction failure.
+  | { status: "board_unsupported"; board: string }
   | { status: "already_known"; jobId: string; title: string; company: string }
   | { status: "ingested"; jobId: string; title: string; company: string };
 
@@ -48,6 +53,8 @@ export type IngestJobFromLinkDependencies = {
   now?: () => string;
   timeoutMs?: number;
   maxResponseBytes?: number;
+  boardPosting?: BoardPostingDependencies;
+  fetchBoardPostingImpl?: typeof fetchBoardPosting;
 };
 
 const DEFAULT_TIMEOUT_MS = 12_000;
@@ -68,12 +75,47 @@ function normalizeUrl(rawUrl: string) {
   }
 }
 
+// Campaign and referral parameters that identify where a link was shared, never
+// which posting it points at. A link copied out of LinkedIn carries these; the
+// scan stores the board's own clean URL, so without stripping them for the
+// comparison a user pastes a posting we already hold and we fail to recognize it.
+// Deliberately conservative: anything that could identify the posting (gh_jid,
+// lever ids, query-encoded slugs) is left alone.
+const TRACKING_PARAMS = new Set([
+  "src", "source", "ref", "referer", "referrer", "trk", "trackingid",
+  "gh_src", "grnh.se", "fbclid", "gclid", "msclkid", "igshid", "mc_cid", "mc_eid",
+  "li_fat_id", "at_medium", "at_campaign",
+]);
+
+// The URL as the user pasted it stays the stored source_url, so "Open posting"
+// always opens the link they actually had. This is only a comparison key.
+function dedupeKeyUrl(sourceUrl: string) {
+  try {
+    const url = new URL(sourceUrl);
+    for (const key of [...url.searchParams.keys()]) {
+      if (TRACKING_PARAMS.has(key.toLowerCase()) || key.toLowerCase().startsWith("utm_")) {
+        url.searchParams.delete(key);
+      }
+    }
+    // A trailing "?" left by stripping every parameter is a different string.
+    if ([...url.searchParams.keys()].length === 0) url.search = "";
+    return url.toString();
+  } catch {
+    return sourceUrl;
+  }
+}
+
+function quotedIn(values: string[]) {
+  const unique = [...new Set(values)];
+  return `in.(${unique.map((value) => `"${value.replace(/"/g, '\\"')}"`).join(",")})`;
+}
+
 // Dedupe against shared-pool rows and the user's own private rows only; another
 // user's private paste must never match (returning its id would leak it).
 async function findJobBySourceUrl(request: PublicProfileRepositoryRequest, sourceUrl: string, userId: string) {
   const rows = await request<StoredJob[]>("jobs", {
     query: qs({
-      source_url: `eq.${sourceUrl}`,
+      source_url: quotedIn([sourceUrl, dedupeKeyUrl(sourceUrl)]),
       or: `(owner_user_id.is.null,owner_user_id.eq.${userId})`,
       select: "id,title,company_name",
       limit: "1",
@@ -349,6 +391,80 @@ async function fetchJobPage(
   }
 }
 
+type BoardTokenRow = { ats_board_token: string; company_name: string };
+
+// The registry infers a board token from the hostname, which is right for an ATS
+// host (job-boards.greenhouse.io/gitlab) and wrong for a company's own careers
+// host: careers.airbnb.com guesses "careers", jobs.dropbox.com guesses "jobs".
+// The correct tokens are already configured in job_sources for exactly the boards
+// the scan reads, so prefer those before trusting a guess.
+async function boardTokenFromConfiguredSources(
+  request: PublicProfileRepositoryRequest,
+  provider: string,
+  hostname: string,
+  userId: string,
+): Promise<string | undefined> {
+  let rows: BoardTokenRow[];
+  try {
+    rows = await request<BoardTokenRow[]>("job_sources", {
+      query: qs({
+        ats_provider: `eq.${provider}`,
+        // Shared starter boards and this user's own boards only, matching the
+        // dedupe scope: another user's private board must not steer this paste.
+        or: `(owner_user_id.is.null,owner_user_id.eq.${userId})`,
+        select: "ats_board_token,company_name",
+        limit: "200",
+      }),
+    });
+  } catch {
+    return undefined;
+  }
+
+  const host = hostname.toLowerCase().replace(/^www\./, "");
+  const labels = new Set(host.split("."));
+  // Match a configured token against a hostname label so careers.airbnb.com and
+  // jobs.dropbox.com resolve to "airbnb" and "dropbox", while a token that merely
+  // appears as a substring of an unrelated host does not.
+  const match = rows.find((row) => {
+    const token = (row.ats_board_token ?? "").trim().toLowerCase();
+    return token.length > 0 && labels.has(token);
+  });
+  return match?.ats_board_token;
+}
+
+// Reads a pasted posting from its ATS API and shapes it like a successful page
+// fetch, so the rest of ingestion is identical. Returns undefined when the board
+// has no single-posting path or its API did not answer, leaving the HTML reader
+// as the fallback.
+async function fetchViaBoardApi(
+  sourceUrl: string,
+  board: ResolvedBoard,
+  dependencies: IngestJobFromLinkDependencies,
+): Promise<Extract<Awaited<ReturnType<typeof fetchJobPage>>, { status: "ok" }> | undefined> {
+  const fetchPosting = dependencies.fetchBoardPostingImpl ?? fetchBoardPosting;
+  const result = await fetchPosting(sourceUrl, board, dependencies.boardPosting ?? {});
+  if (result.status !== "ok") return undefined;
+
+  const { title, companyName, description } = result.posting;
+  const pageText = [
+    `Job title: ${title}`,
+    `Company: ${companyName}`,
+    description,
+  ].join("\n");
+
+  return {
+    status: "ok",
+    pageText,
+    sourceContentHash: sourceContentHash(pageText),
+    deterministicPosting: {
+      title,
+      companyName,
+      description,
+      ...parsePosting(description),
+    },
+  };
+}
+
 export async function ingestJobFromLink(
   input: { url: string; userId: string },
   dependencies: IngestJobFromLinkDependencies,
@@ -365,7 +481,28 @@ export async function ingestJobFromLink(
   const existing = await findJobBySourceUrl(dependencies.request, sourceUrl, input.userId);
   if (existing) return knownResult(existing);
 
-  const fetched = await fetchJobPage(sourceUrl, dependencies);
+  // Resolve the link against the board registry the scan already uses. A board we
+  // decline to read is reported as exactly that; a board we can talk to is read
+  // through its structured API instead of its web page.
+  const boardResolution = resolveBoardFromUrl(sourceUrl);
+  if (boardResolution.status === "blocked") {
+    return { status: "board_unsupported", board: new URL(sourceUrl).hostname };
+  }
+
+  let board = boardResolution.status === "resolved" ? boardResolution.board : undefined;
+  if (board && board.confidence === "guess") {
+    const configuredToken = await boardTokenFromConfiguredSources(
+      dependencies.request,
+      board.provider,
+      new URL(sourceUrl).hostname,
+      input.userId,
+    );
+    if (configuredToken) board = { ...board, atsBoardToken: configuredToken, confidence: "exact" };
+  }
+
+  const fetched = board
+    ? await fetchViaBoardApi(sourceUrl, board, dependencies) ?? await fetchJobPage(sourceUrl, dependencies)
+    : await fetchJobPage(sourceUrl, dependencies);
   if (fetched.status !== "ok") return fetched;
 
   const reusable = fetched.deterministicPosting

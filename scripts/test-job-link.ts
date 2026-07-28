@@ -446,6 +446,177 @@ async function main() {
     assert.deepEqual(await response.json(), { error: "Expected url.", status: "invalid_url" });
   }
 
+  // A link copied from LinkedIn carries campaign parameters the board's own URL
+  // never had. The stored posting must still be recognized instead of refetched.
+  {
+    const stored = { id: "job-known", title: "Director", company_name: "Gitlab" };
+    let dedupeQuery = "";
+    const { request } = mockRequest((call) => {
+      if (call.method === "GET" && call.table === "jobs") {
+        dedupeQuery = decodeURIComponent(call.query ?? "");
+        return dedupeQuery.includes("jobs/8607104002\"") ? [stored] : [];
+      }
+      return [];
+    });
+    const result = await ingestJobFromLink({
+      url: "https://job-boards.greenhouse.io/gitlab/jobs/8607104002?gh_src=abc&utm_source=linkedin&grnh.se=z",
+      userId: "user-tracked",
+    }, {
+      request,
+      resolveHostname: publicResolver,
+      fetchImpl: async () => {
+        throw new Error("a posting we already hold must not be refetched");
+      },
+    });
+    assert.deepEqual(result, {
+      status: "already_known",
+      jobId: "job-known",
+      title: "Director",
+      company: "Gitlab",
+    });
+    // Both the pasted URL and its campaign-stripped form are matched.
+    assert.match(dedupeQuery, /gh_src=abc/);
+    assert.match(dedupeQuery, /"https:\/\/job-boards\.greenhouse\.io\/gitlab\/jobs\/8607104002"/);
+  }
+
+  // A company careers host guesses the wrong board token from its hostname
+  // ("jobs" for jobs.dropbox.com). The configured job_sources token wins.
+  {
+    const { request } = mockRequest((call) => {
+      if (call.table === "job_sources") {
+        return [
+          { ats_board_token: "airbnb", company_name: "Airbnb" },
+          { ats_board_token: "dropbox", company_name: "Dropbox" },
+        ];
+      }
+      if (call.method === "POST") return [{ id: "job-db", title: "Staff Engineer", company_name: "Dropbox" }];
+      return [];
+    });
+    let seenToken = "";
+    const result = await ingestJobFromLink({
+      url: "https://jobs.dropbox.com/listing/8006972?gh_jid=8006972",
+      userId: "user-token",
+    }, {
+      request,
+      resolveHostname: publicResolver,
+      fetchImpl: async () => {
+        throw new Error("the board API should answer before any page fetch");
+      },
+      fetchBoardPostingImpl: async (_url, board) => {
+        seenToken = board.atsBoardToken;
+        return {
+          status: "ok",
+          posting: {
+            title: "Staff Engineer",
+            companyName: "Dropbox",
+            description: "Build storage systems. Requirements: 8 years experience.",
+          },
+        };
+      },
+    });
+    assert.equal(seenToken, "dropbox");
+    assert.equal(result.status, "ingested");
+  }
+
+  // A login-gated board is reported as exactly that, naming the board, and never
+  // reaches the page fetcher or the model.
+  {
+    const { request, calls } = mockRequest(() => []);
+    let fetched = false;
+    const result = await ingestJobFromLink({
+      url: "https://jobs.gem.com/acme/am9icG9zdDrabc123",
+      userId: "user-gem",
+    }, {
+      request,
+      resolveHostname: publicResolver,
+      fetchImpl: async () => {
+        fetched = true;
+        return new Response("<html></html>", { headers: { "Content-Type": "text/html" } });
+      },
+      callModel: async () => {
+        throw new Error("model must not be called for a board we do not read");
+      },
+    });
+    assert.deepEqual(result, { status: "board_unsupported", board: "jobs.gem.com" });
+    assert.equal(fetched, false);
+    assert.equal(calls.some((call) => call.table === "jobs" && call.method === "POST"), false);
+  }
+
+  // A pasted board link is read through the ATS API, not the web page: no model
+  // call, no extraction claim, and the posting is stored from labeled fields.
+  {
+    const boardRow = { id: "job-board-1", title: "Program Director", company_name: "Acme Co" };
+    const { request, calls } = mockRequest((call) => call.method === "POST" ? [boardRow] : []);
+    let pageFetched = false;
+    const result = await ingestJobFromLink({
+      url: "https://job-boards.greenhouse.io/acme/jobs/123456?gh_src=abc",
+      userId: "user-board",
+    }, {
+      request,
+      resolveHostname: publicResolver,
+      fetchImpl: async () => {
+        pageFetched = true;
+        return new Response("<html>enable javascript</html>", {
+          headers: { "Content-Type": "text/html" },
+        });
+      },
+      callModel: async () => {
+        throw new Error("model must not be called when the board API answered");
+      },
+      fetchBoardPostingImpl: async (url, board) => {
+        assert.equal(board.provider, "greenhouse");
+        assert.equal(board.atsBoardToken, "acme");
+        assert.match(url, /jobs\/123456/);
+        return {
+          status: "ok",
+          posting: {
+            title: "Program Director",
+            companyName: "Acme Co",
+            description: "Responsibilities:\n- Lead the program\n\nRequirements:\n- 5 years experience",
+          },
+        };
+      },
+    });
+    assert.equal(result.status, "ingested");
+    // The shell page is never fetched when the structured API answers.
+    assert.equal(pageFetched, false);
+    assert.equal(calls.some((call) => call.table === "rpc/claim_job_link_extraction"), false);
+    const insert = calls.find((call) => call.table === "jobs" && call.method === "POST");
+    assert.ok(insert);
+    const body = insert.body as Record<string, unknown>;
+    assert.equal(body.title, "Program Director");
+    assert.equal(body.company_name, "Acme Co");
+    assert.equal(body.source, "user_link");
+  }
+
+  // When the board API cannot answer, the HTML reader still runs.
+  {
+    const fallbackRow = { id: "job-fallback-1", title: "Fallback Role", company_name: "Acme Co" };
+    const { request } = mockRequest((call) => call.method === "POST" ? [fallbackRow] : []);
+    let pageFetched = false;
+    const result = await ingestJobFromLink({
+      url: "https://job-boards.greenhouse.io/acme/jobs/999",
+      userId: "user-fallback",
+    }, {
+      request,
+      resolveHostname: publicResolver,
+      fetchImpl: async () => {
+        pageFetched = true;
+        return new Response(
+          '<script type="application/ld+json">{"@type":"JobPosting","title":"Fallback Role",'
+          + '"hiringOrganization":{"name":"Acme Co"},"description":"<p>Real posting body here.</p>"}</script>',
+          { headers: { "Content-Type": "text/html" } },
+        );
+      },
+      callModel: async () => {
+        throw new Error("JSON-LD should have covered this page");
+      },
+      fetchBoardPostingImpl: async () => ({ status: "unavailable" }),
+    });
+    assert.equal(result.status, "ingested");
+    assert.equal(pageFetched, true);
+  }
+
   // A throw from the ingest pipeline (for example a database function missing at
   // runtime) must still answer with JSON naming the failing stage plus a traceable
   // reference. Before this, it escaped as a bare 500 with no body and the client
