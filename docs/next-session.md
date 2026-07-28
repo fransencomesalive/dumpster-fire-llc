@@ -53,9 +53,24 @@ Verification completed locally:
 - full `npm run release:check` passes all migration harnesses, all 34 fixture suites, lint with the
   same four pre-existing warnings and zero errors, and the production Next.js build.
 
-Production deployment and the required post-deploy browser pass are still pending at this point in
-the handoff. Do not call the fix production-verified until the unchanged permanent harness passes
-against the deployed commit and its account cleanup audit returns all zeros.
+Production verification completed on code commit
+`b64b23128c74b547ee0fe7a2091c3d6150feb2ac`:
+
+- Vercel reported the production deployment complete;
+- the unchanged permanent harness ran at the responsive 850 x 567 viewport;
+- its authoritative Supabase session remained valid while the mirrored legacy token was removed;
+- the real Run scan control dispatched exactly one `POST /api/jobs/scan`;
+- production returned HTTP 200 with trace reference
+  `49f0d93f-33da-4288-8b70-bb162f549c8d`;
+- the response returned 75 matches, 75 active rows persisted, and the reload rendered the same
+  active-result count;
+- the browser recorded zero console errors and zero page errors;
+- disposable account, profile, and scan-result cleanup counts all returned zero.
+
+Larissa's named production account was then remediated through the same scan service. Her scan
+persisted and returned 75 matches, with `lastScanAt` recorded at
+`2026-07-28T20:56:47.48+00:00`. No impersonated browser session, password reset, email, outreach,
+or other external action was used.
 
 ## 2026-07-27 site bug release
 
