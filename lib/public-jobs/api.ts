@@ -34,6 +34,7 @@ export type PublicJobsHandlerOptions = {
   repositoryRequest?: PublicProfileRepositoryRequest;
   // Injectable board-fetch machinery (tests); env is threaded automatically.
   scanOptions?: PublicJobsScanOptions;
+  runJobsScan?: typeof runPublicJobsScanForUser;
   ingestJob?: typeof ingestJobFromLink;
   jobLinkOptions?: Omit<IngestJobFromLinkDependencies, "request" | "now">;
 };
@@ -127,13 +128,31 @@ export async function handlePublicJobsScanRequest(
   if (!repositoryRequest) return repositoryConfigErrorResponse();
 
   const scannedAt = options.now?.() ?? new Date().toISOString();
-  const result = await runPublicJobsScanForUser(repositoryRequest, session.userId, scannedAt, {
-    env: options.env,
-    ...options.scanOptions,
-  });
+  const reference = randomUUID();
+  let result: Awaited<ReturnType<typeof runPublicJobsScanForUser>>;
+  try {
+    const runScan = options.runJobsScan ?? runPublicJobsScanForUser;
+    result = await runScan(repositoryRequest, session.userId, scannedAt, {
+      env: options.env,
+      ...options.scanOptions,
+    });
+  } catch (error) {
+    console.error(`[public-jobs-scan] failed reference=${reference}`, error);
+    return json({
+      error: "The scan hit a server error before your matches could be returned.",
+      status: "scan_failed",
+      reference,
+    }, { status: 500 });
+  }
   if ("status" in result) return readinessResponse(result);
 
-  return json(result);
+  return json({
+    ...result,
+    scan: {
+      ...result.scan,
+      reference,
+    },
+  });
 }
 
 function jobLinkErrorResponse(result: Exclude<IngestJobFromLinkResult, { status: "ingested" | "already_known" }>) {

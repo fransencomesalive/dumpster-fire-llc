@@ -115,6 +115,27 @@ prompt. Codex stops only when the requested outcome is complete, a decision or a
 genuinely required, or further action would conflict with concurrent file ownership. When it
 stops, the reason and exact next action must be reported immediately.
 
+### Production Scan Verification
+
+Scanning is not verified by fixtures, service-layer calls, dry runs, builds, or an HTTP response
+alone. Before reporting the scan journey as working or production-ready, Codex must complete a
+fresh authenticated production-browser journey that:
+
+- starts from a completed user profile with no existing scan results;
+- clicks the production dashboard's Run scan control;
+- confirms `POST /api/jobs/scan` reaches the production deployment and returns successfully;
+- confirms the scan writes result rows for that same user in production;
+- confirms the dashboard renders those persisted matches after the response and after a reload;
+- records the account, deployment, commit, request evidence, and persisted-result count used for
+  verification.
+
+If that production journey cannot be completed, scanning must be reported as **NOT VERIFIED** and
+the exact missing evidence must be named. Fixture coverage or backend-only execution must never be
+presented as equivalent evidence.
+
+Enforcement class: **advisory**. This instruction is persistent repository guidance that an agent
+can technically ignore; it is not a blocking hook.
+
 ### Project Operating State
 
 Before doing implementation work after a restart, handoff, sync, or "pick up where we left off" request, Codex must read `docs/project-operating-state.md` and follow its Session Start Protocol. Handoff, roadmap, audit, and design docs are context, not authorization to edit. If the requested next step is ambiguous, Codex must report the ambiguity and wait for explicit scope instead of choosing creatively.

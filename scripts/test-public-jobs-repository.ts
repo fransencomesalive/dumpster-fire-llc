@@ -9,7 +9,10 @@ import {
   setPublicJobDismissedForUser,
   setPublicJobSavedForUser,
 } from "../lib/public-jobs/repository";
-import { handlePublicJobMatchFeedbackRequest } from "../lib/public-jobs/api";
+import {
+  handlePublicJobMatchFeedbackRequest,
+  handlePublicJobsScanRequest,
+} from "../lib/public-jobs/api";
 import { PUBLIC_JOB_MATCHER_VERSION } from "../lib/public-jobs/types";
 import type { PublicProfileRepositoryRequest } from "../lib/public-profile/repository";
 import type { NormalizedConnectorJob } from "../lib/scan/sources/types";
@@ -875,6 +878,40 @@ async function main() {
   await assert.doesNotReject(
     logUnrecognizedBoardSubmissionBestEffort(request, userId, rawUnreadableUrl, "board_fetch_failed"),
   );
+
+  // Scan failures always return traceable JSON instead of escaping as an opaque
+  // platform 500 that leaves the browser with no actionable reference.
+  {
+    const originalConsoleError = console.error;
+    console.error = () => {};
+    try {
+      const response = await handlePublicJobsScanRequest(
+        new Request("https://app.example/api/jobs/scan", { method: "POST" }),
+        {
+          repositoryRequest: request,
+          getSession: async () => ({
+            status: "authenticated",
+            userId,
+            email: "scan@example.com",
+          }),
+          runJobsScan: async () => {
+            throw new Error("database unavailable");
+          },
+        },
+      );
+      assert.equal(response.status, 500);
+      const body = await response.json() as {
+        error?: string;
+        status?: string;
+        reference?: string;
+      };
+      assert.equal(body.status, "scan_failed");
+      assert.match(body.error ?? "", /server error/i);
+      assert.match(body.reference ?? "", /^[0-9a-f-]{36}$/);
+    } finally {
+      console.error = originalConsoleError;
+    }
+  }
 
   console.log("public jobs repository: all assertions passed");
 }

@@ -1,7 +1,61 @@
 # Next Session: Site Bug, Phase 4 Preserved
 
-_Updated 2026-07-27. Read `AGENTS.md` and follow the Session Start Protocol in
+_Updated 2026-07-28. Read `AGENTS.md` and follow the Session Start Protocol in
 `docs/project-operating-state.md` before editing._
+
+## 2026-07-28 first-user scan failure
+
+Larissa Fransen's first production scan failed before any request reached the scan API. Production
+evidence ruled out profile readiness, inventory, and matching:
+
+- her candidate profile and profile-quality rows were complete;
+- her search settings and target titles were populated;
+- she had zero `job_scan_results`;
+- a read-only run of her exact profile against the 5,112-row production pool selected the
+  75-result cap;
+- Vercel logs for her test window contained the successful dashboard reads but no
+  `POST /api/jobs/scan`.
+
+The exact no-request signature was reproduced in a disposable authenticated production browser:
+the dashboard loaded from the authoritative Supabase session, the legacy mirrored
+`dumpster-fire-public-access-token` local-storage key was removed, and the existing Run scan
+handler redirected to onboarding without dispatching a request or recording an error. The
+dashboard load and the scan action were using different authentication authorities.
+
+Implemented locally:
+
+- `resolvePublicActionAccessToken` resolves the live Supabase session first and treats the
+  local-storage mirror only as a compatibility fallback;
+- the dashboard Run scan handler uses that resolver before deciding the user is signed out;
+- scan API exceptions return safe JSON with a trace reference, and successful responses carry the
+  same reference for log correlation;
+- the scan modal reads the server error and reference instead of showing only an opaque HTTP code;
+- unit coverage proves authoritative-session precedence, missing-mirror restoration, fallback
+  behavior, and traceable scan API failures;
+- `scripts/qa/production-scan-browser.mjs` is now a permanent release test. It creates a disposable
+  complete production account with zero results, signs in through the real UI, deliberately removes
+  the mirrored token, clicks the real Run scan control, requires one HTTP 200 scan request, confirms
+  persisted result rows, reloads and confirms the dashboard renders them, then deletes the account
+  and audits cleanup.
+
+Pre-fix production evidence from the permanent harness:
+
+- commit `2c6ac12aaa48919c5575b3dc43c7e5836e6697e4`;
+- no `/api/jobs/scan` request, response, console error, or page error;
+- zero persisted results;
+- the browser returned to `/onboarding`;
+- disposable account, profile, and scan-result cleanup counts all returned zero.
+
+Verification completed locally:
+
+- focused public-auth and public-jobs repository suites pass;
+- TypeScript passes;
+- full `npm run release:check` passes all migration harnesses, all 34 fixture suites, lint with the
+  same four pre-existing warnings and zero errors, and the production Next.js build.
+
+Production deployment and the required post-deploy browser pass are still pending at this point in
+the handoff. Do not call the fix production-verified until the unchanged permanent harness passes
+against the deployed commit and its account cleanup audit returns all zeros.
 
 ## 2026-07-27 site bug release
 

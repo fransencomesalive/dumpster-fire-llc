@@ -31,6 +31,7 @@
     "test:provider-usage": "node scripts/test-provider-usage.mjs",
     "test:unit-economics": "node scripts/test-subscription-unit-economics.mjs",
     "test:stripe-billing": "node scripts/test-stripe-billing.mjs",
+    "qa:production-scan": "node --env-file=.env.local scripts/qa/production-scan-browser.mjs",
     "report:unit-economics": "node scripts/report-subscription-unit-economics.mjs",
     "report:stripe-reconciliation": "node scripts/reconcile-stripe-subscriptions.mjs",
     "test:public-jobs": "node scripts/test-public-jobs-repository.mjs",
@@ -61,6 +62,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.10",
+    "playwright-core": "^1.62.0",
     "tailwindcss": "^4",
     "typescript": "^5"
   },

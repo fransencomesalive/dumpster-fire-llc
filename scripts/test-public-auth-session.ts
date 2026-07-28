@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { resolvePublicActionAccessToken } from "../lib/public-auth/action-session";
 import { getPublicAuthSession } from "../lib/public-auth/session";
 
 const configuredEnv = {
@@ -8,6 +9,26 @@ const configuredEnv = {
 } as unknown as NodeJS.ProcessEnv;
 
 async function main() {
+  assert.equal(await resolvePublicActionAccessToken({
+    syncSession: async () => "authoritative-session-token",
+    readStoredToken: () => "stale-mirrored-token",
+  }), "authoritative-session-token");
+
+  assert.equal(await resolvePublicActionAccessToken({
+    syncSession: async () => "restored-session-token",
+    readStoredToken: () => "",
+  }), "restored-session-token");
+
+  assert.equal(await resolvePublicActionAccessToken({
+    syncSession: async () => { throw new Error("refresh unavailable"); },
+    readStoredToken: () => "valid-mirrored-token",
+  }), "valid-mirrored-token");
+
+  assert.equal(await resolvePublicActionAccessToken({
+    syncSession: async () => "",
+    readStoredToken: () => "",
+  }), "");
+
   const missingConfig = await getPublicAuthSession(new Request("https://app.example/api"), {
     env: {} as NodeJS.ProcessEnv,
   });

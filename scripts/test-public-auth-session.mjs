@@ -17,6 +17,7 @@ const compileArgs = [
   "--outDir",
   outDir,
   "scripts/test-public-auth-session.ts",
+  "lib/public-auth/action-session.ts",
   "lib/public-auth/session.ts",
   "lib/public-auth/config.ts",
 ];

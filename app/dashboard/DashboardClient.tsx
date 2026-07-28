@@ -5,6 +5,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type 
 import { useRouter } from "next/navigation";
 import { clearPublicProfileAccessToken, readPublicProfileAccessToken } from "@/lib/public-profile/browser-session";
 import { syncPublicProfileSession } from "@/lib/public-auth/supabase-browser";
+import { resolvePublicActionAccessToken } from "@/lib/public-auth/action-session";
 import { PublicProfileApiError, requestPublicProfileApi } from "@/lib/public-profile/client";
 import ApplyWizardModal from "./ApplyWizardModal";
 import SiteHeader from "../components/SiteHeader";
@@ -667,7 +668,10 @@ export default function DashboardClient() {
   }, [router]);
 
   async function runScan() {
-    const accessToken = readPublicProfileAccessToken();
+    const accessToken = await resolvePublicActionAccessToken({
+      syncSession: syncPublicProfileSession,
+      readStoredToken: readPublicProfileAccessToken,
+    });
     if (!accessToken) {
       router.replace("/onboarding");
       return;
@@ -688,7 +692,18 @@ export default function DashboardClient() {
       const fits = response.jobs.filter((job) => starsFromScore(job.match?.score ?? 0) >= 4).length;
       setScanProgress({ status: "complete", roles: response.summary.totalJobs, fits });
     } catch (error) {
-      setScanProgress({ status: "error", message: error instanceof Error ? error.message : "Scan failed." });
+      const body = error instanceof PublicProfileApiError && error.body && typeof error.body === "object"
+        ? error.body as { error?: unknown; reference?: unknown }
+        : null;
+      const detail = typeof body?.error === "string" && body.error.trim()
+        ? body.error.trim()
+        : error instanceof Error
+          ? error.message
+          : "Scan failed.";
+      const reference = typeof body?.reference === "string" && body.reference.trim()
+        ? ` Reference: ${body.reference.trim()}`
+        : "";
+      setScanProgress({ status: "error", message: `${detail}${reference}` });
     } finally {
       clearTimeout(advance1);
       clearTimeout(advance2);

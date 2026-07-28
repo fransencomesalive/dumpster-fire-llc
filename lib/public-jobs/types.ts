@@ -130,6 +130,8 @@ export type PublicJobsScanResponse = PublicJobsResponse & {
     matchedJobs: number;
     mergedResults: number;
     providerMode: "normalized_public_jobs";
+    // Correlates the browser response with the production function log.
+    reference?: string;
     // Private company boards fetched live during this scan (absent when the user has none).
     userBoards?: { scanned: number; errors: number };
   };
