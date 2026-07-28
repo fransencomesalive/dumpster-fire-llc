@@ -26,6 +26,22 @@ export type BoardPostingDependencies = {
 };
 
 const DEFAULT_TIMEOUT_MS = 10_000;
+const GEM_POSTING_QUERY = `
+  query ExternalJobPostingQuery($boardId: String!, $extId: String!) {
+    oatsExternalJobPosting(boardId: $boardId, extId: $extId) {
+      title
+      descriptionHtml
+      job {
+        teamDisplayName
+      }
+      jobPostSectionHtml {
+        introHtml
+        outroHtml
+      }
+      compensationHtml
+    }
+  }
+`;
 
 function asRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" ? value as Record<string, unknown> : {};
@@ -53,17 +69,24 @@ function postingIdFromUrl(url: URL, provider: ResolvedBoard["provider"]): string
 async function fetchJson(
   endpoint: string,
   dependencies: BoardPostingDependencies,
+  request: {
+    method?: "GET" | "POST";
+    headers?: Record<string, string>;
+    body?: string;
+  } = {},
 ): Promise<unknown | undefined> {
   const fetchImpl = dependencies.fetchImpl ?? fetch;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), dependencies.timeoutMs ?? DEFAULT_TIMEOUT_MS);
   try {
     const response = await fetchImpl(endpoint, {
-      method: "GET",
+      method: request.method ?? "GET",
       headers: {
         Accept: "application/json",
         "User-Agent": "The Job Market Is a Dumpster Fire job-link ingestion",
+        ...request.headers,
       },
+      body: request.body,
       cache: "no-store",
       signal: controller.signal,
     });
@@ -87,19 +110,69 @@ function postingFrom(title: string, companyName: string, description: string): B
   };
 }
 
+async function fetchGemPosting(
+  url: URL,
+  board: ResolvedBoard,
+  dependencies: BoardPostingDependencies,
+): Promise<BoardPostingResult> {
+  if (url.hostname.toLowerCase() !== "jobs.gem.com") return { status: "not_applicable" };
+
+  const parts = url.pathname.split("/").filter(Boolean);
+  const boardId = parts[0];
+  const postingId = parts[1];
+  if (!boardId || !postingId) return { status: "not_applicable" };
+
+  const payload = await fetchJson(
+    "https://jobs.gem.com/api/public/graphql",
+    dependencies,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        operationName: "ExternalJobPostingQuery",
+        variables: { boardId, extId: postingId },
+        query: GEM_POSTING_QUERY,
+      }),
+    },
+  );
+  if (payload === undefined) return { status: "unavailable" };
+
+  const posting = asRecord(asRecord(asRecord(payload).data).oatsExternalJobPosting);
+  const job = asRecord(posting.job);
+  const sections = asRecord(posting.jobPostSectionHtml);
+  const description = [
+    asText(sections.introHtml),
+    asText(posting.descriptionHtml),
+    asText(sections.outroHtml),
+    asText(posting.compensationHtml),
+  ]
+    .map(textFromHtml)
+    .filter(Boolean)
+    .join("\n\n");
+
+  return postingFrom(
+    asText(posting.title),
+    asText(job.teamDisplayName) || board.companySlug,
+    description,
+  );
+}
+
 export async function fetchBoardPosting(
   sourceUrl: string,
   board: ResolvedBoard,
   dependencies: BoardPostingDependencies = {},
 ): Promise<BoardPostingResult> {
-  if (board.provider !== "greenhouse" && board.provider !== "ashby" && board.provider !== "lever") {
-    return { status: "not_applicable" };
-  }
-
   let url: URL;
   try {
     url = new URL(sourceUrl);
   } catch {
+    return { status: "not_applicable" };
+  }
+
+  const gemPosting = await fetchGemPosting(url, board, dependencies);
+  if (gemPosting.status !== "not_applicable") return gemPosting;
+
+  if (board.provider !== "greenhouse" && board.provider !== "ashby" && board.provider !== "lever") {
     return { status: "not_applicable" };
   }
 

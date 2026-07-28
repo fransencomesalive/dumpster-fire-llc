@@ -212,6 +212,36 @@ assert.equal(workableAggregate.length, 1);
 assert.equal(workableAggregate[0].companyName, "Aggregate Co");
 assert.ok(workableAggregate[0].location.includes("Remote"));
 
+// ---- Remote OK URL integrity ----
+const remoteOkSource = source({
+  atsProvider: "html",
+  companyName: "Remote OK Broad Job Board",
+  careersUrl: "https://remoteok.com/api",
+});
+const remoteOk = normalizeConnectorPayload([{
+  id: "1135538",
+  slug: "remote-transportation-analyst-remotefront-1135538",
+  url: "https://remoteOK.com/remote-jobs/",
+  apply_url: "https://remoteOK.com/remote-jobs/",
+  position: "Transportation Analyst",
+  company: "RemoteFront",
+  description: "Analyze transportation data.",
+}], remoteOkSource);
+assert.equal(remoteOk.length, 1);
+assert.equal(
+  remoteOk[0].sourceUrl,
+  "https://remoteok.com/remote-jobs/remote-transportation-analyst-remotefront-1135538",
+);
+assert.equal(remoteOk[0].applyUrl, remoteOk[0].sourceUrl);
+
+const remoteOkWithoutIdentity = normalizeConnectorPayload([{
+  id: "1135539",
+  url: "https://remoteOK.com/remote-jobs/",
+  position: "Unidentifiable Role",
+  company: "Unknown",
+}], remoteOkSource);
+assert.equal(remoteOkWithoutIdentity.length, 0);
+
 // ---- RSS ----
 const rss = parseRssJobs(`<?xml version="1.0"?><rss><channel>
   <item><title>Acme Co: Remote Producer</title><link>https://jobs.example/rss/1</link><region>Remote</region><country>USA</country><type>Full-time</type><category>Production</category><description>Produce.</description></item>

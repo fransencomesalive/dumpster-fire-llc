@@ -105,9 +105,98 @@ function dedupeKeyUrl(sourceUrl: string) {
   }
 }
 
+function sourceUrlLookupValues(sourceUrl: string) {
+  const values = [sourceUrl, dedupeKeyUrl(sourceUrl)];
+  try {
+    const url = new URL(sourceUrl);
+    if (url.hostname.toLowerCase().replace(/^www\./, "") === "remoteok.com") {
+      // Remote OK historically emitted a mixed-case hostname. URL() correctly
+      // lowercases the pasted host, but old scan rows retain the original string.
+      // Keep this read-only compatibility key while the connector now emits a
+      // canonical, job-specific URL.
+      values.push(
+        dedupeKeyUrl(sourceUrl).replace(
+          `${url.protocol}//${url.hostname}`,
+          `${url.protocol}//remoteOK.com`,
+        ),
+      );
+    }
+  } catch {
+    // sourceUrl was already validated by the caller.
+  }
+  return [...new Set(values)];
+}
+
 function quotedIn(values: string[]) {
   const unique = [...new Set(values)];
   return `in.(${unique.map((value) => `"${value.replace(/"/g, '\\"')}"`).join(",")})`;
+}
+
+type ScanJobIdentity = {
+  sources: string[];
+  externalJobId: string;
+};
+
+// The scan pipeline stores a provider's durable posting id alongside source_url.
+// URL equality remains the fastest lookup, but it cannot be the only one: some
+// providers put their own tracking parameters in the stored URL, and URL()
+// normalizes hostname casing. Derive the same id the scan connector persisted so
+// every scan-produced link remains recognizable across harmless URL variations.
+function scanJobIdentityFromUrl(sourceUrl: string): ScanJobIdentity | undefined {
+  let url: URL;
+  try {
+    url = new URL(sourceUrl);
+  } catch {
+    return undefined;
+  }
+
+  const host = url.hostname.toLowerCase().replace(/^www\./, "");
+  const parts = url.pathname.split("/").filter(Boolean);
+  const greenhouseId = url.searchParams.get("gh_jid")
+    || (parts.includes("jobs") ? parts[parts.indexOf("jobs") + 1] : undefined);
+  if (greenhouseId && (
+    host === "boards.greenhouse.io"
+    || host === "job-boards.greenhouse.io"
+    || url.searchParams.has("gh_jid")
+  )) {
+    return { sources: ["greenhouse"], externalJobId: greenhouseId };
+  }
+
+  if (host === "jobs.ashbyhq.com" && parts[1]) {
+    return { sources: ["ashby"], externalJobId: parts[1] };
+  }
+  if (host === "jobs.lever.co" && parts[1]) {
+    return { sources: ["lever"], externalJobId: parts[1] };
+  }
+  if (host === "adzuna.com" && parts[0] === "details" && parts[1]) {
+    return { sources: ["adzuna"], externalJobId: parts[1] };
+  }
+  if (host === "remoteok.com") {
+    const remoteOkId = url.pathname.match(/-(\d+)\/?$/)?.[1];
+    if (remoteOkId) return { sources: ["remote_ok"], externalJobId: remoteOkId };
+  }
+  if ((host === "arbeitnow.com" || host === "arbeitnow.co.uk") && parts.at(-1)) {
+    return { sources: ["arbeitnow", "html"], externalJobId: parts.at(-1)! };
+  }
+  if (host === "directsource.magnitglobal.com" && parts.includes("jobs")) {
+    const magnitId = parts[parts.indexOf("jobs") + 1];
+    if (magnitId) return { sources: ["magnit"], externalJobId: magnitId };
+  }
+
+  // These connectors persist the clean posting URL itself as external_job_id.
+  // Using it here makes the identity path explicit and keeps tracking parameters
+  // out of the comparison.
+  if (host === "himalayas.app") {
+    return { sources: ["himalayas"], externalJobId: dedupeKeyUrl(sourceUrl) };
+  }
+  if (host === "remotive.com") {
+    return { sources: ["remotive"], externalJobId: dedupeKeyUrl(sourceUrl) };
+  }
+  if (host === "weworkremotely.com") {
+    return { sources: ["we_work_remotely"], externalJobId: dedupeKeyUrl(sourceUrl) };
+  }
+
+  return undefined;
 }
 
 // Dedupe against shared-pool rows and the user's own private rows only; another
@@ -115,7 +204,27 @@ function quotedIn(values: string[]) {
 async function findJobBySourceUrl(request: PublicProfileRepositoryRequest, sourceUrl: string, userId: string) {
   const rows = await request<StoredJob[]>("jobs", {
     query: qs({
-      source_url: quotedIn([sourceUrl, dedupeKeyUrl(sourceUrl)]),
+      source_url: quotedIn(sourceUrlLookupValues(sourceUrl)),
+      or: `(owner_user_id.is.null,owner_user_id.eq.${userId})`,
+      select: "id,title,company_name",
+      limit: "1",
+    }),
+  });
+  return rows[0];
+}
+
+async function findJobByScanIdentity(
+  request: PublicProfileRepositoryRequest,
+  sourceUrl: string,
+  userId: string,
+) {
+  const identity = scanJobIdentityFromUrl(sourceUrl);
+  if (!identity) return undefined;
+
+  const rows = await request<StoredJob[]>("jobs", {
+    query: qs({
+      source: quotedIn(identity.sources),
+      external_job_id: `eq.${identity.externalJobId}`,
       or: `(owner_user_id.is.null,owner_user_id.eq.${userId})`,
       select: "id,title,company_name",
       limit: "1",
@@ -481,6 +590,9 @@ export async function ingestJobFromLink(
   const existing = await findJobBySourceUrl(dependencies.request, sourceUrl, input.userId);
   if (existing) return knownResult(existing);
 
+  const scanned = await findJobByScanIdentity(dependencies.request, sourceUrl, input.userId);
+  if (scanned) return knownResult(scanned);
+
   // Resolve the link against the board registry the scan already uses. A board we
   // decline to read is reported as exactly that; a board we can talk to is read
   // through its structured API instead of its web page.
@@ -489,7 +601,9 @@ export async function ingestJobFromLink(
     return { status: "board_unsupported", board: new URL(sourceUrl).hostname };
   }
 
-  let board = boardResolution.status === "resolved" ? boardResolution.board : undefined;
+  let board = boardResolution.status === "resolved" || boardResolution.status === "posting_only"
+    ? boardResolution.board
+    : undefined;
   if (board && board.confidence === "guess") {
     const configuredToken = await boardTokenFromConfiguredSources(
       dependencies.request,

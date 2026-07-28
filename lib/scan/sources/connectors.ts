@@ -377,6 +377,24 @@ function companyNameFromSourceUrl(sourceUrl: string) {
   return "";
 }
 
+function remoteOkPostingUrl(raw: Record<string, unknown>, candidate: string, company: JobSource) {
+  if (!company.careersUrl.toLowerCase().includes("remoteok.com")) return candidate;
+
+  let isBoardRoot = false;
+  try {
+    const url = new URL(candidate);
+    const path = url.pathname.replace(/\/+$/, "").toLowerCase();
+    isBoardRoot = path === "" || path === "/remote-jobs";
+  } catch {
+    isBoardRoot = true;
+  }
+  if (!isBoardRoot) return candidate;
+
+  const slug = asString(raw.slug).replace(/^\/+|\/+$/g, "");
+  if (!slug || slug.toLowerCase() === "remote-jobs") return "";
+  return `https://remoteok.com/remote-jobs/${slug}`;
+}
+
 function isGeneratedSourceCompanyName(value: string) {
   return /broad job board/i.test(value);
 }
@@ -923,8 +941,16 @@ export function normalizeHtmlJob(rawJob: unknown, company: JobSource): Normalize
     : { salaryText: "", salaryMin: undefined as number | undefined, salaryMax: undefined as number | undefined };
   const salaryMin = fieldSalaryMin ?? bodySalary.salaryMin;
   const salaryMax = fieldSalaryMax ?? bodySalary.salaryMax;
-  const sourceUrl = firstString(raw.sourceUrl, raw.url, raw.job_url, raw.apply_url, raw.applicationUrl, raw.applicationLink, raw.guid) || company.careersUrl;
-  const applyUrl = firstString(raw.applyUrl, raw.apply_url, raw.applicationUrl, raw.applicationLink) || sourceUrl;
+  const sourceUrl = remoteOkPostingUrl(
+    raw,
+    firstString(raw.sourceUrl, raw.url, raw.job_url, raw.apply_url, raw.applicationUrl, raw.applicationLink, raw.guid) || company.careersUrl,
+    company,
+  );
+  const applyUrl = remoteOkPostingUrl(
+    raw,
+    firstString(raw.applyUrl, raw.apply_url, raw.applicationUrl, raw.applicationLink) || sourceUrl,
+    company,
+  ) || sourceUrl;
   const rawSourceCompanyName = firstString(raw.companyName, rawCompany.name, raw.company_name, raw.company);
   const sourceCompanyName = isGeneratedSourceCompanyName(rawSourceCompanyName)
     ? companyNameFromSourceUrl(sourceUrl)
@@ -1075,5 +1101,5 @@ export function normalizeConnectorPayload(payload: unknown, company: JobSource):
 
   return rows
     .map((rawJob) => normalizeConnectorJob(rawJob, company))
-    .filter((job) => job.externalJobId && job.title);
+    .filter((job) => job.externalJobId && job.title && job.sourceUrl);
 }

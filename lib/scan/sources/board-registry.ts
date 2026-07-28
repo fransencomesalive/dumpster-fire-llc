@@ -10,6 +10,9 @@ export type ResolvedBoard = {
 
 export type BoardResolution =
   | { status: "resolved"; board: ResolvedBoard }
+  // A single posting can be read, but the provider does not expose a whole-board
+  // source that the recurring scan can register.
+  | { status: "posting_only"; board: ResolvedBoard }
   | { status: "blocked"; reason: string }
   | { status: "unrecognized" };
 
@@ -102,8 +105,25 @@ export function resolveBoardFromUrl(rawUrl: string): BoardResolution {
     return resolved("html", account, `https://apply.workable.com/api/v1/widget/accounts/${account}?details=true`);
   }
 
-  if (hostname === "jobs.gem.com" || hostname.endsWith(".gem.com")) {
-    return { status: "blocked", reason: "Gem job-board API is login-gated; do not scrape. Reach these roles through keyed aggregator APIs or manual finds." };
+  if (hostname === "jobs.gem.com") {
+    const boardId = pathParts[0] ?? "";
+    const postingId = pathParts[1] ?? "";
+    if (!boardId || !postingId) {
+      return {
+        status: "blocked",
+        reason: "Gem does not expose a whole-board source that recurring scans can register.",
+      };
+    }
+    return {
+      status: "posting_only",
+      board: {
+        provider: "html",
+        atsBoardToken: boardId,
+        careersUrl: `https://jobs.gem.com/${boardId}`,
+        companySlug: titleFromSlug(boardId),
+        confidence: "exact",
+      },
+    };
   }
 
   const greenhouseEmbedId = url.searchParams.get("gh_jid");

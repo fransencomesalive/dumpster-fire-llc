@@ -167,95 +167,71 @@ fails on boards that render in the browser. Pasted links now resolve against the
 - `lib/public-jobs/api.ts`: `board_unsupported` returns 422 naming the board, so a login-gated
   board reads as a specific reason instead of a generic extraction failure.
 
-Verified end to end against the real boards: the Greenhouse and Ashby links both ingest with **no
-model call** (Greenhouse previously required the LLM), recruiterflow still ingests via JSON-LD, and
-`jobs.gem.com` returns `board_unsupported` without fetching the page, calling the model, or storing
-anything.
+Verified end to end against the real boards: Greenhouse, Ashby, and Gem ingest with **no model
+call** (Greenhouse previously required the LLM), and recruiterflow still ingests via JSON-LD.
 
-### Scan/paste parity (2026-07-27, Randall's hard requirement)
+### Scan/paste parity (corrected and expanded 2026-07-28)
 
 **Requirement (Randall): any job a scan presents to the user must also be ingestible through the
-single-URL input.** Board routing alone did not satisfy that, and an initial coverage claim of "34%
-of presented jobs cannot be pasted" was WRONG: that probe stubbed the database and so never ran the
-dedupe lookup. Corrected measurement below; do not reuse the 34% figure.
+single-URL input through the same scan data structure.** The three reported URLs are examples, not
+the acceptance set. Parity covers every active production source/hostname class and every connector
+class the scan engine can emit. A source-specific posting page does not need to be independently
+scrapable when the scan already persisted the structured posting.
 
-Measured against production: one real `source_url` per host from the `jobs` table, 17 hosts,
-4,731 rows, of which 4,729 are shared-pool (`owner_user_id is null`) and therefore visible to the
-paste dedupe. Two real gaps were found:
+Measured against production on 2026-07-28: 5,112 shared-pool jobs, 85 active global sources, and 18
+distinct source/hostname classes. The audit forced each class through the paste pipeline with a
+different tracking parameter. Two remaining failures were found after the earlier board-only pass:
 
-1. **Campaign parameters broke recognition.** Dedupe compared exact strings and `normalizeUrl` only
-   stripped the fragment, while the scan stores the board's own clean URL. A link copied from
-   LinkedIn (`?utm_source=`, `?src=`, `?gh_src=`, `?grnh.se=`) therefore never matched a posting we
-   already held and fell through to a live fetch that several hosts refuse. `himalayas.app` and
-   `weworkremotely.com` return 403 to us and to a browser user agent, because the scan reads their
-   API and RSS feed rather than their pages.
-2. **Wrong board token on company careers hosts.** The registry guesses the token from the
-   hostname, so `careers.airbnb.com` guessed `careers` and `jobs.dropbox.com` guessed `jobs`, and
-   the Greenhouse API 404s. The correct tokens are already configured in `job_sources`.
+1. **Adzuna tracking was asymmetric.** Scan rows retain Adzuna's own `utm_*` values. Stripping
+   tracking only from the pasted URL could never equal a stored URL carrying different tracking.
+2. **Remote OK emitted one non-specific URL.** A production scan row retained mixed hostname casing
+   and `/remote-jobs/`, which identifies the board rather than the posting.
 
-Both fixed in `lib/public-jobs/ingest-link.ts`:
+The complete parity fix:
 
 - `dedupeKeyUrl` strips campaign and referral parameters (`utm_*` plus a conservative list) and the
   dedupe query matches the pasted URL **or** its stripped form. The URL the user pasted is still
   what gets stored, so "Open posting" always opens the link they had. Identifying parameters such
   as `gh_jid` are deliberately never stripped.
+- `scanJobIdentityFromUrl` derives the durable `external_job_id` already persisted by scan
+  connectors. A pasted link can therefore match Adzuna, Remote OK, Greenhouse, Ashby, Lever,
+  Arbeitnow, Magnit, Himalayas, Remotive, and We Work Remotely across harmless URL differences.
+- Historical mixed-case Remote OK URLs have a read-only compatibility key.
+- Remote OK normalization now reconstructs a specific posting URL from the API slug and rejects a
+  row that has only the board root, so future scans cannot surface an unidentifiable link.
 - `boardTokenFromConfiguredSources` prefers a `job_sources` token whose value equals a hostname
   label over the registry's guess, so a careers host resolves to the board the scan reads.
 
-Verified: re-running every one of the 17 hosts through the real pipeline with real database reads
-and campaign parameters appended returns OK for all 17 (14 recognized as already held, 3 fetched
-deterministically). Two new regression cases cover the campaign-parameter match and the configured
-token override. Full `npm run release:check` passed.
+Live read-only verification: 18/18 active production source/hostname classes returned
+`already_known` before page fetch, model use, fallback insertion, or production writes. The
+regression matrix also covers inactive-but-supported Workday, iCIMS, Rippling, account-level
+Workable, and generic JSON-LD connectors, for 23 scan URL classes total. The earlier "34% cannot be
+pasted" figure and the narrower "17 hosts OK" claim are superseded.
 
-Known remaining gap, not yet closed: a **fresh** posting on a host that refuses page fetches
-(`himalayas.app`, `weworkremotely.com`) and that the scan has not yet ingested. Parity for those
-means routing the paste to the same feed the scan reads, which is unresolved because an aggregator
-feed is a time-boxed query that may not contain an older posting.
+### Gem single-posting ingestion (resolved 2026-07-28)
 
-### OPEN QUESTION: reading postings on browser-rendered boards (gem.com class)
+Gem was not a browser-rendering problem after all. Its HTML response is an empty JavaScript shell,
+but the public page's own unauthenticated client reads the posting through
+`https://jobs.gem.com/api/public/graphql`. The exact query and response fields are published in
+Gem's public `jobBoards` JavaScript asset.
 
-**Status: unsolved, actively wanted. Randall 2026-07-27: "we need to continue to push on
-solutions to pages like gem.com."** Do not close this by declaring it out of scope.
+- `lib/scan/sources/board-registry.ts` now distinguishes a `posting_only` source from a whole board.
+  A Gem job URL can therefore enter manual link ingestion without falsely enabling Gem as a
+  recurring company-board source.
+- `lib/public-jobs/board-posting.ts` sends the same public `ExternalJobPostingQuery` used by Gem's
+  browser client, then extracts the title, company/team display name, main description, intro,
+  outro, and compensation into the existing deterministic posting path.
+- Gem pastes skip the empty HTML shell, model extraction, and headless-browser rendering.
+- Whole-board Gem registration remains unsupported. This change supports a pasted posting, not a
+  recurring scan of every role on a Gem board.
 
-The problem: some boards send an empty JavaScript shell to any non-browser client. `jobs.gem.com`
-returns 4.2 KB with 23 characters of readable text ("Function Health Careers") and no JSON-LD, so
-there is nothing on the page for the ingest pipeline to read. Board-API routing (shipped) fixes
-Greenhouse, Ashby, and Lever, and JSON-LD covers recruiterflow and similar, but neither helps a
-board that has no public API and publishes nothing in its HTML.
+Live verification against Randall's reported Function Health URL returned `Head of Special
+Projects`, `Function Health`, and 9,460 characters of usable posting text. The exact reported
+Greenhouse and Ashby links also passed through their structured adapters.
 
-Options on the table, best first:
-
-1. **Render the page in a real browser, then read the rendered text.** Once a headless browser has
-   executed the page's JavaScript, the posting text is in the DOM and can be extracted as clean
-   text and fed to the existing extractor. This is the leading candidate and Randall explicitly
-   wants it kept in play. Open sub-questions: run our own Chromium in a serverless function
-   (heavy, cold starts, platform limits) versus a hosted rendering service (per-page cost, new
-   vendor dependency); where the render step sits in the ingest path; and how to bound latency,
-   since rendering adds seconds to a paste.
-2. **Screenshot the rendered page and read it with vision.** Measured 2026-07-27 and priced out:
-   an image caps at roughly 4,784 input tokens at full resolution, so a posting costs about $0.02
-   for one downscaled page image and about $0.07 for three native-resolution tiles, against 6,703
-   tokens (about $0.034, measured with `count_tokens`) for the same posting as text. Tokens are
-   therefore NOT the blocker. The objection is that this still requires the same headless browser
-   as option 1, then adds a lossy pixel-reading step on top of text that was already available.
-   Keep it as the fallback for postings published only as images or PDF scans.
-3. **Per-board integrations** where a public API exists. This is what shipped for Greenhouse,
-   Ashby, and Lever. It does not generalize to the long tail.
-
-Two constraints to carry into any solution:
-
-- **Gem specifically is a policy question, not only a technical one.** `board-registry.ts` records
-  a deliberate earlier decision not to scrape Gem because its board API is login-gated. Rendering
-  Gem's page in a browser would read the same content that decision covers, so shipping a renderer
-  does not by itself authorize using it on Gem. That call is Randall's and has not been made.
-  Probing confirmed the position independently: Gem's public GraphQL endpoint answers ad-hoc
-  queries but blocks introspection, and blind field guesses return a generic error that notifies
-  their support team, so that avenue was abandoned rather than pursued.
-- **Measure the tail before buying anything.** We do not yet know how many real pasted links fail
-  this way. Capturing the host of every unreadable link would size the problem and tell us whether
-  a rendering vendor is worth its cost. There is precedent in
-  `logUnrecognizedBoardSubmissionBestEffort`, though its reason column currently allows only
-  `unrecognized_board` and `board_fetch_failed`, so a new reason value needs a migration.
+The broader long-tail question still exists for a future provider that returns only a browser shell
+and exposes no public structured endpoint. Measure real failures before adding Chromium or a
+rendering vendor; Gem is no longer evidence that such a dependency is needed.
 
 ### Pinned, not acted on: profile vs onboarding naming
 
