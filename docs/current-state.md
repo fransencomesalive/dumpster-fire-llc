@@ -1,5 +1,73 @@
 # Current State
 
+## 2026-07-28 (evening) - Global signed-in header, and auth moved into cookies
+
+The account controls (email, Sign out, Plan, Billing, Job scan, Saved Pursuits) lived in a profile
+card that existed only on `/onboarding`, so from the dashboard or Saved Pursuits there was no way to
+reach Plan, Billing, or Sign out. They now live in one profile-dependent header on every signed-in
+page. The grid is the live production header unchanged; only the contents of its two existing slots
+differ. The bar is one line at every width from 320 to 1440, with the links collapsing into a
+hamburger below 900px rather than wrapping. Implements `design-system/components/header.html` r8,
+approved in Claude Design.
+
+Shipped across four commits:
+
+- `a1b8200` the header itself, plus `app/components/useAccountSession.ts` and an `AccountPopup`
+  lifted verbatim out of `OnboardingClient` so Plan/Billing open over any page. Deleted the
+  onboarding profile card, the Saved Pursuits duplicate shortcuts, and their CSS.
+- `03c8d2e` dead CSS that survived inside `@media` blocks.
+- `5db4790` the session moved from localStorage into cookies via `@supabase/ssr`, so
+  `app/layout.tsx` resolves the real user and the header ships its final contents in the first
+  paint. Previously it painted three times.
+- `76df994` header offset made uniform, onboarding aligned to the header, Saved Pursuits grain
+  restored.
+
+Root causes worth remembering, because each shipped green and broke in production:
+
+- **Job scan never appeared for anyone.** `useAccountSession` called `/api/public-profile/bootstrap`
+  with GET; that route exports POST only, so it 405'd, a bare `.catch(() => null)` swallowed it, and
+  `profileStatus` stayed `unknown` forever. Both header lookups now report failures.
+- **Saved Pursuits lost its layout.** A dead-CSS sweep deleted rules by scanning to the next
+  `\n}\n`, but that file writes rules on one line, so removing `.pageActions` ran past its own
+  closing brace and took `.savedShell`, `.bucketToggle`, `.topTitle` and `.topLede`.
+- **Sign-in broke on deploy.** PKCE sends OAuth and the email confirmation link through the new
+  `/auth/callback`, which was not on the Supabase `uri_allow_list`. Patched additively; the prior
+  auth config is backed up in the session scratchpad.
+- **Header height differed per page.** It was rendered inside `<main class=page>` on onboarding and
+  the dashboard, so that container's 72px top padding pushed it down, while Saved Pursuits rendered
+  it outside at 12px.
+
+Framework facts confirmed from shipped docs and types, not memory: Next 16 renamed Middleware to
+**Proxy** (`proxy.ts` at the repo root); Supabase requires `getClaims()` rather than `getSession()`
+in server code; and `@supabase/ssr`'s `setAll` takes a second `headers` argument of no-store
+directives that a response setting auth cookies must send.
+
+Verified: tsc, lint (0 errors, 4 pre-existing warnings), production build, all six routes 200 on
+production, header 12px offset and 0px misalignment at 1440/1280/900/390/320, one line at every
+width, and the deployed CSS bundle checked directly for both added and removed class names.
+
+**NOT VERIFIED — needs an authenticated production pass.** None of these can run locally, because
+`syncPublicProfileSession` discards any token Supabase does not recognise and local dev writes to
+the production database:
+
+1. Google OAuth end to end
+2. The email confirmation link on a fresh signup
+3. Sign out
+4. That an existing session survived the localStorage-to-cookie migration
+5. The account popup's Stripe portal, change-plan, and redeem-code actions, which were moved files
+   and never executed
+6. The `sessionStorage` popup hand-off from `/plan` and the Apply Wizard
+
+Known trade-off: reading the session cookie in the root layout moved every page from Static to
+Dynamic, including `/`, `/legal/*` and `/styleguide`. Restricting the cookie read to the
+authenticated pages would restore static rendering for the marketing pages at the cost of a
+flip-free header for signed-in visitors on `/`. Not done; awaiting a call.
+
+Revert points, both pushed: `pre-global-header` (before any of this) and `pre-cookie-auth` (before
+the auth change). If OAuth or email confirmation fails, roll the Vercel deployment back rather than
+fixing forward, because a broken callback locks users out.
+
+
 ## 2026-07-28 - First-user production scan failure resolved
 
 Larissa Fransen's complete production profile could load the dashboard but clicking Run scan sent
