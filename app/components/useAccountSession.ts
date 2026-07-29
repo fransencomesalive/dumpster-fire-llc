@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useServerHeaderState } from "./AccountSessionProvider";
 import { clearPublicProfileAccessToken, readPublicProfileAccessToken } from "@/lib/public-profile/browser-session";
 import { signOutSupabaseSession, syncPublicProfileSession } from "@/lib/public-auth/supabase-browser";
 import { requestPublicProfileApi } from "@/lib/public-profile/client";
@@ -47,11 +48,22 @@ export type AccountSession = {
 };
 
 export function useAccountSession(enabled = true): AccountSession {
-  const [status, setStatus] = useState<AccountSession["status"]>(enabled ? "checking" : "signed_out");
+  // Seeded from the layout's server-resolved state, so the very first render
+  // already knows whether the user is signed in, their email, and whether the
+  // profile is complete. Without this seed the header shipped signed-out and
+  // then flipped twice in the browser.
+  const seed = useServerHeaderState();
+  const seeded = enabled && Boolean(seed?.signedIn);
+
+  const [status, setStatus] = useState<AccountSession["status"]>(
+    !enabled ? "signed_out" : seed ? (seed.signedIn ? "signed_in" : "signed_out") : "checking",
+  );
   const [accessToken, setAccessToken] = useState("");
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(seeded ? seed!.email : "");
   const [plan, setPlan] = useState<AccountPlan | null>(null);
-  const [profileStatus, setProfileStatus] = useState<AccountSession["profileStatus"]>("unknown");
+  const [profileStatus, setProfileStatus] = useState<AccountSession["profileStatus"]>(
+    seeded ? seed!.profileStatus : "unknown",
+  );
   const [pendingPopup, setPendingPopup] = useState<AccountSession["pendingPopup"]>(null);
 
   useEffect(() => {
@@ -61,7 +73,10 @@ export function useAccountSession(enabled = true): AccountSession {
       const token = (await syncPublicProfileSession()) || readPublicProfileAccessToken();
       if (cancelled) return;
       if (!token) {
-        setStatus("signed_out");
+        // Only contradict the server if it did not already say we are signed in.
+        // A cookie session the browser has not finished reading yet must not be
+        // mistaken for a signed-out user, or the bar would flip back and forth.
+        if (!seeded) setStatus("signed_out");
         return;
       }
       setAccessToken(token);
@@ -111,7 +126,7 @@ export function useAccountSession(enabled = true): AccountSession {
     return () => {
       cancelled = true;
     };
-  }, [enabled]);
+  }, [enabled, seeded]);
 
   const refreshPlan = useCallback(async () => {
     if (!accessToken) return null;

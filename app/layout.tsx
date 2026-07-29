@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import localFont from "next/font/local";
 import LandingBackground from "./LandingBackground";
 import QAFeedbackWidget from "./QAFeedbackWidget";
+import { AccountSessionProvider } from "./components/AccountSessionProvider";
+import { getServerHeaderState } from "@/lib/public-auth/server-header-state";
 import "./globals.css";
 import "./ds.css";
 
@@ -62,7 +64,11 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  // Resolved here, once, so SiteHeader renders its final contents in the first
+  // paint instead of shipping the signed-out bar and correcting it in the browser.
+  const headerState = await getServerHeaderState();
+
   return (
     <html lang="en" className={`${gotham.variable} ${bemio.variable} ${bebas.variable} ${plantagenet.variable} ${originalSurfer.variable}`}>
       <body>
@@ -70,8 +76,10 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           <LandingBackground />
         </div>
         <div className="appContentLayer">
-          {children}
-          <QAFeedbackWidget />
+          <AccountSessionProvider value={headerState}>
+            {children}
+            <QAFeedbackWidget />
+          </AccountSessionProvider>
         </div>
       </body>
     </html>
