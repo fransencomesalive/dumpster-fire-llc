@@ -80,13 +80,26 @@ export function useAccountSession(enabled = true): AccountSession {
 
       // Neither call may block the header from rendering. A failed plan lookup
       // degrades to an icon with no email; a failed bootstrap leaves the profile
-      // status unknown, which only hides Job scan.
+      // status unknown, which hides Job scan.
+      //
+      // Both failures are reported. A bare `.catch(() => null)` here is what let
+      // a wrong HTTP method reach production: the route below is POST-only, a GET
+      // 405'd, the catch ate it, and Job scan silently vanished for every
+      // complete profile with nothing anywhere saying why.
+      const report = (label: string) => (error: unknown) => {
+        console.error(`[header] ${label} failed; the header is degraded.`, error);
+        return null;
+      };
       const [account, bootstrap] = await Promise.all([
-        requestPublicProfileApi<AccountPlan>("/api/account/plan", { method: "GET", accessToken: token }).catch(() => null),
+        requestPublicProfileApi<AccountPlan>(
+          "/api/account/plan",
+          { method: "GET", accessToken: token },
+        ).catch(report("GET /api/account/plan (email + plan)")),
+        // POST, not GET — the bootstrap route only exports POST.
         requestPublicProfileApi<{ profileStatus: "incomplete" | "complete" }>(
           "/api/public-profile/bootstrap",
-          { method: "GET", accessToken: token },
-        ).catch(() => null),
+          { method: "POST", accessToken: token },
+        ).catch(report("POST /api/public-profile/bootstrap (profile status)")),
       ]);
       if (cancelled) return;
       if (account) {

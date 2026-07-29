@@ -18,6 +18,21 @@
   padding-bottom: var(--space-4);
   border-bottom: var(--line-reg) solid var(--c-ink);
 }
+/* The Dashboard and Edit Profile shortcuts that sat here were removed on
+   2026-07-28: the global signed-in header carries both (Job scan reaches the
+   dashboard, Home reaches the profile), so repeating them was a duplicate nav. */
+.topTitle { margin: 0; font-family: var(--font-display); font-size: var(--type-h2); color: var(--c-ink); }
+.topLede { margin: 4px 0 0; font-family: var(--font-body); color: var(--role-text-muted); max-width: 52ch; }
+
+.savedShell { width: min(760px, calc(100% - 48px)); margin: 0 auto; }
+
+/* Bucket toggle · the one control that switches buckets, full shell width */
+.bucketToggle {
+  display: flex; width: 100%; box-sizing: border-box;
+  border: var(--line-reg) solid var(--c-ink); border-radius: var(--radius-pill);
+  overflow: hidden; box-shadow: var(--shadow-card); background: var(--c-paper);
+  margin-bottom: var(--space-4);
+}
 .bucketToggle button {
   flex: 1 1 0; min-width: 0; min-height: 46px; display: inline-flex; align-items: center;
   justify-content: center; gap: 8px; font-family: var(--font-subhead); text-transform: uppercase;
