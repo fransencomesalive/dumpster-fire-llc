@@ -1433,11 +1433,6 @@
 
 /* On phones the actions wrap and Job scan drops to its own line, so the divider would
    dangle at the end of the Plan/Billing row — hide it there (Randall, 2026-07-12). */
-@media (max-width: 640px) {
-  .actionDivider {
-    display: none;
-  }
-}
 
 /* --- Signed-out login card --- */
 .loginShell {
@@ -1824,17 +1819,6 @@
    Randall, 2026-07-28. */
 
 @media (max-width: 840px) {
-  .accountBody {
-    align-items: stretch;
-  }
-
-  .accountCode {
-    margin-left: 0;
-    min-width: 0;
-    width: 100%;
-    grid-template-columns: minmax(0, 1fr);
-  }
-
   .rail {
     position: static;
   }
