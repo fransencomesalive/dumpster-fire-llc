@@ -46,22 +46,50 @@ Verified: tsc, lint (0 errors, 4 pre-existing warnings), production build, all s
 production, header 12px offset and 0px misalignment at 1440/1280/900/390/320, one line at every
 width, and the deployed CSS bundle checked directly for both added and removed class names.
 
-**NOT VERIFIED — needs an authenticated production pass.** None of these can run locally, because
-`syncPublicProfileSession` discards any token Supabase does not recognise and local dev writes to
-the production database:
+**VERIFIED on production** by `scripts/qa/production-auth-browser.mjs`, a permanent harness that
+signs a disposable user into production, exercises the journey, and deletes the account. Run with
+`PRODUCTION_AUTH_QA_CONFIRM=yes node scripts/qa/production-auth-browser.mjs`. Passing run
+2026-07-29 against deployment `ba08771`:
 
-1. Google OAuth end to end
-2. The email confirmation link on a fresh signup
-3. Sign out
-4. That an existing session survived the localStorage-to-cookie migration
-5. The account popup's Stripe portal, change-plan, and redeem-code actions, which were moved files
-   and never executed
-6. The `sessionStorage` popup hand-off from `/plan` and the Apply Wizard
+- email + password sign-in
+- the session is in a `sb-*-auth-token` **cookie**, not only the localStorage mirror
+- the **server** renders the signed-in header: fetched with cookies and no JS, the HTML contains
+  Saved Pursuits and the account email and does NOT contain the marketing nav
+- **no flip**: header text and height identical at first paint and after settle (69px)
+- Job scan gating proven in BOTH directions, absent when incomplete and present when complete
+- `/api/public-profile/bootstrap` returns 200 for the method the header actually uses
+- header offset 12px with no horizontal overflow on `/onboarding`, `/saved-pursuits` and `/`
+- `/auth/callback` returns a redirect AND Supabase accepts it as a redirect target, the exact thing
+  that broke sign-in on first deploy
+- sign out lands on `/` with zero auth cookies left
+- a pre-migration localStorage session is adopted into cookies and the legacy key removed, so
+  existing accounts are not signed out
 
-Known trade-off: reading the session cookie in the root layout moved every page from Static to
-Dynamic, including `/`, `/legal/*` and `/styleguide`. Restricting the cookie read to the
-authenticated pages would restore static rendering for the marketing pages at the cost of a
-flip-free header for signed-in visitors on `/`. Not done; awaiting a call.
+The harness found two real bugs that `tsc`, lint and build all passed:
+
+1. **Sign out navigated before the session was cleared.** `window.location.assign("/")` ran without
+   awaiting `signOutSupabaseSession()`, so the server rendered the destination with a live cookie
+   and the user landed still looking signed in. Fixed in `ba08771`.
+2. A shallow `status='complete'` seed is recomputed as incomplete by the quality checker, so the
+   disposable-profile seed was extracted to `scripts/qa/lib/seed-complete-profile.mjs` and is now
+   shared by both production harnesses.
+
+**Still needs a human**, because both leave the app for an external screen: the Google consent flow
+and clicking a real confirmation email. The harness covers the part of each that actually broke,
+namely that `/auth/callback` exists and is an allowed Supabase redirect.
+
+**Open decision — marketing page speed.** Reading the session cookie in the root layout made every
+route Dynamic. Measured on production: `/` now returns TTFB 290-480ms with `x-vercel-cache: MISS` on
+every request, where it was prerendered and CDN-served before. The fix is route groups: keep `/`,
+`/legal/*` and `/styleguide` under a layout that does not read cookies (static and fast, but a
+signed-in visitor sees the header resolve on those pages), and move the cookie read into a layout
+covering only `/onboarding`, `/dashboard` and `/saved-pursuits`, which stay server-rendered and
+flip-free. Not done: it trades a flip on the marketing pages for a 10x faster TTFB there, and that
+is a product call.
+
+The Supabase redirect allowlist state is recorded at
+`docs/config-snapshots/supabase-auth-redirects.json` (redirect and provider-toggle fields only,
+never keys or credentials), so the `/auth/callback` requirement is not rediscovered the hard way.
 
 Revert points, both pushed: `pre-global-header` (before any of this) and `pre-cookie-auth` (before
 the auth change). If OAuth or email confirmation fails, roll the Vercel deployment back rather than

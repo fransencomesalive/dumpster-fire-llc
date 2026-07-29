@@ -1,0 +1,17 @@
+{
+  "_snapshot": {
+    "captured": "2026-07-29",
+    "redacted": "Only redirect and provider-toggle fields are recorded. No keys, secrets or SMTP credentials are ever written here.",
+    "why": "Adding /auth/callback to uri_allow_list was required by the PKCE migration; sign-in was broken in production until it landed. This records the intended state so the requirement is not rediscovered the hard way."
+  },
+  "disable_signup": false,
+  "external_email_enabled": true,
+  "external_google_enabled": true,
+  "jwt_exp": 3600,
+  "mailer_autoconfirm": false,
+  "mailer_secure_email_change_enabled": true,
+  "refresh_token_rotation_enabled": true,
+  "security_refresh_token_reuse_interval": 10,
+  "site_url": "https://www.thejobmarketisadumpsterfire.com",
+  "uri_allow_list": "https://thejobmarketisadumpsterfire.com/onboarding,https://thejobmarketisadumpsterfire.com,https://www.thejobmarketisadumpsterfire.com/onboarding,https://www.thejobmarketisadumpsterfire.com,https://dumpster-fire-llc.vercel.app/onboarding,https://dumpster-fire-llc.vercel.app,http://localhost:3000/onboarding,http://127.0.0.1:3020/onboarding,https://www.thejobmarketisadumpsterfire.com/plan,https://thejobmarketisadumpsterfire.com/plan,https://dumpster-fire-llc.vercel.app/plan,http://localhost:3000/plan,http://localhost:3020/plan,http://127.0.0.1:3020/plan,https://thejobmarketisadumpsterfire.com/auth/callback,https://www.thejobmarketisadumpsterfire.com/auth/callback,https://dumpster-fire-llc.vercel.app/auth/callback,http://localhost:3000/auth/callback,http://127.0.0.1:3020/auth/callback,http://localhost:3020/auth/callback"
+}
