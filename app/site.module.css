@@ -198,6 +198,277 @@
   display: block;
 }
 
+/* ==== Signed-in contents · design-system/components/header.html r8 ==========
+   The grid above is untouched. Only what sits INSIDE the two existing slots
+   changes: the links row swaps its labels and picks up Plan / Billing after a
+   divider, and the actions slot carries the email + profile icon instead of
+   Sign in / Create profile. No new layout groups, no reordering. */
+
+/* Divider inside the links row, same hairline as the one after the brand. */
+.publicLandingNavSep {
+  flex: none;
+  align-self: center;
+  width: 0;
+  height: 18px;
+  border-left: var(--line-reg) solid var(--c-ink-faint);
+}
+
+/* Plan and Billing are <button> (they open a popup, they do not navigate).
+   Strip the UA button chrome so they read as the browse links beside them. */
+.publicLandingNavLinks button {
+  position: relative;
+  font-family: var(--font-display) !important;
+  text-transform: none !important;
+  letter-spacing: normal !important;
+  font-size: 1rem;
+  font-weight: 400;
+  line-height: 1;
+  color: var(--c-ink);
+  padding: 0 0 3px;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.publicLandingNavLinks button::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: var(--line-reg);
+  background: var(--role-accent);
+  mix-blend-mode: multiply;
+  transition: box-shadow var(--dur-fast) var(--ease-snap);
+}
+
+.publicLandingNavLinks button:hover::after,
+.publicLandingNavLinks button:focus-visible::after {
+  box-shadow: var(--reg-shadow);
+}
+
+/* Email sits in the actions slot, immediately left of the icon. min-width:0 lets
+   it ellipsis instead of pushing the icon out of the bar on a narrow screen. */
+.publicLandingNavIdentity {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.publicLandingNavEmail {
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  color: var(--c-ink);
+  min-width: 0;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The profile icon becomes a <button> so it can own a menu. Same 38px circle. */
+.publicLandingNavProfileWrap {
+  position: relative;
+  flex: none;
+}
+
+.publicLandingNavProfile {
+  padding: 0;
+  cursor: pointer;
+}
+
+.publicLandingNavMenu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: 40;
+  /* transparent bridge so the pointer can travel icon to menu without closing */
+  padding-top: 8px;
+  display: none;
+}
+
+.publicLandingNavProfileWrap:hover .publicLandingNavMenu,
+.publicLandingNavProfileWrap:focus-within .publicLandingNavMenu,
+.publicLandingNavMenuOpen {
+  display: block;
+}
+
+/* ---- Both dropdowns are .selectMenu, verbatim (Randall, 2026-07-28) --------
+   onboarding.module.css:2539, the picker this app already ships. Ink outline,
+   radius-md, paper, hard 3px shadow, overflow hidden. Rows take .selectOpt's
+   geometry and hairline divider. Not a new container. */
+.publicLandingNavMenuCard,
+.publicLandingNavBurgerCard {
+  border: var(--line-reg) solid var(--c-ink);
+  border-radius: var(--radius-md);
+  background: var(--c-paper);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+  display: grid;
+}
+
+.publicLandingNavMenuCard {
+  min-width: 154px;
+}
+
+.publicLandingNavBurgerCard {
+  min-width: 196px;
+}
+
+/* Rows · .selectOpt geometry. Plan and Billing are <button> here, as they are in
+   the bar, because they open a popup rather than navigating. */
+.publicLandingNavBurgerCard a,
+.publicLandingNavBurgerCard button,
+.publicLandingNavSignOut {
+  text-align: left;
+  padding: var(--space-3) var(--space-4);
+  font-family: var(--font-display);
+  font-size: 1rem;
+  line-height: 1;
+  background: transparent;
+  border: 0;
+  border-bottom: var(--line-hair) solid var(--c-ink);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.publicLandingNavBurgerCard a:last-child,
+.publicLandingNavBurgerCard button:last-child,
+.publicLandingNavSignOut:last-child {
+  border-bottom: 0;
+}
+
+/* The label carries the bar's own ds-link underline and its --reg-shadow hover,
+   so a menu item reads as the same link it is up in the bar. */
+.publicLandingNavBurgerCard a,
+.publicLandingNavBurgerCard button {
+  color: var(--c-ink);
+}
+
+.publicLandingNavBurgerCard a > span,
+.publicLandingNavBurgerCard button > span {
+  position: relative;
+  display: inline-block;
+  padding-bottom: 3px;
+}
+
+.publicLandingNavBurgerCard a > span::after,
+.publicLandingNavBurgerCard button > span::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: var(--line-reg);
+  background: var(--role-accent);
+  mix-blend-mode: multiply;
+  transition: box-shadow var(--dur-fast) var(--ease-snap);
+}
+
+.publicLandingNavBurgerCard a:hover > span::after,
+.publicLandingNavBurgerCard a:focus-visible > span::after,
+.publicLandingNavBurgerCard button:hover > span::after,
+.publicLandingNavBurgerCard button:focus-visible > span::after {
+  box-shadow: var(--reg-shadow);
+}
+
+/* Sign out keeps the profile card's tomato text-to-button hover, verbatim. */
+.publicLandingNavSignOut {
+  display: block;
+  width: 100%;
+  color: var(--c-tomato);
+  transition: background-color var(--dur-fast) var(--ease-snap), color var(--dur-fast) var(--ease-snap);
+}
+
+.publicLandingNavSignOut:hover {
+  color: var(--c-paper);
+  background-color: var(--c-tomato);
+}
+
+/* ---- Phone: the links collapse into a hamburger so the bar stays ONE LINE ---
+   Applies to the signed-in bar only. The signed-out marketing bar keeps the
+   behaviour it has in production today. */
+.publicLandingNavBurgerWrap {
+  position: relative;
+  flex: none;
+  display: none;
+}
+
+.publicLandingNavBurger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border: var(--line-reg) solid var(--c-ink);
+  border-radius: var(--radius-pill);
+  background: var(--c-paper);
+  color: var(--c-ink);
+  cursor: pointer;
+}
+
+.publicLandingNavBurger:hover {
+  box-shadow: var(--reg-box);
+}
+
+.publicLandingNavBurger svg {
+  width: 20px;
+  height: 20px;
+  display: block;
+}
+
+.publicLandingNavBurgerMenu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: 40;
+  padding-top: 8px;
+  display: none;
+}
+
+.publicLandingNavBurgerWrap:hover .publicLandingNavBurgerMenu,
+.publicLandingNavBurgerWrap:focus-within .publicLandingNavBurgerMenu,
+.publicLandingNavBurgerMenuOpen {
+  display: block;
+}
+
+@media (max-width: 900px) {
+  /* One line, always. The links leave the bar rather than wrapping under it. */
+  .publicLandingNavSignedIn {
+    flex-wrap: nowrap;
+  }
+
+  .publicLandingNavSignedIn .publicLandingNavLinks {
+    display: none;
+  }
+
+  .publicLandingNavSignedIn .publicLandingNavBurgerWrap {
+    display: block;
+  }
+
+  .publicLandingNavSignedIn .publicLandingNavLeft {
+    display: flex;
+  }
+
+  .publicLandingNavSignedIn .publicLandingNavBrand {
+    flex: none;
+  }
+
+  .publicLandingNavSignedIn .publicLandingNavActions {
+    margin-left: auto;
+    min-width: 0;
+  }
+}
+
+@media (max-width: 420px) {
+  /* Email keeps shrinking rather than pushing the controls out of the bar. */
+  .publicLandingNavSignedIn .publicLandingNavEmail {
+    max-width: 96px;
+  }
+}
+
 .publicLandingHeroSection {
   min-height: 610px;
   padding: 18px 0 76px;

@@ -1,0 +1,380 @@
+/* Plan / Billing / change-plan popup.
+
+   Moved verbatim out of app/onboarding/onboarding.module.css (Randall,
+   2026-07-28) when the account controls left the onboarding profile card for
+   the global header. Rules are unchanged — this is a move, not a restyle — so
+   the popup looks identical, it just now opens over any signed-in page. */
+
+/* --- Plan / Billing popup --- */
+.popupOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background-color: color-mix(in srgb, var(--c-ink) 55%, transparent);
+}
+
+.popupCard {
+  width: min(420px, 100%);
+  background-color: var(--c-paper-deep);
+  background-image: var(--fiber-img), var(--grain-img);
+  background-blend-mode: normal, soft-light;
+  background-size: 170px 170px, 46px 46px;
+  border: var(--line-bold) solid var(--c-ink);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-pop, var(--shadow-card));
+  overflow: hidden;
+}
+
+.popupHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: var(--line-reg) solid var(--c-ink);
+  background-color: color-mix(in srgb, var(--c-teal) 12%, var(--c-paper-deep));
+}
+
+.popupHeadNegative {
+  background-color: color-mix(in srgb, var(--c-tomato) 12%, var(--c-paper-deep));
+}
+
+.popupTitle {
+  margin: 0;
+  font-family: var(--font-subhead);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 0.95rem;
+  color: var(--c-ink);
+}
+
+.popupClose {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  flex: none;
+  place-items: center;
+  color: var(--c-ink);
+  background-color: var(--c-paper);
+  border: var(--line-reg) solid var(--c-ink);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  padding: 0;
+}
+
+.popupClose svg {
+  width: 15px;
+  height: 15px;
+}
+
+.popupBody {
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-4) var(--space-5);
+}
+
+.popupPlanName {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.popupPlanTitle {
+  color: var(--c-ink);
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  line-height: 1;
+}
+
+.popupPlanPrice {
+  color: var(--role-text-muted);
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+}
+
+.popupPlanBadge {
+  padding: 2px 8px;
+  border: var(--line-reg) solid var(--c-ink);
+  border-radius: var(--radius-pill);
+  background-color: var(--c-teal);
+  color: var(--c-paper);
+  font-family: var(--font-subhead);
+  font-size: 0.62rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.popupUsage {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.popupUsageTop {
+  color: var(--c-ink);
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+}
+
+.popupUsageTop b {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+}
+
+.popupMeter {
+  height: 9px;
+  overflow: hidden;
+  border: var(--line-reg) solid var(--c-ink);
+  border-radius: var(--radius-pill);
+  background-color: var(--c-paper);
+}
+
+.popupMeter span {
+  display: block;
+  height: 100%;
+  background-color: var(--c-teal);
+}
+
+.popupMeterSpent span {
+  background-color: var(--c-tomato);
+}
+
+.popupReset {
+  color: var(--role-text-muted);
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+}
+
+.popupKv {
+  display: grid;
+  gap: var(--space-2);
+  padding-top: var(--space-3);
+  border-top: var(--line-reg) solid var(--c-paper-edge);
+}
+
+.popupKvRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  color: var(--c-ink);
+  font-family: var(--font-body);
+  font-size: 0.92rem;
+}
+
+.popupKvRow > span {
+  color: var(--role-text-muted);
+}
+
+.popupKvRow strong {
+  font-weight: 400;
+  text-align: right;
+}
+
+.popupIncluded {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--c-teal);
+  font-family: var(--font-subhead);
+  font-size: 0.85rem;
+}
+
+.popupIncluded svg {
+  width: 15px;
+  height: 15px;
+}
+
+.popupMuted {
+  color: var(--role-text-faint);
+}
+
+.popupSchedule {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: var(--line-reg) solid var(--c-ink);
+  border-radius: var(--radius-md);
+  background-color: color-mix(in srgb, var(--c-mustard) 22%, var(--c-paper));
+  color: var(--c-ink);
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+}
+
+.popupNote {
+  margin: 0;
+  color: var(--role-text-muted);
+  font-family: var(--font-body);
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+.popupNoteNegative {
+  margin: 0;
+  color: var(--c-tomato);
+  font-family: var(--font-body);
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+.popupActionMessage {
+  margin: 0;
+  color: var(--c-ink);
+  font-family: var(--font-body);
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+.popupFoot {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: var(--line-reg) solid var(--c-paper-edge);
+}
+
+.popupBtnTeal,
+.popupBtnGhost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 150px;
+  flex: 1;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
+  font-family: var(--font-display);
+  font-size: 1rem;
+  text-align: center;
+  cursor: pointer;
+}
+
+.popupBtnTeal {
+  border: var(--line-bold) solid var(--c-ink);
+  background-color: var(--c-teal);
+  color: var(--c-paper);
+}
+
+.popupBtnTeal:hover:not(:disabled) {
+  background-color: var(--role-info);
+  box-shadow: var(--reg-box);
+  text-shadow: 1px 1px 0 rgba(36,31,26,0.35);
+}
+
+.popupBtnGhost {
+  border: var(--line-reg) solid var(--c-ink);
+  background-color: var(--c-paper);
+  color: var(--c-ink);
+}
+
+.popupBtnGhost:hover:not(:disabled) {
+  box-shadow: var(--reg-box);
+}
+
+.popupBtnTeal:disabled,
+.popupBtnGhost:disabled,
+.popupCancelPlan:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.popupCancelPlan {
+  padding: var(--space-2) var(--space-3);
+  border: var(--line-reg) solid transparent;
+  border-radius: var(--radius-md);
+  background-color: transparent;
+  color: var(--c-tomato);
+  font-family: var(--font-display);
+  font-size: 0.92rem;
+  cursor: pointer;
+}
+
+.popupCancelPlan:hover:not(:disabled) {
+  border-color: var(--c-ink);
+  background-color: var(--c-tomato);
+  box-shadow: var(--shadow-card);
+  color: var(--c-paper);
+}
+
+@media (max-width: 480px) {
+  .popupOverlay {
+    padding: var(--space-3);
+  }
+
+  .popupBtnTeal,
+  .popupBtnGhost,
+  .popupCancelPlan {
+    width: 100%;
+  }
+}
+
+
+.accountCodeLabel {
+  font-family: var(--font-display);
+  font-size: 1.08rem;
+  color: var(--c-ink);
+}
+
+.codeRow {
+  display: flex;
+  gap: 12px;
+}
+
+.codeInput {
+  flex: 1;
+  min-width: 0;
+  box-sizing: border-box;
+  min-height: 44px;
+  font-family: var(--font-ui);
+  font-size: 1rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--c-ink);
+  background-color: var(--c-paper);
+  border: var(--line-reg) solid var(--c-ink);
+  border-radius: var(--radius-md);
+  padding: 0 14px;
+}
+
+.codeInput::placeholder {
+  text-transform: none;
+  letter-spacing: normal;
+  color: var(--c-ink-faint);
+}
+
+.codeInput:focus {
+  outline: none;
+  border-color: var(--c-teal);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--c-teal) 28%, transparent);
+}
+
+.btnRedeem {
+  flex: none;
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 1rem;
+  color: var(--c-paper);
+  background-color: var(--c-teal);
+  border: var(--line-bold) solid var(--c-ink);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
+  padding: 0 20px;
+  min-height: 44px;
+  cursor: pointer;
+}
+
+.btnRedeem:hover {
+  background-color: var(--role-info);
+}
+
+.btnRedeem:disabled {
+  cursor: not-allowed;
+  filter: grayscale(0.3);
+  opacity: 0.55;
+}

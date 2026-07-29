@@ -15,8 +15,13 @@
   .stateLabel { font-family:var(--font-subhead); text-transform:uppercase; letter-spacing:var(--tracking-subhead);
     font-size:0.82rem; color:var(--c-tomato); margin:0 0 var(--space-2); }
   .frame { container-type:inline-size; }
-  .frame.wide { width:100%; }
-  .frame.phone { width:320px; max-width:100%; margin:0 auto; }
+  /* Fixed, not fluid: a fluid frame let the viewing pane's width fire the
+     container queries and render this one-line bar as two. */
+  .frameScroll { overflow-x:auto; padding-bottom:var(--space-2); }
+  .frame.wide { width:1240px; }
+  .frame.phone { width:390px; max-width:100%; }
+  .frame.phone.w320 { width:320px; }
+  .phoneRow { display:flex; gap:var(--space-5); align-items:flex-start; flex-wrap:wrap; }
 
   /* Exact shared production header primitive. */
   .publicLandingNav { position:relative; z-index:1; display:flex; flex-wrap:wrap; align-items:center;
@@ -28,8 +33,8 @@
   .publicLandingNavLeft { display:flex; flex-wrap:wrap; align-items:center; gap:12px 20px; }
   .publicLandingNavActions { display:flex; align-items:center; gap:12px; margin-left:auto; }
   .publicLandingNavBrand { display:inline-flex; align-items:center; gap:10px; color:var(--c-ink);
-    font-family:var(--font-subhead); font-weight:900; font-size:17px; line-height:1;
-    letter-spacing:var(--tracking-subhead); text-transform:uppercase; text-decoration:none; }
+    font-family:var(--font-display); font-weight:900; font-size:17px; line-height:1;
+    letter-spacing:0.02em; text-transform:uppercase; text-decoration:none; }
   .publicLandingNavMark { width:auto; height:34px; object-fit:contain; }
   .publicLandingNavLinks { display:flex; flex-wrap:wrap; align-items:center; gap:8px 18px;
     padding-left:20px; border-left:var(--line-reg) solid var(--c-ink-faint); }
@@ -43,7 +48,7 @@
   .publicLandingNavSignIn, .publicLandingNavCta { display:inline-flex; align-items:center;
     justify-content:center; min-height:34px; border:var(--line-reg) solid var(--c-ink);
     border-radius:var(--radius-pill); background:var(--c-teal); color:var(--c-paper);
-    line-height:1; text-decoration:none; }
+    font-family:var(--font-display); line-height:1; text-decoration:none; }
   .publicLandingNavSignIn { padding:0 14px; font-weight:800; font-size:13px; }
   .publicLandingNavCta { padding:0 15px; font-weight:900; font-size:13px; }
   .publicLandingNavSignIn:hover, .publicLandingNavCta:hover { background:var(--role-info); }
@@ -62,21 +67,140 @@
     .publicLandingNavLinks { order:3; flex-basis:100%; min-width:0; padding-left:0;
       border-left:0; gap:8px 16px; }
   }
+  @container (max-width:360px) {
+    .publicLandingNav { padding:var(--space-3); }
+    .publicLandingNavBrand { font-size:15px; }
+    .publicLandingNavMark { height:32px; }
+    .publicLandingNavActions { gap:6px; }
+    .publicLandingNavSignIn { padding:0 10px; }
+    .publicLandingNavCta { padding:0 11px; }
+    .publicLandingNavLinks { gap:8px 12px; }
+    .publicLandingNavLinks a { font-size:0.9rem; }
+  }
+  /* ==== Signed-in contents (Randall, 2026-07-28) =========================
+     The grid above is untouched. Only what sits INSIDE the two existing slots
+     changes: the links row swaps its labels and picks up Plan / Billing after
+     a divider, and the actions slot carries the email + profile icon instead
+     of Sign in / Create profile. No new layout groups, no reordering. */
+
+  /* Divider inside the links row, same hairline as the one after the brand. */
+  .publicLandingNavSep { flex:none; align-self:center; width:0; height:18px;
+    border-left:var(--line-reg) solid var(--c-ink-faint); }
+
+  /* Plan and Billing are <button> (they open a popup, they do not navigate).
+     Strip the UA button chrome so they read as the browse links beside them. */
+  .publicLandingNavLinks button { position:relative; font-family:var(--font-display);
+    font-size:1rem; font-weight:400; line-height:1; color:var(--c-ink);
+    padding:0 0 3px; background:none; border:0; cursor:pointer; }
+  .publicLandingNavLinks button::after { content:""; position:absolute; left:0; right:0; bottom:0;
+    height:var(--line-reg); background:var(--role-accent); mix-blend-mode:multiply;
+    transition:box-shadow var(--dur-fast) var(--ease-snap); }
+  .publicLandingNavLinks button:hover::after,
+  .publicLandingNavLinks button:focus-visible::after { box-shadow:var(--reg-shadow); }
+
+  /* Email sits in the actions slot, immediately left of the icon. min-width:0 lets
+     it ellipsis instead of pushing the icon out of the bar on a narrow screen. */
+  .publicLandingNavIdentity { display:flex; align-items:center; gap:10px; min-width:0; }
+  .publicLandingNavEmail { font-family:var(--font-body); font-size:0.95rem; color:var(--c-ink);
+    min-width:0; max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+  /* The profile icon becomes a <button> so it can own a menu. Same 38px circle. */
+  .publicLandingNavProfileWrap { position:relative; flex:none; }
+  .publicLandingNavProfile { padding:0; cursor:pointer; }
+  .publicLandingNavMenu { position:absolute; top:100%; right:0; z-index:40;
+    padding-top:8px; display:none; }
+  .publicLandingNavProfileWrap:hover .publicLandingNavMenu,
+  .publicLandingNavProfileWrap:focus-within .publicLandingNavMenu,
+  .publicLandingNavMenu.isOpen { display:block; }
+  /* ---- Both dropdowns are .selectMenu, verbatim ------------------------------
+     onboarding.module.css:2539, the picker this app already ships. Ink outline,
+     radius-md, paper, hard 3px shadow, overflow hidden. Rows take .selectOpt's
+     geometry and hairline divider. Not a new container. */
+  .publicLandingNavMenuCard, .publicLandingNavBurgerCard {
+    border:var(--line-reg) solid var(--c-ink); border-radius:var(--radius-md);
+    background:var(--c-paper); box-shadow:var(--shadow-card); overflow:hidden; display:grid; }
+  .publicLandingNavMenuCard { min-width:154px; }
+  .publicLandingNavBurgerCard { min-width:196px; }
+
+  /* Rows · .selectOpt geometry. */
+  .publicLandingNavBurgerCard a, .publicLandingNavSignOut {
+    text-align:left; padding:var(--space-3) var(--space-4); font-family:var(--font-display);
+    font-size:1rem; line-height:1; background:transparent; border:0;
+    border-bottom:var(--line-hair) solid var(--c-ink); text-decoration:none; cursor:pointer; }
+  .publicLandingNavBurgerCard a:last-child, .publicLandingNavSignOut:last-child { border-bottom:0; }
+
+  /* The label carries the bar's own ds-link underline and its --reg-shadow hover,
+     so a menu item reads as the same link it is up in the bar. */
+  .publicLandingNavBurgerCard a { color:var(--c-ink); }
+  .publicLandingNavBurgerCard a > span { position:relative; display:inline-block; padding-bottom:3px; }
+  .publicLandingNavBurgerCard a > span::after { content:""; position:absolute; left:0; right:0; bottom:0;
+    height:var(--line-reg); background:var(--role-accent); mix-blend-mode:multiply;
+    transition:box-shadow var(--dur-fast) var(--ease-snap); }
+  .publicLandingNavBurgerCard a:hover > span::after,
+  .publicLandingNavBurgerCard a:focus-visible > span::after { box-shadow:var(--reg-shadow); }
+
+  /* Sign out keeps the profile card's tomato text-to-button hover, verbatim. */
+  .publicLandingNavSignOut { display:block; width:100%; color:var(--c-tomato);
+    transition:background-color var(--dur-fast) var(--ease-snap), color var(--dur-fast) var(--ease-snap); }
+  .publicLandingNavSignOut:hover { color:var(--c-paper); background-color:var(--c-tomato); }
+
+  /* Card scaffold only: room under a bar whose menu is shown open. */
+  .lede + .lede { margin-top:var(--space-3); }
+  .frame.menuRoom { padding-bottom:96px; }
+  .frame.tablet { width:820px; max-width:100%; }
+  .stateNote { font-family:var(--font-body); font-size:0.9rem; color:var(--role-text-muted); margin:var(--space-2) 0 0; }
+  /* ---- Phone: the links collapse into a hamburger so the bar stays ONE LINE ----
+     Applies to the signed-in bar only. The signed-out marketing bar keeps the
+     behaviour it has in production today. */
+  .publicLandingNavBurgerWrap { position:relative; flex:none; display:none; }
+  .publicLandingNavBurger { display:inline-flex; align-items:center; justify-content:center;
+    width:38px; height:38px; padding:0; border:var(--line-reg) solid var(--c-ink);
+    border-radius:var(--radius-pill); background:var(--c-paper); color:var(--c-ink); cursor:pointer; }
+  .publicLandingNavBurger:hover { box-shadow:var(--reg-box); }
+  .publicLandingNavBurger svg { width:20px; height:20px; display:block; }
+  .publicLandingNavBurgerMenu { position:absolute; top:100%; right:0; z-index:40;
+    padding-top:8px; display:none; }
+  .publicLandingNavBurgerWrap:hover .publicLandingNavBurgerMenu,
+  .publicLandingNavBurgerWrap:focus-within .publicLandingNavBurgerMenu,
+  .publicLandingNavBurgerMenu.isOpen { display:block; }
+  @container (max-width:900px) {
+    /* One line, always. The links leave the bar rather than wrapping under it. */
+    .publicLandingNavSignedIn { flex-wrap:nowrap; }
+    .publicLandingNavSignedIn .publicLandingNavLinks { display:none; }
+    .publicLandingNavSignedIn .publicLandingNavBurgerWrap { display:block; }
+    .publicLandingNavSignedIn .publicLandingNavLeft { display:flex; }
+    .publicLandingNavSignedIn .publicLandingNavBrand { flex:none; }
+    .publicLandingNavSignedIn .publicLandingNavActions { margin-left:auto; min-width:0; }
+  }
+  @container (max-width:420px) {
+    /* Email keeps shrinking rather than pushing the controls out of the bar. */
+    .publicLandingNavSignedIn .publicLandingNavEmail { max-width:96px; }
+  }
 </style>
 </head>
 <body>
 <div class="wrap">
   <div>
     <h1 class="page">Header &amp; Navigation</h1>
-    <p class="lede">The shared production header. Home is the mascot lockup; Features, Human Path,
-    Pricing, and Contact remain visible in every state. Signed-out users see Sign in and Create
-    profile. Signed-in users see one profile icon linked to onboarding. On narrow screens the
-    browse links wrap to a second row, matching production.</p>
+    <p class="lede">One bar, one grid, two sets of contents, and it is <strong>one line</strong>.
+    The layout is the live production header and does not change: mascot lockup, then the links
+    row, then the actions slot on the right.</p>
+    <p class="lede"><strong>Signed out</strong> is unchanged: Features, Human Path, Pricing,
+    Contact, and the Sign in / Create profile pair.</p>
+    <p class="lede"><strong>Signed in</strong> changes only what sits in those two slots. The links
+    row becomes Job scan, Saved Pursuits, a divider, then Plan and Billing. The actions slot becomes
+    the email and the profile icon, which opens Sign out. Both dropdowns are .selectMenu, the
+    picker this app already ships. Menu items carry the bar's own underline and its reg-shadow hover. Home points at the profile page. Plan and
+    Billing open their popups in place, over whatever page you are on. The email truncates with an
+    ellipsis so it can never push the icon out of the bar.</p>
+    <p class="lede">Below 900px the signed-in links move into a hamburger rather than wrapping, so
+    the bar is one line at every width down to 320. The signed-out bar keeps the behaviour it has in
+    production today.</p>
   </div>
 
   <div>
     <p class="stateLabel">Signed out · desktop</p>
-    <div class="frame wide">
+    <div class="frameScroll"><div class="frame wide">
       <header class="publicLandingNav" aria-label="Dumpster Fire navigation">
         <div class="publicLandingNavLeft">
           <a class="publicLandingNavBrand" href="#" aria-label="Dumpster Fire home">
@@ -92,72 +216,279 @@
           <a class="publicLandingNavCta" href="#">Create profile</a>
         </div>
       </header>
-    </div>
+    </div></div>
   </div>
 
   <div>
-    <p class="stateLabel">Signed in · desktop</p>
-    <div class="frame wide">
-      <header class="publicLandingNav" aria-label="Dumpster Fire navigation">
+    <p class="stateLabel">Signed in · desktop · complete profile</p>
+    <div class="frameScroll"><div class="frame wide">
+      <header class="publicLandingNav publicLandingNavSignedIn" aria-label="Dumpster Fire navigation">
         <div class="publicLandingNavLeft">
-          <a class="publicLandingNavBrand" href="#" aria-label="Dumpster Fire home">
+          <a class="publicLandingNavBrand" href="#" aria-label="Your profile">
             <img class="publicLandingNavMark" src="../dumpsterfireguy.png" alt="" />
             <span>Home</span>
           </a>
-          <nav class="publicLandingNavLinks" aria-label="Page sections">
-            <a href="#">Features</a><a href="#">Human Path</a><a href="#">Pricing</a><a href="#">Contact</a>
+          <nav class="publicLandingNavLinks" aria-label="Browse">
+            <a href="#">Job scan</a><a href="#">Saved Pursuits</a><span class="publicLandingNavSep" aria-hidden="true"></span><button type="button">Plan</button><button type="button">Billing</button>
           </nav>
         </div>
         <div class="publicLandingNavActions">
-          <a class="publicLandingNavProfile" href="#" aria-label="Your profile">
-            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M12 14c-5 0-8 2.7-8 6v0h16v0c0-3.3-3-6-8-6z"/></svg>
-          </a>
+          <div class="publicLandingNavIdentity">
+            <span class="publicLandingNavEmail">fransencomesalive@gmail.com</span>
+            <div class="publicLandingNavProfileWrap">
+              <button type="button" class="publicLandingNavProfile" aria-haspopup="menu" aria-expanded="false" aria-label="Your account">
+                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M12 14c-5 0-8 2.7-8 6v0h16v0c0-3.3-3-6-8-6z"/></svg>
+              </button>
+              <div class="publicLandingNavMenu" role="menu">
+                <div class="publicLandingNavMenuCard">
+                  <button type="button" class="publicLandingNavSignOut" role="menuitem">Sign out</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="publicLandingNavBurgerWrap">
+            <button type="button" class="publicLandingNavBurger" aria-haspopup="menu" aria-expanded="false" aria-label="Menu">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+            </button>
+            <div class="publicLandingNavBurgerMenu" role="menu">
+              <div class="publicLandingNavBurgerCard">
+                <a href="#" role="menuitem"><span>Job scan</span></a>
+                <a href="#" role="menuitem"><span>Saved Pursuits</span></a>
+                <a href="#" role="menuitem"><span>Plan</span></a>
+                <a href="#" role="menuitem"><span>Billing</span></a>
+              </div>
+            </div>
+          </div>
         </div>
       </header>
-    </div>
+    </div></div>
+    <p class="stateNote">Same bar, same grid. Only the contents differ: the links row swaps its labels and adds Plan and Billing after a divider; the actions slot carries the email and profile icon.</p>
   </div>
 
   <div>
-    <p class="stateLabel">Signed out · 320px</p>
-    <div class="frame phone">
-      <header class="publicLandingNav" aria-label="Dumpster Fire navigation">
+    <p class="stateLabel">Signed in · desktop · Sign out open</p>
+    <div class="frameScroll"><div class="frame wide menuRoom">
+      <header class="publicLandingNav publicLandingNavSignedIn" aria-label="Dumpster Fire navigation">
         <div class="publicLandingNavLeft">
-          <a class="publicLandingNavBrand" href="#" aria-label="Dumpster Fire home">
+          <a class="publicLandingNavBrand" href="#" aria-label="Your profile">
             <img class="publicLandingNavMark" src="../dumpsterfireguy.png" alt="" />
             <span>Home</span>
           </a>
-          <nav class="publicLandingNavLinks" aria-label="Page sections">
-            <a href="#">Features</a><a href="#">Human Path</a><a href="#">Pricing</a><a href="#">Contact</a>
+          <nav class="publicLandingNavLinks" aria-label="Browse">
+            <a href="#">Job scan</a><a href="#">Saved Pursuits</a><span class="publicLandingNavSep" aria-hidden="true"></span><button type="button">Plan</button><button type="button">Billing</button>
           </nav>
         </div>
         <div class="publicLandingNavActions">
-          <a class="publicLandingNavSignIn" href="#">Sign in</a>
-          <a class="publicLandingNavCta" href="#">Create profile</a>
+          <div class="publicLandingNavIdentity">
+            <span class="publicLandingNavEmail">fransencomesalive@gmail.com</span>
+            <div class="publicLandingNavProfileWrap">
+              <button type="button" class="publicLandingNavProfile" aria-haspopup="menu" aria-expanded="true" aria-label="Your account">
+                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M12 14c-5 0-8 2.7-8 6v0h16v0c0-3.3-3-6-8-6z"/></svg>
+              </button>
+              <div class="publicLandingNavMenu isOpen" role="menu">
+                <div class="publicLandingNavMenuCard">
+                  <button type="button" class="publicLandingNavSignOut" role="menuitem">Sign out</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="publicLandingNavBurgerWrap">
+            <button type="button" class="publicLandingNavBurger" aria-haspopup="menu" aria-expanded="false" aria-label="Menu">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+            </button>
+            <div class="publicLandingNavBurgerMenu" role="menu">
+              <div class="publicLandingNavBurgerCard">
+                <a href="#" role="menuitem"><span>Job scan</span></a>
+                <a href="#" role="menuitem"><span>Saved Pursuits</span></a>
+                <a href="#" role="menuitem"><span>Plan</span></a>
+                <a href="#" role="menuitem"><span>Billing</span></a>
+              </div>
+            </div>
+          </div>
         </div>
       </header>
-    </div>
+    </div></div>
+    <p class="stateNote">Opens on hover and on keyboard focus.</p>
   </div>
 
   <div>
-    <p class="stateLabel">Signed in · 320px</p>
-    <div class="frame phone">
-      <header class="publicLandingNav" aria-label="Dumpster Fire navigation">
+    <p class="stateLabel">Signed in · desktop · incomplete profile</p>
+    <div class="frameScroll"><div class="frame wide">
+      <header class="publicLandingNav publicLandingNavSignedIn" aria-label="Dumpster Fire navigation">
         <div class="publicLandingNavLeft">
-          <a class="publicLandingNavBrand" href="#" aria-label="Dumpster Fire home">
+          <a class="publicLandingNavBrand" href="#" aria-label="Your profile">
             <img class="publicLandingNavMark" src="../dumpsterfireguy.png" alt="" />
             <span>Home</span>
           </a>
-          <nav class="publicLandingNavLinks" aria-label="Page sections">
-            <a href="#">Features</a><a href="#">Human Path</a><a href="#">Pricing</a><a href="#">Contact</a>
+          <nav class="publicLandingNavLinks" aria-label="Browse">
+            <a href="#">Saved Pursuits</a><span class="publicLandingNavSep" aria-hidden="true"></span><button type="button">Plan</button><button type="button">Billing</button>
           </nav>
         </div>
         <div class="publicLandingNavActions">
-          <a class="publicLandingNavProfile" href="#" aria-label="Your profile">
-            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M12 14c-5 0-8 2.7-8 6v0h16v0c0-3.3-3-6-8-6z"/></svg>
+          <div class="publicLandingNavIdentity">
+            <span class="publicLandingNavEmail">fransencomesalive@gmail.com</span>
+            <div class="publicLandingNavProfileWrap">
+              <button type="button" class="publicLandingNavProfile" aria-haspopup="menu" aria-expanded="false" aria-label="Your account">
+                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M12 14c-5 0-8 2.7-8 6v0h16v0c0-3.3-3-6-8-6z"/></svg>
+              </button>
+              <div class="publicLandingNavMenu" role="menu">
+                <div class="publicLandingNavMenuCard">
+                  <button type="button" class="publicLandingNavSignOut" role="menuitem">Sign out</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="publicLandingNavBurgerWrap">
+            <button type="button" class="publicLandingNavBurger" aria-haspopup="menu" aria-expanded="false" aria-label="Menu">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+            </button>
+            <div class="publicLandingNavBurgerMenu" role="menu">
+              <div class="publicLandingNavBurgerCard">
+                <a href="#" role="menuitem"><span>Saved Pursuits</span></a>
+                <a href="#" role="menuitem"><span>Plan</span></a>
+                <a href="#" role="menuitem"><span>Billing</span></a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </header>
+    </div></div>
+    <p class="stateNote">Job scan is absent until the profile is complete, the same rule the profile card used. Saved Pursuits stays available throughout.</p>
+  </div>
+
+  <div>
+    <p class="stateLabel">Signed in · phone · 390 and 320 · one line</p>
+    <div class="phoneRow">
+      <div class="frame phone">
+      <header class="publicLandingNav publicLandingNavSignedIn" aria-label="Dumpster Fire navigation">
+        <div class="publicLandingNavLeft">
+          <a class="publicLandingNavBrand" href="#" aria-label="Your profile">
+            <img class="publicLandingNavMark" src="../dumpsterfireguy.png" alt="" />
+            <span>Home</span>
           </a>
+          <nav class="publicLandingNavLinks" aria-label="Browse">
+            <a href="#">Job scan</a><a href="#">Saved Pursuits</a><span class="publicLandingNavSep" aria-hidden="true"></span><button type="button">Plan</button><button type="button">Billing</button>
+          </nav>
+        </div>
+        <div class="publicLandingNavActions">
+          <div class="publicLandingNavIdentity">
+            <span class="publicLandingNavEmail">fransencomesalive@gmail.com</span>
+            <div class="publicLandingNavProfileWrap">
+              <button type="button" class="publicLandingNavProfile" aria-haspopup="menu" aria-expanded="false" aria-label="Your account">
+                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M12 14c-5 0-8 2.7-8 6v0h16v0c0-3.3-3-6-8-6z"/></svg>
+              </button>
+              <div class="publicLandingNavMenu" role="menu">
+                <div class="publicLandingNavMenuCard">
+                  <button type="button" class="publicLandingNavSignOut" role="menuitem">Sign out</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="publicLandingNavBurgerWrap">
+            <button type="button" class="publicLandingNavBurger" aria-haspopup="menu" aria-expanded="false" aria-label="Menu">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+            </button>
+            <div class="publicLandingNavBurgerMenu" role="menu">
+              <div class="publicLandingNavBurgerCard">
+                <a href="#" role="menuitem"><span>Job scan</span></a>
+                <a href="#" role="menuitem"><span>Saved Pursuits</span></a>
+                <a href="#" role="menuitem"><span>Plan</span></a>
+                <a href="#" role="menuitem"><span>Billing</span></a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </header>
+      </div>
+      <div class="frame phone w320">
+      <header class="publicLandingNav publicLandingNavSignedIn" aria-label="Dumpster Fire navigation">
+        <div class="publicLandingNavLeft">
+          <a class="publicLandingNavBrand" href="#" aria-label="Your profile">
+            <img class="publicLandingNavMark" src="../dumpsterfireguy.png" alt="" />
+            <span>Home</span>
+          </a>
+          <nav class="publicLandingNavLinks" aria-label="Browse">
+            <a href="#">Job scan</a><a href="#">Saved Pursuits</a><span class="publicLandingNavSep" aria-hidden="true"></span><button type="button">Plan</button><button type="button">Billing</button>
+          </nav>
+        </div>
+        <div class="publicLandingNavActions">
+          <div class="publicLandingNavIdentity">
+            <span class="publicLandingNavEmail">fransencomesalive@gmail.com</span>
+            <div class="publicLandingNavProfileWrap">
+              <button type="button" class="publicLandingNavProfile" aria-haspopup="menu" aria-expanded="false" aria-label="Your account">
+                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M12 14c-5 0-8 2.7-8 6v0h16v0c0-3.3-3-6-8-6z"/></svg>
+              </button>
+              <div class="publicLandingNavMenu" role="menu">
+                <div class="publicLandingNavMenuCard">
+                  <button type="button" class="publicLandingNavSignOut" role="menuitem">Sign out</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="publicLandingNavBurgerWrap">
+            <button type="button" class="publicLandingNavBurger" aria-haspopup="menu" aria-expanded="false" aria-label="Menu">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+            </button>
+            <div class="publicLandingNavBurgerMenu" role="menu">
+              <div class="publicLandingNavBurgerCard">
+                <a href="#" role="menuitem"><span>Job scan</span></a>
+                <a href="#" role="menuitem"><span>Saved Pursuits</span></a>
+                <a href="#" role="menuitem"><span>Plan</span></a>
+                <a href="#" role="menuitem"><span>Billing</span></a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </header>
+      </div>
+    </div>
+    <p class="stateNote">Below 900px the links leave the bar instead of wrapping under it. The bar stays one line at every width: mascot, Home, then the truncated email, the profile icon, and the menu.</p>
+  </div>
+
+  <div>
+    <p class="stateLabel">Signed in · phone · menu open</p>
+    <div class="frame phone" style="padding-bottom:240px">
+      <header class="publicLandingNav publicLandingNavSignedIn" aria-label="Dumpster Fire navigation">
+        <div class="publicLandingNavLeft">
+          <a class="publicLandingNavBrand" href="#" aria-label="Your profile">
+            <img class="publicLandingNavMark" src="../dumpsterfireguy.png" alt="" />
+            <span>Home</span>
+          </a>
+          <nav class="publicLandingNavLinks" aria-label="Browse">
+            <a href="#">Job scan</a><a href="#">Saved Pursuits</a><span class="publicLandingNavSep" aria-hidden="true"></span><button type="button">Plan</button><button type="button">Billing</button>
+          </nav>
+        </div>
+        <div class="publicLandingNavActions">
+          <div class="publicLandingNavIdentity">
+            <span class="publicLandingNavEmail">fransencomesalive@gmail.com</span>
+            <div class="publicLandingNavProfileWrap">
+              <button type="button" class="publicLandingNavProfile" aria-haspopup="menu" aria-expanded="false" aria-label="Your account">
+                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M12 14c-5 0-8 2.7-8 6v0h16v0c0-3.3-3-6-8-6z"/></svg>
+              </button>
+              <div class="publicLandingNavMenu" role="menu">
+                <div class="publicLandingNavMenuCard">
+                  <button type="button" class="publicLandingNavSignOut" role="menuitem">Sign out</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="publicLandingNavBurgerWrap">
+            <button type="button" class="publicLandingNavBurger" aria-haspopup="menu" aria-expanded="true" aria-label="Menu">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+            </button>
+            <div class="publicLandingNavBurgerMenu isOpen" role="menu">
+              <div class="publicLandingNavBurgerCard">
+                <a href="#" role="menuitem"><span>Job scan</span></a>
+                <a href="#" role="menuitem"><span>Saved Pursuits</span></a>
+                <a href="#" role="menuitem"><span>Plan</span></a>
+                <a href="#" role="menuitem"><span>Billing</span></a>
+              </div>
+            </div>
+          </div>
         </div>
       </header>
     </div>
+    <p class="stateNote">Job scan and Saved Pursuits, then Plan and Billing under a rule. Sign out stays on the profile icon.</p>
   </div>
 </div>
 </body>

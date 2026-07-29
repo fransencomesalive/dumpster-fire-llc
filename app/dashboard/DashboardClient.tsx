@@ -968,7 +968,7 @@ export default function DashboardClient() {
 
   return (
     <main className={styles.page}>
-      <SiteHeader profileHref="/onboarding" />
+      <SiteHeader />
       <header className={jobsStyles.topBar}>
         <h1 className={jobsStyles.topTitle} id="dashboard-title">Your career dashboard</h1>
       </header>

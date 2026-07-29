@@ -9,12 +9,12 @@ import {
   isGoogleSignInEnabled,
   signInWithGoogle,
   signInWithPasswordSession,
-  signOutSupabaseSession,
   syncPublicProfileSession,
 } from "@/lib/public-auth/supabase-browser";
-import { PublicProfileApiError, requestPublicProfileApi } from "@/lib/public-profile/client";
+import { requestPublicProfileApi } from "@/lib/public-profile/client";
 import type { PublicProfileOnboardingSection, PublicProfileOnboardingSectionKey } from "@/lib/public-profile/onboarding";
 import SiteHeader from "../components/SiteHeader";
+import { onboardingDraftKeyPrefix } from "../components/useAccountSession";
 import styles from "./onboarding.module.css";
 // Loader modal styles — the scan-progress component lives in the dashboard
 // module; Card 1's save reuses it 1:1 rather than duplicating the CSS.
@@ -177,43 +177,11 @@ type ResumeScanState =
 
 const notLoadedReadinessLabel = "Not loaded";
 
-// Public tier names — never surface internal plan_name values (premium/tester/etc.) in UI copy.
-const PLAN_LABELS: Record<string, string> = { basic: "Smoldering", premium: "Roaring", tester: "Roaring" };
-function planLabel(plan: string | null | undefined): string {
-  return plan && PLAN_LABELS[plan] ? PLAN_LABELS[plan] : "Smoldering";
-}
 
-function accountPlanLabel(account: AccountPlan | null): string {
-  return account?.publicPlanName || planLabel(account?.planCode || account?.planName);
-}
 
-function accountPlanPrice(account: AccountPlan | null): string {
-  return account?.planCode === "basic" || account?.planName === "basic" ? "$22 / month" : "$32 / month";
-}
 
-function formatAccountDate(value?: string): string {
-  if (!value) return "your next billing date";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "your next billing date";
-  return date.toLocaleDateString("en-US", { month: "long", day: "numeric" });
-}
 
-function safeStripePortalRedirect(value: string): string | null {
-  try {
-    const url = new URL(value);
-    return url.protocol === "https:" && url.hostname.endsWith(".stripe.com") ? url.toString() : null;
-  } catch {
-    return null;
-  }
-}
 
-function PopupCheckIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <polyline points="20 6 9 17 4 12" />
-    </svg>
-  );
-}
 
 // Card 1 save pipeline phases, shown in the scan-progress loader modal
 // (design-system/components/scan-progress.html, live in DashboardClient):
@@ -843,14 +811,6 @@ export default function OnboardingClient({
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [accessToken, setAccessToken] = useState("");
-  const [accountEmail, setAccountEmail] = useState("");
-  const [accountPlan, setAccountPlan] = useState<AccountPlan | null>(null);
-  const [inviteCode, setInviteCode] = useState("");
-  const [redeemingCode, setRedeemingCode] = useState(false);
-  const [accountPopup, setAccountPopup] = useState<null | "plan" | "billing" | "change">(null);
-  const [accountActionBusy, setAccountActionBusy] = useState(false);
-  const [accountActionMessage, setAccountActionMessage] = useState("");
-  const [scheduledChange, setScheduledChange] = useState<{ target: "basic"; effectiveAt: string } | null>(null);
   const [reviewOpen, setReviewOpen] = useState(false);
 
   const [identity, setIdentity] = useState<IdentitySearchSection>(emptyIdentity);
@@ -905,7 +865,6 @@ export default function OnboardingClient({
   const draftsHydratedRef = useRef(false);
   const draftStorageKeyRef = useRef("");
 
-  const [profileStatus, setProfileStatus] = useState<"incomplete" | "complete">("incomplete");
   const [profileQuality, setProfileQuality] = useState<ProfileQualitySummary | null>(null);
   const [message, setMessage] = useState("Sign in to start your profile.");
   const [busy, setBusy] = useState(false);
@@ -927,7 +886,6 @@ export default function OnboardingClient({
 
   const applyProfileQuality = useCallback((summary: ProfileQualitySummary) => {
     setProfileQuality(summary);
-    setProfileStatus(summary.status);
   }, []);
 
   const readinessBySection = useMemo(() => {
@@ -987,7 +945,7 @@ export default function OnboardingClient({
 
     // Local drafts hydrate OVER the server values — typed-but-unsaved input outranks
     // whatever the server (or a seed) holds until the user saves or resets.
-    draftStorageKeyRef.current = `df-onboarding-drafts:${identityResponse.profileId}`;
+    draftStorageKeyRef.current = `${onboardingDraftKeyPrefix}${identityResponse.profileId}`;
     try {
       const raw = window.localStorage.getItem(draftStorageKeyRef.current);
       if (raw) {
@@ -1021,18 +979,11 @@ export default function OnboardingClient({
       { method: "GET", accessToken: token },
     ).catch(() => null);
     if (account) {
-      setAccountEmail(account.email ?? "");
-      setAccountPlan(account);
       // Plan gate: a signed-in user with no active plan hasn't completed the
       // plan step yet — send them there (an access code unlocks onboarding).
       if (!account.planName) {
         router.replace("/plan");
         return;
-      }
-      const requestedPopup = window.sessionStorage.getItem("df-open-account-popup");
-      if (requestedPopup === "plan" || requestedPopup === "billing") {
-        window.sessionStorage.removeItem("df-open-account-popup");
-        setAccountPopup(requestedPopup);
       }
     }
     setMessage("Profile sections loaded.");
@@ -1169,134 +1120,7 @@ export default function OnboardingClient({
     }
   }
 
-  async function redeemInviteCode() {
-    if (!accessToken || !inviteCode.trim()) return;
-    setRedeemingCode(true);
-    try {
-      const result = await requestPublicProfileApi<{ status: string; planName: string }>(
-        "/api/account/redeem-code",
-        { method: "POST", accessToken, body: { code: inviteCode } },
-      );
-      setInviteCode("");
-      const refreshed = await requestPublicProfileApi<AccountPlan>(
-        "/api/account/plan",
-        { method: "GET", accessToken },
-      ).catch(() => null);
-      if (refreshed) setAccountPlan(refreshed);
-      setMessage(`Access code accepted: the ${planLabel(result.planName)} plan is active.`);
-    } catch (error) {
-      const body = (error as { body?: { error?: string } }).body;
-      setMessage(body?.error || "That code did not work.");
-    } finally {
-      setRedeemingCode(false);
-    }
-  }
 
-  function clearLocalDrafts() {
-    if (draftStorageKeyRef.current) {
-      try {
-        window.localStorage.removeItem(draftStorageKeyRef.current);
-      } catch {
-        // noop — worst case a stale draft lingers for this profile id
-      }
-    }
-    setListFieldDrafts({});
-    draftsHydratedRef.current = false;
-  }
-
-  function signOut() {
-    clearLocalDrafts();
-    void signOutSupabaseSession();
-    clearPublicProfileAccessToken();
-    setAccessToken("");
-    setIdentity(emptyIdentity);
-    setRoleTracks([]);
-    setResumes([]);
-    setWorkExamples([]);
-    setSkills([]);
-    setVoice(emptyVoice);
-    setWritingSamples([]);
-    setProfileStatus("incomplete");
-    setProfileQuality(null);
-    setAccountEmail("");
-    setAccountPlan(null);
-    setAccountPopup(null);
-    setReviewOpen(false);
-    setMessage("Signed out.");
-  }
-
-  async function refreshAccountPlan() {
-    if (!accessToken) return null;
-    const refreshed = await requestPublicProfileApi<AccountPlan>(
-      "/api/account/plan",
-      { method: "GET", accessToken },
-    );
-    setAccountEmail(refreshed.email ?? "");
-    setAccountPlan(refreshed);
-    return refreshed;
-  }
-
-  async function openBillingPortal() {
-    if (!accessToken || accountActionBusy) return;
-    setAccountActionBusy(true);
-    setAccountActionMessage("");
-    try {
-      const result = await requestPublicProfileApi<{ status: string; url: string }>(
-        "/api/billing/portal",
-        { method: "POST", accessToken },
-      );
-      const destination = safeStripePortalRedirect(result.url);
-      if (!destination) throw new Error("Stripe returned an invalid billing address.");
-      window.location.assign(destination);
-    } catch {
-      setAccountActionMessage("Billing is having a moment. Nothing changed. Try again in a minute.");
-      setAccountActionBusy(false);
-    }
-  }
-
-  async function changeAccountPlan() {
-    if (!accessToken || accountActionBusy || !accountPlan) return;
-    const currentPlan = accountPlan.planCode || accountPlan.planName;
-    const targetPlan = currentPlan === "basic" ? "premium" : "basic";
-    setAccountActionBusy(true);
-    setAccountActionMessage("");
-    try {
-      const result = await requestPublicProfileApi<{
-        status: "immediate" | "scheduled" | "unchanged" | "payment_required";
-        planCode: string;
-        effectiveAt?: string;
-      }>(
-        "/api/billing/change-plan",
-        {
-          method: "POST",
-          accessToken,
-          body: { planCode: targetPlan },
-          headers: { "Idempotency-Key": `change:${crypto.randomUUID()}` },
-        },
-      );
-      if (result.status === "scheduled" && result.effectiveAt) {
-        setScheduledChange({ target: "basic", effectiveAt: result.effectiveAt });
-        setAccountActionMessage(`Your switch to Smoldering is set for ${formatAccountDate(result.effectiveAt)}.`);
-      } else if (result.status === "payment_required") {
-        setAccountActionMessage("Stripe needs payment attention before this change can finish. Open Billing to update it.");
-      } else {
-        await refreshAccountPlan();
-        setAccountPopup("plan");
-        setAccountActionMessage(targetPlan === "premium" ? "Roaring is active now." : "Your plan is unchanged.");
-      }
-    } catch (error) {
-      const body = error instanceof PublicProfileApiError
-        ? error.body as { error?: string; status?: string } | null
-        : null;
-      setAccountActionMessage(
-        body?.status === "payment_required"
-          ? "Stripe needs payment attention before this change can finish. Open Billing to update it."
-          : "That plan change did not go through. Nothing changed. Try again in a minute.",
-      );
-    } finally {
-      setAccountActionBusy(false);
-    }
-  }
 
   async function saveSection<T>(label: string, path: string, body: unknown, onResult: (section: T, quality: ProfileQualitySummary) => void) {
     if (!accessToken) return;
@@ -1945,202 +1769,6 @@ export default function OnboardingClient({
     (section) => section.required && readinessBySection.get(section.key)?.status === "incomplete",
   );
 
-  // Profile card - a compact full-width bar in every signed-in state (onboarding-account-bar
-  // DS card). Saved Pursuits stays available even if the current profile later becomes incomplete;
-  // only Job scan remains gated on profile completion.
-  const accountPanel = (
-    <section className={styles.accountPanel} aria-label="Profile">
-      <div className={styles.accountHead}><span className={styles.accountTitle}>Profile</span></div>
-      <div className={styles.profileBar}>
-        <div className={styles.identity}>
-          <span className={styles.profilePhoto} aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="8" r="4" /><path d="M12 14c-5 0-8 2.7-8 6v0h16v0c0-3.3-3-6-8-6z" /></svg>
-          </span>
-          <span className={styles.profileEmail}>{accountEmail || "Signed in"}</span>
-          <button type="button" className={styles.btnSignOut} onClick={signOut}>Sign out</button>
-        </div>
-        <div className={styles.profileActions}>
-          <button type="button" className={styles.btnGhost} onClick={() => { setAccountActionMessage(""); setAccountPopup("plan"); }}>Plan</button>
-          <button type="button" className={styles.btnGhost} onClick={() => { setAccountActionMessage(""); setAccountPopup("billing"); }}>Billing</button>
-          <span className={styles.actionDivider} aria-hidden="true" />
-          {profileStatus === "complete" ? (
-              <button type="button" className={styles.btnScan} onClick={() => router.push("/dashboard")}>
-                Job scan
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12" /><polyline points="12 5 19 12 12 19" /></svg>
-              </button>
-          ) : null}
-          <button type="button" className={styles.btnScan} onClick={() => router.push("/saved-pursuits")}>
-            Saved Pursuits
-          </button>
-        </div>
-      </div>
-    </section>
-  );
-
-  const displayedPlan = accountPlanLabel(accountPlan);
-  const planLimit = accountPlan?.limit ?? (accountPlan?.planCode === "basic" || accountPlan?.planName === "basic" ? 20 : 45);
-  const planRemaining = Math.max(0, Math.min(planLimit, accountPlan?.remaining ?? planLimit));
-  const planReset = formatAccountDate(accountPlan?.periodEnd);
-  const planIsRoaring = accountPlan?.planCode === "premium"
-    || accountPlan?.planName === "premium"
-    || accountPlan?.planName === "tester";
-  const planIsPastDue = accountPlan?.subscriptionStatus === "past_due" || accountPlan?.status === "past_due";
-  const planChangeIsUpgrade = accountPlan?.planCode === "basic" || accountPlan?.planName === "basic";
-  const usageWidth = planRemaining === 0 ? 100 : Math.round((planRemaining / Math.max(1, planLimit)) * 100);
-
-  const accountPopupModal = accountPopup ? (
-    <div className={styles.popupOverlay} role="dialog" aria-modal="true" onClick={() => setAccountPopup(null)}>
-      <div className={styles.popupCard} onClick={(event) => event.stopPropagation()}>
-        <div className={`${styles.popupHead} ${accountPopup === "billing" && planIsPastDue ? styles.popupHeadNegative : ""}`}>
-          <h3 className={styles.popupTitle}>
-            {accountPopup === "change"
-              ? planChangeIsUpgrade ? "Upgrade to Roaring" : "Switch to Smoldering"
-              : accountPopup === "plan" ? "Plan" : "Billing"}
-          </h3>
-          <button type="button" className={styles.popupClose} aria-label="Close" onClick={() => setAccountPopup(null)}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true">
-              <line x1="6" y1="6" x2="18" y2="18" /><line x1="18" y1="6" x2="6" y2="18" />
-            </svg>
-          </button>
-        </div>
-        {accountPopup === "plan" ? (
-          <div className={styles.popupBody}>
-            <div className={styles.popupPlanName}>
-              <span className={styles.popupPlanTitle}>{displayedPlan}</span>
-              {planIsRoaring ? <span className={styles.popupPlanBadge}>Top plan</span> : null}
-              <span className={styles.popupPlanPrice}>{accountPlanPrice(accountPlan)}</span>
-            </div>
-            <div className={styles.popupUsage}>
-              <div className={styles.popupUsageTop}><span><b>{planRemaining}</b> of {planLimit} pursuits left</span></div>
-              <div className={`${styles.popupMeter} ${planRemaining === 0 ? styles.popupMeterSpent : ""}`}>
-                <span style={{ width: `${usageWidth}%` }} />
-              </div>
-              <div className={styles.popupReset}>Resets on {planReset}.</div>
-            </div>
-            {planRemaining === 0 ? (
-              <p className={styles.popupNote}>You&apos;ve used all {planLimit} this period. Your saved pursuits stay open and trackable. New contact discovery picks back up at reset{planIsRoaring ? "." : ", or step up to Roaring for 45 a month."}</p>
-            ) : null}
-            <div className={styles.popupKv}>
-              <div className={styles.popupKvRow}>
-                <span>Markdown export</span>
-                {accountPlan?.markdownExport
-                  ? <strong className={styles.popupIncluded}><PopupCheckIcon />Included</strong>
-                  : <strong className={styles.popupMuted}>Roaring only</strong>}
-              </div>
-            </div>
-            {scheduledChange ? (
-              <div className={styles.popupSchedule}>Switching to Smoldering on {formatAccountDate(scheduledChange.effectiveAt)}.</div>
-            ) : null}
-            {accountActionMessage ? <p className={styles.popupActionMessage} role="status">{accountActionMessage}</p> : null}
-            <div className={styles.popupFoot}>
-              {accountPlan?.hasBillingManagement ? (
-                <button type="button" className={styles.popupBtnTeal} onClick={() => { setAccountActionMessage(""); setAccountPopup("change"); }}>
-                  {planRemaining === 0 && !planIsRoaring ? "Upgrade to Roaring" : "Change plan"}
-                </button>
-              ) : null}
-              <button type="button" className={styles.popupBtnGhost} onClick={() => setAccountPopup(null)}>Close</button>
-            </div>
-          </div>
-        ) : accountPopup === "billing" ? (
-          <div className={styles.popupBody}>
-            <div className={styles.popupPlanName}>
-              <span className={styles.popupPlanTitle}>{displayedPlan}</span>
-              <span className={styles.popupPlanPrice}>{accountPlanPrice(accountPlan)}</span>
-            </div>
-            {accountPlan?.hasBillingManagement ? (
-              <>
-                {accountPlan.cancelAtPeriodEnd ? (
-                  <div className={styles.popupSchedule}>Set to cancel on {planReset}. You keep full access until then.</div>
-                ) : null}
-                {planIsPastDue ? (
-                  <>
-                    <p className={styles.popupNoteNegative}>We couldn&apos;t process your last payment.</p>
-                    <p className={styles.popupNote}>New Apply Wizard pursuits and Markdown export are paused until it goes through. Your profile, saved pursuits, and existing work are safe. Update your payment method to pick back up.</p>
-                  </>
-                ) : (
-                  <>
-                    <div className={styles.popupKv}>
-                      <div className={styles.popupKvRow}><span>Status</span><strong>{accountPlan.cancelAtPeriodEnd ? "Canceling" : "Active"}</strong></div>
-                      <div className={styles.popupKvRow}><span>{accountPlan.cancelAtPeriodEnd ? "Access through" : "Next payment"}</span><strong>{planReset}</strong></div>
-                    </div>
-                    <p className={styles.popupNote}>
-                      {accountPlan.cancelAtPeriodEnd
-                        ? `Change your mind? Keep your plan and it renews as normal on ${planReset}.`
-                        : "Update your payment method, download invoices, or cancel on Stripe's secure portal."}
-                    </p>
-                  </>
-                )}
-                {accountActionMessage ? <p className={styles.popupActionMessage} role="status">{accountActionMessage}</p> : null}
-                <div className={styles.popupFoot}>
-                  <button type="button" className={styles.popupBtnTeal} disabled={accountActionBusy} onClick={() => void openBillingPortal()}>
-                    {planIsPastDue ? "Update payment" : accountPlan.cancelAtPeriodEnd ? "Keep my plan" : "Open billing portal"}
-                  </button>
-                  {!planIsPastDue && !accountPlan.cancelAtPeriodEnd ? (
-                    <button type="button" className={styles.popupCancelPlan} disabled={accountActionBusy} onClick={() => void openBillingPortal()}>
-                      Cancel plan
-                    </button>
-                  ) : (
-                    <button type="button" className={styles.popupBtnGhost} onClick={() => setAccountPopup(null)}>Close</button>
-                  )}
-                </div>
-              </>
-            ) : (
-              <>
-                <p className={styles.popupNote}>This plan was unlocked with an access code, so there is no Stripe billing account to manage.</p>
-                <label className={styles.accountCodeLabel} htmlFor="billing-access-code">Access code</label>
-                <div className={styles.codeRow}>
-                  <input
-                    id="billing-access-code"
-                    className={styles.codeInput}
-                    value={inviteCode}
-                    onChange={(event) => setInviteCode(event.target.value)}
-                    placeholder="Enter code"
-                    type="text"
-                    aria-label="Access code"
-                  />
-                  <button
-                    type="button"
-                    className={styles.btnRedeem}
-                    disabled={redeemingCode || !inviteCode.trim()}
-                    onClick={redeemInviteCode}
-                  >
-                    Redeem
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-        ) : (
-          <div className={styles.popupBody}>
-            <p className={styles.popupNote}>
-              {planChangeIsUpgrade
-                ? "You'll pay a prorated amount for the rest of this period today. The pursuits you've already used carry over, your remaining count moves up to fit Roaring's 45, and Markdown export unlocks right away. Your billing date doesn't change."
-                : `You keep Roaring, all 45 pursuits, and Markdown export until ${planReset}. At renewal you move to Smoldering: 20 pursuits a month and no export. Nothing changes today and there's no refund for the current period.`}
-            </p>
-            {planChangeIsUpgrade ? (
-              <div className={styles.popupKv}>
-                <div className={styles.popupKvRow}><span>New price</span><strong>$32 / month</strong></div>
-                <div className={styles.popupKvRow}><span>Due today</span><strong>Prorated, shown on Stripe</strong></div>
-                <div className={styles.popupKvRow}><span>Pursuits</span><strong>Jumps to 45 this period</strong></div>
-              </div>
-            ) : null}
-            {accountActionMessage ? <p className={styles.popupActionMessage} role="status">{accountActionMessage}</p> : null}
-            <div className={styles.popupFoot}>
-              <button type="button" className={styles.popupBtnTeal} disabled={accountActionBusy} onClick={() => void changeAccountPlan()}>
-                {accountActionBusy ? "Working…" : planChangeIsUpgrade ? "Upgrade now" : "Switch at renewal"}
-              </button>
-              <button type="button" className={styles.popupBtnGhost} disabled={accountActionBusy} onClick={() => setAccountPopup("plan")}>
-                {planChangeIsUpgrade ? "Not now" : "Keep Roaring"}
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  ) : null;
-
-  // Save-blocked review panel — only when a save left required sections incomplete
-  // (onboarding-review-panel DS card + design-pass note #8).
   const reviewPanel = reviewOpen && blockedSections.length > 0 ? (
     <div className={styles.reviewPanel} role="status">
       <div className={styles.reviewHead}>
@@ -2272,11 +1900,7 @@ export default function OnboardingClient({
   return (
     <div>
       {saveLoader}
-      {accountPopupModal}
-      <SiteHeader
-        sectionHrefPrefix="/"
-        profileHref={signedIn ? "/onboarding" : undefined}
-      />
+      <SiteHeader />
 
       <div className={styles.shell}>
         {gateChecking ? (
@@ -2287,7 +1911,6 @@ export default function OnboardingClient({
           </div>
         ) : !signedIn ? loginCard : (
           <>
-            {accountPanel}
             {reviewPanel}
 
             <section className={styles.editorGrid} aria-label="Editable onboarding form">

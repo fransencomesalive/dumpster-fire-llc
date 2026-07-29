@@ -70,7 +70,7 @@ export default function SignUpClient() {
 
   return (
     <div>
-      <SiteHeader sectionHrefPrefix="/" />
+      <SiteHeader sectionHrefPrefix="/" variant="public" />
       <div className={styles.loginShell}>
         {sent ? (
           <div className={styles.loginCard}>

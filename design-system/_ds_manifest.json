@@ -100,10 +100,6 @@
       "group": "Onboarding"
     },
     {
-      "path": "components/onboarding-account-bar.html",
-      "group": "Onboarding"
-    },
-    {
       "path": "components/onboarding-review-panel.html",
       "group": "Onboarding"
     },

@@ -29,6 +29,7 @@ import {
   type PursuitTrackingState,
 } from "@/lib/public-profile/pursuits/tracking";
 import styles from "./apply-wizard.module.css";
+import { accountPopupHandoffKey } from "../components/useAccountSession";
 
 // The Human Path apply wizard: Review → Contacts → Outreach → Track. Markup + CSS are ported
 // 1:1 from the approved DS card (design-system/components/apply-wizard.html); the wiring drives
@@ -711,7 +712,7 @@ export default function ApplyWizardModal({
   }
 
   function openAccountPanel(panel: "plan" | "billing") {
-    window.sessionStorage.setItem("df-open-account-popup", panel);
+    window.sessionStorage.setItem(accountPopupHandoffKey, panel);
     window.location.assign("/onboarding");
   }
 

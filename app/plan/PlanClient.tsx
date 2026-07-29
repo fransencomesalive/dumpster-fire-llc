@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import SiteHeader from "../components/SiteHeader";
+import { accountPopupHandoffKey } from "../components/useAccountSession";
 import { syncPublicProfileSession } from "@/lib/public-auth/supabase-browser";
 import { readPublicProfileAccessToken } from "@/lib/public-profile/browser-session";
 import { PublicProfileApiError, requestPublicProfileApi } from "@/lib/public-profile/client";
@@ -225,7 +226,7 @@ export default function PlanClient() {
   }, [inviteCode, token]);
 
   function openProfilePlan() {
-    window.sessionStorage.setItem("df-open-account-popup", "plan");
+    window.sessionStorage.setItem(accountPopupHandoffKey, "plan");
     router.push("/onboarding");
   }
 
@@ -244,7 +245,7 @@ export default function PlanClient() {
 
   return (
     <div>
-      <SiteHeader sectionHrefPrefix="/" />
+      <SiteHeader sectionHrefPrefix="/" variant="public" />
       {flow === "checking" ? (
         <div className={styles.pageLoad}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
