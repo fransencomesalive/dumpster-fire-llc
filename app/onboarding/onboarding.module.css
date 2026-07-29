@@ -7,18 +7,23 @@
    transparent and surfaces sit opaque on top.
    ============================================================ */
 
+/* Horizontal padding removed and top padding zeroed: the shell now uses the
+   header's own width formula so the two line up exactly, and the header sits
+   outside this container. (Randall, 2026-07-28.) */
 .page {
   min-height: 100svh;
-  padding: clamp(28px, 5vw, 72px);
+  padding: 0 0 clamp(28px, 5vw, 72px);
   background: transparent;
   color: var(--c-ink);
   font-family: var(--font-ui); /* app/dense UI = Gotham; prose opts into serif below */
 }
 
+/* Same formula as .publicLandingNav, so onboarding content sits flush under the
+   header instead of 10px wider on each side. */
 .shell {
   position: relative;
   z-index: 1;
-  width: min(1180px, 100%);
+  width: min(1160px, calc(100% - 48px));
   margin: 0 auto;
 }
 

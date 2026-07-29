@@ -1979,9 +1979,12 @@
     drop-shadow(6px 7px 0 rgba(36, 31, 26, 0.32));
 }
 
+/* No top padding: the header now sits OUTSIDE this container, so any padding
+   here would reappear as a gap above it. The header's own sticky top:12px is
+   the offset, identical on every page. (Randall, 2026-07-28.) */
 .page {
   min-height: 100svh;
-  padding: clamp(28px, 5vw, 72px);
+  padding: 0 clamp(28px, 5vw, 72px) clamp(28px, 5vw, 72px);
 }
 
 /* DS mapped correction: public home uses header + hero + panel/card primitives, dashboard uses panel/forms/cards. */

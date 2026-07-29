@@ -3,9 +3,12 @@
    shown one at a time through a segmented toggle at every breakpoint. Tokens come from
    app/globals.css + app/ds.css (loaded globally in layout.tsx). */
 
+/* transparent, not paper: the page ground is the global grain and surfaces sit
+   opaque on top of it, exactly as onboarding and the dashboard do. An opaque
+   fill here covered the grain from the header down. (Randall, 2026-07-28.) */
 .page {
   margin: 0;
-  background: var(--c-paper);
+  background: transparent;
   color: var(--c-ink);
   font-family: var(--font-body);
   padding: var(--space-6) 0 var(--space-7);

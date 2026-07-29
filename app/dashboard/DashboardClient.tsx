@@ -967,8 +967,9 @@ export default function DashboardClient() {
     : "100%";
 
   return (
-    <main className={styles.page}>
+    <>
       <SiteHeader />
+      <main className={styles.page}>
       <header className={jobsStyles.topBar}>
         <h1 className={jobsStyles.topTitle} id="dashboard-title">Your career dashboard</h1>
       </header>
@@ -1305,5 +1306,6 @@ export default function DashboardClient() {
         />
       ) : null}
     </main>
+    </>
   );
 }

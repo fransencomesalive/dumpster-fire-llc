@@ -13,7 +13,6 @@ import {
 } from "@/lib/public-auth/supabase-browser";
 import { requestPublicProfileApi } from "@/lib/public-profile/client";
 import type { PublicProfileOnboardingSection, PublicProfileOnboardingSectionKey } from "@/lib/public-profile/onboarding";
-import SiteHeader from "../components/SiteHeader";
 import { onboardingDraftKeyPrefix } from "../components/useAccountSession";
 import styles from "./onboarding.module.css";
 // Loader modal styles — the scan-progress component lives in the dashboard
@@ -1900,7 +1899,6 @@ export default function OnboardingClient({
   return (
     <div>
       {saveLoader}
-      <SiteHeader />
 
       <div className={styles.shell}>
         {gateChecking ? (
