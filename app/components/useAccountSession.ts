@@ -44,7 +44,7 @@ export type AccountSession = {
   // A popup another surface asked the header to open on arrival. Consumed once.
   pendingPopup: "plan" | "billing" | null;
   refreshPlan: () => Promise<AccountPlan | null>;
-  signOut: () => void;
+  signOut: () => Promise<void>;
 };
 
 export function useAccountSession(enabled = true): AccountSession {
@@ -143,7 +143,7 @@ export function useAccountSession(enabled = true): AccountSession {
   // page is mounted to reset its state, and onboarding in particular holds a
   // large amount of profile state. Dropping the document is the only way to
   // guarantee nothing signed-in survives.
-  const signOut = useCallback(() => {
+  const signOut = useCallback(async () => {
     // Onboarding keys its draft by profile id (`df-onboarding-drafts:<id>`), so
     // the header cannot name the key. Sweep the prefix instead — signing out has
     // always cleared the draft, and that has to keep being true now that Sign
@@ -158,7 +158,10 @@ export function useAccountSession(enabled = true): AccountSession {
     } catch {
       // noop — worst case a stale draft lingers for the next sign-in
     }
-    void signOutSupabaseSession();
+    // AWAITED, deliberately. signOutSupabaseSession clears the session cookie;
+    // navigating before it resolves means the server renders the destination
+    // with a live session and the user lands still looking signed in.
+    await signOutSupabaseSession();
     clearPublicProfileAccessToken();
     window.location.assign("/");
   }, []);

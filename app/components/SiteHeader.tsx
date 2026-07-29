@@ -116,7 +116,7 @@ export default function SiteHeader({
                     type="button"
                     className={styles.publicLandingNavSignOut}
                     role="menuitem"
-                    onClick={session.signOut}
+                    onClick={() => void session.signOut()}
                   >
                     Sign out
                   </button>
