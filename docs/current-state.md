@@ -78,14 +78,20 @@ The harness found two real bugs that `tsc`, lint and build all passed:
 and clicking a real confirmation email. The harness covers the part of each that actually broke,
 namely that `/auth/callback` exists and is an allowed Supabase redirect.
 
-**Open decision — marketing page speed.** Reading the session cookie in the root layout made every
-route Dynamic. Measured on production: `/` now returns TTFB 290-480ms with `x-vercel-cache: MISS` on
-every request, where it was prerendered and CDN-served before. The fix is route groups: keep `/`,
-`/legal/*` and `/styleguide` under a layout that does not read cookies (static and fast, but a
-signed-in visitor sees the header resolve on those pages), and move the cookie read into a layout
-covering only `/onboarding`, `/dashboard` and `/saved-pursuits`, which stay server-rendered and
-flip-free. Not done: it trades a flip on the marketing pages for a 10x faster TTFB there, and that
-is a product call.
+**Settled — marketing page speed.** Reading the session cookie in the root layout made every route
+Dynamic, so `/` is built per request instead of prerendered. Measured properly on production, 12
+samples each: a CDN-cached asset on the same domain has a median TTFB of 268ms (floor 149ms) and the
+homepage 394ms (floor 266ms). Per-request rendering therefore costs about **125ms**; most of the
+remainder is network distance to the edge and is unavoidable either way.
+
+An earlier revision of this doc claimed "10x faster TTFB" for reverting to static. That was wrong —
+it compared the homepage against nothing. The real gap is ~125ms.
+
+Route groups could restore prerendering for `/`, `/legal/*` and `/styleguide`, but the cost is that
+a signed-in visitor sees the header resolve on those pages, which is the exact flip this work
+removed. **Decision: not doing it.** ~125ms on a page already paying ~270ms of latency does not
+justify reintroducing the bug, on pages a signed-in user can still land on. Revisit only if the
+marketing page's Core Web Vitals become a measured problem.
 
 The Supabase redirect allowlist state is recorded at
 `docs/config-snapshots/supabase-auth-redirects.json` (redirect and provider-toggle fields only,
