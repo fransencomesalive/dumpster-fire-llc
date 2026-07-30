@@ -31,6 +31,7 @@
     "test:provider-usage": "node scripts/test-provider-usage.mjs",
     "test:unit-economics": "node scripts/test-subscription-unit-economics.mjs",
     "test:stripe-billing": "node scripts/test-stripe-billing.mjs",
+    "qa:production-apply-wizard": "node --env-file=.env.local scripts/qa/production-apply-wizard-browser.mjs",
     "qa:production-scan": "node --env-file=.env.local scripts/qa/production-scan-browser.mjs",
     "report:unit-economics": "node scripts/report-subscription-unit-economics.mjs",
     "report:stripe-reconciliation": "node scripts/reconcile-stripe-subscriptions.mjs",
