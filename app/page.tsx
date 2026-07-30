@@ -323,7 +323,7 @@ export default function HomePage() {
       </section>
 
       <section id="subscription" className={`${styles.publicLandingSection} ${styles.publicLandingPricingSection}`} aria-labelledby="subscription-title">
-        <div className={styles.publicLandingPricingHead}>
+        <div className={styles.publicLandingSectionIntro}>
           <h2 id="subscription-title">Two ways to&nbsp;pursue.</h2>
           <p>Both plans give you the whole workflow. The difference is how many pursuits you run a month, and whether you can take your history with you.</p>
         </div>

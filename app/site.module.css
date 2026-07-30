@@ -2359,25 +2359,15 @@
   margin-top: var(--space-6);
 }
 
+/* The pricing head uses the shared .publicLandingSectionIntro primitive, so it
+   left-aligns on the same column as every other section (Randall 2026-07-30).
+   Its own centered .secHead styling came over from the DS card and was the only
+   centered intro on the page. Top padding is reduced from the generic section
+   rhythm for the same reason the human-path section reduces it: the run-in from
+   the walkthrough's arrow row was reading as a page break. */
 .publicLandingPricingSection {
   scroll-margin-top: 90px;
-}
-
-.publicLandingPricingHead {
-  display: grid;
-  gap: var(--space-2);
-  text-align: center;
-}
-
-.publicLandingPricingHead h2 {
-  margin: 0;
-}
-
-.publicLandingPricingHead p {
-  max-width: 60ch;
-  margin: 0 auto;
-  color: var(--role-text-muted);
-  font-family: var(--font-body);
+  padding-top: clamp(48px, 7vw, 80px);
 }
 
 .publicLandingPricingGrid {

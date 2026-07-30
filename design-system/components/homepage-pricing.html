@@ -21,10 +21,13 @@
   .frame.mobile { max-width: 390px; margin: 0; border: var(--line-reg) dashed var(--c-paper-edge);
     border-radius: var(--radius-lg); padding: var(--space-4); }
 
-  /* Section heading (maps to homepage #subscription section intro) */
-  .secHead { text-align: center; display: grid; gap: var(--space-2); }
+  /* Section heading (maps to homepage #subscription section intro).
+     Left-aligned on the same column as every other landing section intro
+     (Randall 2026-07-30): the centered version was the only centered intro on
+     the page and forced a one-word last line on the lede. */
+  .secHead { display: grid; gap: var(--space-2); }
   .secHead h2 { font-family: var(--font-display); font-size: 1.9rem; line-height: 1.05; color: var(--c-ink); margin: 0; }
-  .secHead p { font-family: var(--font-body); color: var(--role-text-muted); margin: 0 auto; max-width: 60ch; }
+  .secHead p { font-family: var(--font-body); color: var(--role-text-muted); margin: 0; max-width: 60ch; }
 
   /* ======================= TWO PLAN CARDS (map to plan-billing-step tier cards) ======================= */
   .tiers { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--space-4); align-items: stretch; }
@@ -82,7 +85,10 @@
     homepage <code>#subscription</code> section. Two self-contained plan cards mapping 1:1 to the
     plan-billing-step tier cards. Roaring is the top plan and carries subtle emphasis (bold border +
     quiet <strong>Top plan</strong> tag, no urgency language). Prices, allowances, and required facts
-    are the approved Smoldering / Roaring retail contract. Taglines are proposed for approval.</p>
+    are the approved Smoldering / Roaring retail contract. Taglines are proposed for approval.
+    <br><b>r2 (2026-07-30):</b> the section head is left-aligned on the shared landing intro column
+    instead of centered, and the section's top padding drops to the reduced rhythm used after the
+    Human Path walkthrough.</p>
   </div>
 
   <!-- ============ DESKTOP ============ -->
