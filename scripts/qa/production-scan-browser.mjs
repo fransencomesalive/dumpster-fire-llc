@@ -1,9 +1,12 @@
 #!/usr/bin/env node
 
+// This check intentionally mutates production with a disposable account. It uses
+// the service-role Auth and REST APIs only, so it does not depend on a rotating
+// Supabase Management API token. The confirmation variable below is fail-closed.
+
 import { execFileSync } from "node:child_process";
 import { randomBytes, randomUUID } from "node:crypto";
 import { chromium } from "playwright-core";
-import { createProfileSeeder } from "./lib/seed-complete-profile.mjs";
 
 if (process.env.PRODUCTION_SCAN_QA_CONFIRM !== "yes") {
   throw new Error(
@@ -32,13 +35,7 @@ function required(name, fallback) {
 const supabaseUrl = required("SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_URL")
   .replace(/\/$/, "");
 const serviceRoleKey = required("SUPABASE_SERVICE_ROLE_KEY");
-const managementToken = required("SUPABASE_ACCESS_TOKEN");
-const projectRef = new URL(supabaseUrl).hostname.split(".")[0];
-const managementUrl = `https://api.supabase.com/v1/projects/${projectRef}/database/query`;
-
-function sqlLiteral(value) {
-  return `'${String(value).replaceAll("'", "''")}'`;
-}
+const expectedDeployment = process.env.PRODUCTION_DEPLOYMENT_ID?.trim() || null;
 
 function expect(condition, message) {
   if (!condition) throw new Error(message);
@@ -56,14 +53,16 @@ async function responseJson(response, label) {
   return body;
 }
 
-async function managementQuery(query, label) {
-  const response = await fetch(managementUrl, {
-    method: "POST",
+async function rest(path, { method = "GET", body } = {}, label = path) {
+  const response = await fetch(`${supabaseUrl}/rest/v1/${path}`, {
+    method,
     headers: {
-      Authorization: `Bearer ${managementToken}`,
+      apikey: serviceRoleKey,
+      Authorization: `Bearer ${serviceRoleKey}`,
       "Content-Type": "application/json",
+      Prefer: "return=representation",
     },
-    body: JSON.stringify({ query }),
+    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   });
   return responseJson(response, label);
 }
@@ -99,7 +98,135 @@ async function deleteQaUser(userId) {
   await responseJson(response, "Disposable scan QA user deletion");
 }
 
-const seedCompleteProfile = createProfileSeeder({ managementQuery, sqlLiteral });
+async function seedCompleteProfile({
+  userId,
+  email,
+  profileId,
+  roleTrackId,
+  resumeId,
+  workExampleId,
+  skillId,
+}) {
+  const now = new Date().toISOString();
+  await rest("candidate_profiles", { method: "POST", body: {
+    id: profileId,
+    user_id: userId,
+    status: "complete",
+    full_name: "Production Scan QA",
+    preferred_name: "QA",
+    location: "Denver, CO",
+    email,
+    remote_preference: "remote_preferred",
+    target_compensation_min: 90000,
+    target_compensation_preferred: 150000,
+    generated_markdown: "# Production Scan QA",
+    markdown_generated_at: now,
+  } }, "Candidate profile seed");
+  await rest("candidate_profile_preferences", { method: "POST", body: {
+    profile_id: profileId,
+    employment_types: ["full_time", "contract"],
+    target_industries: ["technology", "consumer"],
+    avoid_industries: [],
+    avoid_companies: [],
+  } }, "Preferences seed");
+  await rest("role_tracks", { method: "POST", body: {
+    id: roleTrackId,
+    profile_id: profileId,
+    name: "Marketing Leadership",
+    description: "Senior marketing and creative leadership.",
+    core_positioning: "Builds practical marketing systems and teams.",
+    outreach_angle: "Lead with cross-functional marketing delivery.",
+    target_titles: [
+      "Director of Marketing",
+      "Creative Director",
+      "Director of Content",
+      "Marketing Program Manager",
+    ],
+    key_responsibilities: ["Lead marketing strategy", "Manage creative delivery"],
+    required_experience_patterns: ["Cross-functional leadership"],
+    strong_job_signals: ["Brand", "Content", "Creative"],
+    weak_job_signals: [],
+    mismatch_signals: ["Entry level"],
+  } }, "Role track seed");
+  await rest("resumes", { method: "POST", body: {
+    id: resumeId,
+    profile_id: profileId,
+    name: "Production QA resume",
+    file_url: "",
+    parsed_text: "Marketing leader with extensive brand, content, creative operations, campaign, and cross-functional program experience.",
+    highlights: ["Led integrated marketing programs"],
+    strengths: ["Marketing leadership", "Creative operations"],
+    gaps: [],
+    use_when: ["Marketing leadership roles"],
+    avoid_when: [],
+    parsing_quality: "complete",
+    parsing_issues: [],
+  } }, "Resume seed");
+  await rest("resume_role_tracks", { method: "POST", body: {
+    resume_id: resumeId,
+    role_track_id: roleTrackId,
+  } }, "Resume track seed");
+  await rest("work_examples", { method: "POST", body: {
+    id: workExampleId,
+    profile_id: profileId,
+    title: "Integrated campaign",
+    one_hitter: "Led a cross-functional campaign from strategy through launch.",
+    context: "Aligned brand, content, creative, and delivery teams around a measurable launch plan.",
+  } }, "Work example seed");
+  await rest("skill_profiles", { method: "POST", body: {
+    id: skillId,
+    profile_id: profileId,
+    skill_name: "Marketing leadership",
+    proficiency: "expert",
+    evidence: ["Led integrated marketing and creative teams"],
+  } }, "Skill seed");
+  await rest("skill_work_examples", { method: "POST", body: {
+    skill_id: skillId,
+    work_example_id: workExampleId,
+  } }, "Skill example seed");
+  await rest("voice_personality", { method: "POST", body: {
+    profile_id: profileId,
+    q1_value: "Turning fuzzy marketing plans into work teams can ship.",
+    q4_opinion: "Clear strategy matters only when a team can execute it.",
+    tone_tags: ["direct", "warm", "specific"],
+    avoid_tags: ["corporate jargon"],
+    avoid_note: "Avoid generic claims.",
+  } }, "Voice seed");
+  await rest("writing_samples", { method: "POST", body: [{
+    profile_id: profileId,
+    bucket: "sounds_like_me",
+    channel: "email",
+    text: "I like clear plans, honest tradeoffs, and work that gets shipped.",
+    tags: ["direct"],
+  }, {
+    profile_id: profileId,
+    bucket: "never_sound",
+    channel: "email",
+    text: "I am thrilled to leverage synergies and unlock exceptional value.",
+    tags: ["corporate"],
+  }] }, "Writing samples seed");
+  await rest("profile_quality", { method: "POST", body: {
+    profile_id: profileId,
+    status: "complete",
+    incomplete_reasons: [],
+    weak_fields: [],
+    complete_fields: ["production_browser_qa"],
+    weak_response_count: 0,
+    last_checked_at: now,
+  } }, "Profile quality seed");
+  const plans = await rest(
+    "subscription_plans?name=eq.premium&select=id&limit=1",
+    {},
+    "Premium plan lookup",
+  );
+  expect(typeof plans?.[0]?.id === "string", "Premium plan was not found");
+  await rest("user_subscriptions", { method: "POST", body: {
+    user_id: userId,
+    plan_id: plans[0].id,
+    status: "active",
+    source: "access_code",
+  } }, "Subscription seed");
+}
 
 const suffix = `${Date.now()}-${randomBytes(4).toString("hex")}`;
 const email = `scan-browser-qa-${suffix}@example.invalid`;
@@ -118,7 +245,9 @@ let userId;
 let browser;
 let failure;
 let cleanup = null;
+let runResult = null;
 const evidence = {
+  deployment: null,
   requests: [],
   responses: [],
   consoleErrors: [],
@@ -129,12 +258,12 @@ try {
   userId = await createQaUser(email, password);
   await seedCompleteProfile({ userId, email, ...ids });
 
-  const before = await managementQuery(`
-    select count(*)::integer as count
-    from public.job_scan_results
-    where user_id = ${sqlLiteral(userId)}::uuid;
-  `, "Pre-scan result count");
-  expect(before?.[0]?.count === 0, "QA account did not start with zero scan results");
+  const before = await rest(
+    `job_scan_results?user_id=eq.${userId}&select=id`,
+    {},
+    "Pre-scan result count",
+  );
+  expect(before.length === 0, "QA account did not start with zero scan results");
 
   browser = await chromium.launch({
     headless: true,
@@ -169,7 +298,18 @@ try {
   });
   page.on("pageerror", (error) => evidence.pageErrors.push(error.message));
 
-  await page.goto(`${APP_URL}/onboarding`, { waitUntil: "networkidle" });
+  const onboardingResponse = await page.goto(`${APP_URL}/onboarding`, {
+    waitUntil: "networkidle",
+  });
+  const deploymentLink = onboardingResponse?.headers()["link"] ?? "";
+  evidence.deployment = deploymentLink.match(/[?&]dpl=(dpl_[^>;]+)/)?.[1] ?? null;
+  expect(evidence.deployment, "Production response did not identify its deployment");
+  if (expectedDeployment) {
+    expect(
+      evidence.deployment === expectedDeployment,
+      `Expected deployment ${expectedDeployment}, received ${evidence.deployment}`,
+    );
+  }
   await page.locator("#login-email").fill(email);
   await page.locator("#login-pass").fill(password);
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
@@ -200,13 +340,12 @@ try {
     }),
   ]);
 
-  const after = await managementQuery(`
-    select count(*)::integer as count
-    from public.job_scan_results
-    where user_id = ${sqlLiteral(userId)}::uuid
-      and status = 'active';
-  `, "Persisted scan result count");
-  const persistedCount = after?.[0]?.count ?? -1;
+  const after = await rest(
+    `job_scan_results?user_id=eq.${userId}&status=eq.active&select=id`,
+    {},
+    "Persisted scan result count",
+  );
+  const persistedCount = after.length;
 
   expect(evidence.requests.length === 1, "Run scan did not dispatch exactly one request");
   expect(evidence.requests[0]?.method === "POST", "Run scan did not dispatch POST");
@@ -226,47 +365,51 @@ try {
     .test(bodyText);
   expect(reloadShowsJobs, "Reload did not render the persisted active-result count");
 
-  console.log(JSON.stringify({
-    status: "passed",
+  runResult = {
     account: email,
     commit,
-    deployment: APP_URL,
+    appUrl: APP_URL,
+    deployment: evidence.deployment,
     viewport: { width: VIEWPORT_WIDTH, height: VIEWPORT_HEIGHT },
     startedWithResults: 0,
     persistedCount,
     reloadShowsJobs,
-    evidence,
-  }, null, 2));
+  };
 } catch (error) {
   failure = error;
-  console.error(JSON.stringify({
-    status: "failed",
-    account: email,
-    commit,
-    deployment: APP_URL,
-    message: error instanceof Error ? error.message : String(error),
-    evidence,
-  }, null, 2));
 } finally {
   if (browser) await browser.close().catch(() => undefined);
   if (userId) {
     try {
       await deleteQaUser(userId);
-      const rows = await managementQuery(`
-        select
-          (select count(*)::integer from auth.users
-            where id = ${sqlLiteral(userId)}::uuid) as auth_users,
-          (select count(*)::integer from public.candidate_profiles
-            where user_id = ${sqlLiteral(userId)}::uuid) as profiles,
-          (select count(*)::integer from public.job_scan_results
-            where user_id = ${sqlLiteral(userId)}::uuid) as scan_results;
-      `, "Disposable scan QA cleanup audit");
-      cleanup = rows?.[0] ?? null;
+      const [profiles, scanResults, authUserResponse] = await Promise.all([
+        rest(
+          `candidate_profiles?user_id=eq.${userId}&select=id`,
+          {},
+          "Disposable scan QA profile cleanup audit",
+        ),
+        rest(
+          `job_scan_results?user_id=eq.${userId}&select=id`,
+          {},
+          "Disposable scan QA result cleanup audit",
+        ),
+        fetch(`${supabaseUrl}/auth/v1/admin/users/${userId}`, {
+          headers: {
+            apikey: serviceRoleKey,
+            Authorization: `Bearer ${serviceRoleKey}`,
+          },
+        }),
+      ]);
+      cleanup = {
+        authUsers: authUserResponse.status === 404 ? 0 : 1,
+        authUserHttp: authUserResponse.status,
+        profiles: profiles.length,
+        scanResults: scanResults.length,
+      };
       expect(
-        cleanup
-          && cleanup.auth_users === 0
+        cleanup.authUsers === 0
           && cleanup.profiles === 0
-          && cleanup.scan_results === 0,
+          && cleanup.scanResults === 0,
         "Disposable scan QA cleanup left production rows",
       );
     } catch (error) {
@@ -278,7 +421,22 @@ try {
       );
     }
   }
-  console.log(JSON.stringify({ cleanup }, null, 2));
 }
 
+const report = {
+  status: failure ? "failed" : "passed",
+  ...(runResult ?? {
+    account: email,
+    commit,
+    appUrl: APP_URL,
+    deployment: evidence.deployment,
+  }),
+  ...(failure
+    ? { message: failure instanceof Error ? failure.message : String(failure) }
+    : {}),
+  evidence,
+  cleanup,
+};
+
+console[failure ? "error" : "log"](JSON.stringify(report, null, 2));
 if (failure) process.exit(1);
