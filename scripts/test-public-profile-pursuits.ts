@@ -15,10 +15,12 @@ import {
   pursuitBucket,
   pursuitHistory,
 } from "../lib/public-profile/pursuits/tracking";
+import { deriveApplyWizardResumeState } from "../lib/public-profile/pursuits/wizard-state";
 import {
   createPursuitForJob,
   loadContactSuggestionsForPursuit,
   loadOutreachGenerationContextForMessage,
+  loadOutreachRegenerationCommit,
   loadOutreachMessageById,
   loadOutreachMessagesForPursuit,
   loadPursuitEventsForPursuit,
@@ -61,6 +63,63 @@ const generationContext: OutreachGenerationContext = {
     contactType: "likely_hiring_manager",
   },
 };
+
+const selectedA = { id: "contact-a", selectedForOutreach: true };
+const selectedB = { id: "contact-b", selectedForOutreach: true };
+const unselectedB = { id: "contact-b", selectedForOutreach: false };
+const draftA = { contactSuggestionId: "contact-a" };
+const draftB = { contactSuggestionId: "contact-b" };
+
+const resumeCases = [
+  {
+    name: "applied pursuits always open the applied Track view",
+    input: { bucket: "applied" as const, pursuit: { status: "applied" as const }, contacts: [selectedA], outreachMessages: [draftA] },
+    expected: { mode: "applied", step: 4, reached: 4, selectedContactIds: ["contact-a"], outreachNeedsRetry: false },
+  },
+  {
+    name: "saved pursuits resume at Review",
+    input: { bucket: "saved_for_later" as const, pursuit: { status: "saved" as const }, contacts: [], outreachMessages: [] },
+    expected: { mode: "stepper", step: 1, reached: 1, selectedContactIds: [], outreachNeedsRetry: false },
+  },
+  {
+    name: "review-complete pursuits resume at Contacts",
+    input: { bucket: "saved_for_later" as const, pursuit: { status: "review_complete" as const }, contacts: [], outreachMessages: [] },
+    expected: { mode: "stepper", step: 2, reached: 2, selectedContactIds: [], outreachNeedsRetry: false },
+  },
+  {
+    name: "contact results never overwrite the persisted selection",
+    input: { bucket: "saved_for_later" as const, pursuit: { status: "human_path_generated" as const }, contacts: [selectedA, unselectedB], outreachMessages: [] },
+    expected: { mode: "stepper", step: 2, reached: 2, selectedContactIds: ["contact-a"], outreachNeedsRetry: false },
+  },
+  {
+    name: "outreach-ready with no selected contacts returns to Contacts",
+    input: { bucket: "saved_for_later" as const, pursuit: { status: "outreach_ready" as const }, contacts: [unselectedB], outreachMessages: [] },
+    expected: { mode: "stepper", step: 2, reached: 2, selectedContactIds: [], outreachNeedsRetry: false },
+  },
+  {
+    name: "selected contacts with no drafts resume at retryable Outreach",
+    input: { bucket: "saved_for_later" as const, pursuit: { status: "outreach_ready" as const }, contacts: [selectedA], outreachMessages: [] },
+    expected: { mode: "stepper", step: 3, reached: 3, selectedContactIds: ["contact-a"], outreachNeedsRetry: true },
+  },
+  {
+    name: "partial draft coverage remains retryable",
+    input: { bucket: "saved_for_later" as const, pursuit: { status: "outreach_ready" as const }, contacts: [selectedA, selectedB], outreachMessages: [draftA] },
+    expected: { mode: "stepper", step: 3, reached: 3, selectedContactIds: ["contact-a", "contact-b"], outreachNeedsRetry: true },
+  },
+  {
+    name: "complete draft coverage resumes at Track",
+    input: { bucket: "saved_for_later" as const, pursuit: { status: "outreach_ready" as const }, contacts: [selectedA, selectedB], outreachMessages: [draftA, draftB] },
+    expected: { mode: "stepper", step: 4, reached: 4, selectedContactIds: ["contact-a", "contact-b"], outreachNeedsRetry: false },
+  },
+];
+
+for (const resumeCase of resumeCases) {
+  assert.deepEqual(
+    deriveApplyWizardResumeState(resumeCase.input),
+    resumeCase.expected,
+    resumeCase.name,
+  );
+}
 
 const created = createPursuit({
   id: "pursuit-1",
@@ -662,20 +721,48 @@ async function main() {
 
   if (!contacts.ok) throw new Error("contact selection pursuit should be available for repository test");
   calls.length = 0;
-  await persistContactSelection(request, contacts, ["contact-1"]);
-  assert.equal(calls[0].table, "pursuits");
-  assert.equal(calls[1].table, "pursuit_events");
-  assert.equal(calls[2].table, "contact_suggestions");
-  assert.equal(calls[2].method, "PATCH");
-  assert.deepEqual(calls[2].body, {
-    selected_for_outreach: false,
-    updated_at: contacts.pursuit.updatedAt,
-  });
-  assert.equal(calls[3].table, "contact_suggestions");
-  assert.equal(calls[3].method, "PATCH");
-  assert.deepEqual(calls[3].body, {
-    selected_for_outreach: true,
-    updated_at: contacts.pursuit.updatedAt,
+  const contactSelectionRequest: PublicProfileRepositoryRequest = async <T>(
+    table: string,
+    options: Parameters<PublicProfileRepositoryRequest>[1],
+  ) => {
+    calls.push({ table, method: options.method ?? "GET", query: options.query, body: options.body });
+    return {
+      status: "contacts_selected",
+      replayed: false,
+      pursuit: {
+        id: contacts.pursuit.id,
+        user_id: contacts.pursuit.userId,
+        profile_id: contacts.pursuit.profileId,
+        job_id: contacts.pursuit.jobId,
+        selected_role_track_id: null,
+        selected_resume_id: null,
+        selected_work_example_id: null,
+        status: contacts.pursuit.status,
+        fit_summary: null,
+        risks: [],
+        recommended_work_example_ids: [],
+        outreach_angle: null,
+        tracking_started_at: null,
+        pursuit_metered_at: null,
+        apply_wizard_metered_at: null,
+        notes: null,
+        job_snapshot: null,
+        selection_snapshot: null,
+        last_activity_at: contacts.pursuit.lastActivityAt,
+        created_at: contacts.pursuit.createdAt,
+        updated_at: contacts.pursuit.updatedAt,
+      },
+    } as T;
+  };
+  await persistContactSelection(contactSelectionRequest, contacts, ["contact-1"]);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].table, "rpc/persist_pursuit_contact_selection");
+  assert.equal(calls[0].method, "POST");
+  assert.deepEqual(calls[0].body, {
+    p_pursuit_id: contacts.pursuit.id,
+    p_user_id: contacts.pursuit.userId,
+    p_contact_ids: ["contact-1"],
+    p_updated_at: contacts.pursuit.updatedAt,
   });
 
   if (!outreach.ok) throw new Error("outreach pursuit should be available for repository test");
@@ -1136,24 +1223,32 @@ async function main() {
   const regenerationCalls: Array<{ table: string; method?: string; query?: string; headers?: Record<string, string>; body?: unknown }> = [];
   const regenerationRequest: PublicProfileRepositoryRequest = async <T>(table: string, init?: { method?: string; query?: string; headers?: Record<string, string>; body?: unknown }) => {
     regenerationCalls.push({ table, method: init?.method, query: init?.query, headers: init?.headers, body: init?.body });
-    if (table === "outreach_messages") {
-      return [{
-        id: "message-1",
-        pursuit_id: "pursuit-1",
-        contact_suggestion_id: "contact-1",
-        recipient_type: "likely_hiring_manager",
-        channel: "email",
-        message: "Replacement draft.",
-        previous_message: "Original draft.",
-        regeneration_count: 1,
-        status: "draft",
-        rejection_reason: null,
-        selected_role_track_id: "track-1",
-        selected_resume_id: null,
-        selected_work_example_id: "example-1",
-        created_at: now,
-        updated_at: later,
-      }] as T;
+    if (table === "rpc/persist_outreach_regeneration") {
+      return {
+        status: "outreach_regenerated",
+        replayed: false,
+        pursuit: atomicPursuitRow,
+        message: {
+          id: "message-1",
+          pursuit_id: "pursuit-1",
+          contact_suggestion_id: "contact-1",
+          recipient_type: "likely_hiring_manager",
+          channel: "email",
+          message: "Replacement draft.",
+          previous_message: "Original draft.",
+          regeneration_count: 1,
+          status: "draft",
+          rejection_reason: null,
+          selected_role_track_id: "track-1",
+          selected_resume_id: null,
+          selected_work_example_id: "example-1",
+          generation_request_id: "generation-1",
+          regeneration_context: generationContext,
+          sent_at: null,
+          created_at: now,
+          updated_at: later,
+        },
+      } as T;
     }
     return [] as T;
   };
@@ -1170,31 +1265,79 @@ async function main() {
     message: "Replacement draft.",
     generationContext,
     updatedAt: later,
+    idempotencyKey: "regenerate:message-1:request-1",
+    chargeUsage: true,
   });
-  assert.equal(regeneratedMessage?.message, "Replacement draft.");
-  assert.equal(regeneratedMessage?.previousMessage, "Original draft.");
-  assert.equal(regeneratedMessage?.regenerationCount, 1);
-  assert.equal(regenerationCalls[0].table, "outreach_messages");
-  assert.equal(regenerationCalls[0].method, "PATCH");
-  assert.ok(regenerationCalls[0].query?.includes("id=eq.message-1"));
-  assert.ok(regenerationCalls[0].query?.includes("pursuit_id=eq.pursuit-1"));
-  assert.ok(regenerationCalls[0].query?.includes("regeneration_count=eq.0"));
-  assert.deepEqual(regenerationCalls[0].headers, { Prefer: "return=representation" });
+  assert.equal(regeneratedMessage?.message.message, "Replacement draft.");
+  assert.equal(regeneratedMessage?.message.previousMessage, "Original draft.");
+  assert.equal(regeneratedMessage?.message.regenerationCount, 1);
+  assert.equal(regenerationCalls.length, 1);
+  assert.equal(regenerationCalls[0].table, "rpc/persist_outreach_regeneration");
+  assert.equal(regenerationCalls[0].method, "POST");
   assert.deepEqual(regenerationCalls[0].body, {
-    message: "Replacement draft.",
-    previous_message: "Original draft.",
-    regeneration_count: 1,
-    regeneration_context: generationContext,
-    status: "draft",
-    rejection_reason: null,
-    updated_at: later,
+    p_pursuit_id: "pursuit-1",
+    p_user_id: "user-1",
+    p_message_id: "message-1",
+    p_previous_message: "Original draft.",
+    p_message: "Replacement draft.",
+    p_generation_context: generationContext,
+    p_updated_at: later,
+    p_idempotency_key: "regenerate:message-1:request-1",
+    p_charge_usage: true,
   });
-  assert.deepEqual(regenerationCalls.slice(1).map((call) => call.table), ["pursuits", "pursuit_events", "usage_ledger"]);
+
+  const regenerationReplayRequest: PublicProfileRepositoryRequest = async <T>(table: string) => {
+    if (table === "pursuit_outreach_regeneration_requests") {
+      return [{
+        id: "regeneration-request-1",
+        pursuit_id: "pursuit-1",
+        user_id: "user-1",
+        message_id: "message-1",
+        idempotency_key: "regenerate:message-1:request-1",
+      }] as T;
+    }
+    if (table === "pursuits") return [atomicPursuitRow] as T;
+    if (table === "outreach_messages") {
+      return [{
+        id: "message-1",
+        pursuit_id: "pursuit-1",
+        contact_suggestion_id: "contact-1",
+        recipient_type: "likely_hiring_manager",
+        channel: "email",
+        message: "Replacement draft.",
+        previous_message: "Original draft.",
+        regeneration_count: 1,
+        status: "draft",
+        rejection_reason: null,
+        selected_role_track_id: "track-1",
+        selected_resume_id: null,
+        selected_work_example_id: "example-1",
+        generation_request_id: "generation-1",
+        regeneration_context: generationContext,
+        sent_at: null,
+        created_at: now,
+        updated_at: later,
+      }] as T;
+    }
+    return [] as T;
+  };
+  const regenerationReplay = await loadOutreachRegenerationCommit(regenerationReplayRequest, {
+    userId: "user-1",
+    pursuitId: "pursuit-1",
+    messageId: "message-1",
+    idempotencyKey: "regenerate:message-1:request-1",
+  });
+  assert.equal(regenerationReplay?.status, "idempotent_replay");
+  assert.equal(regenerationReplay?.message.message, "Replacement draft.");
 
   const lostRaceCalls: string[] = [];
   const lostRaceRequest: PublicProfileRepositoryRequest = async <T>(table: string) => {
     lostRaceCalls.push(table);
-    return [] as T;
+    return {
+      status: "already_regenerated",
+      replayed: false,
+      pursuit: atomicPursuitRow,
+    } as T;
   };
   const lostRace = await persistOutreachRegeneration(lostRaceRequest, regenerationTransition, {
     messageId: "message-1",
@@ -1202,9 +1345,11 @@ async function main() {
     message: "Another replacement.",
     generationContext,
     updatedAt: later,
+    idempotencyKey: "regenerate:message-1:request-2",
+    chargeUsage: true,
   });
   assert.equal(lostRace, undefined);
-  assert.deepEqual(lostRaceCalls, ["outreach_messages"]);
+  assert.deepEqual(lostRaceCalls, ["rpc/persist_outreach_regeneration"]);
 
   console.log("public profile pursuits: all assertions passed");
 }

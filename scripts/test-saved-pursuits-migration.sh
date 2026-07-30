@@ -200,6 +200,7 @@ create table public.outreach_messages (
   rejection_reason text,
   previous_message text,
   regeneration_count smallint not null default 0,
+  regeneration_context jsonb,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -308,7 +309,8 @@ SQL
 for migration in \
   20260718000100_saved_pursuits_foundation.sql \
   20260718000200_saved_pursuits_atomic_mutations.sql \
-  20260718000300_saved_pursuits_data_readiness.sql
+  20260718000300_saved_pursuits_data_readiness.sql \
+  20260730000100_apply_wizard_atomic_boundaries.sql
 do
   "${PSQL[@]}" -f "$REPO_ROOT/supabase/migrations/$migration" >/dev/null
 done
@@ -317,7 +319,8 @@ done
 for migration in \
   20260718000100_saved_pursuits_foundation.sql \
   20260718000200_saved_pursuits_atomic_mutations.sql \
-  20260718000300_saved_pursuits_data_readiness.sql
+  20260718000300_saved_pursuits_data_readiness.sql \
+  20260730000100_apply_wizard_atomic_boundaries.sql
 do
   "${PSQL[@]}" -f "$REPO_ROOT/supabase/migrations/$migration" >/dev/null
 done
@@ -465,6 +468,224 @@ begin
     if v_error <> 'owned job not found' then raise; end if;
   end;
 end $$;
+
+-- Apply Wizard contact selection and regeneration are each one transaction.
+insert into public.pursuits (
+  id, user_id, profile_id, job_id, status, last_activity_at, created_at, updated_at
+) values (
+  '40000000-0000-0000-0000-000000000008',
+  '00000000-0000-0000-0000-000000000001',
+  '10000000-0000-0000-0000-000000000001',
+  '30000000-0000-0000-0000-000000000006',
+  'human_path_generated',
+  '2026-07-20',
+  '2026-07-20',
+  '2026-07-20'
+);
+
+insert into public.contact_suggestions (
+  id, pursuit_id, job_id, name, title, company_name, contact_type, confidence
+) values (
+  '60000000-0000-0000-0000-000000000001',
+  '40000000-0000-0000-0000-000000000008',
+  '30000000-0000-0000-0000-000000000006',
+  'Dana Lee', 'VP Product', 'Acme', 'likely_hiring_manager', 'high'
+), (
+  '60000000-0000-0000-0000-000000000002',
+  '40000000-0000-0000-0000-000000000008',
+  '30000000-0000-0000-0000-000000000006',
+  'Riley Chen', 'Recruiter', 'Acme', 'recruiter', 'high'
+);
+
+do $$
+declare
+  v_result jsonb;
+  v_error text;
+begin
+  select public.persist_pursuit_contact_selection(
+    '40000000-0000-0000-0000-000000000008',
+    '00000000-0000-0000-0000-000000000001',
+    array['60000000-0000-0000-0000-000000000001'::uuid],
+    '2026-07-20T12:00:00Z'
+  ) into v_result;
+  if (v_result ->> 'status') <> 'contacts_selected'
+    or coalesce((v_result ->> 'replayed')::boolean, true)
+  then
+    raise exception 'atomic contact selection did not commit';
+  end if;
+  if (select status from public.pursuits where id = '40000000-0000-0000-0000-000000000008') <> 'outreach_ready' then
+    raise exception 'contact selection did not advance pursuit';
+  end if;
+  if (
+    select array_agg(id order by id)
+    from public.contact_suggestions
+    where pursuit_id = '40000000-0000-0000-0000-000000000008'
+      and selected_for_outreach
+  ) <> array['60000000-0000-0000-0000-000000000001'::uuid] then
+    raise exception 'contact selection persisted the wrong set';
+  end if;
+
+  select public.persist_pursuit_contact_selection(
+    '40000000-0000-0000-0000-000000000008',
+    '00000000-0000-0000-0000-000000000001',
+    array['60000000-0000-0000-0000-000000000001'::uuid],
+    '2026-07-20T12:00:01Z'
+  ) into v_result;
+  if coalesce((v_result ->> 'replayed')::boolean, false) is not true then
+    raise exception 'exact contact selection retry was not replayed';
+  end if;
+  if (
+    select count(*) from public.pursuit_events
+    where pursuit_id = '40000000-0000-0000-0000-000000000008'
+      and event_type = 'contacts_selected'
+  ) <> 1 then
+    raise exception 'contact selection replay duplicated its event';
+  end if;
+
+  begin
+    perform public.persist_pursuit_contact_selection(
+      '40000000-0000-0000-0000-000000000008',
+      '00000000-0000-0000-0000-000000000001',
+      array['60000000-0000-0000-0000-000000000002'::uuid, gen_random_uuid()],
+      '2026-07-20T12:00:02Z'
+    );
+    raise exception 'foreign contact selection should have failed';
+  exception when invalid_parameter_value then
+    get stacked diagnostics v_error = message_text;
+    if v_error <> 'every contact must belong to the pursuit' then raise; end if;
+  end;
+
+  if (
+    select array_agg(id order by id)
+    from public.contact_suggestions
+    where pursuit_id = '40000000-0000-0000-0000-000000000008'
+      and selected_for_outreach
+  ) <> array['60000000-0000-0000-0000-000000000001'::uuid] then
+    raise exception 'failed contact selection changed the saved set';
+  end if;
+end $$;
+
+insert into public.outreach_messages (
+  id, pursuit_id, contact_suggestion_id, recipient_type, channel, message,
+  regeneration_count, status, created_at, updated_at
+) values (
+  '70000000-0000-0000-0000-000000000001',
+  '40000000-0000-0000-0000-000000000008',
+  '60000000-0000-0000-0000-000000000001',
+  'likely_hiring_manager',
+  'email',
+  'Original draft.',
+  0,
+  'draft',
+  '2026-07-20',
+  '2026-07-20'
+), (
+  '70000000-0000-0000-0000-000000000002',
+  '40000000-0000-0000-0000-000000000008',
+  '60000000-0000-0000-0000-000000000002',
+  'recruiter',
+  'email',
+  'Second original.',
+  0,
+  'draft',
+  '2026-07-20',
+  '2026-07-20'
+);
+
+do $$
+declare
+  v_result jsonb;
+begin
+  select public.persist_outreach_regeneration(
+    '40000000-0000-0000-0000-000000000008',
+    '00000000-0000-0000-0000-000000000001',
+    '70000000-0000-0000-0000-000000000001',
+    'Original draft.',
+    'Replacement draft.',
+    '{"schemaVersion":1}'::jsonb,
+    '2026-07-20T12:10:00Z',
+    'regeneration-request-1',
+    true
+  ) into v_result;
+  if (v_result ->> 'status') <> 'outreach_regenerated'
+    or coalesce((v_result ->> 'replayed')::boolean, true)
+    or (v_result #>> '{message,message}') <> 'Replacement draft.'
+  then
+    raise exception 'atomic regeneration did not commit';
+  end if;
+  if (
+    select count(*) from public.usage_ledger
+    where outreach_regeneration_request_id is not null
+      and related_pursuit_id = '40000000-0000-0000-0000-000000000008'
+  ) <> 1 then
+    raise exception 'regeneration usage was not committed once';
+  end if;
+
+  select public.persist_outreach_regeneration(
+    '40000000-0000-0000-0000-000000000008',
+    '00000000-0000-0000-0000-000000000001',
+    '70000000-0000-0000-0000-000000000001',
+    'Original draft.',
+    'A different retry output.',
+    '{"schemaVersion":1}'::jsonb,
+    '2026-07-20T12:10:01Z',
+    'regeneration-request-1',
+    true
+  ) into v_result;
+  if coalesce((v_result ->> 'replayed')::boolean, false) is not true
+    or (v_result #>> '{message,message}') <> 'Replacement draft.'
+  then
+    raise exception 'regeneration retry did not replay the committed result';
+  end if;
+  if (
+    select count(*) from public.pursuit_events
+    where pursuit_id = '40000000-0000-0000-0000-000000000008'
+      and event_type = 'outreach_generated'
+  ) <> 1 then
+    raise exception 'regeneration replay duplicated its event';
+  end if;
+end $$;
+
+update public.subscription_plans
+set outreach_limit_monthly = 0
+where name = 'premium';
+
+do $$
+declare
+  v_error text;
+begin
+  begin
+    perform public.persist_outreach_regeneration(
+      '40000000-0000-0000-0000-000000000008',
+      '00000000-0000-0000-0000-000000000001',
+      '70000000-0000-0000-0000-000000000002',
+      'Second original.',
+      'Should roll back.',
+      '{"schemaVersion":1}'::jsonb,
+      '2026-07-20T12:20:00Z',
+      'regeneration-request-rollback',
+      true
+    );
+    raise exception 'regeneration quota rejection should have failed';
+  exception when raise_exception then
+    get stacked diagnostics v_error = message_text;
+    if v_error not like 'outreach_message_limit_reached:%' then raise; end if;
+  end;
+
+  if (select message from public.outreach_messages where id = '70000000-0000-0000-0000-000000000002') <> 'Second original.'
+    or (select regeneration_count from public.outreach_messages where id = '70000000-0000-0000-0000-000000000002') <> 0
+    or exists (
+      select 1 from public.pursuit_outreach_regeneration_requests
+      where idempotency_key = 'regeneration-request-rollback'
+    )
+  then
+    raise exception 'failed regeneration did not roll back every write';
+  end if;
+end $$;
+
+update public.subscription_plans
+set outreach_limit_monthly = null
+where name = 'premium';
 
 -- A matching ledger row drives the latch; direct latch mutation cannot bypass it.
 insert into public.usage_ledger (

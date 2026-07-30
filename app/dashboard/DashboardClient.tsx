@@ -40,6 +40,13 @@ type ScanProgress =
 
 const SCAN_PHASES = ["Fetching", "Matching", "Saving"] as const;
 
+function resolveDashboardActionToken() {
+  return resolvePublicActionAccessToken({
+    syncSession: syncPublicProfileSession,
+    readStoredToken: readPublicProfileAccessToken,
+  });
+}
+
 function formatJobDate(value?: string) {
   if (!value) return "Unknown";
   return new Intl.DateTimeFormat("en", {
@@ -271,7 +278,7 @@ function JobCard({
 
   async function saveFeedback() {
     if (!hasSelection || saving) return;
-    const accessToken = readPublicProfileAccessToken();
+    const accessToken = await resolveDashboardActionToken();
     if (!accessToken) {
       setErrored(true);
       return;
@@ -623,55 +630,52 @@ export default function DashboardClient() {
 
   useEffect(() => {
     void (async () => {
-    const accessToken = (await syncPublicProfileSession()) || readPublicProfileAccessToken();
-    if (!accessToken) {
-      router.replace("/onboarding");
-      return;
-    }
+      const accessToken = await resolveDashboardActionToken();
+      if (!accessToken) {
+        router.replace("/onboarding");
+        return;
+      }
 
-    requestPublicProfileApi<BootstrapResponse>("/api/public-profile/bootstrap", {
-      method: "POST",
-      accessToken,
-    })
-      .then((response) => {
-        if (response.profileStatus !== "complete") {
-          router.replace("/onboarding");
-          return;
-        }
+      requestPublicProfileApi<BootstrapResponse>("/api/public-profile/bootstrap", {
+        method: "POST",
+        accessToken,
+      })
+        .then((response) => {
+          if (response.profileStatus !== "complete") {
+            router.replace("/onboarding");
+            return;
+          }
 
-        setGuardState({
-          status: "complete",
-          blockerCount: response.profileQuality.incompleteReasons.length,
-          weakResponseCount: response.profileQuality.weakResponseCount,
-        });
-        // Boards load independently — a failure never blocks the dashboard.
-        // Surface a load failure in the boards card (still never blocks the dashboard) so a
-        // backend error is visible instead of looking like an empty boards list.
-        requestPublicProfileApi<PublicJobBoardsResponse>("/api/jobs/boards", { method: "GET", accessToken })
-          .then((boardsResponse) => setBoards(boardsResponse.boards))
-          .catch((error) => setBoardError({ message: error instanceof Error ? error.message : "Your saved company boards couldn't be loaded. Give it a refresh." }));
-        return loadJobs(accessToken).catch((error) => {
-          setJobsState({
+          setGuardState({
+            status: "complete",
+            blockerCount: response.profileQuality.incompleteReasons.length,
+            weakResponseCount: response.profileQuality.weakResponseCount,
+          });
+          // Boards load independently — a failure never blocks the dashboard.
+          // Surface a load failure in the boards card (still never blocks the dashboard) so a
+          // backend error is visible instead of looking like an empty boards list.
+          requestPublicProfileApi<PublicJobBoardsResponse>("/api/jobs/boards", { method: "GET", accessToken })
+            .then((boardsResponse) => setBoards(boardsResponse.boards))
+            .catch((error) => setBoardError({ message: error instanceof Error ? error.message : "Your saved company boards couldn't be loaded. Give it a refresh." }));
+          return loadJobs(accessToken).catch((error) => {
+            setJobsState({
+              status: "error",
+              message: error instanceof Error ? error.message : "Jobs could not be loaded.",
+            });
+          });
+        })
+        .catch((error) => {
+          clearPublicProfileAccessToken();
+          setGuardState({
             status: "error",
-            message: error instanceof Error ? error.message : "Jobs could not be loaded.",
+            message: error instanceof Error ? error.message : "Dashboard access could not be verified.",
           });
         });
-      })
-      .catch((error) => {
-        clearPublicProfileAccessToken();
-        setGuardState({
-          status: "error",
-          message: error instanceof Error ? error.message : "Dashboard access could not be verified.",
-        });
-      });
     })();
   }, [router]);
 
   async function runScan() {
-    const accessToken = await resolvePublicActionAccessToken({
-      syncSession: syncPublicProfileSession,
-      readStoredToken: readPublicProfileAccessToken,
-    });
+    const accessToken = await resolveDashboardActionToken();
     if (!accessToken) {
       router.replace("/onboarding");
       return;
@@ -712,7 +716,7 @@ export default function DashboardClient() {
   }
 
   async function setJobSaved(job: PublicJobRecord, saved: boolean) {
-    const accessToken = readPublicProfileAccessToken();
+    const accessToken = await resolveDashboardActionToken();
     if (!accessToken) {
       router.replace("/onboarding");
       return;
@@ -749,7 +753,7 @@ export default function DashboardClient() {
 
   // Skip = "not interested" — dismisses the posting from this user's results for good.
   async function skipJob(job: PublicJobRecord) {
-    const accessToken = readPublicProfileAccessToken();
+    const accessToken = await resolveDashboardActionToken();
     if (!accessToken) {
       router.replace("/onboarding");
       return;
@@ -790,7 +794,7 @@ export default function DashboardClient() {
   }
 
   async function addBoard() {
-    const accessToken = readPublicProfileAccessToken();
+    const accessToken = await resolveDashboardActionToken();
     if (!accessToken) {
       router.replace("/onboarding");
       return;
@@ -821,7 +825,7 @@ export default function DashboardClient() {
   }
 
   async function removeBoard(board: PublicJobBoardRecord) {
-    const accessToken = readPublicProfileAccessToken();
+    const accessToken = await resolveDashboardActionToken();
     if (!accessToken) {
       router.replace("/onboarding");
       return;
@@ -844,7 +848,7 @@ export default function DashboardClient() {
   // Search settings save → identity-search PATCH (remote pref + salary floor on the profile,
   // avoided companies on preferences). Reload jobs so the card and matches reflect the change.
   async function saveSearchSettings(draft: SearchDraft) {
-    const accessToken = readPublicProfileAccessToken();
+    const accessToken = await resolveDashboardActionToken();
     if (!accessToken) {
       router.replace("/onboarding");
       return;
@@ -865,7 +869,7 @@ export default function DashboardClient() {
   // stripped from every track; added titles land on the first (primary) track (Randall
   // 2026-07-21). Role-track positioning is otherwise untouched, so the apply wizard is unchanged.
   async function saveTitles(nextTitles: string[]) {
-    const accessToken = readPublicProfileAccessToken();
+    const accessToken = await resolveDashboardActionToken();
     if (!accessToken) {
       router.replace("/onboarding");
       return;
@@ -894,7 +898,7 @@ export default function DashboardClient() {
   // straight to the wizard. The stub record only needs the id up front; the wizard replaces
   // it with the full record from the pursuit create/read response.
   async function pursueLink() {
-    const accessToken = readPublicProfileAccessToken();
+    const accessToken = await resolveDashboardActionToken();
     if (!accessToken) {
       router.replace("/onboarding");
       return;
@@ -945,8 +949,8 @@ export default function DashboardClient() {
   // Pursue opens the Human Path apply wizard (Review → Contacts → Outreach → Track). The wizard
   // itself creates/ensures the pursuit and drives every step; here we only gate on auth and hand
   // it the access token.
-  function startPursuit(job: PublicJobRecord) {
-    const accessToken = readPublicProfileAccessToken();
+  async function startPursuit(job: PublicJobRecord) {
+    const accessToken = await resolveDashboardActionToken();
     if (!accessToken) {
       router.replace("/onboarding");
       return;
@@ -1076,7 +1080,7 @@ export default function DashboardClient() {
                       pending={pendingJobIds.has(job.id)}
                       onToggleSave={() => setJobSaved(job, !job.saved)}
                       onSkip={() => skipJob(job)}
-                      onPursue={() => startPursuit(job)}
+                      onPursue={() => { void startPursuit(job); }}
                     />
                   ))}
                 </div>

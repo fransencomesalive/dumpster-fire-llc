@@ -163,6 +163,17 @@ export type PursuitInitialOutreachCommit = {
   outreachDebited: number;
 };
 
+export type PursuitOutreachRegenerationCommit = {
+  status: "committed" | "idempotent_replay";
+  pursuit: Pursuit;
+  message: OutreachMessageRecord;
+};
+
+export type PursuitContactSelectionCommit = {
+  status: "committed" | "idempotent_replay";
+  pursuit: Pursuit;
+};
+
 export type PursuitTrackingEvent = {
   id?: string;
   pursuitId: string;

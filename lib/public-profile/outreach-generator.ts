@@ -31,6 +31,7 @@ export type OutreachGeneratorInput = {
   roleTrack?: OutreachRoleTrack;
   job: OutreachJob;
   contact: OutreachContact;
+  previousMessage?: string;
 };
 
 // The one Work Example the model wove in, surfaced so the UI can let the user
@@ -44,6 +45,12 @@ export type OutreachMessage = {
   message: string;
   insertedExample: OutreachInsertedExample | null;
 };
+
+export type OutreachGenerationOutcome =
+  | { status: "generated"; outreach: OutreachMessage }
+  | { status: "model_unavailable" }
+  | { status: "invalid_output" }
+  | { status: "quality_exhausted"; violations: string[] };
 
 export type OutreachModelCall = (args: {
   system: string;
@@ -60,10 +67,10 @@ export type OutreachGeneratorDependencies = {
 };
 
 // v4 prompt, ported 2026-07-14 from the message-gen-refinement harness after Randall's
-// approval (frozen source of truth: scripts/outreach-quality/data/prompts/v4.txt — keep
-// them identical). Deliberately user-agnostic: nothing here may reference one user's
-// tics, projects, or credentials. Iterate in the harness first, never here directly
-// (docs/message-gen-refinement-track.md).
+// approval. Platform-wide hard rules approved after v4 (no logistics talk, no em dashes)
+// are additive and must stay enforced here even while later prompt variants remain in the
+// isolated review track. Deliberately user-agnostic: nothing here may reference one user's
+// tics, projects, or credentials.
 const systemPrompt = [
   "You write a single outreach message AS the person described in the profile below — a real",
   "first-touch note to one hiring contact about one job.",
@@ -98,6 +105,9 @@ const systemPrompt = [
   "  title is not proof they lack the capability.",
   "- Open with a concession only when a concrete hard requirement is genuinely unsupported. For a",
   "  good overlap, open on specific evidence. Keep any necessary caveat brief and factual.",
+  "- Never discuss, volunteer, or make claims about logistics: location, remote, hybrid,",
+  "  in-office, relocation, time zones, or availability. Outreach sells the fit; logistics",
+  "  belong to later conversations and are never yours to concede or promise.",
   "",
   "WORK EXAMPLE INVENTORY",
   "The Work Examples section is a complete candidate inventory. Silently consider EVERY Work Example",
@@ -161,6 +171,12 @@ const NUMBER_WORDS = [
   "hundred", "thousand", "dozen",
 ];
 const NUMBER_WORD_PATTERN = new RegExp(`\\b(${NUMBER_WORDS.join("|")})\\b`, "g");
+const LOGISTICS_PATTERN = /\bremote\b|\bhybrid\b|on-?site\b|in-?office\b|in the office\b|relocat|time ?zones?\b|anchor days\b|based in\b/i;
+const LINK_PATTERN = /https?:\/\/[^\s<>"')\]]+/g;
+
+function messageLinks(body: string) {
+  return (body.match(LINK_PATTERN) ?? []).map((link) => link.replace(/[.,!?;:]+$/, ""));
+}
 
 // Numbers must come from the profile. Digits ground digits; number-words ground only as
 // words ("15+" in the profile does not license "fifteen docs" — describe without the
@@ -181,14 +197,36 @@ function ungroundedNumbers(message: string, profileMarkdown: string): string[] {
 export function outreachHardRuleViolations(
   outreach: OutreachMessage,
   profileMarkdown: string,
-  context?: Pick<OutreachGeneratorInput, "roleTrack" | "job" | "contact">,
+  context?: Pick<OutreachGeneratorInput, "roleTrack" | "job" | "contact" | "previousMessage">,
 ): string[] {
   const violations: string[] = [];
   const body = outreach.message;
   if (body.length > MESSAGE_HARD_CAP) violations.push(`over_${MESSAGE_HARD_CAP}_characters(${body.length})`);
   if (body.includes("—")) violations.push("em_dash_present");
+  const logistics = body.match(LOGISTICS_PATTERN);
+  if (logistics) violations.push(`logistics_mentioned(${logistics[0].trim()})`);
+  const links = messageLinks(body);
+  if (links.length > 1) violations.push(`too_many_links(${links.length})`);
+  const ungroundedLinks = links.filter((candidate) => !profileMarkdown.includes(candidate));
+  if (ungroundedLinks.length > 0) violations.push("ungrounded_link");
   const link = outreach.insertedExample?.link;
   if (link && !body.includes(link)) violations.push("example_link_missing_from_body");
+  if (
+    outreach.insertedExample
+    && (
+      !profileMarkdown.includes(outreach.insertedExample.oneHitter)
+      || (link && !profileMarkdown.includes(link))
+    )
+  ) {
+    violations.push("inserted_example_not_in_profile");
+  }
+  if (
+    context?.previousMessage
+    && body.replace(/\s+/g, " ").trim().toLocaleLowerCase()
+      === context.previousMessage.replace(/\s+/g, " ").trim().toLocaleLowerCase()
+  ) {
+    violations.push("unchanged_from_previous_draft");
+  }
   const numbers = ungroundedNumbers(body, profileMarkdown);
   if (numbers.length > 0) violations.push(`ungrounded_numbers(${numbers.join("/")})`);
   if (context?.roleTrack) {
@@ -241,6 +279,15 @@ export function buildOutreachPromptParts(input: OutreachGeneratorInput) {
     "",
     "## Contact",
     contactLine,
+    ...(input.previousMessage
+      ? [
+          "",
+          "## Previous draft to replace",
+          input.previousMessage.trim(),
+          "",
+          "Write a meaningfully revised alternative. Do not return the previous draft unchanged.",
+        ]
+      : []),
   ].join("\n");
   return { cachePrefix, tail };
 }
@@ -315,30 +362,67 @@ function parseOutreachModelResponse(raw: string): OutreachMessage | undefined {
   }
 }
 
-export async function generateOutreachMessage(
+function correctiveRetryTail(
+  tail: string,
+  failure: { kind: "invalid_output" } | { kind: "hard_rules"; violations: string[] },
+) {
+  if (failure.kind === "invalid_output") {
+    return [
+      tail,
+      "",
+      "## Required correction",
+      "The previous response was not the required JSON object. Return only the requested JSON object with a non-empty message.",
+    ].join("\n");
+  }
+  return [
+    tail,
+    "",
+    "## Required correction",
+    `The previous draft failed these hard rules: ${failure.violations.join(", ")}.`,
+    "Rewrite the draft so every listed violation is removed. Do not repeat the rejected wording.",
+  ].join("\n");
+}
+
+export async function generateOutreachMessageOutcome(
   input: OutreachGeneratorInput,
   dependencies: OutreachGeneratorDependencies = {},
-): Promise<OutreachMessage | undefined> {
+): Promise<OutreachGenerationOutcome> {
   const callModel = dependencies.callModel
     ?? defaultCallModel(dependencies.providerUsage, dependencies.operation);
   const { cachePrefix, tail } = buildOutreachPromptParts(input);
 
-  // Validate-and-retry loop over the hard-rule contract. Unparseable responses retry too;
-  // a missing response (no key / call failed after the SDK's own retries) does not.
+  // Validate-and-retry loop over the hard-rule contract. Every retry carries the
+  // prior failure back to the model so bounded retries are corrective rather than
+  // repeating the same prompt and hoping for a different result.
   let lastViolations: string[] | undefined;
+  let lastFailure: { kind: "invalid_output" } | { kind: "hard_rules"; violations: string[] } | undefined;
   for (let attempt = 1; attempt <= MAX_GENERATION_ATTEMPTS; attempt += 1) {
-    const raw = await callModel({ system: systemPrompt, user: tail, cachePrefix });
-    if (!raw) break;
+    const user = lastFailure ? correctiveRetryTail(tail, lastFailure) : tail;
+    const raw = await callModel({ system: systemPrompt, user, cachePrefix });
+    if (!raw) return { status: "model_unavailable" };
     const outreach = parseOutreachModelResponse(raw);
-    if (!outreach) continue;
+    if (!outreach) {
+      lastFailure = { kind: "invalid_output" };
+      continue;
+    }
     const violations = outreachHardRuleViolations(outreach, input.profileMarkdown, input);
-    if (violations.length === 0) return outreach;
+    if (violations.length === 0) return { status: "generated", outreach };
     lastViolations = violations;
+    lastFailure = { kind: "hard_rules", violations };
   }
   if (lastViolations) {
     console.warn("[llm:outreach] hard-rule violations unresolved after retries", { violations: lastViolations });
+    return { status: "quality_exhausted", violations: lastViolations };
   }
-  return undefined;
+  return { status: "invalid_output" };
+}
+
+export async function generateOutreachMessage(
+  input: OutreachGeneratorInput,
+  dependencies: OutreachGeneratorDependencies = {},
+): Promise<OutreachMessage | undefined> {
+  const outcome = await generateOutreachMessageOutcome(input, dependencies);
+  return outcome.status === "generated" ? outcome.outreach : undefined;
 }
 
 export type OutreachRequestIssue = { field: string; message: string };
@@ -394,6 +478,8 @@ export type OutreachGenerationResult =
   | { status: "not_found"; userId: string }
   | { status: "profile_incomplete"; userId: string }
   | { status: "model_unavailable"; userId: string }
+  | { status: "invalid_output"; userId: string }
+  | { status: "quality_exhausted"; userId: string }
   | { status: "generated"; userId: string; outreach: OutreachMessage };
 
 export type OutreachServiceDependencies = {
@@ -413,14 +499,14 @@ export async function generateOutreachMessageForUser(
   const profileMarkdown = aggregate.profile.generatedMarkdown?.trim();
   if (!profileMarkdown) return { status: "profile_incomplete", userId };
 
-  const outreach = await generateOutreachMessage(
+  const outcome = await generateOutreachMessageOutcome(
     { profileMarkdown, job: request.job, contact: request.contact },
     {
       callModel: dependencies.callModel,
       providerUsage: dependencies.providerUsage,
     },
   );
-  if (!outreach) return { status: "model_unavailable", userId };
+  if (outcome.status !== "generated") return { status: outcome.status, userId };
 
-  return { status: "generated", userId, outreach };
+  return { status: "generated", userId, outreach: outcome.outreach };
 }

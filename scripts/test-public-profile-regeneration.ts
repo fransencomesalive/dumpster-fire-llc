@@ -3,6 +3,7 @@ import {
   handlePublicProfilePursuitOutreachRequest,
   isProfileStale,
 } from "../lib/public-profile/api";
+import type { PublicProfilePursuitsHandlerOptions } from "../lib/public-profile/api";
 import type { PublicProfileRepositoryRequest } from "../lib/public-profile/repository";
 import type { CandidateProfileAggregate } from "../lib/public-profile/types";
 import type { PublicProfileRegenerationResult } from "../lib/public-profile/service";
@@ -130,7 +131,11 @@ type OutreachDeps = {
   capturedMarkdown: { value?: string };
 };
 
-function outreachOptions({ aggregate, regenerateSpy, capturedMarkdown }: OutreachDeps) {
+function outreachOptions({
+  aggregate,
+  regenerateSpy,
+  capturedMarkdown,
+}: OutreachDeps): PublicProfilePursuitsHandlerOptions {
   return {
     now: () => later,
     getSession: async () => authed(),
@@ -159,7 +164,23 @@ function outreachOptions({ aggregate, regenerateSpy, capturedMarkdown }: Outreac
       capturedMarkdown.value = input.profileMarkdown;
       return { message: "Hi Dana, quick note.", insertedExample: null };
     },
-    persistOutreach: async () => {},
+    persistOutreach: async (_request, result, drafts) => ({
+      status: "committed" as const,
+      pursuit: result.pursuit,
+      messages: drafts.map((draft, index) => ({
+        id: `message-${index + 1}`,
+        pursuitId: result.pursuit.id,
+        contactSuggestionId: draft.contactSuggestionId,
+        recipientType: draft.recipientType,
+        channel: "other" as const,
+        message: draft.message,
+        status: "draft" as const,
+        createdAt: later,
+        updatedAt: later,
+      })),
+      pursuitDebited: true,
+      outreachDebited: drafts.length,
+    }),
   };
 }
 

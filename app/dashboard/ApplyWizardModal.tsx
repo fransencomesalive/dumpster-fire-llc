@@ -28,6 +28,7 @@ import {
   type PursuitBucket,
   type PursuitTrackingState,
 } from "@/lib/public-profile/pursuits/tracking";
+import { deriveApplyWizardResumeState } from "@/lib/public-profile/pursuits/wizard-state";
 import styles from "./apply-wizard.module.css";
 import { accountPopupHandoffKey } from "../components/useAccountSession";
 
@@ -323,13 +324,17 @@ export default function ApplyWizardModal({
   const [usageGate, setUsageGate] = useState<UsageGate | null>(null);
   const [finalUsePeriodEnd, setFinalUsePeriodEnd] = useState<string | null>(null);
   const actionInFlightRef = useRef<SingleFlightState>({ active: false });
-  const reviewCommittedRef = useRef(false);
+  const initialOutreachKeysRef = useRef<Map<string, string>>(new Map());
+  const regenerationKeysRef = useRef<Map<string, string>>(new Map());
+  const committedRoleTrackIdRef = useRef<string | null | undefined>(undefined);
   const [messages, setMessages] = useState<OutreachMessageRecord[]>([]);
+  const [outreachError, setOutreachError] = useState<string | null>(null);
   const [regeneratingId, setRegeneratingId] = useState<string | null>(null);
   // Tracking: `tracking` is the last committed server state; `draft` is the in-progress
   // checkbox state. The badge and CTA react to `draft`; the history rail reflects `tracking`.
   const [tracking, setTracking] = useState<PursuitTrackingState>(emptyPursuitTrackingState);
   const [draft, setDraft] = useState<PursuitTrackingState>(emptyPursuitTrackingState);
+  const trackingDirtyRef = useRef(false);
   const [history, setHistory] = useState<PursuitHistoryEntry[]>([]);
   const [trackingStartedAt, setTrackingStartedAt] = useState<string | null>(null);
   const [resumedSavedForLater, setResumedSavedForLater] = useState(false);
@@ -484,7 +489,7 @@ export default function ApplyWizardModal({
 
   const applyTracking = useCallback((data: { tracking: PursuitTrackingState; history: PursuitHistoryEntry[]; trackingStartedAt: string | null }) => {
     setTracking(data.tracking);
-    setDraft(data.tracking);
+    setDraft((current) => trackingDirtyRef.current ? current : data.tracking);
     setHistory(data.history);
     setTrackingStartedAt(data.trackingStartedAt);
   }, []);
@@ -510,6 +515,9 @@ export default function ApplyWizardModal({
       setContacts(data.contacts);
       setNoContactsFound(data.pursuit.status === "human_path_generated" && data.contacts.length === 0);
       setMessages(data.outreachMessages);
+      const resumeState = deriveApplyWizardResumeState(data);
+      setSelectedContactIds(new Set(resumeState.selectedContactIds));
+      setOutreachError(resumeState.outreachNeedsRetry ? "We couldn't generate these drafts. Try again." : null);
       applyTracking({ tracking: data.tracking, history: data.history, trackingStartedAt: data.pursuit.trackingStartedAt ?? null });
       return data;
     },
@@ -525,16 +533,15 @@ export default function ApplyWizardModal({
       if (target.kind === "pursuit") {
         try {
           const data = await readPursuit(target.pursuitId);
-          if (data.bucket === "applied") {
-            setMode("applied");
-            setStep(4);
-            setReached(4);
-          } else {
-            setMode("stepper");
-            const emptyHumanPath = data.pursuit.status === "human_path_generated" && data.contacts.length === 0;
-            setStep(emptyHumanPath ? 2 : 4);
-            setReached(emptyHumanPath ? 2 : 4);
-            setResumedSavedForLater(!emptyHumanPath);
+          const resumeState = deriveApplyWizardResumeState(data);
+          setMode(resumeState.mode);
+          setStep(resumeState.step);
+          setReached(resumeState.reached);
+          setResumedSavedForLater(resumeState.mode === "stepper" && resumeState.step === 4);
+          committedRoleTrackIdRef.current = data.pursuit.status === "saved" || data.pursuit.status === "discovered"
+            ? undefined
+            : data.pursuit.selectedRoleTrackId ?? null;
+          if (resumeState.mode === "stepper") {
             // Best-effort match + role tracks so the stepper can navigate back to Review;
             // a snapshot-only posting (no live job) degrades to Track-only.
             if (data.pursuit.jobId) {
@@ -549,7 +556,10 @@ export default function ApplyWizardModal({
                 }
                 const trackList = tracks?.section.roleTracks ?? [];
                 setRoleTracks(trackList);
-                setSelectedRoleTrackId(data.pursuit.selectedRoleTrackId ?? matched?.match.recommendations.roleTrack?.roleTrack.id ?? trackList[0]?.id ?? null);
+                const persistedTrackId = trackList.some((track) => track.id === data.pursuit.selectedRoleTrackId)
+                  ? data.pursuit.selectedRoleTrackId
+                  : null;
+                setSelectedRoleTrackId(persistedTrackId ?? matched?.match.recommendations.roleTrack?.roleTrack.id ?? trackList[0]?.id ?? null);
               } catch {
                 // Non-fatal: Track still works without Review context.
               }
@@ -593,15 +603,23 @@ export default function ApplyWizardModal({
                 api<RoleTracksResponse>("/api/public-profile/role-tracks", "GET").catch(() => null),
                 api<{ match: MatchResult }>("/api/public-profile/match", "POST", { jobId: initialJob.id }),
               ]);
-              setSelectedContactIds(new Set(
-                resumed.contacts.filter((contact) => contact.confidence === "high").map((contact) => contact.id),
-              ));
+              const resumeState = deriveApplyWizardResumeState(resumed);
+              setMode(resumeState.mode);
+              setStep(resumeState.step);
+              setReached(resumeState.reached);
+              setResumedSavedForLater(resumeState.mode === "stepper" && resumeState.step === 4);
+              committedRoleTrackIdRef.current = existing.status === "saved" || existing.status === "discovered"
+                ? undefined
+                : existing.selectedRoleTrackId ?? null;
               setMatch(matched.match);
               const recommended = matched.match.recommendations.roleTrack?.roleTrack.id ?? null;
               setRecommendedRoleTrackId(recommended);
               const trackList = tracks?.section.roleTracks ?? [];
               setRoleTracks(trackList);
-              setSelectedRoleTrackId(existing.selectedRoleTrackId ?? recommended ?? trackList[0]?.id ?? null);
+              const persistedTrackId = trackList.some((track) => track.id === existing.selectedRoleTrackId)
+                ? existing.selectedRoleTrackId
+                : null;
+              setSelectedRoleTrackId(persistedTrackId ?? recommended ?? trackList[0]?.id ?? null);
               setReady(true);
               return;
             } catch (resumeErr) {
@@ -643,12 +661,12 @@ export default function ApplyWizardModal({
         return;
       }
       setUsageGate(null);
-      if (!reviewCommittedRef.current) {
+      if (committedRoleTrackIdRef.current !== selectedRoleTrackId) {
         await api(`/api/public-profile/pursuits/review`, "POST", {
           pursuitId,
           selectedRoleTrackId: selectedRoleTrackId ?? undefined,
         });
-        reviewCommittedRef.current = true;
+        committedRoleTrackIdRef.current = selectedRoleTrackId;
       }
       setStep(2);
       setReached((r) => (r < 2 ? 2 : r));
@@ -698,8 +716,13 @@ export default function ApplyWizardModal({
       throw err;
     }
     const data = await readPursuit(id);
+    const persistedSelection = data.contacts
+      .filter((contact) => contact.selectedForOutreach)
+      .map((contact) => contact.id);
     setSelectedContactIds(new Set(
-      data.contacts.filter((contact) => contact.confidence === "high").map((contact) => contact.id),
+      persistedSelection.length > 0
+        ? persistedSelection
+        : data.contacts.filter((contact) => contact.confidence === "high").map((contact) => contact.id),
     ));
     return true;
   }
@@ -732,17 +755,28 @@ export default function ApplyWizardModal({
       setError("Select at least one contact to continue.");
       return;
     }
+    setOutreachError(null);
     run(async () => {
       await api(`/api/public-profile/pursuits/contacts`, "POST", { pursuitId, contactIds });
       setStep(3);
       setReached((r) => (r < 3 ? 3 : r));
-      await generateOutreach(pursuitId);
+      try {
+        await generateOutreach(pursuitId, contactIds);
+      } catch (err) {
+        setOutreachError(errorMessage(err, "We couldn't generate these drafts. Try again."));
+      }
     });
   }
 
-  async function generateOutreach(id: string) {
+  async function generateOutreach(id: string, contactIds: string[]) {
+    const selectionKey = [...contactIds].sort().join(":");
+    let idempotencyKey = initialOutreachKeysRef.current.get(selectionKey);
+    if (!idempotencyKey) {
+      idempotencyKey = newIdempotencyKey(`initial-outreach:${id}`);
+      initialOutreachKeysRef.current.set(selectionKey, idempotencyKey);
+    }
     try {
-      await api(`/api/public-profile/pursuits/outreach`, "POST", { pursuitId: id });
+      await api(`/api/public-profile/pursuits/outreach`, "POST", { pursuitId: id, idempotencyKey });
     } catch (err) {
       const body = err instanceof PublicProfileApiError ? err.body as { status?: string } | null : null;
       if (!(err instanceof PublicProfileApiError && err.status === 409 && body?.status === "already_generated")) throw err;
@@ -752,12 +786,18 @@ export default function ApplyWizardModal({
 
   function regenerateOutreach(message: OutreachMessageRecord) {
     if (!pursuitId) return;
+    let idempotencyKey = regenerationKeysRef.current.get(message.id);
+    if (!idempotencyKey) {
+      idempotencyKey = newIdempotencyKey(`regenerate:${message.id}`);
+      regenerationKeysRef.current.set(message.id, idempotencyKey);
+    }
     setRegeneratingId(message.id);
     void run(async () => {
       await api(`/api/public-profile/pursuits/outreach`, "POST", {
         pursuitId,
         regenerate: true,
         previousMessageId: message.id,
+        idempotencyKey,
       });
       await readPursuit(pursuitId);
     }).finally(() => setRegeneratingId(null));
@@ -777,11 +817,12 @@ export default function ApplyWizardModal({
       applyTracking({ tracking: data.tracking, history: data.history, trackingStartedAt: data.trackingStartedAt });
       setCopyError(null);
       setCopyRetryMessageId(null);
+      onPursuitChanged?.(`Pursuit updated for ${job?.title ?? posting?.title ?? "this posting"}.`);
     } catch {
       setCopyError("Your message is on the clipboard. We could not record it to this pursuit, so it is not tracked yet.");
       setCopyRetryMessageId(messageId);
     }
-  }, [api, pursuitId, applyTracking]);
+  }, [api, pursuitId, applyTracking, job?.title, posting?.title, onPursuitChanged]);
 
   function retryCopyRecord() {
     if (!copyRetryMessageId) return;
@@ -789,6 +830,7 @@ export default function ApplyWizardModal({
   }
 
   function toggleDraft(action: (typeof PURSUIT_TRACKING_ACTIONS)[number]) {
+    trackingDirtyRef.current = true;
     setDraft((prev) => ({ ...prev, [action]: !prev[action] }));
   }
 
@@ -811,6 +853,7 @@ export default function ApplyWizardModal({
         "PATCH",
         { changes, idempotencyKey: newIdempotencyKey(`track:${pursuitId}`) },
       );
+      trackingDirtyRef.current = false;
       applyTracking({ tracking: data.tracking, history: data.history, trackingStartedAt: data.trackingStartedAt });
       onPursuitChanged?.(`Pursuit updated for ${title}.`);
       onClose();
@@ -1010,6 +1053,8 @@ export default function ApplyWizardModal({
     </>
   );
 
+  const visibleError = error ?? (mode === "stepper" && step === 3 ? outreachError : null);
+
   return (
     <div
       ref={modalOverlayRef}
@@ -1027,7 +1072,7 @@ export default function ApplyWizardModal({
           {closeButton}
         </div>
         {mode === "applied" ? appliedBar : stepper}
-        {error ? <div className={`ds-callout ${styles.skipError}`} role="alert">{error}</div> : null}
+        {visibleError ? <div className={`ds-callout ${styles.skipError}`} role="alert">{visibleError}</div> : null}
 
         {initError ? (
           <div className={styles.modalStack}>
@@ -1078,7 +1123,7 @@ export default function ApplyWizardModal({
                 <section>
                   <strong>Job review</strong>
                   {jobMetaLine ? <p>{jobMetaLine}</p> : null}
-                  <p>Fit: {match.label}. {match.explanation}</p>
+                  <p>Fit: {match.explanation}</p>
                 </section>
                 {match.risks.length > 0 ? (
                   <section>
@@ -1157,7 +1202,7 @@ export default function ApplyWizardModal({
                         <div className={styles.skeletonCard}><span className={`${styles.skeletonBar} ${styles.w50}`} /><span className={`${styles.skeletonBar} ${styles.w35}`} /><span className={`${styles.skeletonBar} ${styles.w80}`} /></div>
                       </div>
                     </section>
-                  ) : <section><p className={styles.dsStateLabel}>No drafts yet.</p></section>
+                  ) : outreachError ? null : <section><p className={styles.dsStateLabel}>No drafts yet.</p></section>
                 ) : messages.map((message) => {
                   const recipient = contacts.find((contact) => contact.id === message.contactSuggestionId);
                   const regenerated = (message.regenerationCount ?? 0) > 0;

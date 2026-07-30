@@ -31,6 +31,7 @@ import {
   loadContactSuggestionsForPursuits,
   loadInitialOutreachGenerationCommit,
   loadOutreachGenerationContextForMessage,
+  loadOutreachRegenerationCommit,
   loadOutreachMessageById,
   loadOutreachMessagesForPursuit,
   loadOutreachMessagesForPursuits,
@@ -93,6 +94,8 @@ import type {
   PursuitTrackingCommit,
   PursuitTrackingEvent,
   PursuitInitialOutreachCommit,
+  PursuitContactSelectionCommit,
+  PursuitOutreachRegenerationCommit,
   PursuitSelectionSnapshot,
   SaveOutreachMessageFeedbackInput,
 } from "./pursuits/types";
@@ -111,10 +114,11 @@ import type {
   UsageLedgerEntry,
 } from "./subscription/types";
 import {
-  generateOutreachMessage,
+  generateOutreachMessageOutcome,
   generateOutreachMessageForUser,
   parseOutreachRequest,
   type OutreachContact,
+  type OutreachGenerationOutcome,
   type OutreachGenerationResult,
   type OutreachJob,
   type OutreachMessage,
@@ -587,7 +591,7 @@ export type PublicProfilePursuitsHandlerOptions = PublicProfileMatchHandlerOptio
     request: PublicProfileRepositoryRequest,
     result: Extract<PursuitTransitionResult, { ok: true }>,
     contactIds: string[],
-  ) => Promise<void>;
+  ) => Promise<PursuitContactSelectionCommit | void>;
   generateOutreachForContact?: (input: {
     profileMarkdown: string;
     roleTrack?: OutreachRoleTrack;
@@ -595,7 +599,7 @@ export type PublicProfilePursuitsHandlerOptions = PublicProfileMatchHandlerOptio
     contact: OutreachContact;
     contactSuggestion: HumanPathContactSuggestion;
     previousMessage?: string;
-  }) => Promise<OutreachMessage | undefined>;
+  }) => Promise<OutreachMessage | OutreachGenerationOutcome | undefined>;
   persistOutreach?: (
     request: PublicProfileRepositoryRequest,
     result: Extract<PursuitTransitionResult, { ok: true }>,
@@ -615,8 +619,19 @@ export type PublicProfilePursuitsHandlerOptions = PublicProfileMatchHandlerOptio
       message: string;
       generationContext: OutreachGenerationContext;
       updatedAt: string;
+      idempotencyKey: string;
+      chargeUsage: boolean;
     },
-  ) => Promise<OutreachMessageRecord | undefined>;
+  ) => Promise<OutreachMessageRecord | PursuitOutreachRegenerationCommit | undefined>;
+  loadOutreachRegenerationCommit?: (
+    request: PublicProfileRepositoryRequest,
+    input: {
+      userId: string;
+      pursuitId: string;
+      messageId: string;
+      idempotencyKey: string;
+    },
+  ) => Promise<PursuitOutreachRegenerationCommit | undefined>;
   loadSubscriptionContext?: (
     request: PublicProfileRepositoryRequest,
     userId: string,
@@ -2156,12 +2171,12 @@ export async function handlePublicProfilePursuitContactSelectionRequest(
   }
 
   const persistSelection = options.persistContactSelection ?? persistContactSelection;
-  await persistSelection(repositoryRequest, result, contactIds);
+  const persistedSelection = await persistSelection(repositoryRequest, result, contactIds);
 
   return json({
     status: "outreach_ready",
     profileId: aggregate.profile.id,
-    pursuit: result.pursuit,
+    pursuit: persistedSelection ? persistedSelection.pursuit : result.pursuit,
     selectedContactIds: contactIds,
     contacts: contacts.filter((contact) => contactIdsForPursuit.has(contact.id) && contactIds.includes(contact.id)),
     event: result.event,
@@ -2232,6 +2247,24 @@ function outreachGenerationContext(input: {
   };
 }
 
+function normalizeOutreachGenerationOutcome(
+  result: OutreachMessage | OutreachGenerationOutcome | undefined,
+): OutreachGenerationOutcome {
+  if (!result) return { status: "model_unavailable" };
+  if ("status" in result) return result;
+  return { status: "generated", outreach: result };
+}
+
+function outreachGenerationFailureResponse(
+  outcome: Exclude<OutreachGenerationOutcome, { status: "generated" }>,
+) {
+  return json({
+    error: "We couldn't generate these drafts. Try again.",
+    status: outcome.status,
+    retryable: true,
+  }, { status: 503 });
+}
+
 export async function handlePublicProfilePursuitOutreachRequest(
   request: Request,
   options: PublicProfilePursuitsHandlerOptions = {},
@@ -2284,6 +2317,28 @@ export async function handlePublicProfilePursuitOutreachRequest(
     return json({ error: "Pursuit not found.", status: "not_found" }, { status: 404 });
   }
   const billingEnabled = isBillingEnabled(options.env);
+
+  if (regenerate && requestedIdempotencyKey) {
+    const loadRegenerationCommit = options.loadOutreachRegenerationCommit ?? loadOutreachRegenerationCommit;
+    const existingRegeneration = await loadRegenerationCommit(repositoryRequest, {
+      userId: session.userId,
+      pursuitId: pursuit.id,
+      messageId: previousMessageId as string,
+      idempotencyKey: requestedIdempotencyKey,
+    });
+    if (existingRegeneration) {
+      return json({
+        status: "outreach_regenerated",
+        replayed: true,
+        profileId: existingRegeneration.pursuit.profileId,
+        job: null,
+        pursuit: existingRegeneration.pursuit,
+        message: existingRegeneration.message,
+        insertedExample: null,
+        subscription: { status: "allowed", feature: "outreach_message" },
+      });
+    }
+  }
 
   // A client retry after a committed response was lost must not depend on the
   // candidate profile, live posting, selected-contact set, or model being unchanged.
@@ -2466,12 +2521,12 @@ export async function handlePublicProfilePursuitOutreachRequest(
 
     const generateOutreachForContact = options.generateOutreachForContact
       ?? ((outreachInput) => {
-        // TODO(message-gen-track): consume previousMessage in the approved regeneration prompt.
-        return generateOutreachMessage({
+        return generateOutreachMessageOutcome({
           profileMarkdown: outreachInput.profileMarkdown,
           roleTrack: outreachInput.roleTrack,
           job: outreachInput.job,
           contact: outreachInput.contact,
+          previousMessage: outreachInput.previousMessage,
         }, {
           operation: "outreach_regeneration",
           providerUsage: {
@@ -2483,49 +2538,62 @@ export async function handlePublicProfilePursuitOutreachRequest(
           },
         });
       });
-    const outreach = await generateOutreachForContact({
+    const generation = normalizeOutreachGenerationOutcome(await generateOutreachForContact({
       profileMarkdown,
       roleTrack: outreachRoleTrack,
       job: outreachJobFromPublicJob(job),
       contact: outreachContactFromSuggestion(contactSuggestion),
       contactSuggestion,
       previousMessage: previousMessage.message,
-    });
-    if (!outreach) {
-      return json({
-        error: "Outreach generation is not configured.",
-        status: "model_unavailable",
-      }, { status: 503 });
-    }
+    }));
+    if (generation.status !== "generated") return outreachGenerationFailureResponse(generation);
+    const outreach = generation.outreach;
 
     const persistRegeneration = options.persistOutreachRegeneration ?? persistOutreachRegeneration;
-    const regeneratedMessage = await persistRegeneration(repositoryRequest, result, {
-      messageId: previousMessage.id,
-      previousMessage: previousMessage.message,
-      message: outreach.message,
-      generationContext: outreachGenerationContext({
-        aggregate,
-        profileMarkdown,
-        pursuit,
-        job,
-        contact: contactSuggestion,
-        generatedAt,
-      }),
-      updatedAt: generatedAt,
-    });
-    if (!regeneratedMessage) {
+    let persistedRegeneration: OutreachMessageRecord | PursuitOutreachRegenerationCommit | undefined;
+    try {
+      persistedRegeneration = await persistRegeneration(repositoryRequest, result, {
+        messageId: previousMessage.id,
+        previousMessage: previousMessage.message,
+        message: outreach.message,
+        generationContext: outreachGenerationContext({
+          aggregate,
+          profileMarkdown,
+          pursuit,
+          job,
+          contact: contactSuggestion,
+          generatedAt,
+        }),
+        updatedAt: generatedAt,
+        idempotencyKey: requestedIdempotencyKey ?? providerRequestCorrelationId,
+        chargeUsage: !billingEnabled,
+      });
+    } catch (error) {
+      const blocked = transactionalSubscriptionError(error);
+      if (blocked) return blocked;
+      return json({
+        error: "The replacement draft was generated but could not be saved. Try again.",
+        status: "persistence_failed",
+        retryable: true,
+        saved: false,
+      }, { status: 503 });
+    }
+    if (!persistedRegeneration) {
       return json({
         error: "This outreach message has already been regenerated.",
         status: "already_regenerated",
       }, { status: 409 });
     }
+    const regenerationCommit = "message" in persistedRegeneration && "pursuit" in persistedRegeneration
+      ? persistedRegeneration
+      : { pursuit: result.pursuit, message: persistedRegeneration };
 
     return json({
       status: "outreach_regenerated",
       profileId: aggregate.profile.id,
       job,
-      pursuit: result.pursuit,
-      message: regeneratedMessage,
+      pursuit: regenerationCommit.pursuit,
+      message: regenerationCommit.message,
       insertedExample: outreach.insertedExample,
       event: result.event,
       subscription: enforcement,
@@ -2625,7 +2693,7 @@ export async function handlePublicProfilePursuitOutreachRequest(
 
   const outreachJob = outreachJobFromPublicJob(job);
   const generateOutreachForContact = options.generateOutreachForContact
-    ?? ((outreachInput) => generateOutreachMessage({
+    ?? ((outreachInput) => generateOutreachMessageOutcome({
       profileMarkdown: outreachInput.profileMarkdown,
       roleTrack: outreachInput.roleTrack,
       job: outreachInput.job,
@@ -2645,20 +2713,15 @@ export async function handlePublicProfilePursuitOutreachRequest(
     outreach: OutreachMessage;
   }> = [];
   for (const contactSuggestion of contactsToGenerate) {
-    const outreach = await generateOutreachForContact({
+    const generation = normalizeOutreachGenerationOutcome(await generateOutreachForContact({
       profileMarkdown,
       roleTrack: outreachRoleTrack,
       job: outreachJob,
       contact: outreachContactFromSuggestion(contactSuggestion),
       contactSuggestion,
-    });
-    if (!outreach) {
-      return json({
-        error: "Outreach generation is not configured.",
-        status: "model_unavailable",
-      }, { status: 503 });
-    }
-    generatedMessages.push({ contact: contactSuggestion, outreach });
+    }));
+    if (generation.status !== "generated") return outreachGenerationFailureResponse(generation);
+    generatedMessages.push({ contact: contactSuggestion, outreach: generation.outreach });
   }
 
   const drafts: GeneratedOutreachDraft[] = generatedMessages.map(({ contact, outreach }) => ({
@@ -2694,29 +2757,32 @@ export async function handlePublicProfilePursuitOutreachRequest(
       saved: false,
     }, { status: 503 });
   }
-  const persistedCommit = persisted as PursuitInitialOutreachCommit | undefined;
+  if (!persisted) {
+    return json({
+      error: "The messages were generated but could not be saved. Try again.",
+      status: "persistence_failed",
+      retryable: true,
+      saved: false,
+    }, { status: 503 });
+  }
+  const persistedCommit = persisted;
 
   return json({
     status: "outreach_generated",
     profileId: aggregate.profile.id,
     job,
-    pursuit: persistedCommit?.pursuit ?? result.pursuit,
-    messages: persistedCommit?.messages.map((message) => ({
+    pursuit: persistedCommit.pursuit,
+    messages: persistedCommit.messages.map((message) => ({
       ...message,
       insertedExample: generatedMessages.find(
         ({ contact }) => contact.id === message.contactSuggestionId,
       )?.outreach.insertedExample ?? null,
-    })) ?? generatedMessages.map(({ contact, outreach }) => ({
-      contactSuggestionId: contact.id,
-      recipientType: outreachRecipientType(contact.contactType),
-      message: outreach.message,
-      insertedExample: outreach.insertedExample,
     })),
     event: result.event,
     subscription: enforcement,
     metering: {
-      pursuitDebited: persistedCommit?.pursuitDebited ?? shouldChargePursuit,
-      outreachDebited: persistedCommit?.outreachDebited ?? (billingEnabled ? 0 : drafts.length),
+      pursuitDebited: persistedCommit.pursuitDebited,
+      outreachDebited: persistedCommit.outreachDebited,
     },
   });
 }
@@ -4200,10 +4266,15 @@ export async function handleOutreachGeneratorRequest(
       status: result.status,
     }, { status: 409 });
   }
-  if (result.status === "model_unavailable") {
+  if (
+    result.status === "model_unavailable"
+    || result.status === "invalid_output"
+    || result.status === "quality_exhausted"
+  ) {
     return json({
-      error: "Outreach generation is not configured.",
+      error: "We couldn't generate this draft. Try again.",
       status: result.status,
+      retryable: true,
     }, { status: 503 });
   }
 

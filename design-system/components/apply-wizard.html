@@ -26,7 +26,8 @@
     box-shadow: 6px 6px 0 rgba(36, 31, 26, 0.55); padding: var(--space-6); }
   .modalHeader { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-4);
     margin-bottom: var(--space-5); padding-bottom: var(--space-3); border-bottom: var(--line-hair) solid var(--c-paper-edge); }
-  .modalTitle { font-family: var(--font-display); font-size: 1.45rem; line-height: 1.05; color: var(--c-ink); margin: 0; }
+  .modalTitle { font-family: var(--font-display); font-size: 1.45rem; line-height: 1.05; color: var(--c-ink); margin: 0;
+    text-wrap: balance; }
   .modalClose { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 34px; height: 34px;
     color: var(--c-ink); background-color: var(--c-paper); border: var(--line-reg) solid var(--c-ink);
     border-radius: var(--radius-md); box-shadow: 2px 2px 0 var(--c-ink); cursor: pointer; }
@@ -323,6 +324,11 @@
      (0/500 -> 500/500) and the input can't reflow while typing (Randall 2026-07-21). */
   .seCount { flex: none; min-width: 3.8rem; text-align: right; font-variant-numeric: tabular-nums; font-family: var(--font-ui, Inter, system-ui, sans-serif); font-size: 0.74rem; color: var(--role-text-faint); }
   @media (max-width: 420px) {
+    .modalTitle { font-size: 1.2rem; }
+    .modeSection { padding: var(--space-3); }
+    .modeSelector { gap: var(--space-2); }
+    .modeSelector > span { flex-basis: 100%; }
+    .modeSelector label > span { font-size: clamp(0.75rem, 4vw, 1rem); text-wrap: balance; }
     .seRow { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; align-items: center; }
     .seRow label { grid-column: 2 / 4; }
     .seInput { grid-column: 2; width: 100%; }

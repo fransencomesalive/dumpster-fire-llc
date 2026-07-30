@@ -22,6 +22,8 @@ import type {
   PursuitTrackingEvent,
   PursuitTrackingCommit,
   PursuitInitialOutreachCommit,
+  PursuitContactSelectionCommit,
+  PursuitOutreachRegenerationCommit,
   PursuitTrackingSource,
   PursuitTransitionResult,
   PursuitUsageEvent,
@@ -168,6 +170,19 @@ type AtomicOutreachGenerationResultRow = {
   outreachDebited: number;
 };
 
+type AtomicContactSelectionResultRow = {
+  status: "contacts_selected";
+  replayed: boolean;
+  pursuit: PursuitRow;
+};
+
+type AtomicOutreachRegenerationResultRow = {
+  status: "outreach_regenerated" | "already_regenerated";
+  replayed: boolean;
+  pursuit: PursuitRow;
+  message?: OutreachMessageRow;
+};
+
 type AtomicHumanPathGenerationResultRow = {
   status: AtomicHumanPathPersistenceResult["status"];
   replayed: boolean;
@@ -187,6 +202,14 @@ type OutreachGenerationRequestRow = {
   pursuit_debit_added: boolean;
   outreach_debit_quantity: number;
   request_payload?: unknown;
+};
+
+type OutreachRegenerationRequestRow = {
+  id: string;
+  pursuit_id: string;
+  user_id: string;
+  message_id: string;
+  idempotency_key: string;
 };
 
 function qs(params: Record<string, string>) {
@@ -658,32 +681,91 @@ export async function persistOutreachRegeneration(
     message: string;
     generationContext: OutreachGenerationContext;
     updatedAt: string;
+    idempotencyKey: string;
+    chargeUsage: boolean;
   },
-): Promise<OutreachMessageRecord | undefined> {
-  const rows = await request<OutreachMessageRow[]>("outreach_messages", {
-    method: "PATCH",
+): Promise<PursuitOutreachRegenerationCommit | undefined> {
+  const response = await request<AtomicOutreachRegenerationResultRow>(
+    "rpc/persist_outreach_regeneration",
+    {
+      method: "POST",
+      body: {
+        p_pursuit_id: result.pursuit.id,
+        p_user_id: result.pursuit.userId,
+        p_message_id: input.messageId,
+        p_previous_message: input.previousMessage,
+        p_message: input.message,
+        p_generation_context: input.generationContext,
+        p_updated_at: input.updatedAt,
+        p_idempotency_key: input.idempotencyKey,
+        p_charge_usage: input.chargeUsage,
+      },
+    },
+  );
+  if (response.status === "already_regenerated" || !response.message) return undefined;
+  return {
+    status: response.replayed ? "idempotent_replay" : "committed",
+    pursuit: mapPursuit(response.pursuit),
+    message: mapOutreachMessage(response.message),
+  };
+}
+
+export async function loadOutreachRegenerationCommit(
+  request: PublicProfileRepositoryRequest,
+  input: {
+    userId: string;
+    pursuitId: string;
+    messageId: string;
+    idempotencyKey: string;
+  },
+): Promise<PursuitOutreachRegenerationCommit | undefined> {
+  const requests = await request<OutreachRegenerationRequestRow[]>("pursuit_outreach_regeneration_requests", {
     query: qs({
-      id: `eq.${input.messageId}`,
-      pursuit_id: `eq.${result.pursuit.id}`,
-      regeneration_count: "eq.0",
-      select: OUTREACH_MESSAGE_SELECT,
+      pursuit_id: `eq.${input.pursuitId}`,
+      user_id: `eq.${input.userId}`,
+      message_id: `eq.${input.messageId}`,
+      idempotency_key: `eq.${input.idempotencyKey}`,
+      select: "id,pursuit_id,user_id,message_id,idempotency_key",
+      limit: "1",
     }),
-    headers: { Prefer: "return=representation" },
+  });
+  if (!first(requests)) return undefined;
+  const [pursuitRows, messageRows] = await Promise.all([
+    request<PursuitRow[]>("pursuits", {
+      query: qs({ id: `eq.${input.pursuitId}`, user_id: `eq.${input.userId}`, select: PURSUIT_SELECT, limit: "1" }),
+    }),
+    request<OutreachMessageRow[]>("outreach_messages", {
+      query: qs({ id: `eq.${input.messageId}`, pursuit_id: `eq.${input.pursuitId}`, select: OUTREACH_MESSAGE_SELECT, limit: "1" }),
+    }),
+  ]);
+  const pursuit = first(pursuitRows);
+  const message = first(messageRows);
+  if (!pursuit || !message) return undefined;
+  return {
+    status: "idempotent_replay",
+    pursuit: mapPursuit(pursuit),
+    message: mapOutreachMessage(message),
+  };
+}
+
+export async function persistContactSelection(
+  request: PublicProfileRepositoryRequest,
+  result: Extract<PursuitTransitionResult, { ok: true }>,
+  contactIds: string[],
+): Promise<PursuitContactSelectionCommit> {
+  const response = await request<AtomicContactSelectionResultRow>("rpc/persist_pursuit_contact_selection", {
+    method: "POST",
     body: {
-      message: input.message,
-      previous_message: input.previousMessage,
-      regeneration_count: 1,
-      regeneration_context: input.generationContext,
-      status: "draft",
-      rejection_reason: null,
-      updated_at: input.updatedAt,
+      p_pursuit_id: result.pursuit.id,
+      p_user_id: result.pursuit.userId,
+      p_contact_ids: contactIds,
+      p_updated_at: result.pursuit.updatedAt,
     },
   });
-  const row = first(rows);
-  if (!row) return undefined;
-
-  await persistPursuitTransition(request, result);
-  return mapOutreachMessage(row);
+  return {
+    status: response.replayed ? "idempotent_replay" : "committed",
+    pursuit: mapPursuit(response.pursuit),
+  };
 }
 
 export async function loadPursuitEventsForPursuit(
@@ -856,35 +938,6 @@ export async function recordProfileExportUsage(
       related_job_id: null,
       related_pursuit_id: null,
       created_at: input.createdAt,
-    },
-  });
-}
-
-export async function persistContactSelection(
-  request: PublicProfileRepositoryRequest,
-  result: Extract<PursuitTransitionResult, { ok: true }>,
-  contactIds: string[],
-) {
-  await persistPursuitTransition(request, result);
-
-  await request("contact_suggestions", {
-    method: "PATCH",
-    query: qs({ pursuit_id: `eq.${result.pursuit.id}` }),
-    body: {
-      selected_for_outreach: false,
-      updated_at: result.pursuit.updatedAt,
-    },
-  });
-
-  await request("contact_suggestions", {
-    method: "PATCH",
-    query: qs({
-      pursuit_id: `eq.${result.pursuit.id}`,
-      id: `in.(${contactIds.join(",")})`,
-    }),
-    body: {
-      selected_for_outreach: true,
-      updated_at: result.pursuit.updatedAt,
     },
   });
 }

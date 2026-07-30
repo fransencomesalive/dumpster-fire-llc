@@ -2165,7 +2165,65 @@ async function main() {
     generateOutreachForContact: async () => undefined,
   });
   assert.equal(pursuitOutreachUnavailable.status, 503);
-  assert.equal((await body(pursuitOutreachUnavailable)).status, "model_unavailable");
+  const pursuitOutreachUnavailableJson = await body(pursuitOutreachUnavailable);
+  assert.equal(pursuitOutreachUnavailableJson.status, "model_unavailable");
+  assert.equal(pursuitOutreachUnavailableJson.error, "We couldn't generate these drafts. Try again.");
+  assert.equal(pursuitOutreachUnavailableJson.retryable, true);
+
+  let partialGenerationCalls = 0;
+  let partialGenerationPersisted = false;
+  const pursuitOutreachPartialFailure = await handlePublicProfilePursuitOutreachRequest(postRequest("pursuits/outreach", { pursuitId: "pursuit-1" }), {
+    now: () => now,
+    getSession: async () => authed(),
+    repositoryRequest,
+    loadAggregate: async () => agg,
+    loadPursuit: async () => savedPursuit({ status: "outreach_ready" }),
+    loadInitialOutreachCommit: noInitialOutreachCommit,
+    loadJob: async () => publicJob(),
+    loadContactSuggestions: async () => [
+      contactSuggestion({ selectedForOutreach: true }),
+      contactSuggestion({ id: "contact-2", name: "Riley Chen", contactType: "recruiter", selectedForOutreach: true }),
+    ],
+    loadOutreachMessages: async () => [],
+    loadSubscriptionContext: async () => activeBasicSubscription(),
+    loadUsageEntries: async () => [],
+    generateOutreachForContact: async () => {
+      partialGenerationCalls += 1;
+      return partialGenerationCalls === 1
+        ? { message: "First valid draft.", insertedExample: null }
+        : { status: "quality_exhausted", violations: ["ungrounded_numbers(four)"] };
+    },
+    persistOutreach: async () => {
+      partialGenerationPersisted = true;
+    },
+  });
+  assert.equal(pursuitOutreachPartialFailure.status, 503);
+  const pursuitOutreachPartialFailureJson = await body(pursuitOutreachPartialFailure);
+  assert.equal(pursuitOutreachPartialFailureJson.status, "quality_exhausted");
+  assert.equal(pursuitOutreachPartialFailureJson.error, "We couldn't generate these drafts. Try again.");
+  assert.equal(pursuitOutreachPartialFailureJson.retryable, true);
+  assert.equal(partialGenerationCalls, 2);
+  assert.equal(partialGenerationPersisted, false, "a partial in-memory generation must never persist an incomplete transition");
+
+  const pursuitOutreachMissingCommit = await handlePublicProfilePursuitOutreachRequest(postRequest("pursuits/outreach", { pursuitId: "pursuit-1" }), {
+    now: () => now,
+    getSession: async () => authed(),
+    repositoryRequest,
+    loadAggregate: async () => agg,
+    loadPursuit: async () => savedPursuit({ status: "outreach_ready" }),
+    loadInitialOutreachCommit: noInitialOutreachCommit,
+    loadJob: async () => publicJob(),
+    loadContactSuggestions: async () => [contactSuggestion({ selectedForOutreach: true })],
+    loadOutreachMessages: async () => [],
+    loadSubscriptionContext: async () => activeBasicSubscription(),
+    loadUsageEntries: async () => [],
+    generateOutreachForContact: async () => ({ message: "Generated without a commit.", insertedExample: null }),
+    persistOutreach: async () => undefined,
+  });
+  assert.equal(pursuitOutreachMissingCommit.status, 503);
+  const pursuitOutreachMissingCommitJson = await body(pursuitOutreachMissingCommit);
+  assert.equal(pursuitOutreachMissingCommitJson.status, "persistence_failed");
+  assert.equal(pursuitOutreachMissingCommitJson.saved, false);
 
   let persistedOutreach: unknown;
   let persistedDrafts: unknown;
@@ -2464,6 +2522,8 @@ async function main() {
     message: string;
     generationContext: OutreachGenerationContext;
     updatedAt: string;
+    idempotencyKey: string;
+    chargeUsage: boolean;
   };
   assert.deepEqual({
     messageId: persistedRegenerationInput.messageId,
@@ -2479,6 +2539,8 @@ async function main() {
   assert.equal(persistedRegenerationInput.generationContext.schemaVersion, 1);
   assert.equal(persistedRegenerationInput.generationContext.profile.version, agg.profile.version);
   assert.deepEqual(persistedRegenerationInput.generationContext.profile.toneTags, agg.voicePersonality?.toneTags);
+  assert.ok(persistedRegenerationInput.idempotencyKey.length > 0);
+  assert.equal(persistedRegenerationInput.chargeUsage, true);
   assert.equal((persistedRegenerationTransition as { usageEvents: Array<{ quantity: number }> }).usageEvents[0].quantity, 1);
   const pursuitOutreachRegeneratedJson = await body(pursuitOutreachRegenerated);
   assert.equal(pursuitOutreachRegeneratedJson.status, "outreach_regenerated");
@@ -2582,6 +2644,66 @@ async function main() {
   });
   assert.equal(regenerationLostRace.status, 409);
   assert.equal((await body(regenerationLostRace)).status, "already_regenerated");
+
+  let regenerationReplayLoadedProfile = false;
+  const committedRegenerationMessage = {
+    ...originalMessage,
+    message: "Committed replacement.",
+    previousMessage: originalMessage.message,
+    regenerationCount: 1 as const,
+  };
+  const regenerationReplay = await handlePublicProfilePursuitOutreachRequest(postRequest("pursuits/outreach", {
+    pursuitId: "pursuit-1",
+    regenerate: true,
+    previousMessageId: "message-1",
+    idempotencyKey: "regenerate-message-1-stable-key",
+  }), {
+    now: () => now,
+    getSession: async () => authed(),
+    repositoryRequest,
+    loadPursuit: async () => savedPursuit({ status: "outreach_ready" }),
+    loadOutreachRegenerationCommit: async () => ({
+      status: "idempotent_replay",
+      pursuit: savedPursuit({ status: "outreach_ready" }),
+      message: committedRegenerationMessage,
+    }),
+    loadAggregate: async () => {
+      regenerationReplayLoadedProfile = true;
+      throw new Error("regeneration replay must not load the profile");
+    },
+  });
+  assert.equal(regenerationReplay.status, 200);
+  const regenerationReplayJson = await body(regenerationReplay);
+  assert.equal(regenerationReplayJson.status, "outreach_regenerated");
+  assert.equal(regenerationReplayJson.replayed, true);
+  assert.equal((regenerationReplayJson.message as OutreachMessageRecord).message, "Committed replacement.");
+  assert.equal(regenerationReplayLoadedProfile, false);
+
+  const regenerationPersistenceFailed = await handlePublicProfilePursuitOutreachRequest(postRequest("pursuits/outreach", {
+    pursuitId: "pursuit-1",
+    regenerate: true,
+    previousMessageId: "message-1",
+  }), {
+    now: () => now,
+    getSession: async () => authed(),
+    repositoryRequest,
+    loadAggregate: async () => agg,
+    loadPursuit: async () => savedPursuit({ status: "outreach_ready" }),
+    loadJob: async () => publicJob(),
+    loadOutreachMessage: async () => originalMessage,
+    loadContactSuggestions: async () => [contactSuggestion({ selectedForOutreach: true })],
+    loadSubscriptionContext: async () => activeBasicSubscription(),
+    loadUsageEntries: async () => [],
+    generateOutreachForContact: async () => ({ message: "Replacement message.", insertedExample: null }),
+    persistOutreachRegeneration: async () => {
+      throw new Error("atomic regeneration unavailable");
+    },
+  });
+  assert.equal(regenerationPersistenceFailed.status, 503);
+  const regenerationPersistenceFailedJson = await body(regenerationPersistenceFailed);
+  assert.equal(regenerationPersistenceFailedJson.status, "persistence_failed");
+  assert.equal(regenerationPersistenceFailedJson.saved, false);
+  assert.equal(regenerationPersistenceFailedJson.retryable, true);
 
   // ---- Per-message outreach update route ----
   const draftMessage: OutreachMessageRecord = {
@@ -3516,6 +3638,17 @@ async function main() {
     generateOutreach: async (_request, userId) => ({ status: "model_unavailable", userId }),
   });
   assert.equal(outreachUnavailable.status, 503);
+  const outreachUnavailableJson = await body(outreachUnavailable);
+  assert.equal(outreachUnavailableJson.error, "We couldn't generate this draft. Try again.");
+  assert.equal(outreachUnavailableJson.retryable, true);
+
+  const outreachQualityExhausted = await handleOutreachGeneratorRequest(patchRequest("outreach", outreachBody), {
+    getSession: async () => authed(),
+    repositoryRequest,
+    generateOutreach: async (_request, userId) => ({ status: "quality_exhausted", userId }),
+  });
+  assert.equal(outreachQualityExhausted.status, 503);
+  assert.equal((await body(outreachQualityExhausted)).status, "quality_exhausted");
 
   let outreachReceived: unknown;
   const outreachGenerated = await handleOutreachGeneratorRequest(patchRequest("outreach", outreachBody), {
