@@ -584,8 +584,15 @@
   border-right: 0;
 }
 
+/* One inter-section rhythm for the whole landing page: 60px of painted gap
+   between the last ink of one section and the first ink of the next (Randall
+   2026-07-30, "these gaps are too big for my taste"). Sections carry no bottom
+   padding, so this single value IS the gap. Every per-section override that used
+   to compete with it has been removed; if a section needs a different run-in,
+   change it here rather than adding another override. 60px is deliberate and
+   sits between --space-8 (64px) and --space-7 (48px); it is not a token. */
 .publicLandingSection {
-  padding: clamp(70px, 10vw, 126px) 0 0;
+  padding: 60px 0 0;
 }
 
 .publicLandingSectionIntro {
@@ -752,11 +759,9 @@
   font-weight: 900;
 }
 
-/* Scoped: this section must fit a browser viewport (intro + panel + arrows),
-   so its share of the inter-section padding is reduced. */
-.publicLandingHumanPathSection {
-  padding-top: 48px;
-}
+/* This section previously cut its own padding to 48px so the intro, panel, and
+   arrows would fit one viewport. The shared 60px rhythm is now smaller than the
+   old clamp it was compensating for, so the override is gone. */
 
 /* Capped at the intro column width (JOB-008, Randall 2026-07-16): full-bleed panels
    read as a mistake; the walkthrough shares the 770px column with the section intro. */
@@ -1304,8 +1309,11 @@
   line-height: 1.35;
 }
 
+/* Matches the shared section rhythm on both edges: 60px in from the pricing
+   fine print above, 60px out to the footer below (which now carries no top
+   margin of its own, so this padding is the whole gap). */
 .publicLandingFinal {
-  padding: clamp(64px, 9vw, 112px) 0 clamp(72px, 10vw, 128px);
+  padding: 60px 0;
 }
 
 .publicLandingFinal .publicLandingPrimary {
@@ -2161,16 +2169,16 @@
 .publicLandingHeroSection {
   min-height: auto;
   /* Top padding tuned so the matchbook frame sits 10px below the sticky header's painted shadow
-     (Randall, 2026-07-17, chosen in Claude Design gap study);
-     --space-5 bottom: tighten the run-in to the first section headline. */
-  padding: 25px 0 var(--space-5) !important;
+     (Randall, 2026-07-17, chosen in Claude Design gap study).
+     Bottom is 0 so the run-in to the first section headline is exactly the shared
+     60px rhythm; the old --space-5 bottom stacked on top of it and made that one
+     gap 24px larger than every other gap on the page. */
+  padding: 25px 0 0 !important;
 }
 
-/* Only the first section after the hero pulls closer to the matchbook card —
-   the generic section rhythm (clamp 70-126px) stays for everything below. */
-.publicLandingHeroSection + .publicLandingSection {
-  padding-top: clamp(48px, 7vw, 80px);
-}
+/* The first section after the hero used to pull closer than the old generic
+   rhythm. That rhythm is now 60px for every section, so this override is gone
+   and the run-in out of the matchbook card matches every other section. */
 
 .publicLandingHeroInner {
   position: relative;
@@ -2362,12 +2370,10 @@
 /* The pricing head uses the shared .publicLandingSectionIntro primitive, so it
    left-aligns on the same column as every other section (Randall 2026-07-30).
    Its own centered .secHead styling came over from the DS card and was the only
-   centered intro on the page. Top padding is reduced from the generic section
-   rhythm for the same reason the human-path section reduces it: the run-in from
-   the walkthrough's arrow row was reading as a page break. */
+   centered intro on the page. Top padding comes from the shared 60px section
+   rhythm, so this rule only carries the anchor offset. */
 .publicLandingPricingSection {
   scroll-margin-top: 90px;
-  padding-top: clamp(48px, 7vw, 80px);
 }
 
 .publicLandingPricingGrid {
@@ -2572,7 +2578,8 @@
   position: relative;
   z-index: 1;
   width: min(1160px, calc(100% - 48px));
-  margin: var(--space-7) auto var(--space-6);
+  /* No top margin: the final section's 60px bottom padding is the whole gap. */
+  margin: 0 auto var(--space-6);
   border: var(--line-reg) solid var(--c-ink);
   border-top-width: var(--line-bold);
   border-radius: var(--radius-md);
