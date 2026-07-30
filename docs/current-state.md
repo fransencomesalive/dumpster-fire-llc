@@ -1,5 +1,64 @@
 # Current State
 
+## 2026-07-30 - Privacy copy made truthful, resume spelling normalised
+
+The privacy policy described a product that does not exist. It claimed data may be shared with
+"analytics vendors" and that we collect "pages visited" and "feature interactions". Measured on
+production: signed out the site sets **no cookies, no localStorage, no sessionStorage, and makes no
+third-party requests at all**. Claiming more collection and sharing than actually happens is its own
+liability, and it would have made a reviewer assume there were hidden trackers.
+
+Rewritten (`0fad110`) to lead with the point that matters: nobody pays us for your data and your
+name is never attached to anything sold. It now names only the three companies that genuinely
+process something and what each sees.
+
+| Service | What it actually receives |
+|---|---|
+| Supabase | profile and account storage |
+| Anthropic | profile + job details, to draft outreach |
+| Stripe | billing details for paying subscribers, not the profile |
+
+Removed from the disclosure after checking the code rather than assuming:
+
+- **Exa** is not a processor of user data. `buildExaPeopleQuery` builds the query from the JOB
+  (employer identities, company, role). The user's profile is never sent. It gets its own section
+  saying contact discovery searches public sources using the posting.
+- **Vercel** is infrastructure serving the page, not a party data is handed to.
+- **Stripe was kept** against the initial instruction, because `stripe.checkout.sessions.create` is
+  live and payment processing is the one omission that reads as concealment.
+
+Two judgement calls recorded so they are not silently reversed:
+
+1. An earlier draft asserted Anthropic "does not use them to train its models". **Removed on
+   Randall's instruction**: it is a promise about a third party and not ours to make. Do not
+   reintroduce it.
+2. "We share zero data whatsoever" was requested and **refused as false** - resume text demonstrably
+   goes to Anthropic to generate outreach. The accurate claim (zero tracking, zero analytics, zero
+   sale) is stronger and verifiable.
+
+Also normalised every accented "resume" to the plain spelling: 132 occurrences across 21 files
+covering site copy, design-system cards, shipped `lib` code including the outreach prompts, and the
+four test suites that assert on those strings. Deliberately untouched: `scripts/outreach-quality/data/**`
+(records of prompt experiments v2-v8 that actually ran) and `docs/**` (historical handoffs).
+Rewriting either would falsify a record.
+
+Verified: tsc, lint (0 errors), build, four profile suites pass, zero accented forms in `app/` or
+`design-system/`, and the live page confirmed serving the new sections with the stale claims gone.
+
+**Next session starting point.** Nothing is mid-flight; the tree is clean and production is healthy.
+Two open items, neither blocking:
+
+1. **Google OAuth and the email confirmation link still need a human pass.** Both leave the app for
+   an external consent screen or mailbox. `scripts/qa/production-auth-browser.mjs` covers the part
+   that actually broke (that `/auth/callback` exists and Supabase accepts it as a redirect).
+2. **Tester tracking is researched, not built.** Recommended order: Sentry first, then PostHog
+   session replay gated to the `tester` plan so public visitors keep the zero-storage position and
+   no cookie banner is needed. Session replay has no strictly-necessary exemption, so it requires
+   explicit opt-in, which is trivial for ten invited testers. Funnels and dashboards were explicitly
+   rejected as meaningless at n=10. **If PostHog ships, the privacy copy above becomes wrong and
+   needs the same honesty pass.**
+
+
 ## 2026-07-28 (evening) - Global signed-in header, and auth moved into cookies
 
 The account controls (email, Sign out, Plan, Billing, Job scan, Saved Pursuits) lived in a profile
