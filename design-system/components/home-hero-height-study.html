@@ -1,0 +1,229 @@
+<!-- @dsCard group="Hero options" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Homepage · Hero card height study</title>
+<link rel="stylesheet" href="../tokens/tokens.css" />
+<link rel="stylesheet" href="../lib/base.css" />
+<style>
+  @font-face { font-family:"Original Surfer"; src:url("../fonts/OriginalSurfer-Regular.ttf") format("truetype"); font-display:swap; }
+
+  body { margin:0; background:var(--c-paper); color:var(--c-ink); font-family:var(--font-body); }
+  .wrap { padding:var(--space-6); display:grid; gap:var(--space-7); }
+  .page { font-family:var(--font-display); font-size:1.5rem; margin:0; }
+  .lede { max-width:78ch; line-height:1.5; margin:0; }
+  .lede code { font-family:ui-monospace,Menlo,monospace; font-size:0.9em; }
+  .stateLabel { font-family:var(--font-subhead); text-transform:uppercase;
+    letter-spacing:var(--tracking-subhead); font-size:0.85rem; color:var(--role-text-muted);
+    margin:0 0 var(--space-3); }
+  .scroller { overflow-x:auto; }
+  .frame { width:1440px; background:var(--c-paper); padding:25px 0 0;
+    border:var(--line-hair) solid var(--role-border-muted); }
+
+  /* Fold marker. On production at 1440x900 the card's top edge sits at y=88
+     (sticky header + the section's 25px top padding), leaving 812px of visible
+     height. The frame reproduces that 25px, so the fold lands at 25+812=837. */
+  .fold { position:relative; }
+  .fold::after { content:"BROWSER FOLD · 900px viewport · 812px of card visible"; position:absolute; left:0; right:0;
+    top:837px; border-top:2px dashed var(--c-tomato); color:var(--c-tomato);
+    font-family:var(--font-subhead); font-size:0.7rem; letter-spacing:var(--tracking-subhead);
+    padding-top:2px; }
+
+  /* ============================================================
+     Shared matchbook shell. Values are the COMPUTED 1440px values
+     from production, not the clamps, so the frame renders true.
+     ============================================================ */
+  .hero { position:relative; width:1080px; margin:0 auto; box-sizing:border-box;
+    display:flex; flex-direction:column; align-items:center;
+    border:var(--line-bold) solid var(--c-ink);
+    background-color:var(--c-paper-deep); background-image:var(--grain-img);
+    background-blend-mode:soft-light; background-size:46px 46px; }
+  .hero::before { content:""; position:absolute; inset:8px;
+    border:var(--line-hair) solid var(--c-ink); pointer-events:none; }
+
+  .mascot { height:auto; object-fit:contain;
+    filter:drop-shadow(2.5px 0 0 var(--c-paper)) drop-shadow(-2.5px 0 0 var(--c-paper))
+           drop-shadow(0 2.5px 0 var(--c-paper)) drop-shadow(0 -2.5px 0 var(--c-paper))
+           drop-shadow(6px 7px 0 rgba(36,31,26,0.32)); }
+
+  .copy { min-width:0; text-align:center; }
+  .label { margin:0; font-family:var(--font-display); line-height:1.04;
+    letter-spacing:var(--tracking-display); }
+  .wordmark { position:relative; display:inline-block; margin:0.04em 0 0;
+    color:var(--c-teal); font-family:"Original Surfer",cursive; font-weight:400;
+    line-height:0.9; letter-spacing:0; }
+  .wordmark span { display:block; margin:0; }
+  .wordmark .slip { position:absolute; top:0; left:0; color:var(--c-tomato);
+    transform:translate(3.6px,4.05px); mix-blend-mode:multiply; }
+  .rule { width:0; min-width:100%; display:flex; align-items:center; gap:var(--space-3); }
+  .rule::before, .rule::after { content:""; flex:1 1 auto; height:var(--line-reg);
+    background:var(--c-ink); }
+  .rule i { flex:none; width:12px; height:12px; border:var(--line-hair) solid var(--c-ink);
+    background:var(--c-teal); transform:rotate(45deg); }
+  .sub, .intro { width:0; min-width:100%; text-align:left; font-family:var(--font-body);
+    font-weight:400; text-wrap:pretty; }
+  .sub { color:var(--c-ink); line-height:1.2; }
+  .intro { color:var(--role-text-muted); line-height:var(--leading-body); }
+  .signs { width:fit-content; display:flex; flex-direction:column; gap:var(--space-3);
+    margin-left:auto; margin-right:auto; }
+  .signs span { display:inline-flex; align-items:center; justify-content:center;
+    border:var(--line-bold) solid var(--c-ink); border-radius:var(--radius-sm);
+    background-image:var(--fiber-img),var(--grain-img);
+    background-blend-mode:normal,soft-light; background-size:170px 170px,46px 46px;
+    box-shadow:var(--shadow-card); padding:9px 18px; color:var(--c-paper);
+    font-family:var(--font-subhead); letter-spacing:var(--tracking-subhead);
+    line-height:1; text-transform:uppercase; }
+  .signs .tomato { align-self:flex-start; background-color:var(--c-tomato); }
+  .signs .teal { align-self:flex-end; margin-left:var(--space-7); background-color:var(--c-teal); }
+
+  /* ============================================================
+     A · CURRENT (production today, 994px at 1440)
+     Column width is whatever "Dumpster Fire" happens to render at.
+     ============================================================ */
+  .a .hero { padding:64px 48px; gap:32px; }
+  .a .mascot { width:320px; }
+  .a .copy { width:fit-content; }
+  .a .label { font-size:35.84px; }
+  .a .wordmark { font-size:86.4px; }
+  .a .rule { margin:24px 0 0; }
+  .a .sub { margin:24px 0 0; font-size:31.2px; }
+  .a .intro { margin:12px 0 0; font-size:18.24px; }
+  .a .signs { margin-top:32px; }
+  .a .signs span { font-size:21.6px; }
+
+  /* ============================================================
+     B · PROPOSED · r2 (Randall 2026-07-30)
+     The column is decoupled from the wordmark, then pulled IN to 560px
+     because r1 read too wide overall. Each text block gets the measure
+     that produces the line count Randall asked for:
+       rule  415px  = half of r1's 830, centred under the lockup
+       sub   460px  = the narrowest measure that still breaks to TWO
+                      lines; they come out 449 / 385, both full
+       intro 560px  = exactly three lines, last one 93% full
+     Sub and intro share a left edge, so the shorter subhead measure
+     reads as a tighter setting, not as a second alignment.
+     ============================================================ */
+  .b .hero { padding:30px 48px; gap:18px; }
+  .b .mascot { width:270px; }
+  .b .copy { width:560px; max-width:100%; }
+  .b .label { font-size:26px; }
+  .b .wordmark { font-size:60px; }
+  .b .rule { width:415px; min-width:0; margin:14px auto 0; }
+  .b .sub { width:460px; min-width:0; margin:14px 0 0; font-size:25px; }
+  .b .intro { margin:10px 0 0; font-size:17px; }
+  .b .signs { margin-top:20px; }
+  .b .signs span { font-size:15.2px; padding:7.2px 14.4px; }
+
+  .measure { font-family:var(--font-subhead); text-transform:uppercase;
+    letter-spacing:var(--tracking-subhead); font-size:0.78rem; margin:var(--space-3) 0 0; }
+  .measure b { font-family:var(--font-display); letter-spacing:0; font-size:1.15rem; }
+  .over { color:var(--c-tomato); }
+  .under { color:var(--c-teal); }
+
+  table.deltas { border-collapse:collapse; font-size:0.9rem; width:100%; max-width:820px; }
+  table.deltas th, table.deltas td { border:var(--line-hair) solid var(--role-border-muted);
+    padding:var(--space-2) var(--space-3); text-align:left; }
+  table.deltas th { font-family:var(--font-subhead); text-transform:uppercase;
+    letter-spacing:var(--tracking-subhead); font-size:0.72rem; }
+  table.deltas td:nth-child(2), table.deltas td:nth-child(3) { font-variant-numeric:tabular-nums; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div>
+    <h1 class="page">Homepage · Hero card height study</h1>
+    <p class="lede">The matchbook card is <b>994px</b> tall at 1440, so it runs 182px past the fold on a
+    900px viewport. Target is <b>750px</b>. Randall's brief: reduce the space between elements, widen
+    the subhead and intro, shrink the logo, and keep the mascot as close to its current size as
+    possible.
+    <br><br>
+    <b>The one structural change.</b> Today the copy column is <code>width:fit-content</code>, and the
+    subhead and intro both use a <code>width:0; min-width:100%</code> trick that removes them from
+    intrinsic sizing. The result is that the text column is exactly as wide as the wordmark renders
+    (569px). Shrinking the logo therefore narrows the copy, which is the opposite of what we want.
+    Option B gives the column an explicit width so the two can move independently.
+    <br><br>
+    <b>r2 (2026-07-30).</b> Rule halved to 415px and centred, subhead set at a 460px measure so both
+    lines run full, intro margins brought in to a 560px measure so it settles at three lines, mascot
+    down 10%, both signs down 20%. B now measures <b>731px</b>.
+    <br><br>
+    <b>The wordmark shown here is the correct registration</b> and is a separate, already-shipped fix.
+    Production was rendering the base in ink, not teal, because a broad theme rule
+    (<code>.publicLandingHeroCopy h1</code>, specificity 0-1-1) outranked
+    <code>.publicLandingWordmark</code>'s own teal at 0-1-0, even though both were
+    <code>!important</code>. That selector has been removed, so the teal + tomato off-registration
+    overprint is live. Nothing else in this card is deployed yet.</p>
+  </div>
+
+  <div class="a">
+    <p class="stateLabel">A · Current · 1440 · measures 994px</p>
+    <div class="scroller"><div class="frame fold">
+      <div class="hero">
+        <img class="mascot" src="../dumpsterfireguy.png" alt="" />
+        <div class="copy">
+          <p class="label">The Job Market Is A</p>
+          <h1 class="wordmark"><span>Dumpster Fire</span><span class="slip" aria-hidden="true">Dumpster Fire</span></h1>
+          <div class="rule"><i></i></div>
+          <p class="sub">A job-search operating system for people who are done feeding the machine.</p>
+          <p class="intro">Job boards and ATS's are where good candidates disappear. Dumpster Fire scans boards, company pages, and targeted sources, surfaces likely hiring contacts, and helps you reach out with your work examples and voice.</p>
+          <div class="signs"><span class="tomato">Stop applying</span><span class="teal">Start pursuing</span></div>
+        </div>
+      </div>
+    </div></div>
+    <p class="measure over">Card height <b id="mA">—</b> · 182px below the fold</p>
+  </div>
+
+  <div class="b">
+    <p class="stateLabel">B · Proposed r2 · 1440 · measures 731px</p>
+    <div class="scroller"><div class="frame fold">
+      <div class="hero">
+        <img class="mascot" src="../dumpsterfireguy.png" alt="" />
+        <div class="copy">
+          <p class="label">The Job Market Is A</p>
+          <h1 class="wordmark"><span>Dumpster Fire</span><span class="slip" aria-hidden="true">Dumpster Fire</span></h1>
+          <div class="rule"><i></i></div>
+          <p class="sub">A job-search operating system for people who are done feeding the machine.</p>
+          <p class="intro">Job boards and ATS's are where good candidates disappear. Dumpster Fire scans boards, company pages, and targeted sources, surfaces likely hiring contacts, and helps you reach out with your work examples and voice.</p>
+          <div class="signs"><span class="tomato">Stop applying</span><span class="teal">Start pursuing</span></div>
+        </div>
+      </div>
+    </div></div>
+    <p class="measure under">Card height <b id="mB">—</b> · clears the fold</p>
+  </div>
+
+  <div>
+    <p class="stateLabel">What moved</p>
+    <table class="deltas">
+      <thead><tr><th>Element</th><th>Now</th><th>Proposed</th><th>Why</th></tr></thead>
+      <tbody>
+        <tr><td>Mascot width</td><td>320px</td><td>270px</td><td>Down 10%</td></tr>
+        <tr><td>Copy column</td><td>569px (= wordmark)</td><td>560px (explicit)</td><td>Decoupled from the wordmark, then pulled in; r1's 830 read too wide</td></tr>
+        <tr><td>Divider rule</td><td>full column</td><td>415px, centred</td><td>Half of r1's width; the long right side was throwing the lockup off centre</td></tr>
+        <tr><td>Wordmark</td><td>86.4px</td><td>60px</td><td>Saves 24px of height and no longer dictates the column</td></tr>
+        <tr><td>Label</td><td>35.84px</td><td>26px</td><td>Stays subordinate to the wordmark</td></tr>
+        <tr><td>Subhead</td><td>31.2px · 2 loose lines</td><td>25px · 2 full lines (460px measure)</td><td>Narrowest measure that still breaks to two; sets 449 / 385</td></tr>
+        <tr><td>Intro</td><td>18.24px · 4 lines</td><td>17px · 3 lines (560px measure)</td><td>Margins brought in until it settles at three</td></tr>
+        <tr><td>Signs</td><td>21.6px · 9/18 padding</td><td>15.2px · 7.2/14.4 padding</td><td>Down 20% in type and padding together, so the lockup scales as a unit</td></tr>
+        <tr><td>Card padding</td><td>64px</td><td>30px</td><td>Frame still reads as a matchbook border</td></tr>
+        <tr><td>Mascot → copy gap</td><td>32px</td><td>18px</td><td>Tightest safe value before the two lock up</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+</div>
+<script>
+  // Print the real rendered height so the card cannot claim a number it does not hit.
+  addEventListener("load", () => {
+    requestAnimationFrame(() => {
+      for (const [id, sel] of [["mA", ".a .hero"], ["mB", ".b .hero"]]) {
+        const el = document.querySelector(sel);
+        document.getElementById(id).textContent = Math.round(el.getBoundingClientRect().height) + "px";
+      }
+    });
+  });
+</script>
+</body>
+</html>

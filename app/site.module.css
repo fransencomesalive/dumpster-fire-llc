@@ -1733,11 +1733,6 @@
     width: min(100% - 32px, 640px);
   }
 
-  .publicLandingHeroSection {
-    min-height: auto;
-    padding: 42px 0 34px;
-  }
-
   .publicLandingHeroInner,
   .publicLandingBand {
     grid-template-columns: 1fr;
@@ -2019,10 +2014,16 @@
   padding: var(--space-3) var(--space-5);
 }
 
+/* .publicLandingHeroCopy h1 is deliberately NOT in this ink list. It matched the
+   hero wordmark and, at 0-1-1, outranked .publicLandingWordmark's own
+   `color: var(--c-teal) !important` at 0-1-0. The result shipped the wordmark as
+   ink + tomato instead of the approved teal + tomato off-registration overprint
+   (Randall 2026-07-30: "the old black and red that was never quite right").
+   The hero copy contains exactly one h1, so this selector only ever hit the
+   wordmark. Do not add it back. */
 .publicLandingNavBrand,
 .publicLandingNavLinks a,
 .publicLandingLabel,
-.publicLandingHeroCopy h1,
 .publicLandingIntro,
 .publicLandingSection h2,
 .publicLandingBand h2,

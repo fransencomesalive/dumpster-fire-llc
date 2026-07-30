@@ -60,6 +60,10 @@
       "group": "Hero options"
     },
     {
+      "path": "components/home-hero-height-study.html",
+      "group": "Hero options"
+    },
+    {
       "path": "components/hero-atomic.html",
       "group": "Hero options"
     },
