@@ -1,7 +1,7 @@
 import type { ParsingQuality } from "./types";
 import type { ProviderUsageContext } from "../costs/anthropic-usage";
 
-// Résumé PDF scan — scan-and-discard. Claude reads an uploaded PDF natively (no
+// Resume PDF scan — scan-and-discard. Claude reads an uploaded PDF natively (no
 // separate parser library, PDF only) and returns its plain text plus a parse-quality
 // verdict; we never store the file. The model call is injected so it can be mocked in
 // tests and skipped gracefully when no ANTHROPIC_API_KEY is provisioned — in which
@@ -32,7 +32,7 @@ const parsingQualities = new Set<ParsingQuality>(["failed", "weak", "complete"])
 // model fully reconstructs is a "complete" parse; "weak" is reserved for text
 // that is actually missing content or garbled AS RETURNED.
 const systemPrompt = [
-  "You read a candidate's résumé from a PDF and return two things: the résumé's",
+  "You read a candidate's resume from a PDF and return two things: the resume's",
   "plain text in correct reading order, and an honest verdict on the quality of",
   "the text you are returning. Reconstruct the natural reading order from the",
   "rendered layout even when the PDF's internal text stream is scrambled or",
@@ -49,7 +49,7 @@ const systemPrompt = [
   "text — scanned images, encrypted, or empty). When unsure between complete and",
   "weak, choose complete unless you can name specific visible content that your",
   "returned text failed to capture;",
-  '"extractedText" — the résumé text as plain text (empty string when failed);',
+  '"extractedText" — the resume text as plain text (empty string when failed);',
   '"issue" — only when weak/failed: one short human sentence on what is wrong with',
   "the returned text, phrased for the candidate (never internal PDF mechanics);",
   '"suggestion" — only when weak/failed: one short human sentence on what they can',
@@ -57,7 +57,7 @@ const systemPrompt = [
   "Never invent content that is not in the PDF. No prose or markdown outside the JSON.",
 ].join(" ");
 
-const instruction = "Extract this résumé's text and judge how cleanly it parsed. Return the JSON object only.";
+const instruction = "Extract this resume's text and judge how cleanly it parsed. Return the JSON object only.";
 
 function optionalString(value: unknown) {
   return typeof value === "string" && value.trim() ? value.trim() : undefined;
@@ -108,7 +108,7 @@ function defaultCallModel(
   };
 }
 
-// Read a résumé PDF (base64) into text + a parse verdict. Returns undefined when the
+// Read a resume PDF (base64) into text + a parse verdict. Returns undefined when the
 // model is unavailable or the response is unusable, so the caller can fall back to the
 // paste-the-text path.
 export async function generateResumeParse(

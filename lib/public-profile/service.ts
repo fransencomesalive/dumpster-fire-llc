@@ -22,8 +22,8 @@ export type PublicProfileServiceDependencies = {
   // Optional voice-fingerprint pre-pass. Returns the distilled Voice Profile
   // block (or undefined to fall back to raw inputs / when no model is wired).
   generateVoiceProfileBlock?: (aggregate: CandidateProfileAggregate) => Promise<string | undefined>;
-  // Optional résumé-highlights pre-pass. Returns derived highlights keyed by
-  // résumé id (or undefined to reuse the cached highlights already on the résumés).
+  // Optional resume-highlights pre-pass. Returns derived highlights keyed by
+  // resume id (or undefined to reuse the cached highlights already on the resumes).
   deriveResumeHighlights?: (aggregate: CandidateProfileAggregate) => Promise<Map<string, string[]> | undefined>;
 };
 
@@ -140,10 +140,10 @@ async function generateCappedVoiceProfileBlock(
   return previousVoiceProfileBlock(aggregate.profile.generatedMarkdown);
 }
 
-// Résumé-highlights derivation is capped per month, same as the voice fingerprint.
+// Resume-highlights derivation is capped per month, same as the voice fingerprint.
 // At the cap, profile.md rebuilds and reuses the highlights already cached on each
-// résumé; the save is never blocked. Under the cap, the pass runs, records one
-// usage entry, and persists the fresh highlights back to the résumé cache.
+// resume; the save is never blocked. Under the cap, the pass runs, records one
+// usage entry, and persists the fresh highlights back to the resume cache.
 const RESUME_HIGHLIGHTS_MONTHLY_CAP = 3;
 
 async function generateCappedResumeHighlights(
@@ -184,10 +184,10 @@ async function generateCappedResumeHighlights(
   return derived;
 }
 
-// Card 1's saved-state note reports how many highlights the résumé read pulled
+// Card 1's saved-state note reports how many highlights the resume read pulled
 // ("Read — pulled 5 highlights"). Runs the same capped pass profile.md uses (one
-// usage entry, fresh highlights persisted to the résumé cache); at the cap or with
-// no model wired it falls back to each résumé's cached highlights, so the count is
+// usage entry, fresh highlights persisted to the resume cache); at the cap or with
+// no model wired it falls back to each resume's cached highlights, so the count is
 // real or absent — never invented.
 export async function deriveResumeHighlightCountsForUser(
   request: PublicProfileRepositoryRequest,

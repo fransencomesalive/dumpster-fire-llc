@@ -15,9 +15,9 @@ export type CandidateProfileGenerationOptions = {
   // Distilled voice fingerprint block (Phase C); rendered at the top of the
   // Voice Profile section of profile.md when present.
   voiceProfileBlock?: string;
-  // Résumé highlights derived by the metered pre-pass (see resume-highlights.ts),
-  // keyed by résumé id. Injected into the Résumés + Role Track sections of
-  // profile.md so outreach can quote résumé proof points routed to the right lane.
+  // Resume highlights derived by the metered pre-pass (see resume-highlights.ts),
+  // keyed by resume id. Injected into the Resumes + Role Track sections of
+  // profile.md so outreach can quote resume proof points routed to the right lane.
   resumeHighlights?: Map<string, string[]>;
 };
 

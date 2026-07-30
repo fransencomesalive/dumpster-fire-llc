@@ -932,8 +932,8 @@ export async function persistResumeUploadsSection(
   });
 }
 
-// Write the system-derived résumé highlights cache. Called from the regeneration
-// flow after the metered pre-pass; PATCH per résumé so we only ever touch the
+// Write the system-derived resume highlights cache. Called from the regeneration
+// flow after the metered pre-pass; PATCH per resume so we only ever touch the
 // highlights column of rows that already exist (never insert a partial row).
 export async function persistDerivedResumeHighlights(
   request: PublicProfileRepositoryRequest,

@@ -24,8 +24,8 @@ assert.doesNotMatch(generated.markdown, /undefined|null|\[object Object\]/);
 assert.match(generated.markdown, /Highlights \(stats \/ companies you can quote\):/);
 assert.match(generated.markdown, /Cut release cycle time 40% at Acme Robotics/);
 // ...and routed into the attached Role Track so outreach matched to a lane can quote
-// lane-relevant résumé proof (resume-1 is attached to the Program Director track).
-assert.match(generated.markdown, /Résumé highlights \(quotable proof from attached résumés\):/);
+// lane-relevant resume proof (resume-1 is attached to the Program Director track).
+assert.match(generated.markdown, /Resume highlights \(quotable proof from attached resumes\):/);
 // Internal QA metadata must NOT reach the compiled profile.md (outreach + matching read it).
 assert.doesNotMatch(generated.markdown, /## Profile Quality/);
 // Search-preference lists are scan/match inputs read from the structured aggregate;

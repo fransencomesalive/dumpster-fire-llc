@@ -126,7 +126,7 @@ const cleanJson = JSON.stringify({ message: "Hi Dana, direct note about the role
 }
 
 // 4e. Violation detection: cap, em dash, missing example link, ungrounded numbers.
-const profileWithNumbers = "## Résumé\n- Cut workflow turnaround 40% in two quarters (15+ years).";
+const profileWithNumbers = "## Resume\n- Cut workflow turnaround 40% in two quarters (15+ years).";
 assert.deepEqual(outreachHardRuleViolations({ message: "Hi Dana, I cut turnaround 40% and the write-up is at https://x.co/a. Worth a chat?", insertedExample: { oneHitter: "x", link: "https://x.co/a" } }, profileWithNumbers), []);
 assert.ok(outreachHardRuleViolations({ message: "x".repeat(751), insertedExample: null }, profileWithNumbers)[0].startsWith("over_750_characters"));
 assert.deepEqual(outreachHardRuleViolations({ message: "Hi — there.", insertedExample: null }, profileWithNumbers), ["em_dash_present"]);

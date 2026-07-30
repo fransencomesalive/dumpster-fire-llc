@@ -150,14 +150,14 @@ export default function HomePage() {
                   </div>
                   <div className={styles.publicLandingHumanPanelStack}>
                     <section>
-                      <p>Hand over your résumé as a clean PDF so the scan reads it right. We pull the substance out and toss the file. Then add work examples: what you built, where it lives, and the dent it made.</p>
+                      <p>Hand over your resume as a clean PDF so the scan reads it right. We pull the substance out and toss the file. Then add work examples: what you built, where it lives, and the dent it made.</p>
                     </section>
                     <section className={styles.publicLandingHumanSubBox}>
-                      <strong>Résumé scanned</strong>
+                      <strong>Resume scanned</strong>
                       <p>Text captured. File discarded. Your history stays yours.</p>
                     </section>
                     <section className={styles.publicLandingHumanResumeSheet}>
-                      <span className={styles.publicLandingHumanResumeSheetTag}>From your résumé</span>
+                      <span className={styles.publicLandingHumanResumeSheetTag}>From your resume</span>
                       <div className={styles.publicLandingHumanResumeSheetHead}>
                         <strong>Senior Producer · Topo Chico</strong>
                         <span>2022 to 2025</span>

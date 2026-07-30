@@ -138,7 +138,7 @@ type SectionResponse<T> = {
   profileStatus: "incomplete" | "complete";
   section: T;
   profileQuality: ProfileQualitySummary;
-  // Returned by the resumes PATCH: highlight count per résumé id, for Card 1's
+  // Returned by the resumes PATCH: highlight count per resume id, for Card 1's
   // "Read — pulled N highlights" note.
   resumeHighlightCounts?: Record<string, number>;
 };
@@ -161,7 +161,7 @@ type AccountPlan = {
   hasBillingManagement?: boolean;
 };
 
-// Card 1 résumé intake: scan-and-discard. The PDF is read once via the scan
+// Card 1 resume intake: scan-and-discard. The PDF is read once via the scan
 // endpoint; only the extracted text survives. Notes render as <b>lead</b> tail;
 // modelDown marks an Anthropic-side failure, which renders the status-page link.
 type ResumeScanState =
@@ -184,7 +184,7 @@ const notLoadedReadinessLabel = "Not loaded";
 
 // Card 1 save pipeline phases, shown in the scan-progress loader modal
 // (design-system/components/scan-progress.html, live in DashboardClient):
-// save the track, read the résumé + pull highlights, route them to the lane.
+// save the track, read the resume + pull highlights, route them to the lane.
 const CARD1_SAVE_PHASES = ["Saving", "Reading", "Routing"] as const;
 
 
@@ -391,7 +391,7 @@ function reasonBelongsToSection(sectionKey: PublicProfileOnboardingSectionKey, r
     case "identitySearch":
       return value.includes("full name") || value.includes("location") || value.includes("remote preference") || value.includes("employment");
     case "roleTracks":
-      // Card 1 owns both the Role Track and its résumé, so résumé blockers roll up here.
+      // Card 1 owns both the Role Track and its resume, so resume blockers roll up here.
       return value.includes("role track") || value.startsWith("resume ") || value.includes("at least one resume");
     case "resumes":
       return value.startsWith("resume ") || value.includes("at least one resume");
@@ -820,7 +820,7 @@ export default function OnboardingClient({
   const [voice, setVoice] = useState<VoicePersonalitySection>(emptyVoice);
   const [writingSamples, setWritingSamples] = useState<WritingSamplesSectionItem[]>([]);
 
-  // Card 1 (Role Track + Résumé) — onboarding-resume-upload DS card.
+  // Card 1 (Role Track + Resume) — onboarding-resume-upload DS card.
   const [activeTrackId, setActiveTrackId] = useState("");
   const [creatingTrack, setCreatingTrack] = useState(false);
   const [newTrackName, setNewTrackName] = useState("");
@@ -1142,7 +1142,7 @@ export default function OnboardingClient({
 
   const saveIdentity = () =>
     saveSection<IdentitySearchSection>("Identity & Search", "/api/public-profile/identity-search", identity, (section) => setIdentity(section));
-  // --- Card 1: Role Track + Résumé (onboarding-resume-upload DS card) ---
+  // --- Card 1: Role Track + Resume (onboarding-resume-upload DS card) ---
 
   const firstRun = roleTracks.length === 0;
   const activeTrack = roleTracks.find((track) => track.id === activeTrackId);
@@ -1192,7 +1192,7 @@ export default function OnboardingClient({
           lead: "Your session timed out.",
           tail: "Refresh the page and try again — your typed work is saved on this device.",
         });
-        setMessage("Résumé scan failed.");
+        setMessage("Resume scan failed.");
         return;
       }
       const data = await response.json().catch(() => null) as
@@ -1206,7 +1206,7 @@ export default function OnboardingClient({
           lead: stop === -1 ? detail : detail.slice(0, stop + 1),
           tail: stop === -1 ? "" : detail.slice(stop + 2),
         });
-        setMessage("Résumé scan failed.");
+        setMessage("Resume scan failed.");
         return;
       }
       if (data?.status === "model_unavailable") {
@@ -1216,16 +1216,16 @@ export default function OnboardingClient({
           lead: "Anthropic — the AI that reads your PDF — is having trouble right now.",
           tail: "",
         });
-        setMessage("Résumé scan unavailable.");
+        setMessage("Resume scan unavailable.");
         return;
       }
       if (data?.status !== "scanned" || !data.extractedText?.trim() || data.parsingQuality === "failed") {
         setResumeScan({
           status: "error",
           lead: "We couldn't pull any text from this PDF.",
-          tail: "Looks like scanned images. Paste your résumé text so nothing gets missed.",
+          tail: "Looks like scanned images. Paste your resume text so nothing gets missed.",
         });
-        setMessage("Résumé scan failed.");
+        setMessage("Resume scan failed.");
         return;
       }
       const read: ResumeScanState = {
@@ -1236,8 +1236,8 @@ export default function OnboardingClient({
         quality: data.parsingQuality ?? "complete",
       };
       setResumeScan(read);
-      setMessage("Résumé read.");
-      // Replacing the résumé on an already-saved track persists straight away —
+      setMessage("Resume read.");
+      // Replacing the resume on an already-saved track persists straight away —
       // the saved card has no separate Save button (DS card state 2).
       if (!firstRun && !creatingTrack && attachedResume) {
         await saveCard1(read);
@@ -1248,12 +1248,12 @@ export default function OnboardingClient({
         lead: "We couldn't read this PDF right now.",
         tail: "Paste the text — it feeds highlights exactly the same way.",
       });
-      setMessage("Résumé scan failed.");
+      setMessage("Resume scan failed.");
     }
   }
 
-  // Persist Card 1: the Role Track, its résumé (exactly one per track), and the
-  // track→résumé link the completion check requires. Three sequential PATCHes
+  // Persist Card 1: the Role Track, its resume (exactly one per track), and the
+  // track→resume link the completion check requires. Three sequential PATCHes
   // because new items get server ids and attachments only validate against saved rows.
   async function saveCard1(scanOverride?: ResumeScanState) {
     if (!accessToken) return;
@@ -1263,7 +1263,7 @@ export default function OnboardingClient({
     const resumeText = scan.status === "read" ? scan.text : pastedResumeText.trim();
     if (!trackName || !resumeText) return;
     setBusy(true);
-    setMessage("Saving Role Track & Résumé…");
+    setMessage("Saving Role Track & Resume…");
     setSaveProgress({ status: "running", phase: 0 });
     try {
       // 1. Save the track. A new track duplicates the active track's details —
@@ -1287,11 +1287,11 @@ export default function OnboardingClient({
       if (!savedTrack) throw new Error("Role Track save came back empty.");
       setSaveProgress({ status: "running", phase: 1 });
 
-      // 2. Save the résumé attached to exactly this track.
+      // 2. Save the resume attached to exactly this track.
       const existingResume = resumes.find((resume) => resume.associatedRoleTrackIds.includes(savedTrack.id));
       const resumeItem: ResumeUploadSectionItem = {
         ...(existingResume ?? emptyResume()),
-        name: scan.status === "read" ? scan.fileName : (existingResume?.name || `${savedTrack.name} résumé`),
+        name: scan.status === "read" ? scan.fileName : (existingResume?.name || `${savedTrack.name} resume`),
         parsedText: resumeText,
         parsingQuality: scan.status === "read" ? scan.quality : "complete",
         associatedRoleTrackIds: [savedTrack.id],
@@ -1308,10 +1308,10 @@ export default function OnboardingClient({
       );
       const savedResumes = resumeResponse.section.resumes;
       const savedResume = savedResumes[resumeIndex];
-      if (!savedResume) throw new Error("Résumé save came back empty.");
+      if (!savedResume) throw new Error("Resume save came back empty.");
       setSaveProgress({ status: "running", phase: 2 });
 
-      // 3. Point the track at its résumé.
+      // 3. Point the track at its resume.
       const linkedTracks = savedTracks.map((track) =>
         track.id === savedTrack.id ? { ...track, resumeIds: [savedResume.id] } : track);
       const linkResponse = await requestPublicProfileApi<SectionResponse<RoleTracksSection>>(
@@ -1335,7 +1335,7 @@ export default function OnboardingClient({
       setResumeScan({ status: "idle" });
       setPastedResumeText("");
       setDraftTitles([]);
-      setMessage("Role Track & Résumé saved.");
+      setMessage("Role Track & Resume saved.");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Save failed.");
     } finally {
@@ -1348,7 +1348,7 @@ export default function OnboardingClient({
 
   const titleChips = firstRun || creatingTrack ? draftTitles : (activeTrack?.targetTitles ?? []);
 
-  // Persist a saved track's titles straight away — like the résumé replace, the
+  // Persist a saved track's titles straight away — like the resume replace, the
   // saved card has no separate Save button.
   async function saveTrackTitles(next: string[]) {
     if (!accessToken || !activeTrack) return;
@@ -1914,7 +1914,7 @@ export default function OnboardingClient({
             <section className={styles.editorGrid} aria-label="Editable onboarding form">
               <div className={styles.formStack}>
 
-          {/* --- Card 1: Role Track + Résumé (onboarding-resume-upload DS card) --- */}
+          {/* --- Card 1: Role Track + Resume (onboarding-resume-upload DS card) --- */}
           <article className={`${styles.formCard} ${styles.card1}`} id="career-profile-roleTracks">
             <div className={styles.cardHead}>
               <h3 className={styles.cardTitle}>{firstRun ? "Start a Role Track" : "Role Track"}</h3>
@@ -1934,7 +1934,7 @@ export default function OnboardingClient({
                     onChange={(event) => setNewTrackName(event.target.value)}
                   />
                   {firstRun ? (
-                    <span className={styles.subhint}>Name the lane you&apos;re pursuing — e.g. Program Director, Producer. Want one résumé to cover everything? Make a general track.</span>
+                    <span className={styles.subhint}>Name the lane you&apos;re pursuing — e.g. Program Director, Producer. Want one resume to cover everything? Make a general track.</span>
                   ) : (
                     <span className={styles.subhint}>A new track starts from the details of your current one — adjust what&apos;s different for this lane.</span>
                   )}
@@ -2001,7 +2001,7 @@ export default function OnboardingClient({
             </div>
 
             <div className={styles.card1Field}>
-              <label className={styles.card1Label}>Résumé</label>
+              <label className={styles.card1Label}>Resume</label>
               <input
                 ref={resumeFileInputRef}
                 type="file"
@@ -2020,7 +2020,7 @@ export default function OnboardingClient({
                     {resumeScan.status === "reading" ? (
                       <div className={styles.dropMain}>
                         <span className={styles.dropTitle}>{resumeScan.fileName}</span>
-                        <div className={styles.uploadTrack} role="progressbar" aria-label="Reading résumé">
+                        <div className={styles.uploadTrack} role="progressbar" aria-label="Reading resume">
                           <div className={styles.uploadFill} />
                         </div>
                       </div>
@@ -2074,7 +2074,7 @@ export default function OnboardingClient({
                       // inside the upload area (Randall, 2026-07-08).
                       <div className={styles.dropMain}>
                         <span className={styles.dropTitle}>{resumeScan.fileName}</span>
-                        <div className={styles.uploadTrack} role="progressbar" aria-label="Reading résumé">
+                        <div className={styles.uploadTrack} role="progressbar" aria-label="Reading resume">
                           <div className={styles.uploadFill} />
                         </div>
                       </div>
@@ -2082,7 +2082,7 @@ export default function OnboardingClient({
                       <div className={styles.dropMain}>
                         <span className={styles.dropTitle}>Drop a PDF here, or choose a file</span>
                         <span className={styles.dropHint}>PDF only · read once to pull quotable highlights · not stored</span>
-                        <span className={styles.dropHint}>We pull straight from your résumé. The output is as good as the input so make sure it&apos;s been vetted, improved, and properly&nbsp;formatted.</span>
+                        <span className={styles.dropHint}>We pull straight from your resume. The output is as good as the input so make sure it&apos;s been vetted, improved, and properly&nbsp;formatted.</span>
                       </div>
                     )}
                     <button
@@ -2106,12 +2106,12 @@ export default function OnboardingClient({
                     <>
                       <textarea
                         className={styles.resumeTa}
-                        placeholder="Or paste your résumé text here…"
+                        placeholder="Or paste your resume text here…"
                         value={pastedResumeText}
                         disabled={!accessToken || busy || resumeScan.status === "reading"}
                         onChange={(event) => setPastedResumeText(event.target.value)}
                       />
-                      <p className={styles.card1Helper}>No file, or a résumé that won&apos;t upload? <b>Paste the text</b> — it feeds highlights exactly the same way.</p>
+                      <p className={styles.card1Helper}>No file, or a resume that won&apos;t upload? <b>Paste the text</b> — it feeds highlights exactly the same way.</p>
                     </>
                   ) : null}
                 </>
@@ -2129,15 +2129,15 @@ export default function OnboardingClient({
                   }
                   onClick={() => void saveCard1()}
                 >
-                  Save Role Track &amp; Résumé
+                  Save Role Track &amp; Resume
                 </button>
                 {card1MissingName || card1MissingResume ? (
                   <p className={styles.card1Helper}>
                     {card1MissingName && card1MissingResume
-                      ? "To save: give the Role Track a name and add your résumé (PDF or pasted text)."
+                      ? "To save: give the Role Track a name and add your resume (PDF or pasted text)."
                       : card1MissingName
                         ? "To save: give the Role Track a name."
-                        : "To save: add your résumé (PDF or pasted text)."}
+                        : "To save: add your resume (PDF or pasted text)."}
                   </p>
                 ) : null}
               </>

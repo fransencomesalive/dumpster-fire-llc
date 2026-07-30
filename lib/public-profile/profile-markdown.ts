@@ -29,7 +29,7 @@ function line(label: string, value: string | number | undefined) {
 }
 
 // Optional user-authored lists render only when filled. An empty "Strengths: - None
-// captured" block pads every résumé with noise and reads to the outreach generator
+// captured" block pads every resume with noise and reads to the outreach generator
 // as a thinness signal to concede (2026-07-14).
 function optionalListBlock(label: string, values: string[] | undefined) {
   const cleaned = (values ?? []).map(clean).filter(Boolean);
@@ -38,8 +38,8 @@ function optionalListBlock(label: string, values: string[] | undefined) {
 }
 
 function renderRoleTrack(track: RoleTrack, resumes: Resume[]) {
-  // Route each attached résumé's quotable highlights into this lane so an outreach
-  // message matched to the Role Track can cite résumé proof relevant to it.
+  // Route each attached resume's quotable highlights into this lane so an outreach
+  // message matched to the Role Track can cite resume proof relevant to it.
   const trackHighlights = resumes
     .filter((resume) => track.resumeIds.includes(resume.id))
     .flatMap((resume) => resume.highlights)
@@ -68,7 +68,7 @@ function renderRoleTrack(track: RoleTrack, resumes: Resume[]) {
     "Mismatch signals:",
     list(track.mismatchSignals),
     ...(trackHighlights.length > 0
-      ? ["Résumé highlights (quotable proof from attached résumés):", list(trackHighlights)]
+      ? ["Resume highlights (quotable proof from attached resumes):", list(trackHighlights)]
       : []),
   ].filter(Boolean).join("\n");
 }

@@ -1,13 +1,13 @@
 import type { CandidateProfileAggregate } from "./types";
 import type { ProviderUsageContext } from "../costs/anthropic-usage";
 
-// Résumé-highlights pre-pass: read a résumé's plain text and pull out the short,
+// Resume-highlights pre-pass: read a resume's plain text and pull out the short,
 // quotable stat / company / title bullets an outreach message can cite — a
-// résumé-level proof point that sits alongside a Work Example and a Skill. This
+// resume-level proof point that sits alongside a Work Example and a Skill. This
 // is a metered model pass (capped per month, like the voice fingerprint) and the
 // model call is injected (deps.callModel) so it can be mocked in tests and
 // skipped gracefully when no ANTHROPIC_API_KEY is provisioned. When it degrades,
-// the caller keeps whatever highlights are already cached on the résumé.
+// the caller keeps whatever highlights are already cached on the resume.
 
 export type ResumeHighlightsInput = {
   resumeName: string;
@@ -32,7 +32,7 @@ export type ResumeHighlightsDependencies = {
 const MAX_HIGHLIGHTS = 12;
 
 const systemPrompt = [
-  "You pull quotable proof points out of a résumé so an outreach generator can",
+  "You pull quotable proof points out of a resume so an outreach generator can",
   "cite them. Return the concrete, specific lines a candidate could drop into a",
   "message to a hiring contact: metrics and outcomes (\"cut deploy time 40%\"),",
   "scope (\"managed a team of 8\", \"$4MM in production budgets\"), and titles with",
@@ -41,7 +41,7 @@ const systemPrompt = [
   "bare title at a household name. Cover the whole career arc: include early- and",
   "mid-career proof points alongside recent roles instead of clustering on the",
   "latest jobs. Keep each highlight to one short phrase; do not copy whole",
-  "sentences or responsibilities. Use ONLY facts present in the résumé text —",
+  "sentences or responsibilities. Use ONLY facts present in the resume text —",
   "never invent numbers, companies, or titles. If the text is too sparse, garbled,",
   "or unstructured to yield real proof points, return an empty list.",
   `Return AT MOST ${MAX_HIGHLIGHTS} highlights, strongest first. Output ONLY a`,
@@ -50,9 +50,9 @@ const systemPrompt = [
 
 export function buildResumeHighlightsUserPrompt(input: ResumeHighlightsInput) {
   return [
-    `Résumé: ${input.resumeName.trim() || "(untitled)"}`,
+    `Resume: ${input.resumeName.trim() || "(untitled)"}`,
     "",
-    "Résumé text:",
+    "Resume text:",
     input.parsedText.trim(),
   ].join("\n");
 }
@@ -99,7 +99,7 @@ function defaultCallModel(
   };
 }
 
-// Derive highlights for a single résumé. Returns undefined when the model is
+// Derive highlights for a single resume. Returns undefined when the model is
 // unavailable or the response is unusable (caller preserves cached highlights),
 // or a (possibly empty) array when the model ran — an empty array is a real
 // answer meaning "nothing quotable here".
@@ -123,9 +123,9 @@ export async function generateResumeHighlights(
   }
 }
 
-// Derive highlights for every résumé in the aggregate that has text. Returns a
-// map keyed by résumé id containing only the résumés the model actually produced
-// a result for; résumés absent from the map keep their cached highlights. Returns
+// Derive highlights for every resume in the aggregate that has text. Returns a
+// map keyed by resume id containing only the resumes the model actually produced
+// a result for; resumes absent from the map keep their cached highlights. Returns
 // undefined when nothing was derived at all (no text, or the model was skipped).
 export async function deriveResumeHighlightsForAggregate(
   aggregate: CandidateProfileAggregate,

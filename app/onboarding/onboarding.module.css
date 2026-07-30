@@ -1830,7 +1830,7 @@
 }
 
 /* ============================================================
-   Card 1 · Role Track + Résumé
+   Card 1 · Role Track + Resume
    Source DS card: components/onboarding-resume-upload.html —
    classes ported 1:1 onto the global tokens.
    ============================================================ */
@@ -2038,7 +2038,7 @@
   background-color: color-mix(in srgb, var(--c-teal) 6%, var(--c-paper));
 }
 
-/* Résumé upload control (PDF only, scanned once, never stored). */
+/* Resume upload control (PDF only, scanned once, never stored). */
 .drop {
   display: flex;
   align-items: center;

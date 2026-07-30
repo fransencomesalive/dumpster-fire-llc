@@ -16,8 +16,8 @@ export type PublicProfileOnboardingSection = {
 
 export const publicProfileOnboardingSections: PublicProfileOnboardingSection[] = [{
   key: "roleTracks",
-  label: "Role Track & Résumé",
-  description: "The lane you're pursuing and the résumé that backs it. Onboarding opens here.",
+  label: "Role Track & Resume",
+  description: "The lane you're pursuing and the resume that backs it. Onboarding opens here.",
   path: "/api/public-profile/role-tracks",
   required: true,
 }, {

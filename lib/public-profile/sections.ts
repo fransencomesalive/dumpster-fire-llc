@@ -415,7 +415,7 @@ const roleTrackStringFields = [
   "name",
 ] as const;
 
-// Derived from the résumé extract for matching + message generation — Card 1
+// Derived from the resume extract for matching + message generation — Card 1
 // doesn't collect these, so an empty value is valid.
 const roleTrackEmptyOkStringFields = [
   "description",

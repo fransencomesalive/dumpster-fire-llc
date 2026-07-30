@@ -3576,19 +3576,19 @@ export async function handleResumeScanRequest(
 
   const file = form.get("file");
   if (!(file instanceof File)) {
-    return json({ error: "No résumé file provided." }, { status: 400 });
+    return json({ error: "No resume file provided." }, { status: 400 });
   }
   const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
   if (!isPdf) {
     return json({
       error: "unsupported_file_type",
-      detail: "We can only read PDF résumés. Export or “Save as” a PDF, or paste your résumé text instead.",
+      detail: "We can only read PDF resumes. Export or “Save as” a PDF, or paste your resume text instead.",
     }, { status: 415 });
   }
   if (file.size > RESUME_SCAN_MAX_BYTES) {
     return json({
       error: "file_too_large",
-      detail: "That PDF is over 10 MB. Try a smaller export, or paste your résumé text instead.",
+      detail: "That PDF is over 10 MB. Try a smaller export, or paste your resume text instead.",
     }, { status: 413 });
   }
 
@@ -3648,7 +3648,7 @@ export async function handleResumeUploadsSectionPatchRequest(
     }, { status: 404 });
   }
 
-  // Saving a résumé runs the metered highlights pass so Card 1's saved-state note
+  // Saving a resume runs the metered highlights pass so Card 1's saved-state note
   // can report the real count. Failure never blocks the save response.
   const deriveHighlightCounts = options.deriveResumeHighlightCounts ?? deriveResumeHighlightCountsForUser;
   const resumeHighlightCounts = await deriveHighlightCounts(repositoryRequest, session.userId, updatedAt)

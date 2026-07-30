@@ -40,7 +40,7 @@ assert.equal(
   undefined,
 );
 
-// Aggregate pass: only résumés with text; omits résumés the model returned undefined for.
+// Aggregate pass: only resumes with text; omits resumes the model returned undefined for.
 {
   const aggregate = {
     resumes: [
@@ -54,7 +54,7 @@ assert.equal(
   assert.equal(map.has("r2"), false);
 }
 
-// No résumés with text -> undefined (caller reuses cached highlights).
+// No resumes with text -> undefined (caller reuses cached highlights).
 assert.equal(
   await deriveResumeHighlightsForAggregate(
     { resumes: [{ id: "r1", name: "A", parsedText: "", highlights: [] }] },

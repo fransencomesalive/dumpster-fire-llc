@@ -4,7 +4,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Onboarding · Role Track + Résumé (Card 1)</title>
+<title>Onboarding · Role Track + Resume (Card 1)</title>
 <link rel="stylesheet" href="../tokens/tokens.css" />
 <link rel="stylesheet" href="../lib/base.css" />
 <style>
@@ -64,7 +64,7 @@
   .menu .opt.new { color: var(--c-teal); font-style: italic; display: flex; align-items: center; gap: var(--space-2);
     background-color: color-mix(in srgb, var(--c-teal) 6%, var(--c-paper)); }
 
-  /* Résumé upload control (PDF only, scanned once, never stored). */
+  /* Resume upload control (PDF only, scanned once, never stored). */
   .drop { display: flex; align-items: center; gap: var(--space-4); flex-wrap: wrap;
     border: var(--line-reg) dashed var(--c-ink); border-radius: var(--radius-md); background: var(--c-paper);
     padding: var(--space-4) var(--space-5); }
@@ -112,15 +112,15 @@
 <body>
 <div class="wrap">
   <div>
-    <h1 class="page">Onboarding · Role Track + Résumé <span class="step">Card 1</span></h1>
+    <h1 class="page">Onboarding · Role Track + Resume <span class="step">Card 1</span></h1>
     <p class="lede">Onboarding now opens here. You <b>name (or pick) a Role Track</b> — the lane you're
-    pursuing — add the <b>job titles</b> the scan should search for that lane, and add its résumé, right
+    pursuing — add the <b>job titles</b> the scan should search for that lane, and add its resume, right
     on this first card. Every section is editable from the start — nothing is locked (no gates,
     Randall 2026-07-16). While the save button is disabled, a helper line under it says exactly
     what's still needed. From then on, every
     per-track card (Work Examples, Skills, Outreach) carries a <b>chip</b> of the active
     track. Titles are chips: Enter or comma lands each one above the field — paste a
-    comma-separated list and every title becomes its own chip. Résumé is <b>PDF only</b>, read
+    comma-separated list and every title becomes its own chip. Resume is <b>PDF only</b>, read
     once to pull quotable highlights, never stored — and the text box is always a fallback.</p>
   </div>
 
@@ -134,7 +134,7 @@
         <div class="field">
           <label>Role Track name</label>
           <input class="trackInput placeholder" value="Create a new role track" />
-          <span class="subhint">Name the lane you're pursuing — e.g. Program Director, Producer. Want one résumé to cover everything? Make a general track.</span>
+          <span class="subhint">Name the lane you're pursuing — e.g. Program Director, Producer. Want one resume to cover everything? Make a general track.</span>
         </div>
         <div class="field">
           <label>Job titles</label>
@@ -142,27 +142,27 @@
           <span class="subhint">Add every title this track should scan for — each one becomes a search the scan runs.</span>
         </div>
         <div class="field">
-          <label>Résumé</label>
+          <label>Resume</label>
           <div class="drop">
             <span class="pdfTag">PDF</span>
             <div class="dropMain">
               <span class="title">Drop a PDF here, or choose a file</span>
               <span class="hint">PDF only · read once to pull quotable highlights · not stored</span>
-              <span class="hint">We pull straight from your résumé. The output is as good as the input so make sure it&#39;s been vetted, improved, and properly formatted.</span>
+              <span class="hint">We pull straight from your resume. The output is as good as the input so make sure it&#39;s been vetted, improved, and properly formatted.</span>
             </div>
             <button type="button" class="chooseBtn">Choose PDF</button>
           </div>
-          <textarea class="ta" placeholder="Or paste your résumé text here…"></textarea>
-          <p class="helper">No file, or a résumé that won't upload? <b>Paste the text</b> — it feeds highlights exactly the same way.</p>
+          <textarea class="ta" placeholder="Or paste your resume text here…"></textarea>
+          <p class="helper">No file, or a resume that won't upload? <b>Paste the text</b> — it feeds highlights exactly the same way.</p>
         </div>
-        <button type="button" class="primary" disabled style="opacity: 0.55; cursor: default;">Save Role Track &amp; Résumé</button>
-        <p class="helper">To save: give the Role Track a name and add your résumé (PDF or pasted text).</p>
+        <button type="button" class="primary" disabled style="opacity: 0.55; cursor: default;">Save Role Track &amp; Resume</button>
+        <p class="helper">To save: give the Role Track a name and add your resume (PDF or pasted text).</p>
       </div>
     </div>
 
-    <!-- STATE 2 — Saved: chip appears, name field is now a dropdown, résumé parsed. -->
+    <!-- STATE 2 — Saved: chip appears, name field is now a dropdown, resume parsed. -->
     <div class="state">
-      <div class="stateCap"><b>2 · Saved</b> — track named + résumé read. Chip appears; the name field is now a dropdown.</div>
+      <div class="stateCap"><b>2 · Saved</b> — track named + resume read. Chip appears; the name field is now a dropdown.</div>
       <div class="card">
         <div class="cardHead"><h3>Role Track</h3><span class="trackChip"><span class="dot"></span>Program Director</span></div>
         <div class="field">
@@ -180,7 +180,7 @@
           <span class="subhint">The scan searches each of these titles for this track.</span>
         </div>
         <div class="field">
-          <label>Résumé</label>
+          <label>Resume</label>
           <div class="drop">
             <span class="pdfTag">PDF</span>
             <div class="fileChip"><span>program-director.pdf</span><span class="meta">0.9 MB</span></div>
@@ -211,9 +211,9 @@
       </div>
     </div>
 
-    <!-- STATE 4 — Downstream per-track card shows the chip; plus a résumé error example. -->
+    <!-- STATE 4 — Downstream per-track card shows the chip; plus a resume error example. -->
     <div class="state">
-      <div class="stateCap"><b>4 · Everywhere after</b> — each per-track card echoes the active-track chip. (Résumé error states shown below.)</div>
+      <div class="stateCap"><b>4 · Everywhere after</b> — each per-track card echoes the active-track chip. (Resume error states shown below.)</div>
       <div class="card">
         <div class="cardHead"><h3>Work Examples</h3><span class="trackChip"><span class="dot"></span>Program Director</span></div>
         <div class="field">
@@ -223,7 +223,7 @@
         </div>
       </div>
       <div class="card">
-        <div class="cardHead"><h3>Résumé — problem states</h3></div>
+        <div class="cardHead"><h3>Resume — problem states</h3></div>
         <div class="field">
           <div class="drop err">
             <span class="pdfTag">PDF</span>
@@ -231,7 +231,7 @@
             <button type="button" class="chooseBtn">Choose PDF</button>
           </div>
           <p class="errNote"><b>That's a Word file (resume.docx).</b> We only read PDFs — export or "Save as" PDF, or paste your text.</p>
-          <p class="errNote"><b>We couldn't pull any text from this PDF.</b> Looks like scanned images. Paste your résumé text so nothing gets missed.</p>
+          <p class="errNote"><b>We couldn't pull any text from this PDF.</b> Looks like scanned images. Paste your resume text so nothing gets missed.</p>
         </div>
       </div>
     </div>

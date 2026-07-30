@@ -235,7 +235,7 @@ async function main() {
 
   // Resume highlights are a system-derived cache (see resume-highlights.ts), not
   // part of the client round-trip: the section view omits them, and a section save
-  // preserves whatever highlights are already cached on the résumé.
+  // preserves whatever highlights are already cached on the resume.
   const resumeSectionView = resumeUploadsSection(completeAggregate);
   assert.ok(!("highlights" in resumeSectionView.resumes[0]));
   const resumeSaveParse = parseResumeUploadsSectionPatch(resumeSectionView);

@@ -30,12 +30,12 @@ missingRelationship.resumes[0].associatedRoleTrackIds = [];
 missingRelationship.roleTracks[0].resumeIds = [];
 const missingRelationshipResult = evaluateCandidateProfileQuality(missingRelationship, now);
 assert.equal(missingRelationshipResult.status, "incomplete");
-assert.ok(missingRelationshipResult.incompleteReasons.some((reason) => reason.includes("needs a résumé")));
+assert.ok(missingRelationshipResult.incompleteReasons.some((reason) => reason.includes("needs a resume")));
 assert.ok(missingRelationshipResult.incompleteReasons.some((reason) => reason.includes("must be attached to a Role Track")));
 
 // Card 1 is pass/fail: parsing quality and the derived matching/outreach fields
 // (positioning, titles, signals, strengths/gaps, fileUrl) do not gate completion —
-// they come from the résumé extract, not hand entry.
+// they come from the resume extract, not hand entry.
 const derivedFieldsBlank = completeCandidateProfileAggregate(now);
 derivedFieldsBlank.resumes[0].parsingQuality = "weak";
 derivedFieldsBlank.resumes[0].fileUrl = "";
@@ -55,12 +55,12 @@ derivedFieldsBlank.roleTracks[0].outreachAngle = "";
 const derivedFieldsBlankResult = evaluateCandidateProfileQuality(derivedFieldsBlank, now);
 assert.equal(derivedFieldsBlankResult.status, "complete");
 
-// …but the résumé text itself still gates: scan-and-discard keeps only the text.
+// …but the resume text itself still gates: scan-and-discard keeps only the text.
 const missingText = completeCandidateProfileAggregate(now);
 missingText.resumes[0].parsedText = "";
 const missingTextResult = evaluateCandidateProfileQuality(missingText, now);
 assert.equal(missingTextResult.status, "incomplete");
-assert.ok(missingTextResult.incompleteReasons.some((reason) => reason.includes("needs résumé text")));
+assert.ok(missingTextResult.incompleteReasons.some((reason) => reason.includes("needs resume text")));
 
 const missingWritingSample = completeCandidateProfileAggregate(now);
 missingWritingSample.writingSamples = missingWritingSample.writingSamples.filter((sample) => sample.bucket !== "never_sound");

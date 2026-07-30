@@ -120,24 +120,24 @@ export function evaluateCandidateProfileQuality(
     "At least one employment type is required.",
   );
 
-  // Card 1 (Role Track + Résumé) is pass/fail: the user names a lane and attaches a résumé
+  // Card 1 (Role Track + Resume) is pass/fail: the user names a lane and attaches a resume
   // whose text was scanned or pasted. The lane's matching/outreach substance (titles,
-  // positioning, signals, do-not-overclaim, résumé strengths/gaps) is DERIVED from the
-  // résumé extract for message generation + matching — it is not hand-entered on Card 1, so
+  // positioning, signals, do-not-overclaim, resume strengths/gaps) is DERIVED from the
+  // resume extract for message generation + matching — it is not hand-entered on Card 1, so
   // it does not gate completion.
   requireCondition(accumulator, "roleTracks", aggregate.roleTracks.length > 0, "At least one Role Track is required.");
   for (const track of aggregate.roleTracks) {
     const prefix = `roleTracks.${track.id}`;
     requireCondition(accumulator, `${prefix}.name`, hasText(track.name), `Role Track ${track.id} needs a name.`);
-    requireCondition(accumulator, `${prefix}.resumeIds`, track.resumeIds.some((resumeId) => resumeIds.has(resumeId)), `Role Track ${track.name || track.id} needs a résumé.`);
+    requireCondition(accumulator, `${prefix}.resumeIds`, track.resumeIds.some((resumeId) => resumeIds.has(resumeId)), `Role Track ${track.name || track.id} needs a resume.`);
   }
 
   requireCondition(accumulator, "resumes", aggregate.resumes.length > 0, "At least one resume is required.");
   for (const resume of aggregate.resumes) {
     const prefix = `resumes.${resume.id}`;
     // Scan-and-discard: completion rests on the extracted/pasted text (no stored file), and
-    // the résumé being tied to a Role Track. Parsing quality is not a completion gate.
-    requireCondition(accumulator, `${prefix}.parsedText`, hasText(resume.parsedText), `Resume ${resume.name || resume.id} needs résumé text.`);
+    // the resume being tied to a Role Track. Parsing quality is not a completion gate.
+    requireCondition(accumulator, `${prefix}.parsedText`, hasText(resume.parsedText), `Resume ${resume.name || resume.id} needs resume text.`);
     requireCondition(accumulator, `${prefix}.associatedRoleTrackIds`, resume.associatedRoleTrackIds.some((trackId) => roleTrackIds.has(trackId)), `Resume ${resume.name || resume.id} must be attached to a Role Track.`);
   }
 
