@@ -310,7 +310,8 @@ for migration in \
   20260718000100_saved_pursuits_foundation.sql \
   20260718000200_saved_pursuits_atomic_mutations.sql \
   20260718000300_saved_pursuits_data_readiness.sql \
-  20260730000100_apply_wizard_atomic_boundaries.sql
+  20260730000100_apply_wizard_atomic_boundaries.sql \
+  20260730000200_apply_wizard_service_role_rpc_acl.sql
 do
   "${PSQL[@]}" -f "$REPO_ROOT/supabase/migrations/$migration" >/dev/null
 done
@@ -320,7 +321,8 @@ for migration in \
   20260718000100_saved_pursuits_foundation.sql \
   20260718000200_saved_pursuits_atomic_mutations.sql \
   20260718000300_saved_pursuits_data_readiness.sql \
-  20260730000100_apply_wizard_atomic_boundaries.sql
+  20260730000100_apply_wizard_atomic_boundaries.sql \
+  20260730000200_apply_wizard_service_role_rpc_acl.sql
 do
   "${PSQL[@]}" -f "$REPO_ROOT/supabase/migrations/$migration" >/dev/null
 done
@@ -333,6 +335,38 @@ declare
   v_result jsonb;
   v_error text;
 begin
+  if has_function_privilege(
+    'anon',
+    'public.persist_pursuit_contact_selection(uuid,uuid,uuid[],timestamp with time zone)',
+    'execute'
+  ) or has_function_privilege(
+    'authenticated',
+    'public.persist_pursuit_contact_selection(uuid,uuid,uuid[],timestamp with time zone)',
+    'execute'
+  ) or not has_function_privilege(
+    'service_role',
+    'public.persist_pursuit_contact_selection(uuid,uuid,uuid[],timestamp with time zone)',
+    'execute'
+  ) then
+    raise exception 'contact selection RPC privileges are not service-role only';
+  end if;
+
+  if has_function_privilege(
+    'anon',
+    'public.persist_outreach_regeneration(uuid,uuid,uuid,text,text,jsonb,timestamp with time zone,text,boolean)',
+    'execute'
+  ) or has_function_privilege(
+    'authenticated',
+    'public.persist_outreach_regeneration(uuid,uuid,uuid,text,text,jsonb,timestamp with time zone,text,boolean)',
+    'execute'
+  ) or not has_function_privilege(
+    'service_role',
+    'public.persist_outreach_regeneration(uuid,uuid,uuid,text,text,jsonb,timestamp with time zone,text,boolean)',
+    'execute'
+  ) then
+    raise exception 'outreach regeneration RPC privileges are not service-role only';
+  end if;
+
   if (select count(*) from public.pursuits) <> 6 then
     raise exception 'saved_jobs conversion count failed';
   end if;
