@@ -2187,14 +2187,14 @@
   display: flex !important;
   flex-direction: column;
   align-items: center;
-  gap: clamp(var(--space-5), 4vw, var(--space-6));
+  gap: clamp(var(--space-3), 4vw, 18px);
   margin: 0 auto;
   border: var(--line-bold) solid var(--c-ink);
   background-color: var(--c-paper-deep);
   background-image: var(--grain-img);
   background-blend-mode: soft-light;
   background-size: 46px 46px;
-  padding: clamp(var(--space-6), 6vw, var(--space-8)) clamp(var(--space-5), 5vw, var(--space-7));
+  padding: clamp(var(--space-5), 6vw, 30px) clamp(var(--space-5), 5vw, var(--space-7));
 }
 
 .publicLandingHeroInner::before {
@@ -2210,7 +2210,7 @@
 }
 
 .publicLandingMascot {
-  width: clamp(220px, 26vw, 320px);
+  width: clamp(220px, 26vw, 270px);
   height: auto;
   object-fit: contain;
   filter:
@@ -2221,8 +2221,12 @@
     drop-shadow(6px 7px 0 rgba(36, 31, 26, 0.32));
 }
 
+/* Explicit measure, NOT fit-content. While this was fit-content the column was
+   sized by whatever "Dumpster Fire" happened to render at (569px at 1440), so
+   shrinking the wordmark also shrank the body copy. Approved hero height study
+   r2, Claude Design "Homepage · Hero card height study". */
 .publicLandingHeroCopy {
-  width: fit-content;
+  width: 560px;
   max-width: 100%;
   min-width: 0;
   text-align: center;
@@ -2232,7 +2236,7 @@
   margin: 0;
   color: var(--c-ink) !important;
   font-family: var(--font-display);
-  font-size: clamp(1.44rem, 2.88vw, 2.24rem);
+  font-size: clamp(1.44rem, 2.88vw, 1.625rem);
   line-height: 1.04;
   letter-spacing: var(--tracking-display);
   text-transform: none;
@@ -2244,7 +2248,7 @@
   margin: 0.04em 0 0;
   color: var(--c-teal) !important;
   font-family: var(--font-original-surfer), cursive !important;
-  font-size: clamp(3rem, 7.2vw, 5.4rem) !important;
+  font-size: clamp(3rem, 7.2vw, 3.75rem) !important;
   font-weight: 400 !important;
   line-height: 0.9 !important;
   letter-spacing: 0 !important;
@@ -2273,13 +2277,14 @@
   mix-blend-mode: multiply;
 }
 
+/* Half the column and centred under the lockup. At full width the long right
+   side read as off-centre against the left-aligned copy below it. */
 .publicLandingHeroRule {
-  width: 0;
-  min-width: 100%;
+  width: min(415px, 100%);
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  margin: var(--space-5) 0 0;
+  margin: 14px auto 0;
 }
 
 .publicLandingHeroRule::before,
@@ -2299,27 +2304,29 @@
   transform: rotate(45deg);
 }
 
+/* The `width: 0; min-width: 100%` trick these used to carry existed only to keep
+   them out of the parent's intrinsic sizing while it was fit-content. The column
+   is an explicit width now, so they are plain blocks. */
 .publicLandingSubhead,
 .publicLandingIntro {
-  width: 0;
-  min-width: 100%;
   text-align: left;
   font-family: var(--font-body);
   font-weight: 400;
 }
 
 .publicLandingSubhead {
-  margin: var(--space-5) 0 0;
+  width: min(460px, 100%);
+  margin: 14px 0 0;
   color: var(--c-ink) !important;
-  font-size: clamp(1.25rem, 2.5vw, 1.95rem);
+  font-size: clamp(1.25rem, 2.5vw, 1.5625rem);
   line-height: 1.2;
   text-wrap: pretty;
 }
 
 .publicLandingIntro {
-  margin: var(--space-3) 0 0;
+  margin: 10px 0 0;
   color: var(--role-text-muted) !important;
-  font-size: clamp(1rem, 1.35vw, 1.14rem);
+  font-size: clamp(1rem, 1.35vw, 1.0625rem);
   line-height: var(--leading-body);
   text-wrap: pretty;
 }
@@ -2329,7 +2336,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
-  margin: var(--space-6) auto 0;
+  margin: 20px auto 0;
 }
 
 .publicLandingSignTomato,
@@ -2343,10 +2350,10 @@
   background-blend-mode: normal, soft-light;
   background-size: 170px 170px, 46px 46px;
   box-shadow: var(--shadow-card);
-  padding: 9px 18px;
+  padding: 7.2px 14.4px;
   color: var(--c-paper);
   font-family: var(--font-subhead);
-  font-size: clamp(1.05rem, 1.6vw, 1.35rem);
+  font-size: clamp(0.74rem, 1.6vw, 0.95rem);
   letter-spacing: var(--tracking-subhead);
   line-height: 1;
   text-transform: uppercase;
