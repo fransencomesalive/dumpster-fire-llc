@@ -1,5 +1,64 @@
 # Current State
 
+## 2026-07-30 (evening) - Homepage spacing rhythm, hero height, wordmark registration
+
+Five commits, all live on production and verified against the rendered DOM at 1440 / 1280 / 390 /
+320. Deployment `cx95j79c3`, alias `www.thejobmarketisadumpsterfire.com`, HTTP 200.
+
+| Commit | What shipped |
+|---|---|
+| `56bea07` | Pricing section head left-aligned onto the shared `.publicLandingSectionIntro` |
+| `85f19cf` | Whole landing page on one 60px vertical rhythm |
+| `92bffca` | Teal wordmark registration + dead mobile hero rule removed + hero height study card |
+| `205c639` | Approved hero height study implemented: 994px -> 729px |
+| `bda38a1` | `hero-matchbook.html` DS card brought into parity, stale intro copy synced |
+
+### Three root causes worth not rediscovering
+
+**1. The wordmark shipped as ink + tomato for an unknown length of time.**
+`.publicLandingWordmark` has always declared `color: var(--c-teal) !important`, so the source read
+as correct. A broad theme block also listed `.publicLandingHeroCopy h1`, which matches the same
+element at specificity 0-1-1 against the component rule's 0-1-0, both `!important`. Higher
+specificity wins, so ink painted over teal. **Reading the component rule could never have found
+this**; it took reading `getComputedStyle` on the live page. That selector is now removed with a
+comment saying not to re-add it. `site.module.css` has several late theme blocks (~1870-2060) that
+re-declare colour with `!important` across broad selector lists; when a colour is right in the file
+and wrong on screen, look there first.
+
+**2. The hero copy column was sized by the wordmark.**
+`.publicLandingHeroCopy` was `width: fit-content`, and the subhead and intro each carried a
+`width: 0; min-width: 100%` trick that removed them from intrinsic sizing. Net effect: the text
+measure was exactly however wide "Dumpster Fire" happened to render (569px at 1440), so shrinking
+the logo also shrank the body copy. The column is now an explicit 560px, with the rule at 415px
+centred, the subhead at 460px, and the intro at 560px. 460px is the *narrowest* measure that still
+breaks the subhead to two lines (445 gives three); 560px is the widest that keeps the intro at three
+(540 gives four with a 74px runt). Both are boundaries - moving either inward breaks the line count.
+
+**3. Section gaps were stacking from two elements.**
+The page ran 104 / 48 / 80 / 112 / 176px between sections. The two worst were sums: the hero's
+`padding-bottom` plus the next section's `padding-top`, and the final section's `padding-bottom`
+plus the footer's `margin-top`. No single rule looked wrong, which is why it survived. Now
+`.publicLandingSection` owns the rhythm alone at `padding: 60px 0 0`, no section has bottom padding,
+and the four competing overrides are deleted. 60px is deliberate and is **not** a `--space-*` token
+(the scale jumps 48 -> 64).
+
+### Design system
+
+`components/hero-matchbook.html` is now the shipped hero (731px in-card vs 729px live) and
+`components/home-hero-height-study.html` records the A/B study. Both registered in Claude Design.
+The hero card's intro copy had drifted to an older, longer paragraph that production stopped
+shipping; that drift was masking the parity check by rendering five description lines where
+production renders three. Synced.
+
+### Next session starting point
+
+No work in flight. One open item, twice raised and still unanswered: **`.publicLandingBand`** (plus
+its `.publicLandingGuardrailList`) is dead CSS in `app/site.module.css` - no `.tsx` references
+`styles.publicLandingBand`, so nothing can render it. Recommendation is to delete it; awaiting
+Randall's yes. Also noted but deliberately left alone: the Human Path carousel panel is centred
+while its heading is left-aligned, and the carousel keeps ~150px of empty card on slide 1 because
+all five slides share the tallest slide's height (deliberate, keeps the arrows from jumping).
+
 ## 2026-07-30 - Privacy copy made truthful, resume spelling normalised
 
 The privacy policy described a product that does not exist. It claimed data may be shared with
