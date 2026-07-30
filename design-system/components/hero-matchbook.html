@@ -20,49 +20,51 @@
   .hero { position:relative; background-color:var(--c-paper-deep);
     background-image:var(--grain-img); background-blend-mode:soft-light; background-size:46px 46px; }
   .heroInner { position:relative; width:min(1080px, calc(100% - 48px)); margin:0 auto; box-sizing:border-box;
-    padding: clamp(var(--space-6),6vw,var(--space-8)) clamp(var(--space-5),5vw,var(--space-7));
+    padding: clamp(var(--space-5),6vw,30px) clamp(var(--space-5),5vw,var(--space-7));
     border:var(--line-bold) solid var(--c-ink);
-    display:flex; flex-direction:column; align-items:center; gap:clamp(var(--space-5),4vw,var(--space-6)); }
+    display:flex; flex-direction:column; align-items:center; gap:clamp(var(--space-3),4vw,18px); }
   .heroInner::before { content:""; position:absolute; inset:8px; border:var(--line-hair) solid var(--c-ink); pointer-events:none; }
 
   /* Centered stack: mascot, then the title/copy/signs column. The lockup sizes to
-     the wordmark (fit-content); the intro copy is forced to that exact width via the
-     width:0 / min-width:100% trick so it matches "Dumpster Fire" without widening it. */
-  .heroMascot { width:clamp(220px,26vw,320px); height:auto; object-fit:contain;
+     an EXPLICIT 560px measure. It used to be fit-content, which meant the wordmark's
+     rendered width silently set the copy measure; shrinking the logo shrank the copy.
+     Rule 415px centred, subhead 460px (two full lines), intro 560px (three lines).
+     Approved hero height study r2, Randall 2026-07-30. Card is 729px at 1440. */
+  .heroMascot { width:clamp(220px,26vw,270px); height:auto; object-fit:contain;
     filter: drop-shadow(2.5px 0 0 var(--c-paper)) drop-shadow(-2.5px 0 0 var(--c-paper))
             drop-shadow(0 2.5px 0 var(--c-paper)) drop-shadow(0 -2.5px 0 var(--c-paper))
             drop-shadow(6px 7px 0 rgba(36,31,26,0.32)); }
 
-  .heroLockup { width:fit-content; max-width:100%; text-align:center; }
+  .heroLockup { width:560px; max-width:100%; text-align:center; }
   .heroLead { margin:0; font-family:var(--font-display); color:var(--c-ink);
-    font-size:clamp(1.44rem,2.88vw,2.24rem); line-height:1.04; letter-spacing:var(--tracking-display); }
+    font-size:clamp(1.44rem,2.88vw,1.625rem); line-height:1.04; letter-spacing:var(--tracking-display); }
   /* Divider · ink rule with a centered teal diamond, breaking the wordmark
      from the tagline + paragraph block below it. */
-  .heroRule { width:0; min-width:100%; margin:var(--space-5) 0 0; display:flex; align-items:center; gap:var(--space-3); }
+  .heroRule { width:min(415px,100%); margin:14px auto 0; display:flex; align-items:center; gap:var(--space-3); }
   .heroRule::before, .heroRule::after { content:""; flex:1 1 auto; height:var(--line-reg); background:var(--c-ink); }
   .heroRuleDot { flex:none; width:12px; height:12px; background:var(--c-teal);
     border:var(--line-hair) solid var(--c-ink); transform:rotate(45deg); }
   /* Tagline · associated with the paragraph — same body font, left-justified at
      the same width; sits as the lead line of the copy block. */
-  .heroSubhead { width:0; min-width:100%; margin:var(--space-5) 0 0; text-align:left; color:var(--c-ink);
-    font-family:var(--font-body); font-size:clamp(1.25rem,2.5vw,1.95rem); line-height:1.2; text-wrap:pretty; }
+  .heroSubhead { width:min(460px,100%); margin:14px 0 0; text-align:left; color:var(--c-ink);
+    font-family:var(--font-body); font-size:clamp(1.25rem,2.5vw,1.5625rem); line-height:1.2; text-wrap:pretty; }
 
   .word { position:relative; display:inline-block; margin:0.04em 0 0; line-height:0.9;
-    font-family:"Original Surfer", cursive; font-size:clamp(3rem,7.2vw,5.4rem); }
+    font-family:"Original Surfer", cursive; font-size:clamp(3rem,7.2vw,3.75rem); }
   .word .plate { display:block; margin:0; }
   .word .base { color:var(--c-teal); }
   /* off-registration slip (down-right), dialed back another 10% (4/4.5px -> 3.6/4.05px) */
   .word .slip { position:absolute; left:0; top:0; color:var(--c-tomato); transform:translate(3.6px,4.05px); mix-blend-mode:multiply; }
 
-  .heroDesc { width:0; min-width:100%; margin:var(--space-3) 0 0; color:var(--role-text-muted); text-align:left;
-    font-family:var(--font-body); font-size:clamp(1rem,1.35vw,1.14rem); line-height:var(--leading-body); text-wrap:pretty; }
+  .heroDesc { margin:10px 0 0; color:var(--role-text-muted); text-align:left;
+    font-family:var(--font-body); font-size:clamp(1rem,1.35vw,1.0625rem); line-height:var(--leading-body); text-wrap:pretty; }
 
   /* Two horizontal "hotel marquee" signs, staggered diagonally and centered under
      the copy: Stop Applying upper-left, Start Pursuing lower-right. */
-  .heroSigns { width:fit-content; margin:var(--space-6) auto 0; display:flex; flex-direction:column; gap:var(--space-3); }
+  .heroSigns { width:fit-content; margin:20px auto 0; display:flex; flex-direction:column; gap:var(--space-3); }
   .sign { display:inline-flex; align-items:center; justify-content:center;
     font-family:var(--font-subhead); text-transform:uppercase; letter-spacing:0.06em;
-    font-size:clamp(1.05rem,1.6vw,1.35rem); line-height:1; padding:9px 18px;
+    font-size:clamp(0.74rem,1.6vw,0.95rem); line-height:1; padding:7.2px 14.4px;
     border:var(--line-bold) solid var(--c-ink); border-radius:var(--radius-sm); box-shadow:var(--shadow-card);
     background-image:var(--fiber-img), var(--grain-img);
     background-blend-mode:normal, soft-light; background-size:170px 170px, 46px 46px; }
@@ -75,7 +77,7 @@
     font-size:1.16rem; color:var(--c-tomato); margin:var(--space-2) 0 0; }
 
   @media (max-width:760px){
-    .heroMascot{ width:210px; }
+    .heroMascot{ width:190px; }
     .signTeal{ margin-left:var(--space-5); }
   }
 
@@ -97,13 +99,12 @@
           <h1 class="word"><span class="plate base">Dumpster Fire</span><span class="plate slip" aria-hidden="true">Dumpster Fire</span></h1>
           <div class="heroRule" aria-hidden="true"><span class="heroRuleDot"></span></div>
           <p class="heroSubhead">A job-search operating system for people who are done feeding the machine.</p>
-          <p class="heroDesc">Job Boards and ATS&rsquo;s are where good candidates disappear. Dumpster Fire scans roles,
-          finds hiring managers, and quickly helps you reach out with your unique voice and relevant work
-          experience: fewer tabs, better messaging, and a clearer record of what actually happened. No more
-          &ldquo;Spray and Pray&rdquo; - targeted roles and effective comms.</p>
+          <p class="heroDesc">Job boards and ATS&rsquo;s are where good candidates disappear. Dumpster Fire scans
+          boards, company pages, and targeted sources, surfaces likely hiring contacts, and helps you reach
+          out with your work examples and voice.</p>
           <div class="heroSigns">
-            <span class="sign signTomato">Stop Applying</span>
-            <span class="sign signTeal">Start Pursuing</span>
+            <span class="sign signTomato">Stop applying</span>
+            <span class="sign signTeal">Start pursuing</span>
           </div>
         </div>
       </div>
