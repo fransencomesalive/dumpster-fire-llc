@@ -160,24 +160,25 @@ function JobMetaGrid({ job }: { job: PublicJobRecord }) {
   );
 }
 
-// Optimistic list edits: Save/Skip update the displayed list immediately, then reconcile with
-// the authoritative server response (or revert on failure), so there is no dead round-trip on
-// screen. The saved count is kept in step so the Overview total does not lag.
-function withJobSaved(response: PublicJobsResponse, jobId: string, saved: boolean): PublicJobsResponse {
-  let delta = 0;
-  const jobs = response.jobs.map((job) => {
-    if (job.id !== jobId || job.saved === saved) return job;
-    delta = saved ? 1 : -1;
-    return { ...job, saved };
-  });
-  return { ...response, summary: { ...response.summary, savedJobs: Math.max(0, response.summary.savedJobs + delta) }, jobs };
-}
-
+// Optimistic list edits: Save/Skip remove the displayed card after the shared leave animation,
+// then reconcile with the authoritative server response (or revert on failure).
 function withJobRemoved(response: PublicJobsResponse, jobId: string): PublicJobsResponse {
   const removed = response.jobs.find((job) => job.id === jobId);
   const jobs = response.jobs.filter((job) => job.id !== jobId);
   const savedDelta = removed?.saved ? -1 : 0;
   return { ...response, summary: { ...response.summary, savedJobs: Math.max(0, response.summary.savedJobs + savedDelta) }, jobs };
+}
+
+function withJobMovedToSaved(response: PublicJobsResponse, jobId: string): PublicJobsResponse {
+  return {
+    ...response,
+    jobs: response.jobs.filter((job) => job.id !== jobId),
+    summary: {
+      ...response.summary,
+      totalJobs: Math.max(0, response.summary.totalJobs - 1),
+      savedJobs: response.summary.savedJobs + 1,
+    },
+  };
 }
 
 const JOB_FEEDBACK_REASONS: { code: PublicJobFeedbackReasonCode; label: string }[] = [
@@ -715,29 +716,45 @@ export default function DashboardClient() {
     }
   }
 
-  async function setJobSaved(job: PublicJobRecord, saved: boolean) {
+  async function saveJob(job: PublicJobRecord) {
     const accessToken = await resolveDashboardActionToken();
     if (!accessToken) {
       router.replace("/onboarding");
       return;
     }
 
-    // Flip the flag immediately so the button confirms on click; reconcile with the server after.
     const snapshot = jobsState.status === "ready" ? jobsState.response : null;
-    const confirmation = saved ? "Saved for later." : "Removed from Saved Pursuits.";
-    if (snapshot) {
-      setJobsState({ status: "ready", response: withJobSaved(snapshot, job.id, saved), message: confirmation });
-    }
+    const confirmation = "Job posting moved to Saved for later.";
+
     setPendingJobIds((prev) => new Set(prev).add(job.id));
-    try {
-      const response = await requestPublicProfileApi<PublicJobsResponse>("/api/jobs/save", {
-        method: "POST",
-        accessToken,
-        body: { jobId: job.id, saved },
+    setLeavingJobIds((prev) => new Set(prev).add(job.id));
+    const request = requestPublicProfileApi<PublicJobsResponse>("/api/jobs/save", {
+      method: "POST",
+      accessToken,
+      body: { jobId: job.id, saved: true },
+    }).then(
+      (response) => ({ response }),
+      (error: unknown) => ({ error }),
+    );
+    // Match the existing .cardLeaving duration shared with Skip and the card flip.
+    await new Promise((resolve) => setTimeout(resolve, 680));
+    if (snapshot) {
+      setJobsState({
+        status: "ready",
+        response: withJobMovedToSaved(snapshot, job.id),
+        message: confirmation,
       });
-      setJobsState({ status: "ready", response, message: confirmation });
+    }
+    setLeavingJobIds((prev) => {
+      const next = new Set(prev);
+      next.delete(job.id);
+      return next;
+    });
+    try {
+      const result = await request;
+      if ("error" in result) throw result.error;
+      setJobsState({ status: "ready", response: result.response, message: confirmation });
     } catch (error) {
-      // Revert the optimistic flag but keep the list on screen.
       const message = error instanceof Error ? error.message : "Saved Pursuits update failed.";
       setJobsState(snapshot
         ? { status: "ready", response: snapshot, message }
@@ -1005,7 +1022,7 @@ export default function DashboardClient() {
             <p className={jobsStyles.error}>{jobsState.message}</p>
           ) : null}
           {jobsState.status === "ready" && jobsState.message ? (
-            <p className={jobsStyles.message}>{jobsState.message}</p>
+            <p className={jobsStyles.message} role="status" aria-live="polite">{jobsState.message}</p>
           ) : null}
 
           <div className={jobsStyles.dashboardGrid}>
@@ -1078,7 +1095,7 @@ export default function DashboardClient() {
                       leaving={leavingJobIds.has(job.id)}
                       jobsBusy={jobsBusy}
                       pending={pendingJobIds.has(job.id)}
-                      onToggleSave={() => setJobSaved(job, !job.saved)}
+                      onToggleSave={() => saveJob(job)}
                       onSkip={() => skipJob(job)}
                       onPursue={() => { void startPursuit(job); }}
                     />
@@ -1305,7 +1322,11 @@ export default function DashboardClient() {
         <ApplyWizardModal
           target={{ kind: "job", job: pursuitContext.job }}
           accessToken={pursuitContext.accessToken}
-          onClose={() => setPursuitContext(null)}
+          onClose={() => {
+            const accessToken = pursuitContext.accessToken;
+            setPursuitContext(null);
+            void loadJobs(accessToken);
+          }}
           onPursuitChanged={(message) => { void loadJobs(pursuitContext.accessToken, message); }}
         />
       ) : null}

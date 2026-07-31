@@ -78,6 +78,12 @@ type SavedJobRow = {
   updated_at: string;
 };
 
+type PursuedJobRow = {
+  user_id: string;
+  job_id: string;
+  status: string;
+};
+
 type JobMatchFeedbackRow = {
   user_id: string;
   profile_id: string;
@@ -133,6 +139,25 @@ const jobs: JobRow[] = [
     updated_at: now,
   },
   {
+    // Same posting from another source. Saving job-1 must hide this copy too, or a
+    // later scan can make the role appear to come back from Saved for later.
+    id: "job-duplicate",
+    source: "ashby",
+    source_url: "https://jobs.example/product-director-copy",
+    owner_user_id: null,
+    company_name: "Useful Studio",
+    title: "Program Director",
+    location: "Remote",
+    remote_type: "remote",
+    employment_type: "full_time",
+    compensation_text: "$150k-$180k",
+    description: "Lead AI workflow programs and stakeholder alignment.",
+    posted_at: "2026-06-20T00:00:00.000Z",
+    scraped_at: "2026-06-23T00:00:00.000Z",
+    created_at: now,
+    updated_at: now,
+  },
+  {
     // Another user's pasted job: would match the profile like job-1 does, but the
     // owner-scoped candidate query must keep it out of everyone else's scans.
     id: "job-foreign",
@@ -155,6 +180,7 @@ const jobs: JobRow[] = [
 
 const scanResults: ScanResultRow[] = [];
 const savedJobs: SavedJobRow[] = [];
+const pursuedJobs: PursuedJobRow[] = [];
 const canonicalSaveCalls: Array<Record<string, unknown>> = [];
 let canonicalSaveRpcAvailable = true;
 const jobMatchFeedback: JobMatchFeedbackRow[] = [];
@@ -193,6 +219,13 @@ const request: PublicProfileRepositoryRequest = async <T>(
       });
     } else if (!saved && existingIndex >= 0) {
       savedJobs.splice(existingIndex, 1);
+    }
+    if (saved && !pursuedJobs.some((row) => row.user_id === body.p_user_id && row.job_id === jobId)) {
+      pursuedJobs.push({
+        user_id: body.p_user_id as string,
+        job_id: jobId,
+        status: "saved",
+      });
     }
     return {
       status: saved ? "saved" : "unsaved",
@@ -494,6 +527,10 @@ const request: PublicProfileRepositoryRequest = async <T>(
     return savedJobs.filter((saved) => saved.user_id === userId) as T;
   }
 
+  if (table === "pursuits") {
+    return pursuedJobs.filter((pursuit) => pursuit.user_id === userId) as T;
+  }
+
   throw new Error(`Unhandled table in public jobs test: ${table}`);
 };
 
@@ -689,20 +726,48 @@ async function main() {
   assert.equal(inactiveFeedback.status, 404);
   assert.equal(jobMatchFeedback.length, 2);
 
+  // An active duplicate can arrive in a later scan even though the initial scan collapsed
+  // it. Saving the canonical card must remove both copies from the active dashboard.
+  scanResults.push({
+    user_id: userId,
+    profile_id: profileId,
+    job_id: "job-duplicate",
+    status: "active",
+    scan_context: {},
+    first_seen_at: now,
+    last_seen_at: now,
+    created_at: now,
+    updated_at: now,
+  });
+
   const saved = await setPublicJobSavedForUser(request, userId, "job-1", true, now);
   assert.equal("status" in saved, false);
   if ("status" in saved) throw new Error("Expected save response");
   assert.equal(saved.summary.savedJobs, 1);
-  assert.equal(saved.jobs[0].saved, true);
+  assert.equal(saved.jobs.length, 0);
   assert.equal(canonicalSaveCalls[0].p_saved, true);
   assert.equal((canonicalSaveCalls[0].p_job_snapshot as Record<string, unknown>).title, "Program Director");
   assert.deepEqual((canonicalSaveCalls[0].p_job_snapshot as Record<string, unknown>).responsibilities, []);
 
+  const savedReload = await readPublicJobsForUser(request, userId, now);
+  assert.equal("status" in savedReload, false);
+  if ("status" in savedReload) throw new Error("Expected saved reload response");
+  assert.equal(savedReload.jobs.length, 0);
+  assert.equal(savedReload.summary.savedJobs, 1);
+  assert.equal(savedReload.summary.lastScanAt, now);
+
+  const rescannedWhileSaved = await runPublicJobsScanForUser(request, userId, now);
+  assert.equal("status" in rescannedWhileSaved, false);
+  if ("status" in rescannedWhileSaved) throw new Error("Expected saved rescan response");
+  assert.equal(rescannedWhileSaved.jobs.length, 0);
+  assert.equal(rescannedWhileSaved.summary.savedJobs, 1);
+  assert.equal(rescannedWhileSaved.summary.lastScanAt, now);
+
   const unsaved = await setPublicJobSavedForUser(request, userId, "job-1", false, now);
   assert.equal("status" in unsaved, false);
   if ("status" in unsaved) throw new Error("Expected unsave response");
-  assert.equal(unsaved.summary.savedJobs, 0);
-  assert.equal(unsaved.jobs[0].saved, false);
+  assert.equal(unsaved.summary.savedJobs, 1);
+  assert.equal(unsaved.jobs.length, 0);
   assert.equal(canonicalSaveCalls[1].p_saved, false);
 
   // A main deployment can briefly precede an explicitly authorized production
@@ -713,12 +778,23 @@ async function main() {
   assert.equal("status" in compatibilitySaved, false);
   if ("status" in compatibilitySaved) throw new Error("Expected compatibility save response");
   assert.equal(compatibilitySaved.summary.savedJobs, 1);
+  assert.equal(compatibilitySaved.jobs.length, 0);
   assert.equal(canonicalSaveCalls.length, 2);
   const compatibilityUnsaved = await setPublicJobSavedForUser(request, userId, "job-1", false, now);
   assert.equal("status" in compatibilityUnsaved, false);
   if ("status" in compatibilityUnsaved) throw new Error("Expected compatibility unsave response");
-  assert.equal(compatibilityUnsaved.summary.savedJobs, 0);
+  assert.equal(compatibilityUnsaved.summary.savedJobs, 1);
+  assert.equal(compatibilityUnsaved.jobs.length, 0);
   canonicalSaveRpcAvailable = true;
+  const duplicateResultIndex = scanResults.findIndex((row) => row.job_id === "job-duplicate");
+  if (duplicateResultIndex >= 0) scanResults.splice(duplicateResultIndex, 1);
+  pursuedJobs[0].status = "deleted";
+  const deletedPursuitRead = await readPublicJobsForUser(request, userId, now);
+  assert.equal("status" in deletedPursuitRead, false);
+  if ("status" in deletedPursuitRead) throw new Error("Expected deleted pursuit read response");
+  assert.equal(deletedPursuitRead.jobs.length, 1);
+  assert.equal(deletedPursuitRead.summary.savedJobs, 0);
+  pursuedJobs[0].status = "saved";
 
   const missing = await setPublicJobSavedForUser(request, userId, "job-missing", true, now);
   assert.deepEqual(missing, { status: "not_in_results" });

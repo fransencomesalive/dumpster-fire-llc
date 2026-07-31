@@ -39,6 +39,7 @@
   .sectionHead h2 { font-family:var(--font-display); font-size:1.5rem; color:var(--c-ink); margin:0; }
   .lastScan { font-family:var(--font-subhead); text-transform:uppercase; letter-spacing:var(--tracking-subhead);
     font-size:1.1rem; color:var(--c-tomato); margin:0; }
+  .message { font-family:var(--font-body); color:var(--role-text-muted); margin:0 0 var(--space-4); }
 
   .dashboardGrid { display:grid; grid-template-columns:minmax(0,1.4fr) 300px; gap:var(--space-5); align-items:start; }
   .dashboardMain { min-width:0; }
@@ -58,6 +59,17 @@
   .ratingFilterBtnActive strong, .ratingFilterBtnActive .ratingCount { color:var(--c-paper); }
 
   .matchList { display:grid; gap:var(--space-4); }
+  /* Save and Skip share one approved exit: fade, slide, then collapse so the next card
+     reflows smoothly. Saved postings leave this active list and move to Saved for later. */
+  .cardLeaving { overflow:hidden; pointer-events:none; animation:cardLeave 680ms cubic-bezier(0.62,0.04,0.22,1) forwards; }
+  @keyframes cardLeave {
+    from { opacity:1; max-height:1200px; transform:none; }
+    55%  { opacity:0; transform:translateX(14px); }
+    to   { opacity:0; max-height:0; margin-top:0; padding-top:0; padding-bottom:0; border-width:0; transform:translateX(14px); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .cardLeaving { animation-duration:1ms; }
+  }
 
   .card { background-color:var(--c-paper-deep); background-image:var(--fiber-img), var(--grain-img);
     background-blend-mode:normal, soft-light; background-size:170px 170px, 46px 46px;
@@ -382,6 +394,7 @@
     <h2>Your best matches</h2>
     <p class="lastScan">Last scan Jun 30, 9:14 AM</p>
   </div>
+  <p class="message" id="jobMoveStatus" role="status" aria-live="polite" hidden>Job posting moved to Saved for later.</p>
 
   <div class="dashboardGrid">
     <div class="dashboardMain">
@@ -416,7 +429,7 @@
 
       <div class="matchList">
         <!-- Strong match · full card · live flip to feedback face -->
-        <div class="flipScene">
+        <div class="flipScene" data-job-card>
           <div class="flipCard" id="jobFlip">
             <article class="card jobCard flipFace flipFront" id="jobFront">
               <span class="notedTag isVisible" id="jobAck" role="status" aria-live="polite" aria-label="Noted">
@@ -474,7 +487,7 @@
               </div>
               <div class="actionRow">
                 <div class="actionLeft">
-                  <button type="button" class="btnAct btnSave">Save</button>
+                  <button type="button" class="btnAct btnSave" data-move-save>Save</button>
                   <button type="button" class="btnAct btnSkip">Skip</button>
                 </div>
                 <span class="linkStack">
@@ -517,7 +530,7 @@
           </div>
         </div>
 
-        <!-- Off-target surfaced with context · weird-match flag · Saved state shown -->
+        <!-- Off-target surfaced with context · weird-match flag -->
         <article class="card jobCard">
           <span class="weirdMatchTag" aria-label="Weird match">
             <span>W</span><span>E</span><span>I</span><span>R</span><span>D</span><span class="sp"></span><span>M</span><span>A</span><span>T</span><span>C</span><span>H</span>
@@ -573,7 +586,7 @@
           </div>
           <div class="actionRow">
             <div class="actionLeft">
-              <button type="button" class="btnAct btnSave btnSaveOn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>Saved</button>
+              <button type="button" class="btnAct btnSave">Save</button>
               <button type="button" class="btnAct btnSkip">Skip</button>
             </div>
             <span class="linkStack">
@@ -729,6 +742,22 @@
 </section>
 
 <script>
+// ---- Save: move the posting from active matches to Saved for later ----
+(function () {
+  var card = document.querySelector('[data-job-card]');
+  var save = card && card.querySelector('[data-move-save]');
+  var status = document.getElementById('jobMoveStatus');
+  if (!card || !save) return;
+  save.addEventListener('click', function () {
+    save.disabled = true;
+    card.classList.add('cardLeaving');
+    setTimeout(function () {
+      card.remove();
+      if (status) status.hidden = false;
+    }, 680);
+  });
+})();
+
 (function () {
   var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   function setInert(el, on) {

@@ -1054,10 +1054,13 @@ async function main() {
     loadSubscriptionContext: async () => { throw new Error("saving must not load subscription context"); },
     loadUsageEntries: async () => { throw new Error("saving must not load pursuit usage"); },
     loadPursuitByJob: async () => undefined,
+    // Same-user pasted jobs use the same canonical pursuit path as scan results.
+    // This is the backend boundary behind the dashboard's single-job URL input.
     loadJob: async () => ({
       id: "job-1",
-      source: "fixture",
-      sourceUrl: "https://jobs.example/1",
+      source: "user_link",
+      sourceUrl: "https://jobs.example/custom-posting",
+      ownerUserId: "user-1",
       companyName: "Useful Studio",
       title: "Program Director",
       description: "Lead stakeholder alignment.",
@@ -1127,9 +1130,9 @@ async function main() {
     outreachAngle: "Use this Role Track.",
     jobSnapshot: {
       jobId: "job-1",
-      source: "fixture",
-      sourceState: "shared",
-      sourceUrl: "https://jobs.example/1",
+      source: "user_link",
+      sourceState: "user_owned",
+      sourceUrl: "https://jobs.example/custom-posting",
       companyName: "Useful Studio",
       title: "Program Director",
       description: "Lead stakeholder alignment.",

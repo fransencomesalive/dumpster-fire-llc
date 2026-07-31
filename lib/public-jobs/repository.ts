@@ -71,6 +71,11 @@ type SavedJobRow = {
   created_at: string;
 };
 
+type PursuedJobRow = {
+  job_id: string | null;
+  status: string;
+};
+
 type PublicJobsReadiness =
   | {
       status: "ready";
@@ -212,11 +217,36 @@ async function ensureReadyProfile(
   };
 }
 
-async function savedJobIdsForUser(request: PublicProfileRepositoryRequest, userId: string) {
-  const rows = await request<SavedJobRow[]>("saved_jobs", {
-    query: qs({ user_id: `eq.${userId}`, select: "job_id,created_at" }),
-  });
-  return new Set(rows.map((row) => row.job_id));
+async function savedOrPursuedJobIdsForUser(request: PublicProfileRepositoryRequest, userId: string) {
+  // Pursuits are the canonical Saved-for-later / Applied records. saved_jobs remains
+  // in the union as a release-window compatibility source if the canonical Save RPC
+  // has not been migrated yet.
+  const [savedRows, pursuedRows] = await Promise.all([
+    request<SavedJobRow[]>("saved_jobs", {
+      query: qs({ user_id: `eq.${userId}`, select: "job_id,created_at" }),
+    }),
+    request<PursuedJobRow[]>("pursuits", {
+      query: qs({
+        user_id: `eq.${userId}`,
+        job_id: "not.is.null",
+        select: "job_id,status",
+      }),
+    }),
+  ]);
+  const canonicalJobIds = new Set(
+    pursuedRows.flatMap((row) => row.job_id ? [row.job_id] : []),
+  );
+  return new Set([
+    // A canonical lifecycle row wins over its compatibility row. In particular,
+    // a deleted pursuit must not remain hidden merely because an old saved_jobs row
+    // was not cleaned up.
+    ...savedRows
+      .filter((row) => !canonicalJobIds.has(row.job_id))
+      .map((row) => row.job_id),
+    ...pursuedRows.flatMap((row) => (
+      row.job_id && row.status !== "deleted" ? [row.job_id] : []
+    )),
+  ]);
 }
 
 async function activeResultsForUser(request: PublicProfileRepositoryRequest, userId: string) {
@@ -294,15 +324,16 @@ export async function loadPublicJobsByIdsForUser(
   return new Map(rows.map((row) => [row.id, mapPublicJobRecord(row)]));
 }
 
-function summaryForJobs(jobs: PublicJobRecord[], scanParameters: string[], titleParameters: string[]): PublicJobsSummary {
-  const lastScanAt = jobs
-    .map((job) => job.lastSeenAt)
-    .sort()
-    .at(-1);
-
+function summaryForJobs(
+  jobs: PublicJobRecord[],
+  savedJobs: number,
+  lastScanAt: string | undefined,
+  scanParameters: string[],
+  titleParameters: string[],
+): PublicJobsSummary {
   return {
     totalJobs: jobs.length,
-    savedJobs: jobs.filter((job) => job.saved).length,
+    savedJobs,
     lastScanAt,
     scanParameters,
     titleParameters,
@@ -430,22 +461,44 @@ export async function readPublicJobsForUser(
   const readiness = await ensureReadyProfile(request, userId, checkedAt);
   if (readiness.status !== "ready") return readiness;
 
-  const results = await activeResultsForUser(request, userId);
-  const savedJobIds = await savedJobIdsForUser(request, userId);
-  const rows = await jobsByIdForUser(request, userId, results.map((result) => result.job_id));
+  const [results, savedJobIds] = await Promise.all([
+    activeResultsForUser(request, userId),
+    savedOrPursuedJobIdsForUser(request, userId),
+  ]);
+  const [rows, savedRows] = await Promise.all([
+    jobsByIdForUser(request, userId, results.map((result) => result.job_id)),
+    jobsByIdForUser(request, userId, [...savedJobIds]),
+  ]);
   const rowsById = new Map(rows.map((row) => [row.id, row]));
+  // A saved pursuit has left the active scan queue. Exclude both its exact job id and
+  // equivalent copies of the same company/title posting so another board's duplicate
+  // cannot make the card reappear after a reload or future scan.
+  const savedPostingKeys = new Set(savedRows.map((row) => duplicatePostingKey({
+    companyName: row.company_name,
+    title: row.title,
+  })));
   const jobs = results
     .map((result) => {
       const job = rowsById.get(result.job_id);
       return job ? mapJob(job, result, savedJobIds) : undefined;
     })
-    .filter((job): job is PublicJobRecord => Boolean(job));
+    .filter((job): job is PublicJobRecord => Boolean(job))
+    .filter((job) => (
+      !savedJobIds.has(job.id)
+      && !savedPostingKeys.has(duplicatePostingKey(job))
+    ));
 
   const rankedJobs = rankJobsForProfile(jobs, readiness.aggregate, checkedAt);
 
   return {
     jobs: rankedJobs,
-    summary: summaryForJobs(rankedJobs, readiness.scanParameters, readiness.titleParameters),
+    summary: summaryForJobs(
+      rankedJobs,
+      savedJobIds.size,
+      results.map((result) => result.last_seen_at).sort().at(-1),
+      readiness.scanParameters,
+      readiness.titleParameters,
+    ),
     searchSettings: searchSettingsForAggregate(readiness.aggregate),
   };
 }
