@@ -32,9 +32,10 @@
 // Usage:
 //   PRODUCTION_AUTH_QA_CONFIRM=yes node scripts/qa/production-auth-browser.mjs
 
+import { execFileSync } from "node:child_process";
 import { randomBytes, randomUUID } from "node:crypto";
 import { chromium } from "playwright-core";
-import { createProfileSeeder } from "./lib/seed-complete-profile.mjs";
+import { createRestProfileSeeder } from "./lib/seed-complete-profile.mjs";
 
 if (process.env.PRODUCTION_AUTH_QA_CONFIRM !== "yes") {
   throw new Error(
@@ -58,13 +59,7 @@ function required(name, fallback) {
 const supabaseUrl = required("SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_URL").replace(/\/$/, "");
 const serviceRoleKey = required("SUPABASE_SERVICE_ROLE_KEY");
 const anonKey = required("NEXT_PUBLIC_SUPABASE_ANON_KEY");
-const managementToken = required("SUPABASE_ACCESS_TOKEN");
-const projectRef = new URL(supabaseUrl).hostname.split(".")[0];
-const managementUrl = `https://api.supabase.com/v1/projects/${projectRef}/database/query`;
-
-function sqlLiteral(value) {
-  return `'${String(value).replaceAll("'", "''")}'`;
-}
+const expectedDeployment = process.env.PRODUCTION_DEPLOYMENT_ID?.trim() || null;
 
 function expect(condition, message) {
   if (!condition) throw new Error(message);
@@ -80,11 +75,16 @@ async function responseJson(response, label) {
   return body;
 }
 
-async function managementQuery(query, label) {
-  const response = await fetch(managementUrl, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${managementToken}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ query }),
+async function rest(path, { method = "GET", body } = {}, label = path) {
+  const response = await fetch(`${supabaseUrl}/rest/v1/${path}`, {
+    method,
+    headers: {
+      apikey: serviceRoleKey,
+      Authorization: `Bearer ${serviceRoleKey}`,
+      "Content-Type": "application/json",
+      Prefer: "return=representation",
+    },
+    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   });
   return responseJson(response, label);
 }
@@ -93,17 +93,24 @@ async function managementQuery(query, label) {
 // signed-out bar is intentional. A harness that skips this reads that redirect
 // as a header flip.
 async function grantPlan(userId) {
-  await managementQuery(`
-    insert into public.user_subscriptions (user_id, plan_id, status, source)
-    select ${sqlLiteral(userId)}::uuid, id, 'active', 'access_code'
-    from public.subscription_plans where name = 'premium' limit 1;
-  `, "Disposable auth QA plan grant");
+  const plans = await rest(
+    "subscription_plans?name=eq.premium&select=id&limit=1",
+    {},
+    "Disposable auth QA plan lookup",
+  );
+  expect(typeof plans?.[0]?.id === "string", "Premium plan was not found");
+  await rest("user_subscriptions", { method: "POST", body: {
+    user_id: userId,
+    plan_id: plans[0].id,
+    status: "active",
+    source: "access_code",
+  } }, "Disposable auth QA plan grant");
 }
 
 // The SAME seed the scan harness uses, so "complete" here means what it means
 // to the quality checker. A shallow status='complete' insert is recomputed as
 // incomplete and would fail the Job scan assertion for the wrong reason.
-const seedCompleteProfile = createProfileSeeder({ managementQuery, sqlLiteral });
+const seedCompleteProfile = createRestProfileSeeder({ rest });
 
 async function createQaUser(email, password) {
   const response = await fetch(`${supabaseUrl}/auth/v1/admin/users`, {
@@ -164,9 +171,13 @@ function headerState(page) {
 
 const email = `qa-auth-${randomUUID()}@dumpsterfire.test`;
 const password = `Qa!${randomBytes(18).toString("base64url")}`;
+const commit = process.env.PRODUCTION_COMMIT_SHA
+  ?? execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim();
 const evidence = {
   app: APP_URL,
   account: email,
+  commit,
+  deployment: null,
   checks: {},
   consoleErrors: [],
   pageErrors: [],
@@ -175,6 +186,7 @@ const evidence = {
 let userId = null;
 let browser = null;
 let failure = null;
+let cleanup = null;
 
 try {
   userId = await createQaUser(email, password);
@@ -187,7 +199,18 @@ try {
   page.on("pageerror", (e) => evidence.pageErrors.push(e.message));
 
   // ---- 1. Sign in ---------------------------------------------------------
-  await page.goto(`${APP_URL}/onboarding`, { waitUntil: "networkidle" });
+  const onboardingResponse = await page.goto(`${APP_URL}/onboarding`, {
+    waitUntil: "networkidle",
+  });
+  const deploymentLink = onboardingResponse?.headers()["link"] ?? "";
+  evidence.deployment = deploymentLink.match(/[?&]dpl=(dpl_[^>;]+)/)?.[1] ?? null;
+  expect(evidence.deployment, "Production response did not identify its deployment");
+  if (expectedDeployment) {
+    expect(
+      evidence.deployment === expectedDeployment,
+      `Expected deployment ${expectedDeployment}, received ${evidence.deployment}`,
+    );
+  }
   await page.locator("#login-email").fill(email);
   await page.locator("#login-pass").fill(password);
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
@@ -267,10 +290,15 @@ try {
   // Visiting /onboarding already auto-created an incomplete profile via
   // ensureCandidateProfileAggregate, and the early plan grant already inserted a
   // subscription. The shared seed writes both, so clear them first.
-  await managementQuery(
-    `delete from public.candidate_profiles where user_id = ${sqlLiteral(userId)}::uuid;
-     delete from public.user_subscriptions where user_id = ${sqlLiteral(userId)}::uuid;`,
+  await rest(
+    `candidate_profiles?user_id=eq.${userId}`,
+    { method: "DELETE" },
     "Disposable auth QA profile reset",
+  );
+  await rest(
+    `user_subscriptions?user_id=eq.${userId}`,
+    { method: "DELETE" },
+    "Disposable auth QA subscription reset",
   );
   await seedCompleteProfile({
     userId,
@@ -381,23 +409,65 @@ try {
     evidence.pageErrors.length === 0,
     `Page errors during the journey: ${evidence.pageErrors.join(" | ")}`,
   );
-
-  console.log(JSON.stringify({ status: "passed", evidence }, null, 2));
+  expect(
+    evidence.consoleErrors.length === 0,
+    `Console errors during the journey: ${evidence.consoleErrors.join(" | ")}`,
+  );
 } catch (error) {
   failure = error;
-  console.error(JSON.stringify({ status: "failed", error: error.message, evidence }, null, 2));
 } finally {
   if (browser) await browser.close().catch(() => {});
-  const cleanup = { userDeleted: false };
   if (userId) {
     try {
       await deleteQaUser(userId);
-      cleanup.userDeleted = true;
+      const [profiles, subscriptions, authUserResponse] = await Promise.all([
+        rest(
+          `candidate_profiles?user_id=eq.${userId}&select=id`,
+          {},
+          "Disposable auth QA profile cleanup audit",
+        ),
+        rest(
+          `user_subscriptions?user_id=eq.${userId}&select=id`,
+          {},
+          "Disposable auth QA subscription cleanup audit",
+        ),
+        fetch(`${supabaseUrl}/auth/v1/admin/users/${userId}`, {
+          headers: {
+            apikey: serviceRoleKey,
+            Authorization: `Bearer ${serviceRoleKey}`,
+          },
+        }),
+      ]);
+      cleanup = {
+        authUsers: authUserResponse.status === 404 ? 0 : 1,
+        authUserHttp: authUserResponse.status,
+        profiles: profiles.length,
+        subscriptions: subscriptions.length,
+      };
+      expect(
+        cleanup.authUsers === 0
+          && cleanup.profiles === 0
+          && cleanup.subscriptions === 0,
+        "Disposable auth QA cleanup left production rows",
+      );
     } catch (error) {
-      cleanup.error = error.message;
+      failure ??= error;
+      cleanup = {
+        ...(cleanup ?? {}),
+        error: error instanceof Error ? error.message : String(error),
+      };
     }
   }
-  console.log(JSON.stringify({ cleanup }, null, 2));
 }
 
+const report = {
+  status: failure ? "failed" : "passed",
+  ...(failure
+    ? { error: failure instanceof Error ? failure.message : String(failure) }
+    : {}),
+  evidence,
+  cleanup,
+};
+
+console[failure ? "error" : "log"](JSON.stringify(report, null, 2));
 if (failure) process.exit(1);
