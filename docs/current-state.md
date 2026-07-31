@@ -1,5 +1,37 @@
 # Current State
 
+## 2026-07-30 (night) - Saved results leave scans; custom URL reaches Saved and Applied
+
+Commit `91d03cd` is on `origin/main` and live in Vercel deployment
+`dpl_6cd6g6EREmHfnzeAajAYowfPNs82`. Production returns HTTP 200, Vercel completed successfully,
+and GitHub's `verify` check passed.
+
+Saved pursuits no longer remain in the dashboard's active scan list. The backend excludes
+non-deleted canonical pursuits plus release-window compatibility rows, excludes equivalent
+company/title copies, preserves the saved count and last scan timestamp independently, and lets a
+deleted canonical pursuit override stale compatibility state. The dashboard Save action now uses
+the existing 680ms Skip exit animation, reports `Job posting moved to Saved for later.`, restores
+the card on failure, and reloads after Human Path closes.
+
+The exact Ontra URL from the report was tested through the authenticated production browser. It
+ingested `Director, Product Operations`, appeared under Saved for later, accepted authenticated
+tracking with bucket `applied`, then appeared under Applied. A separate production scan and Save
+journey moved the active count from 75 to 74 and stayed removed after reload. Both journeys had
+zero console/page errors and deleted every disposable row. The permanent scan harness also passed
+with 75 persisted and re-rendered results.
+
+Local verification passed all 34 fixture suites, public-jobs regressions, TypeScript, lint with the
+same four pre-existing warnings and zero errors, webpack production build, diff checks, and
+rendered checks at 320, 375, 390, 1280, and 1440 pixels with zero horizontal overflow. The default
+local Turbopack build stalled silently and was stopped; webpack, GitHub CI, and Vercel all passed.
+
+**Only remaining item:** remote Claude Design `register_assets` for
+`design-system/components/dashboard-jobs.html` is not available in this Codex session and remains
+NOT VERIFIED. The local card is committed and already listed in `_ds_manifest.json`. A
+Claude Design-enabled session should push the exact committed card and manifest, register at
+1440 by 900, and read it back without modifying production. Detailed evidence and the exact
+next-start procedure are at the top of `docs/next-session.md`.
+
 ## 2026-07-30 (evening) - Homepage spacing rhythm, hero height, wordmark registration
 
 Five commits, all live on production and verified against the rendered DOM at 1440 / 1280 / 390 /

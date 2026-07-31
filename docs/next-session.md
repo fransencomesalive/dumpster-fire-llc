@@ -1,4 +1,125 @@
-# Next Session: Scan Failure Resolved, Phase 4 Next
+# Next Session: Saved Scan Results and Custom URLs Verified
+
+_Updated 2026-07-30. Read `AGENTS.md` and follow the Session Start Protocol in
+`docs/project-operating-state.md` before editing._
+
+## 2026-07-30 saved-result and custom-URL release
+
+Commit `91d03cdb66ec18156e9d9bef64738d6782b2d776` is on `origin/main` and live in
+production deployment `dpl_6cd6g6EREmHfnzeAajAYowfPNs82`.
+
+The reported state problem had two related paths:
+
+1. Saving a job from the active scan list wrote the canonical pursuit but continued returning the
+   same job from `GET /api/jobs`, so it remained on the dashboard after the optimistic Saved state,
+   after reload, and after later scans.
+2. The dashboard's single-job URL input already ingested an owner-scoped job and created the same
+   canonical pursuit when Human Path initialized. Tracking already determined whether that pursuit
+   belonged to Saved for later or Applied, but this relationship was not covered by the active-scan
+   read or by a production journey using the reported Ontra URL.
+
+Implemented:
+
+- `lib/public-jobs/repository.ts`
+  - active scan reads now exclude every non-deleted canonical pursuit;
+  - the temporary `saved_jobs` table remains a fallback only when no canonical pursuit exists;
+  - a deleted canonical pursuit overrides a stale compatibility row and can return to active scans;
+  - equivalent company/title copies are excluded so a duplicate board posting cannot reappear;
+  - the saved count is independent of the visible active list;
+  - `lastScanAt` remains present when every active result has moved out of the list.
+- `app/dashboard/DashboardClient.tsx`
+  - Save is one-way from the active list;
+  - it uses the existing 680ms Skip exit animation;
+  - the accessible status message reads `Job posting moved to Saved for later.`;
+  - the card is restored from the saved snapshot if the request fails;
+  - closing Human Path reloads jobs so any newly created pursuit leaves the active list.
+- `scripts/test-public-jobs-repository.ts`
+  - coverage now proves Save removal, reload persistence, rescan persistence, duplicate exclusion,
+    canonical lifecycle precedence, compatibility fallback, saved count, and retained scan time.
+- `scripts/test-public-profile-api.ts`
+  - pursuit creation coverage now uses a same-user `user_link` posting and verifies the
+    `user_owned` snapshot.
+- `design-system/components/dashboard-jobs.html`
+  - the local card mirrors the approved Save exit and status state;
+  - the impossible Saved card state was removed from the active-match example;
+  - the first-line marker and existing `_ds_manifest.json` entry remain intact.
+
+Local verification:
+
+- `npm run test:public-jobs`: passed.
+- `npm run test:fixtures`: all 34 suites passed.
+- `npm run typecheck`: passed.
+- `npm run lint`: zero errors and the same four pre-existing unused-variable warnings.
+- `npx next build --webpack`: passed.
+- `git diff --check`: passed.
+- rendered browser checks at 320, 375, 390, 1280, and 1440 pixels had zero horizontal overflow;
+  the Save hit area measured 92.3125 by 40 pixels; the card exited and the status appeared.
+
+The default local Turbopack build emitted no new output for more than three minutes and was stopped.
+The documented webpack fallback passed, GitHub's `verify` check passed, and the exact Vercel
+deployment completed successfully. Do not present the silent Turbopack run as a passing check.
+
+Production verification:
+
+- canonical production domain returned HTTP 200 and identified
+  `dpl_6cd6g6EREmHfnzeAajAYowfPNs82`;
+- Vercel status for commit `91d03cd` was successful;
+- GitHub `verify` completed successfully;
+- the permanent production scan harness started with zero rows, clicked the real Run scan control,
+  received one HTTP 200 `POST /api/jobs/scan`, persisted 75 rows, rendered 75 after reload, recorded
+  zero console/page errors, and cleaned up to zero rows;
+- scan reference: `899b1ddb-e5a5-468a-a1d5-a28fc480b8e7`;
+- Vercel request ID: `sfo1::iad1::fs26p-1785458707089-eb9813b86cba`;
+- a disposable production Save journey moved one result from 75 active jobs to 74, wrote one
+  compatibility row and one canonical pursuit, classified it as Saved for later, kept it absent
+  after dashboard reload, rendered it in Saved Pursuits, recorded zero browser errors, and cleaned
+  every disposable row;
+- the exact reported Ontra URL returned HTTP 200 at layer 0 and then returned HTTP 200 from
+  `/api/jobs/from-link` in the authenticated production browser;
+- the custom posting rendered as `Director, Product Operations` in Saved for later;
+- authenticated tracking returned HTTP 200 with bucket `applied` and a persisted
+  `trackingStartedAt`, after which the same posting rendered under Applied;
+- that disposable custom-URL run also recorded zero browser errors and cleaned its profile,
+  owner-scoped job, saved row, pursuit, and tracking rows to zero.
+
+The disposable production QA scripts used for the two new journeys were deleted after execution.
+The existing permanent scan harness was unchanged.
+
+Verification attempts worth not rediscovering:
+
+- A Playwright locator for the first job card re-resolved to the next card after removal, so waiting
+  for that locator to detach timed out even though production Save returned HTTP 200. The corrected
+  check retained an element handle for the original DOM node.
+- A passive response listener was asserted before its asynchronous JSON handler completed. The
+  corrected run awaited `/api/jobs/save` directly.
+- Closing Human Path as soon as the dialog appeared can precede pursuit initialization. The
+  successful custom-URL run waited until Review's Continue control was actionable.
+- A brand-new Saved pursuit resumes at Review, not Track. To avoid paid contact/outreach generation,
+  the production routing check used the same authenticated tracking endpoint as the Track UI, then
+  verified the Applied tab.
+
+### Remaining item and next immediate starting point
+
+Product behavior is complete and production-verified. The repository was clean and synchronized
+after commit `91d03cd`.
+
+Remote Claude Design registration is still **NOT VERIFIED** because this Codex session had no
+Claude Design `register_assets` connection. A Claude Design-enabled session should:
+
+1. Read project `3af2f1ea-428c-49b3-8b02-c066ec0c7452`.
+2. Push the exact committed `design-system/components/dashboard-jobs.html` and the unchanged
+   `_ds_manifest.json` together without creative changes.
+3. Register the Dashboard Jobs card at a 1440 by 900 viewport with a subtitle noting that Save now
+   exits active scans and moves the posting to Saved for later.
+4. Read the remote card back and compare it byte-for-byte with the local file.
+
+Do not revise production code while completing that remote registration. After it is registered,
+there is no work in flight. The previously documented Phase 4 Markdown export remains the next
+planned product phase only after Randall explicitly approves its implementation scope.
+
+---
+
+# Prior Handoff: Scan Failure Resolved, Phase 4 Next
 
 _Updated 2026-07-28. Read `AGENTS.md` and follow the Session Start Protocol in
 `docs/project-operating-state.md` before editing._
