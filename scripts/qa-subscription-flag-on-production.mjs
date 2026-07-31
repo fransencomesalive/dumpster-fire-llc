@@ -1,12 +1,22 @@
 #!/usr/bin/env node
 
+// This journey intentionally creates disposable production data and calls the
+// real Human Path and outreach providers. It uses service-role Auth and REST
+// only, so it does not depend on a rotating Supabase Management API token.
+
+import { execFileSync } from "node:child_process";
 import { randomBytes, randomUUID } from "node:crypto";
 
-const APP_URL = process.env.PRODUCTION_APP_URL
-  ?? "https://www.thejobmarketisadumpsterfire.com";
-const PROJECT_REF = "ngftlvlslhjsyjcbuuwv";
-const MANAGEMENT_URL =
-  `https://api.supabase.com/v1/projects/${PROJECT_REF}/database/query`;
+if (process.env.PRODUCTION_SUBSCRIPTION_QA_CONFIRM !== "yes") {
+  throw new Error(
+    "Refusing to create disposable production data. Set PRODUCTION_SUBSCRIPTION_QA_CONFIRM=yes.",
+  );
+}
+
+const APP_URL = (
+  process.env.PRODUCTION_APP_URL
+  ?? "https://www.thejobmarketisadumpsterfire.com"
+).replace(/\/$/, "");
 
 function required(name, ...fallbackNames) {
   for (const candidate of [name, ...fallbackNames]) {
@@ -19,11 +29,9 @@ function required(name, ...fallbackNames) {
 const supabaseUrl = required("NEXT_PUBLIC_SUPABASE_URL", "SUPABASE_URL").replace(/\/$/, "");
 const anonKey = required("NEXT_PUBLIC_SUPABASE_ANON_KEY");
 const serviceRoleKey = required("SUPABASE_SERVICE_ROLE_KEY");
-const managementToken = required("SUPABASE_ACCESS_TOKEN");
-
-function sqlLiteral(value) {
-  return `'${String(value).replaceAll("'", "''")}'`;
-}
+const expectedDeployment = process.env.PRODUCTION_DEPLOYMENT_ID?.trim() || null;
+const commit = process.env.PRODUCTION_COMMIT_SHA
+  ?? execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim();
 
 async function jsonResponse(response, label) {
   const text = await response.text();
@@ -37,39 +45,33 @@ async function jsonResponse(response, label) {
   }
   if (!response.ok) {
     const status = typeof body?.status === "string" ? ` (${body.status})` : "";
-    throw new Error(`${label} failed with HTTP ${response.status}${status}`);
-  }
-  return body;
-}
-
-async function managementQuery(query, label = "Production database query") {
-  const response = await fetch(MANAGEMENT_URL, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${managementToken}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ query }),
-  });
-  const text = await response.text();
-  let body = null;
-  if (text) {
-    try {
-      body = JSON.parse(text);
-    } catch {
-      body = null;
-    }
-  }
-  if (!response.ok) {
-    const detail = [body?.message, body?.error]
+    const detail = [body?.message, body?.error, body?.details]
       .find((value) => typeof value === "string" && value.trim())
       ?.trim()
       .slice(0, 300);
     throw new Error(
-      `${label} failed with HTTP ${response.status}${detail ? `: ${detail}` : ""}`,
+      `${label} failed with HTTP ${response.status}${status}${detail ? `: ${detail}` : ""}`,
     );
   }
   return body;
+}
+
+async function rest(path, { method = "GET", body } = {}, label = path) {
+  const response = await fetch(`${supabaseUrl}/rest/v1/${path}`, {
+    method,
+    headers: {
+      apikey: serviceRoleKey,
+      Authorization: `Bearer ${serviceRoleKey}`,
+      "Content-Type": "application/json",
+      Prefer: "return=representation",
+    },
+    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+  });
+  return jsonResponse(response, label);
+}
+
+function queryPath(table, params) {
+  return `${table}?${new URLSearchParams(params).toString()}`;
 }
 
 async function createQaUser(email, password) {
@@ -146,167 +148,159 @@ function expect(condition, message) {
   if (!condition) throw new Error(message);
 }
 
-async function qaSnapshot(userId, pursuitId) {
-  const rows = await managementQuery(`
-    select jsonb_build_object(
-      'subscriptionCount', (
-        select count(*)::integer
-        from public.user_subscriptions as subscriptions
-        join public.subscription_plans as plans
-          on plans.id = subscriptions.plan_id
-        where subscriptions.user_id = ${sqlLiteral(userId)}::uuid
-          and subscriptions.status = 'active'
-          and subscriptions.source = 'access_code'
-          and plans.name = 'premium'
-      ),
-      'pursuitStatus', (
-        select status
-        from public.pursuits
-        where id = ${sqlLiteral(pursuitId)}::uuid
-          and user_id = ${sqlLiteral(userId)}::uuid
-      ),
-      'pursuitLatched', exists (
-        select 1
-        from public.pursuits
-        where id = ${sqlLiteral(pursuitId)}::uuid
-          and apply_wizard_metered_at is not null
-      ),
-      'contactCount', (
-        select count(*)::integer
-        from public.contact_suggestions
-        where pursuit_id = ${sqlLiteral(pursuitId)}::uuid
-      ),
-      'eventCount', (
-        select count(*)::integer
-        from public.pursuit_events
-        where pursuit_id = ${sqlLiteral(pursuitId)}::uuid
-          and event_type = 'human_path_generated'
-      ),
-      'applyWizardRows', (
-        select count(*)::integer
-        from public.usage_ledger
-        where user_id = ${sqlLiteral(userId)}::uuid
-          and related_pursuit_id = ${sqlLiteral(pursuitId)}::uuid
-          and usage_type = 'apply_wizard'
-      ),
-      'applyWizardQuantity', (
-        select coalesce(sum(quantity), 0)::integer
-        from public.usage_ledger
-        where user_id = ${sqlLiteral(userId)}::uuid
-          and related_pursuit_id = ${sqlLiteral(pursuitId)}::uuid
-          and usage_type = 'apply_wizard'
-      ),
-      'legacyHumanPathRows', (
-        select count(*)::integer
-        from public.usage_ledger
-        where user_id = ${sqlLiteral(userId)}::uuid
-          and related_pursuit_id = ${sqlLiteral(pursuitId)}::uuid
-          and usage_type = 'human_path'
-      ),
-      'legacyPursuitRows', (
-        select count(*)::integer
-        from public.usage_ledger
-        where user_id = ${sqlLiteral(userId)}::uuid
-          and related_pursuit_id = ${sqlLiteral(pursuitId)}::uuid
-          and usage_type = 'pursuit'
-      ),
-      'legacyOutreachRows', (
-        select count(*)::integer
-        from public.usage_ledger
-        where user_id = ${sqlLiteral(userId)}::uuid
-          and related_pursuit_id = ${sqlLiteral(pursuitId)}::uuid
-          and usage_type = 'outreach_message'
-      ),
-      'outreachGenerationRequests', (
-        select count(*)::integer
-        from public.pursuit_outreach_generation_requests
-        where user_id = ${sqlLiteral(userId)}::uuid
-          and pursuit_id = ${sqlLiteral(pursuitId)}::uuid
-      ),
-      'zeroDebitOutreachRequests', (
-        select count(*)::integer
-        from public.pursuit_outreach_generation_requests
-        where user_id = ${sqlLiteral(userId)}::uuid
-          and pursuit_id = ${sqlLiteral(pursuitId)}::uuid
-          and not pursuit_debit_added
-          and outreach_debit_quantity = 0
-      ),
-      'outreachMessages', (
-        select count(*)::integer
-        from public.outreach_messages
-        where pursuit_id = ${sqlLiteral(pursuitId)}::uuid
-      ),
-      'outreachRegenerationTotal', (
-        select coalesce(sum(regeneration_count), 0)::integer
-        from public.outreach_messages
-        where pursuit_id = ${sqlLiteral(pursuitId)}::uuid
-      ),
-      'outreachEvents', (
-        select count(*)::integer
-        from public.pursuit_events
-        where pursuit_id = ${sqlLiteral(pursuitId)}::uuid
-          and event_type = 'outreach_generated'
-      ),
-      'meteredOutreachEvents', (
-        select count(*)::integer
-        from public.pursuit_events
-        where pursuit_id = ${sqlLiteral(pursuitId)}::uuid
-          and event_type = 'outreach_generated'
-          and usage_type is not null
-      ),
-      'providerEventCount', (
-        select count(*)::integer
-        from public.provider_usage_events
-        where user_id = ${sqlLiteral(userId)}::uuid
-          and pursuit_id = ${sqlLiteral(pursuitId)}::uuid
-      )
-    ) as snapshot;
-  `, "QA state snapshot");
-  return rows?.[0]?.snapshot;
+async function qaSnapshot(userId, pursuitId, planId) {
+  const [
+    subscriptions,
+    pursuits,
+    contacts,
+    events,
+    usageRows,
+    generationRequests,
+    outreachMessages,
+    providerEvents,
+  ] = await Promise.all([
+    rest(queryPath("user_subscriptions", {
+      user_id: `eq.${userId}`,
+      plan_id: `eq.${planId}`,
+      status: "eq.active",
+      source: "eq.access_code",
+      select: "id",
+    }), {}, "QA subscription snapshot"),
+    rest(queryPath("pursuits", {
+      id: `eq.${pursuitId}`,
+      user_id: `eq.${userId}`,
+      select: "status,apply_wizard_metered_at",
+    }), {}, "QA pursuit snapshot"),
+    rest(queryPath("contact_suggestions", {
+      pursuit_id: `eq.${pursuitId}`,
+      select: "id",
+    }), {}, "QA contact snapshot"),
+    rest(queryPath("pursuit_events", {
+      pursuit_id: `eq.${pursuitId}`,
+      select: "event_type,usage_type",
+    }), {}, "QA pursuit-event snapshot"),
+    rest(queryPath("usage_ledger", {
+      user_id: `eq.${userId}`,
+      related_pursuit_id: `eq.${pursuitId}`,
+      select: "usage_type,quantity",
+    }), {}, "QA usage snapshot"),
+    rest(queryPath("pursuit_outreach_generation_requests", {
+      user_id: `eq.${userId}`,
+      pursuit_id: `eq.${pursuitId}`,
+      select: "pursuit_debit_added,outreach_debit_quantity",
+    }), {}, "QA outreach-request snapshot"),
+    rest(queryPath("outreach_messages", {
+      pursuit_id: `eq.${pursuitId}`,
+      select: "regeneration_count",
+    }), {}, "QA outreach-message snapshot"),
+    rest(queryPath("provider_usage_events", {
+      user_id: `eq.${userId}`,
+      pursuit_id: `eq.${pursuitId}`,
+      select: "id",
+    }), {}, "QA provider-event snapshot"),
+  ]);
+
+  const countUsage = (usageType) => usageRows
+    .filter((row) => row.usage_type === usageType);
+  const applyWizardRows = countUsage("apply_wizard");
+  const outreachEvents = events.filter((row) => row.event_type === "outreach_generated");
+
+  return {
+    subscriptionCount: subscriptions.length,
+    pursuitStatus: pursuits[0]?.status ?? null,
+    pursuitLatched: pursuits[0]?.apply_wizard_metered_at != null,
+    contactCount: contacts.length,
+    eventCount: events.filter((row) => row.event_type === "human_path_generated").length,
+    applyWizardRows: applyWizardRows.length,
+    applyWizardQuantity: applyWizardRows
+      .reduce((total, row) => total + Number(row.quantity ?? 0), 0),
+    legacyHumanPathRows: countUsage("human_path").length,
+    legacyPursuitRows: countUsage("pursuit").length,
+    legacyOutreachRows: countUsage("outreach_message").length,
+    outreachGenerationRequests: generationRequests.length,
+    zeroDebitOutreachRequests: generationRequests.filter(
+      (row) => row.pursuit_debit_added === false
+        && Number(row.outreach_debit_quantity) === 0,
+    ).length,
+    outreachMessages: outreachMessages.length,
+    outreachRegenerationTotal: outreachMessages
+      .reduce((total, row) => total + Number(row.regeneration_count ?? 0), 0),
+    outreachEvents: outreachEvents.length,
+    meteredOutreachEvents: outreachEvents
+      .filter((row) => row.usage_type != null).length,
+    providerEventCount: providerEvents.length,
+  };
 }
 
 async function cleanup(userId) {
-  await managementQuery(`
-    delete from public.provider_usage_events
-    where user_id = ${sqlLiteral(userId)}::uuid;
-  `, "QA provider telemetry cleanup");
-  await deleteQaUser(userId);
-  const rows = await managementQuery(`
-    select jsonb_build_object(
-      'authUsers', (
-        select count(*)::integer from auth.users where id = ${sqlLiteral(userId)}::uuid
-      ),
-      'profiles', (
-        select count(*)::integer
-        from public.candidate_profiles
-        where user_id = ${sqlLiteral(userId)}::uuid
-      ),
-      'subscriptions', (
-        select count(*)::integer
-        from public.user_subscriptions
-        where user_id = ${sqlLiteral(userId)}::uuid
-      ),
-      'pursuits', (
-        select count(*)::integer
-        from public.pursuits
-        where user_id = ${sqlLiteral(userId)}::uuid
-      ),
-      'usageRows', (
-        select count(*)::integer
-        from public.usage_ledger
-        where user_id = ${sqlLiteral(userId)}::uuid
-      ),
-      'providerEvents', (
-        select count(*)::integer
-        from public.provider_usage_events
-        where user_id = ${sqlLiteral(userId)}::uuid
-      )
-    ) as cleanup;
-  `, "QA cleanup audit");
-  const result = rows?.[0]?.cleanup;
+  const providerRowsBefore = await rest(queryPath("provider_usage_events", {
+    user_id: `eq.${userId}`,
+    select: "id",
+  }), {}, "QA provider telemetry pre-cleanup audit");
+  const providerEventsDeleted = await rest(
+    "rpc/delete_subscription_qa_provider_usage_events",
+    { method: "POST", body: { p_user_id: userId } },
+    "QA provider telemetry cleanup",
+  );
   expect(
-    result
-      && Object.values(result).every((value) => value === 0),
+    Number(providerEventsDeleted) === providerRowsBefore.length,
+    "QA provider telemetry cleanup count did not match the rows found",
+  );
+  await deleteQaUser(userId);
+
+  const [
+    profiles,
+    subscriptions,
+    pursuits,
+    usageRows,
+    providerEvents,
+    authUserResponse,
+  ] = await Promise.all([
+    rest(queryPath("candidate_profiles", {
+      user_id: `eq.${userId}`,
+      select: "id",
+    }), {}, "QA profile cleanup audit"),
+    rest(queryPath("user_subscriptions", {
+      user_id: `eq.${userId}`,
+      select: "id",
+    }), {}, "QA subscription cleanup audit"),
+    rest(queryPath("pursuits", {
+      user_id: `eq.${userId}`,
+      select: "id",
+    }), {}, "QA pursuit cleanup audit"),
+    rest(queryPath("usage_ledger", {
+      user_id: `eq.${userId}`,
+      select: "id",
+    }), {}, "QA usage cleanup audit"),
+    rest(queryPath("provider_usage_events", {
+      user_id: `eq.${userId}`,
+      select: "id",
+    }), {}, "QA provider cleanup audit"),
+    fetch(`${supabaseUrl}/auth/v1/admin/users/${userId}`, {
+      headers: {
+        apikey: serviceRoleKey,
+        Authorization: `Bearer ${serviceRoleKey}`,
+      },
+    }),
+  ]);
+
+  const result = {
+    authUsers: authUserResponse.status === 404 ? 0 : 1,
+    authUserHttp: authUserResponse.status,
+    profiles: profiles.length,
+    subscriptions: subscriptions.length,
+    pursuits: pursuits.length,
+    usageRows: usageRows.length,
+    providerEvents: providerEvents.length,
+    providerEventsDeleted: Number(providerEventsDeleted),
+  };
+  expect(
+    result.authUsers === 0
+      && result.profiles === 0
+      && result.subscriptions === 0
+      && result.pursuits === 0
+      && result.usageRows === 0
+      && result.providerEvents === 0,
     "Disposable production QA cleanup left related rows",
   );
   return result;
@@ -317,114 +311,100 @@ const password = randomBytes(36).toString("base64url");
 const profileId = randomUUID();
 const pursuitId = randomUUID();
 let userId;
+let planId;
 let cleanupResult;
 
 try {
-  const jobs = await managementQuery(`
-    select id
-    from public.jobs
-    where owner_user_id is null
-      and lower(company_name) = 'autodesk'
-      and title ilike '%Principal Program Manager%'
-      and description <> ''
-    order by updated_at desc nulls last
-    limit 1;
-  `, "Approved QA posting lookup");
+  const deploymentResponse = await fetch(APP_URL, { method: "HEAD" });
+  expect(
+    deploymentResponse.status === 200,
+    `Production preflight returned HTTP ${deploymentResponse.status}`,
+  );
+  const deploymentLink = deploymentResponse.headers.get("link") ?? "";
+  const deployment = deploymentLink.match(/[?&]dpl=(dpl_[^>;]+)/)?.[1] ?? null;
+  expect(deployment, "Production response did not identify its deployment");
+  if (expectedDeployment) {
+    expect(
+      deployment === expectedDeployment,
+      `Expected deployment ${expectedDeployment}, received ${deployment}`,
+    );
+  }
+
+  const jobs = await rest(queryPath("jobs", {
+    owner_user_id: "is.null",
+    company_name: "ilike.Autodesk",
+    title: "ilike.*Principal Program Manager*",
+    description: "neq.",
+    select: "id,title,company_name,location,source_url",
+    order: "updated_at.desc.nullslast",
+    limit: "1",
+  }), {}, "Approved QA posting lookup");
   const jobId = jobs?.[0]?.id;
   expect(typeof jobId === "string", "Approved Autodesk production QA posting was not found");
 
   userId = await createQaUser(email, password);
 
-  await managementQuery(`
-    insert into public.candidate_profiles (
-      id,
-      user_id,
-      status,
-      full_name,
-      preferred_name,
-      location,
-      email,
-      generated_markdown,
-      markdown_generated_at
-    ) values (
-      ${sqlLiteral(profileId)}::uuid,
-      ${sqlLiteral(userId)}::uuid,
-      'complete',
-      'Subscription QA',
-      'QA',
-      'Denver, CO',
-      ${sqlLiteral(email)},
-      '# Subscription QA\n\nHuman program leader who turns ambiguous cross-functional work into clear operating plans and measurable delivery.',
-      clock_timestamp()
-    );
+  const now = new Date().toISOString();
+  await rest("candidate_profiles", { method: "POST", body: {
+    id: profileId,
+    user_id: userId,
+    status: "complete",
+    full_name: "Subscription QA",
+    preferred_name: "QA",
+    location: "Denver, CO",
+    email,
+    generated_markdown: "# Subscription QA\n\nHuman program leader who turns ambiguous cross-functional work into clear operating plans and measurable delivery.",
+    markdown_generated_at: now,
+  } }, "Disposable candidate profile seed");
+  await rest("profile_quality", { method: "POST", body: {
+    profile_id: profileId,
+    status: "complete",
+    complete_fields: ["production_qa"],
+    last_checked_at: now,
+  } }, "Disposable profile quality seed");
 
-    insert into public.profile_quality (
-      profile_id,
-      status,
-      complete_fields,
-      last_checked_at
-    ) values (
-      ${sqlLiteral(profileId)}::uuid,
-      'complete',
-      array['production_qa'],
-      clock_timestamp()
-    );
+  const plans = await rest(queryPath("subscription_plans", {
+    name: "eq.premium",
+    select: "id",
+    limit: "1",
+  }), {}, "Premium plan lookup");
+  planId = plans?.[0]?.id;
+  expect(typeof planId === "string", "Premium plan was not found");
+  await rest("user_subscriptions", { method: "POST", body: {
+    user_id: userId,
+    plan_id: planId,
+    status: "active",
+    source: "access_code",
+  } }, "Disposable subscription seed");
 
-    insert into public.user_subscriptions (
-      user_id,
-      plan_id,
-      status,
-      source
-    )
-    select
-      ${sqlLiteral(userId)}::uuid,
-      plans.id,
-      'active',
-      'access_code'
-    from public.subscription_plans as plans
-    where plans.name = 'premium';
-
-    insert into public.pursuits (
-      id,
-      user_id,
-      profile_id,
-      job_id,
-      status,
-      fit_summary,
-      outreach_angle,
-      job_snapshot,
-      last_activity_at,
-      created_at,
-      updated_at
-    )
-    select
-      ${sqlLiteral(pursuitId)}::uuid,
-      ${sqlLiteral(userId)}::uuid,
-      ${sqlLiteral(profileId)}::uuid,
-      jobs.id,
-      'review_complete',
-      'Disposable subscription flag-on verification.',
-      'Validate atomic Apply Wizard persistence.',
-      jsonb_build_object(
-        'jobId', jobs.id,
-        'title', jobs.title,
-        'companyName', jobs.company_name,
-        'location', jobs.location,
-        'sourceUrl', jobs.source_url,
-        'capturedAt', clock_timestamp()
-      ),
-      clock_timestamp(),
-      clock_timestamp(),
-      clock_timestamp()
-    from public.jobs as jobs
-    where jobs.id = ${sqlLiteral(jobId)}::uuid;
-  `, "Disposable QA fixture seed");
+  await rest("pursuits", { method: "POST", body: {
+    id: pursuitId,
+    user_id: userId,
+    profile_id: profileId,
+    job_id: jobId,
+    status: "review_complete",
+    fit_summary: "Disposable subscription flag-on verification.",
+    outreach_angle: "Validate atomic Apply Wizard persistence.",
+    job_snapshot: {
+      jobId,
+      title: jobs[0].title,
+      companyName: jobs[0].company_name,
+      location: jobs[0].location,
+      sourceUrl: jobs[0].source_url,
+      capturedAt: now,
+    },
+    last_activity_at: now,
+    created_at: now,
+    updated_at: now,
+  } }, "Disposable pursuit seed");
 
   if (process.env.PRODUCTION_QA_PREPARE_ONLY === "true") {
     cleanupResult = await cleanup(userId);
     userId = undefined;
     console.log(JSON.stringify({
       status: "prepare_only_passed",
+      commit,
+      deployment,
       cleanup: cleanupResult,
     }, null, 2));
     process.exit(0);
@@ -436,12 +416,11 @@ try {
   expect(plan.status === 200, `Account plan read returned HTTP ${plan.status}`);
   expect(plan.body?.planName === "premium", "Account plan read did not return premium");
 
-  const codeUsesBeforeRows = await managementQuery(`
-    select use_count
-    from public.access_codes
-    where code = 'DUMPSTERFRIENDS'
-    limit 1;
-  `, "Access-code use-count precheck");
+  const codeUsesBeforeRows = await rest(queryPath("access_codes", {
+    code: "eq.DUMPSTERFRIENDS",
+    select: "use_count",
+    limit: "1",
+  }), {}, "Access-code use-count precheck");
   const codeUsesBefore = codeUsesBeforeRows?.[0]?.use_count;
   expect(Number.isInteger(codeUsesBefore), "Shared premium access code was not found");
 
@@ -455,12 +434,11 @@ try {
     "Already-entitled redemption did not use the atomic conflict result",
   );
 
-  const codeUsesAfterRows = await managementQuery(`
-    select use_count
-    from public.access_codes
-    where code = 'DUMPSTERFRIENDS'
-    limit 1;
-  `, "Access-code use-count postcheck");
+  const codeUsesAfterRows = await rest(queryPath("access_codes", {
+    code: "eq.DUMPSTERFRIENDS",
+    select: "use_count",
+    limit: "1",
+  }), {}, "Access-code use-count postcheck");
   expect(
     codeUsesAfterRows?.[0]?.use_count === codeUsesBefore,
     "Already-entitled redemption changed the shared code use count",
@@ -502,7 +480,7 @@ try {
     "Flag-on Human Path returned unexpected Apply Wizard usage",
   );
 
-  const firstSnapshot = await qaSnapshot(userId, pursuitId);
+  const firstSnapshot = await qaSnapshot(userId, pursuitId, planId);
   expect(firstSnapshot?.providerEventCount > 0, "First Human Path run recorded no provider telemetry");
 
   const replay = await appRequest(
@@ -522,7 +500,7 @@ try {
     "Human Path replay returned a different contact count",
   );
 
-  const finalSnapshot = await qaSnapshot(userId, pursuitId);
+  const finalSnapshot = await qaSnapshot(userId, pursuitId, planId);
   expect(finalSnapshot?.subscriptionCount === 1, "QA subscription source or plan was incorrect");
   expect(finalSnapshot?.pursuitStatus === "human_path_generated", "QA pursuit did not reach human_path_generated");
   expect(finalSnapshot?.pursuitLatched === true, "QA pursuit was not metering-latched");
@@ -584,7 +562,7 @@ try {
   const outreachMessageId = initialOutreach.body.messages[0]?.id;
   expect(typeof outreachMessageId === "string", "Initial outreach returned no persisted message id");
 
-  const initialOutreachSnapshot = await qaSnapshot(userId, pursuitId);
+  const initialOutreachSnapshot = await qaSnapshot(userId, pursuitId, planId);
   expect(initialOutreachSnapshot?.pursuitStatus === "outreach_ready", "Initial outreach changed pursuit status unexpectedly");
   expect(initialOutreachSnapshot?.applyWizardRows === 1, "Initial outreach changed Apply Wizard rows");
   expect(initialOutreachSnapshot?.applyWizardQuantity === 1, "Initial outreach changed Apply Wizard quantity");
@@ -621,7 +599,7 @@ try {
     "Initial outreach replay returned different persisted messages",
   );
 
-  const replayOutreachSnapshot = await qaSnapshot(userId, pursuitId);
+  const replayOutreachSnapshot = await qaSnapshot(userId, pursuitId, planId);
   expect(
     replayOutreachSnapshot?.providerEventCount === initialOutreachSnapshot.providerEventCount,
     "Initial outreach replay caused another provider call",
@@ -650,7 +628,7 @@ try {
   expect(regeneration.body?.message?.id === outreachMessageId, "Outreach regeneration created a new message row");
   expect(regeneration.body?.message?.regenerationCount === 1, "Outreach regeneration count was not one");
 
-  const regenerationSnapshot = await qaSnapshot(userId, pursuitId);
+  const regenerationSnapshot = await qaSnapshot(userId, pursuitId, planId);
   expect(regenerationSnapshot?.applyWizardRows === 1, "Regeneration changed Apply Wizard rows");
   expect(regenerationSnapshot?.applyWizardQuantity === 1, "Regeneration changed Apply Wizard quantity");
   expect(regenerationSnapshot?.legacyPursuitRows === 0, "Regeneration wrote a retired pursuit debit");
@@ -681,7 +659,7 @@ try {
   expect(secondRegeneration.status === 409, `Second regeneration returned HTTP ${secondRegeneration.status}`);
   expect(secondRegeneration.body?.status === "already_regenerated", "Second regeneration was not rejected");
 
-  const phase2cSnapshot = await qaSnapshot(userId, pursuitId);
+  const phase2cSnapshot = await qaSnapshot(userId, pursuitId, planId);
   expect(
     phase2cSnapshot?.providerEventCount === regenerationSnapshot.providerEventCount,
     "Rejected second regeneration caused another provider call",
@@ -695,6 +673,10 @@ try {
 
   console.log(JSON.stringify({
     status: "passed",
+    account: email,
+    commit,
+    deployment,
+    pursuitId,
     planName: plan.body.planName,
     accessCodeConflict: redemption.body.status,
     exportEntitlement: exportResult.body.status,

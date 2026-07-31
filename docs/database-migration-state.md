@@ -163,6 +163,29 @@ profiles.
 
 Do not rewrite or re-record `00600`, which is already applied.
 
+## Applied 2026-07-30: production QA cleanup hardening
+
+- `20260730000300_subscription_qa_provider_cleanup.sql` adds
+  `delete_subscription_qa_provider_usage_events(uuid)`, a security-definer cleanup RPC restricted
+  to Auth users whose `raw_user_meta_data.qa_scope` is `subscription_flag_on`. Execution is
+  granted only to `service_role`; anon and authenticated are denied.
+- `20260730000400_provider_usage_service_role_acl.sql` corrects production ACL drift on
+  `provider_usage_events`. Supabase's table-creation defaults had granted `service_role` all table
+  privileges; the original provider-usage migration added SELECT/INSERT without first revoking
+  those defaults. The corrective migration revokes all and restores SELECT/INSERT only.
+
+Both migrations were applied atomically through the Management API and recorded in
+`schema_migrations`. Production postflight confirmed service-role RPC execution, anon and
+authenticated denial, SELECT/INSERT table access, and no UPDATE/DELETE/TRUNCATE access. A
+nonexistent unscoped-user RPC call returned `42501 subscription_qa_scope_required`.
+
+`scripts/test-subscription-qa-cleanup-migration.sh` recreates the production-like broad starting
+ACL and proves both migrations are idempotent, broad mutation privileges are removed, non-QA
+telemetry cannot be deleted, and disposable QA telemetry can be deleted through the scoped RPC.
+The REST-only production harness then passed with 20 Human Path contacts, one Apply Wizard debit,
+cached replay, one outreach message, one in-place regeneration, rejection of a second
+regeneration, six provider telemetry events, zero legacy debits, and complete disposable cleanup.
+
 ## How to apply migrations (current method)
 
 Migrations can now be applied **programmatically from the working environment** via the Supabase
