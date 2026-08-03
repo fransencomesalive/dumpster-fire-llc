@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import {
   enforceSubscriptionFeature,
+  subscriptionUsagePeriod,
   summarizeSubscriptionUsage,
 } from "../lib/public-profile/subscription/enforcement";
 import {
@@ -140,6 +141,16 @@ assert.deepEqual(
   enforceSubscriptionFeature(accessCodeExpired, [], "pursued_jobs_export", { at }),
   { status: "subscription_inactive", feature: "pursued_jobs_export", subscriptionStatus: "canceled" },
 );
+assert.deepEqual(
+  enforceSubscriptionFeature(
+    { ...accessCodeLive, currentPeriodEnd: at },
+    [],
+    "outreach_message",
+    { at },
+  ),
+  { status: "subscription_inactive", feature: "outreach_message", subscriptionStatus: "canceled" },
+  "the grant is inactive at the exact stored end boundary",
+);
 
 // A null period end never expires. This is what keeps the three redemptions that
 // predate the 30-day rule on permanent access.
@@ -154,6 +165,49 @@ assert.equal(
   "allowed",
   "a null grant end never expires",
 );
+
+const periodAt = "2026-07-05T12:00:00.000Z";
+const storedGrantContext: SubscriptionContext = {
+  ...premium,
+  source: "access_code",
+  currentPeriodStart: "2026-06-20T00:00:00.000Z",
+  currentPeriodEnd: "2026-07-20T00:00:00.000Z",
+};
+assert.deepEqual(subscriptionUsagePeriod(storedGrantContext, periodAt), {
+  start: "2026-06-20T00:00:00.000Z",
+  end: "2026-07-20T00:00:00.000Z",
+});
+assert.equal(
+  summarizeSubscriptionUsage(storedGrantContext, [
+    usage("apply_wizard", 1, "2026-06-21T00:00:00.000Z"),
+    usage("apply_wizard", 1, "2026-07-01T00:00:00.000Z"),
+  ], periodAt).applyWizard.used,
+  2,
+  "access-code usage is metered across its stored 30-day grant",
+);
+
+const manualContext: SubscriptionContext = {
+  ...premium,
+  source: "manual",
+  currentPeriodStart: "2026-06-20T00:00:00.000Z",
+  currentPeriodEnd: "2026-07-20T00:00:00.000Z",
+};
+assert.deepEqual(subscriptionUsagePeriod(manualContext, periodAt), {
+  start: "2026-07-01T00:00:00.000Z",
+  end: "2026-08-01T00:00:00.000Z",
+});
+assert.equal(
+  summarizeSubscriptionUsage(manualContext, [
+    usage("apply_wizard", 1, "2026-06-21T00:00:00.000Z"),
+    usage("apply_wizard", 1, "2026-07-01T00:00:00.000Z"),
+  ], periodAt).applyWizard.used,
+  1,
+  "manual access keeps calendar-month metering",
+);
+assert.deepEqual(subscriptionUsagePeriod(accessCodePermanent, periodAt), {
+  start: "2026-07-01T00:00:00.000Z",
+  end: "2026-08-01T00:00:00.000Z",
+});
 
 // tester (access-code free plan): pursuits 25, human path 25, outreach 75, export unlocked
 const testerSummary = summarizeSubscriptionUsage({ ...premium, planName: "tester" }, [usage("human_path", 25)], at);
@@ -283,11 +337,8 @@ async function repositoryAssertions() {
     },
   );
 
-  // An access-code grant still meters against the calendar month rather than the
-  // stripe-style stored window, so usage recorded this month counts even though the
-  // grant started earlier. Before 2026-08-03 this fixture ended 2026-02-01 and was
-  // expected to stay allowed; the 30-day grant rule now refuses a closed window, so
-  // the window here is open and the expired case is asserted separately above.
+  // Access-code grants meter against their stored 30-day window. The entry falls
+  // inside that window, so it counts even though the grant started in the prior month.
   const accessCodeContext: SubscriptionContext = {
     ...smoldering,
     source: "access_code",

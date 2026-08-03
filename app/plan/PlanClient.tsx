@@ -26,6 +26,7 @@ type AccountPlan = {
   planName: string | null;
   publicPlanName?: string | null;
   subscriptionStatus?: string;
+  source?: string | null;
   limit?: number;
 };
 
@@ -77,15 +78,25 @@ function SuccessIcon() {
 }
 
 function publicPlanName(account: AccountPlan | null) {
+  if (account?.source === "access_code" || account?.planName === "tester") return "Full access";
   if (account?.publicPlanName) return account.publicPlanName;
   if (account?.planName === "basic") return "Smoldering";
-  if (account?.planName === "premium" || account?.planName === "tester") return "Roaring";
+  if (account?.planName === "premium") return "Roaring";
   return "your plan";
 }
 
 function planAllowance(account: AccountPlan | null) {
-  if (account?.limit) return account.limit;
+  if (typeof account?.limit === "number") return account.limit;
+  if (account?.planName === "tester") return 25;
   return account?.planName === "basic" ? 20 : 45;
+}
+
+function hasActivePlan(account: AccountPlan | null) {
+  if (!account) return false;
+  if (account.subscriptionStatus) {
+    return account.subscriptionStatus === "active" || account.subscriptionStatus === "trialing";
+  }
+  return Boolean(account.planName);
 }
 
 function safeStripeRedirect(value: string) {
@@ -144,7 +155,7 @@ export default function PlanClient() {
       const firstAccount = await loadAccount(active).catch(() => null);
       if (cancelled) return;
 
-      if (firstAccount?.planName) {
+      if (hasActivePlan(firstAccount)) {
         setFlow(checkoutReturn === "success" ? "active" : "already");
         return;
       }
@@ -162,7 +173,7 @@ export default function PlanClient() {
         await new Promise((resolve) => window.setTimeout(resolve, 1000));
         if (cancelled) return;
         const refreshed = await loadAccount(active).catch(() => null);
-        if (refreshed?.planName) {
+        if (hasActivePlan(refreshed)) {
           setFlow("active");
           return;
         }
@@ -194,7 +205,7 @@ export default function PlanClient() {
     } catch (error) {
       if (error instanceof PublicProfileApiError && error.status === 409) {
         const refreshed = await loadAccount(token).catch(() => null);
-        if (refreshed?.planName) {
+        if (hasActivePlan(refreshed)) {
           setFlow("already");
           return;
         }
@@ -208,12 +219,15 @@ export default function PlanClient() {
     setRedeeming(true);
     setCodeError("");
     try {
-      const result = await requestPublicProfileApi<{ status: string; planName: string }>(
+      await requestPublicProfileApi<{ status: string; planName: string }>(
         "/api/account/redeem-code",
         { method: "POST", accessToken: token, body: { code: inviteCode } },
       );
+      const refreshed = await loadAccount(token);
+      if (!hasActivePlan(refreshed)) {
+        throw new Error("The access code was accepted, but the account is not active yet.");
+      }
       setInviteCode("");
-      setAccount({ planName: result.planName });
       setFlow("applied");
     } catch (error) {
       const body = error instanceof PublicProfileApiError
@@ -223,7 +237,7 @@ export default function PlanClient() {
     } finally {
       setRedeeming(false);
     }
-  }, [inviteCode, token]);
+  }, [inviteCode, loadAccount, token]);
 
   function openProfilePlan() {
     window.sessionStorage.setItem(accountPopupHandoffKey, "plan");
@@ -237,7 +251,7 @@ export default function PlanClient() {
   function refreshProcessing() {
     if (!token) return;
     void loadAccount(token).then((next) => {
-      if (next.planName) setFlow("active");
+      if (hasActivePlan(next)) setFlow("active");
     });
   }
 

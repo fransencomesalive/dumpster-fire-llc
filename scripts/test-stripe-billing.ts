@@ -442,11 +442,82 @@ async function main() {
         stripe_subscription_id: null,
       })] as T,
       checkoutEnabled: true,
+      now: () => "2026-07-25T00:00:00.000Z",
       stripe: gateway(),
     },
   );
   assert.equal(conversion.status, 409);
   assert.equal((await responseBody(conversion)).status, "conversion_required");
+
+  let expiredConversionInput: unknown;
+  const expiredConversion = await handleCreateCheckoutRequest(
+    request("/api/billing/checkout", { planCode: "basic" }, true),
+    {
+      getSession: authenticated,
+      repositoryRequest: async <T>() => [subscriptionRow({
+        source: "access_code",
+        current_period_start: "2026-07-02T00:00:00.000Z",
+        current_period_end: "2026-08-01T00:00:00.000Z",
+        stripe_customer_id: null,
+        stripe_subscription_id: null,
+      })] as T,
+      checkoutEnabled: true,
+      now: () => "2026-08-01T00:00:00.000Z",
+      stripe: gateway({
+        createCheckoutSession: async (input) => {
+          expiredConversionInput = input;
+          return { id: "cs_expired", url: "https://checkout.stripe.test/expired" };
+        },
+      }),
+    },
+  );
+  assert.equal(expiredConversion.status, 200);
+  assert.deepEqual(expiredConversionInput, {
+    userId: "20000000-0000-0000-0000-000000000001",
+    email: "user@example.com",
+    planCode: "basic",
+    customerId: undefined,
+    idempotencyKey: "checkout:20000000-0000-0000-0000-000000000001:billing-test-request-1",
+  });
+
+  const canceledBeforePeriodEnd = await handleCreateCheckoutRequest(
+    request("/api/billing/checkout", { planCode: "basic" }, true),
+    {
+      getSession: authenticated,
+      repositoryRequest: async <T>() => [subscriptionRow({
+        source: "access_code",
+        status: "canceled",
+        current_period_start: "2026-07-02T00:00:00.000Z",
+        current_period_end: "2026-08-02T00:00:00.000Z",
+        stripe_customer_id: null,
+        stripe_subscription_id: null,
+      })] as T,
+      checkoutEnabled: true,
+      now: () => "2026-08-01T00:00:00.000Z",
+      stripe: gateway(),
+    },
+  );
+  assert.equal(canceledBeforePeriodEnd.status, 409);
+  assert.equal((await responseBody(canceledBeforePeriodEnd)).status, "conversion_required");
+
+  const permanentAccessConversion = await handleCreateCheckoutRequest(
+    request("/api/billing/checkout", { planCode: "basic" }, true),
+    {
+      getSession: authenticated,
+      repositoryRequest: async <T>() => [subscriptionRow({
+        source: "access_code",
+        current_period_start: null,
+        current_period_end: null,
+        stripe_customer_id: null,
+        stripe_subscription_id: null,
+      })] as T,
+      checkoutEnabled: true,
+      now: () => "2026-08-01T00:00:00.000Z",
+      stripe: gateway(),
+    },
+  );
+  assert.equal(permanentAccessConversion.status, 409);
+  assert.equal((await responseBody(permanentAccessConversion)).status, "conversion_required");
 
   let portalCustomer: string | undefined;
   const portal = await handleCreatePortalRequest(request("/api/billing/portal"), {

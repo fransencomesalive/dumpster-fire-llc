@@ -248,7 +248,13 @@ insert into public.user_subscriptions (
   user_id, plan_id, status, current_period_start, current_period_end
 ) values
   ('00000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000004', 'active', '2026-07-01', '2026-08-01'),
-  ('00000000-0000-0000-0000-000000000002', '20000000-0000-0000-0000-000000000004', 'active', '2026-07-01', '2026-08-01'),
+  (
+    '00000000-0000-0000-0000-000000000002',
+    '20000000-0000-0000-0000-000000000004',
+    'active',
+    date_trunc('month', clock_timestamp()),
+    date_trunc('month', clock_timestamp()) + interval '1 month'
+  ),
   ('00000000-0000-0000-0000-000000000003', '20000000-0000-0000-0000-000000000004', 'canceled', '2026-07-01', '2026-08-01');
 
 insert into public.jobs (

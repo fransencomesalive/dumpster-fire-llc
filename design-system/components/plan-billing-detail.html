@@ -42,7 +42,7 @@
     font-size: 0.62rem; color: var(--c-paper); background-color: var(--c-teal); border: var(--line-reg) solid var(--c-ink);
     border-radius: var(--radius-pill); padding: 2px 8px; }
 
-  /* Quiet usage readout — this is the ONLY place the count lives */
+  /* Quiet usage readout. This is the ONLY place the count lives. */
   .usage { display: grid; gap: var(--space-2); }
   .usage .u-top { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-3);
     font-family: var(--font-body); font-size: 0.95rem; color: var(--c-ink); }
@@ -94,7 +94,7 @@
   <div>
     <h1 class="page">Profile · Plan &amp; Billing Detail</h1>
     <p class="lede">The popups behind the profile card's <strong>Plan</strong> and <strong>Billing</strong>
-    buttons. This is the deliberate, quiet home of the Apply Wizard usage count &mdash; it appears nowhere
+    buttons. This is the deliberate, quiet home of the Apply Wizard usage count; it appears nowhere
     in the dashboard, header, job cards, or the wizard itself. <strong>Plan</strong> shows the plan, price,
     allowance, uses remaining, reset date, export availability, and change-plan. <strong>Billing</strong>
     handles renewal, cancellation, and the Stripe Customer Portal. Change flows cover upgrade (immediate,
@@ -151,9 +151,33 @@
       </div>
     </div>
 
-    <!-- ============ 3. PLAN · zero remaining ============ -->
+    <!-- ============ 3. PLAN · access code ============ -->
     <div>
-      <p class="stateLabel neg">3 · Plan popup &middot; zero pursuits left (Smoldering)</p>
+      <p class="stateLabel">3 · Plan popup &middot; full access from an access code</p>
+      <div class="modal">
+        <div class="modalHead"><span class="title">Plan</span>
+          <span class="closeX" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg></span></div>
+        <div class="modalBody">
+          <div class="planName"><span class="n">Full access</span><span class="p">Access code</span></div>
+          <div class="usage">
+            <div class="u-top"><span><b>38</b> of 45 pursuits left</span></div>
+            <div class="meter"><span style="width:84%"></span></div>
+            <div class="reset">Resets on August 12.</div>
+          </div>
+          <div class="kv">
+            <div class="row"><span class="k">Markdown export</span>
+              <span class="yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Included</span></div>
+          </div>
+          <div class="foot">
+            <a class="btnGhost" href="#">Close</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ 4. PLAN · zero remaining ============ -->
+    <div>
+      <p class="stateLabel neg">4 · Plan popup &middot; zero pursuits left (Smoldering)</p>
       <div class="modal">
         <div class="modalHead"><span class="title">Plan</span>
           <span class="closeX" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg></span></div>
@@ -174,9 +198,9 @@
       </div>
     </div>
 
-    <!-- ============ 4. CHANGE PLAN · upgrade ============ -->
+    <!-- ============ 5. CHANGE PLAN · upgrade ============ -->
     <div>
-      <p class="stateLabel">4 · Change plan &middot; upgrade to Roaring (immediate, prorated)</p>
+      <p class="stateLabel">5 · Change plan &middot; upgrade to Roaring (immediate, prorated)</p>
       <div class="modal">
         <div class="modalHead"><span class="title">Upgrade to Roaring</span>
           <span class="closeX" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg></span></div>
@@ -197,9 +221,9 @@
       </div>
     </div>
 
-    <!-- ============ 5. CHANGE PLAN · downgrade ============ -->
+    <!-- ============ 6. CHANGE PLAN · downgrade ============ -->
     <div>
-      <p class="stateLabel">5 · Change plan &middot; switch to Smoldering (at renewal)</p>
+      <p class="stateLabel">6 · Change plan &middot; switch to Smoldering (at renewal)</p>
       <div class="modal">
         <div class="modalHead"><span class="title">Switch to Smoldering</span>
           <span class="closeX" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg></span></div>
@@ -215,9 +239,9 @@
       </div>
     </div>
 
-    <!-- ============ 6. BILLING · active / renewing ============ -->
+    <!-- ============ 7. BILLING · active / renewing ============ -->
     <div>
-      <p class="stateLabel">6 · Billing popup &middot; active, renewing</p>
+      <p class="stateLabel">7 · Billing popup &middot; active, renewing</p>
       <div class="modal">
         <div class="modalHead"><span class="title">Billing</span>
           <span class="closeX" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg></span></div>
@@ -238,9 +262,9 @@
       </div>
     </div>
 
-    <!-- ============ 7. BILLING · scheduled cancellation ============ -->
+    <!-- ============ 8. BILLING · scheduled cancellation ============ -->
     <div>
-      <p class="stateLabel">7 · Billing popup &middot; cancellation scheduled (reverse available)</p>
+      <p class="stateLabel">8 · Billing popup &middot; cancellation scheduled (reverse available)</p>
       <div class="modal">
         <div class="modalHead"><span class="title">Billing</span>
           <span class="closeX" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg></span></div>
@@ -259,9 +283,9 @@
       </div>
     </div>
 
-    <!-- ============ 8. BILLING · past due ============ -->
+    <!-- ============ 9. BILLING · past due ============ -->
     <div>
-      <p class="stateLabel neg">8 · Billing popup &middot; past due (payment failed)</p>
+      <p class="stateLabel neg">9 · Billing popup &middot; past due (payment failed)</p>
       <div class="modal">
         <div class="modalHead neg"><span class="title">Billing</span>
           <span class="closeX" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg></span></div>
@@ -274,6 +298,23 @@
             <a class="btnTeal" href="#">Update payment
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
             </a>
+            <a class="btnGhost" href="#">Close</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ 10. ACCESS CODE EXPIRED ============ -->
+    <div>
+      <p class="stateLabel neg">10 · Plan popup &middot; access-code period ended</p>
+      <div class="modal">
+        <div class="modalHead"><span class="title">Plan</span>
+          <span class="closeX" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg></span></div>
+        <div class="modalBody">
+          <div class="planName"><span class="n">Full access</span><span class="p">Access code</span></div>
+          <p class="note">Your access-code period has ended. Choose a paid plan to keep using Apply Wizard.</p>
+          <div class="foot">
+            <a class="btnTeal" href="#">Choose a plan</a>
             <a class="btnGhost" href="#">Close</a>
           </div>
         </div>

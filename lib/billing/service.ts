@@ -16,6 +16,7 @@ import type { BillingStripeGateway } from "./types";
 
 type HandlerOptions = {
   env?: NodeJS.ProcessEnv;
+  now?: () => string;
   getSession?: (request: Request) => Promise<PublicAuthSession>;
   repositoryRequest?: PublicProfileRepositoryRequest;
   stripe?: BillingStripeGateway;
@@ -100,6 +101,19 @@ function scopedIdempotencyKey(
   return `${operation}:${userId}:${key}`;
 }
 
+function nonStripeSubscriptionHasActiveEntitlement(
+  subscription: Awaited<ReturnType<typeof loadBillingSubscriptionForUser>>,
+  at: string,
+) {
+  if (!subscription || subscription.source === "stripe") return false;
+  if (subscription.source !== "access_code") return true;
+  if (!subscription.current_period_end) return true;
+  const periodEnd = Date.parse(subscription.current_period_end);
+  const requestedAt = Date.parse(at);
+  if (!Number.isFinite(periodEnd) || !Number.isFinite(requestedAt)) return true;
+  return requestedAt < periodEnd;
+}
+
 export async function handleCreateCheckoutRequest(
   request: Request,
   options: HandlerOptions = {},
@@ -123,7 +137,8 @@ export async function handleCreateCheckoutRequest(
 
   try {
     const existing = await loadBillingSubscriptionForUser(deps.repositoryRequest, deps.session.userId);
-    if (existing?.source !== undefined && existing.source !== "stripe") {
+    const now = options.now?.() ?? new Date().toISOString();
+    if (nonStripeSubscriptionHasActiveEntitlement(existing, now)) {
       return json({ error: "An explicit access conversion is required.", status: "conversion_required" }, { status: 409 });
     }
     if (existing?.source === "stripe") {

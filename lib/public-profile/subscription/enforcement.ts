@@ -53,7 +53,17 @@ function usageTypeForFeature(feature: MeteredFeature): UsageLedgerEntry["usageTy
 }
 
 export function subscriptionUsagePeriod(context: SubscriptionContext, at: string) {
-  if (context.source && context.source !== "stripe") {
+  if (
+    context.source === "access_code"
+    && context.currentPeriodStart
+    && context.currentPeriodEnd
+  ) {
+    return {
+      start: context.currentPeriodStart,
+      end: context.currentPeriodEnd,
+    };
+  }
+  if (context.source === "manual" || context.source === "access_code") {
     return {
       start: periodStartFor(at),
       end: periodEndFor(at),
@@ -63,6 +73,15 @@ export function subscriptionUsagePeriod(context: SubscriptionContext, at: string
     start: context.currentPeriodStart ?? periodStartFor(at),
     end: context.currentPeriodEnd ?? periodEndFor(at),
   };
+}
+
+export function isAccessCodeGrantExpired(context: SubscriptionContext, at: string) {
+  if (context.source !== "access_code" || !context.currentPeriodEnd) return false;
+  const grantEnd = Date.parse(context.currentPeriodEnd);
+  const requestedAt = Date.parse(at);
+  return Number.isFinite(grantEnd)
+    && Number.isFinite(requestedAt)
+    && requestedAt >= grantEnd;
 }
 
 function remainingFor(used: number, limit?: number) {
@@ -158,12 +177,8 @@ export function enforceSubscriptionFeature(
   // sweep flips these rows to 'canceled', but the window is enforced here too so the
   // boundary is exact rather than up to an hour late. A null period end never expires,
   // which is what keeps the three pre-2026-08-03 redemptions permanent.
-  if (context.source === "access_code" && context.currentPeriodEnd) {
-    const grantEnd = Date.parse(context.currentPeriodEnd);
-    const requestedAt = Date.parse(options.at);
-    if (Number.isFinite(grantEnd) && Number.isFinite(requestedAt) && requestedAt >= grantEnd) {
-      return { status: "subscription_inactive", feature, subscriptionStatus: "canceled" };
-    }
+  if (isAccessCodeGrantExpired(context, options.at)) {
+    return { status: "subscription_inactive", feature, subscriptionStatus: "canceled" };
   }
 
   if (context.source === "stripe") {

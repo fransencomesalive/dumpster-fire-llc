@@ -10,6 +10,7 @@ import {
   loadUsageLedgerForUser,
 } from "../public-profile/subscription/repository";
 import {
+  isAccessCodeGrantExpired,
   subscriptionUsagePeriod,
   summarizeSubscriptionUsage,
 } from "../public-profile/subscription/enforcement";
@@ -51,6 +52,7 @@ export type AtomicAccessCodeRedemptionResult =
       status:
         | "stripe_subscription_exists"
         | "already_entitled"
+        | "access_code_already_redeemed"
         | "invalid_code"
         | "expired_code"
         | "exhausted_code"
@@ -163,6 +165,12 @@ export async function handleRedeemAccessCodeRequest(
     if (result.status === "already_entitled") {
       return json({
         error: "This account already has active access.",
+        status: result.status,
+      }, { status: 409 });
+    }
+    if (result.status === "access_code_already_redeemed") {
+      return json({
+        error: "This account has already used an access code.",
         status: result.status,
       }, { status: 409 });
     }
@@ -279,46 +287,47 @@ export async function handleGetAccountPlanRequest(
       session.userId,
       { billingEnabled: true },
     );
-    const periodStart = context.source === "stripe"
-      ? context.currentPeriodStart
-      : undefined;
-    const periodEnd = context.source === "stripe"
-      ? context.currentPeriodEnd
-      : undefined;
-    const entries = context.status === "missing"
+    const accessCodeGrantExpired = isAccessCodeGrantExpired(context, now);
+    const effectiveContext = accessCodeGrantExpired
+      ? { ...context, status: "canceled" as const }
+      : context;
+    const period = subscriptionUsagePeriod(effectiveContext, now);
+    const entries = effectiveContext.status === "missing"
       ? []
       : await loadUsageLedgerForUser(repositoryRequest, session.userId, {
         at: now,
-        periodStart,
-        periodEnd,
+        periodStart: period.start,
+        periodEnd: period.end,
       });
-    const usage = summarizeSubscriptionUsage(context, entries, now);
-    const period = subscriptionUsagePeriod(context, now);
-    const publicPlanName = context.planName === "basic"
+    const usage = summarizeSubscriptionUsage(effectiveContext, entries, now);
+    const currentPlanName = accessCodeGrantExpired ? null : effectiveContext.planName;
+    const publicPlanName = effectiveContext.source === "access_code" && !accessCodeGrantExpired
+      ? "Full access"
+      : effectiveContext.planName === "basic"
       ? "Smoldering"
-      : context.planName === "premium" || context.planName === "tester"
+      : effectiveContext.planName === "premium"
         ? "Roaring"
         : null;
     return json({
       email: session.email ?? null,
-      planName: context.planName,
-      planCode: context.planName,
+      planName: currentPlanName,
+      planCode: currentPlanName,
       publicPlanName,
-      status: context.status,
-      subscriptionStatus: context.status,
-      source: context.source ?? null,
+      status: effectiveContext.status,
+      subscriptionStatus: effectiveContext.status,
+      source: effectiveContext.source ?? null,
       used: usage.applyWizard.used,
       limit: usage.applyWizard.limit ?? 0,
       remaining: usage.applyWizard.remaining ?? 0,
       periodStart: period.start,
       periodEnd: period.end,
-      cancelAtPeriodEnd: context.cancelAtPeriodEnd ?? false,
-      canceledAt: context.canceledAt ?? null,
+      cancelAtPeriodEnd: effectiveContext.cancelAtPeriodEnd ?? false,
+      canceledAt: effectiveContext.canceledAt ?? null,
       usage: {
         applyWizard: usage.applyWizard,
       },
       markdownExport: usage.markdownExport.unlocked,
-      hasBillingManagement: context.source === "stripe" && Boolean(context.stripeCustomerId),
+      hasBillingManagement: effectiveContext.source === "stripe" && Boolean(effectiveContext.stripeCustomerId),
     });
   }
 

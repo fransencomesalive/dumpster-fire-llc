@@ -944,4 +944,139 @@ if [[ "$TABLE_SECURITY" != "t|f|f|t|f|t" ]]; then
   exit 1
 fi
 
+# Apply the access-code follow-ups against the real Human Path implementation,
+# then prove expiry blocks new writes without breaking lifetime cached replay.
+THIRTY_DAY_MIGRATION="$REPO_ROOT/supabase/migrations/20260803000100_access_code_thirty_day_grant.sql"
+ACCESS_ENFORCEMENT_MIGRATION="$REPO_ROOT/supabase/migrations/20260803000200_access_code_grant_enforcement.sql"
+"${PSQL[@]}" -f "$THIRTY_DAY_MIGRATION" >/dev/null
+"${PSQL[@]}" -f "$ACCESS_ENFORCEMENT_MIGRATION" >/dev/null
+"${PSQL[@]}" -f "$ACCESS_ENFORCEMENT_MIGRATION" >/dev/null
+
+"${PSQL[@]}" -c "
+  insert into public.pursuits (
+    id, user_id, job_id, status, created_at, updated_at
+  ) values (
+    '40000000-0000-0000-0000-000000000007',
+    '$NEW_TESTER_USER',
+    '$NEW_EMPTY_JOB',
+    'review_complete',
+    '2026-08-03T10:00:00Z',
+    '2026-08-03T10:00:00Z'
+  );
+" >/dev/null
+
+LATEST_EXPIRED_RESULT="$("${PSQL[@]}" -At -c "
+  select public.persist_human_path_generation(
+    '40000000-0000-0000-0000-000000000007',
+    '$NEW_TESTER_USER',
+    '[]'::jsonb,
+    '{}'::jsonb,
+    12,
+    '2026-08-03T12:00:00Z'
+  );
+")"
+LATEST_EXPIRED_STATE="$("${PSQL[@]}" -At -F '|' -c "
+  select
+    '$LATEST_EXPIRED_RESULT'::jsonb ->> 'status',
+    status
+  from public.user_subscriptions
+  where user_id = '$NEW_TESTER_USER';
+")"
+if [[ "$LATEST_EXPIRED_STATE" != "subscription_inactive|canceled" ]]; then
+  echo "Expired access-code Human Path write was not blocked: $LATEST_EXPIRED_RESULT"
+  exit 1
+fi
+
+LATEST_CACHED_REPLAY="$("${PSQL[@]}" -At -c "
+  select public.persist_human_path_generation(
+    '$RENEWAL_PURSUIT',
+    '$NEW_TESTER_USER',
+    '[]'::jsonb,
+    '{}'::jsonb,
+    12,
+    '2026-08-03T12:01:00Z'
+  );
+")"
+LATEST_CACHED_REPLAY_STATE="$("${PSQL[@]}" -At -F '|' -c "
+  select
+    '$LATEST_CACHED_REPLAY'::jsonb ->> 'status',
+    '$LATEST_CACHED_REPLAY'::jsonb ->> 'replayed',
+    jsonb_array_length('$LATEST_CACHED_REPLAY'::jsonb -> 'contacts');
+")"
+if [[ "$LATEST_CACHED_REPLAY_STATE" != "human_path_generated|true|1" ]]; then
+  echo "Expired access-code cached replay was not preserved: $LATEST_CACHED_REPLAY"
+  exit 1
+fi
+
+"${PSQL[@]}" -c "
+  insert into public.user_subscriptions (
+    user_id, plan_id, status, source, current_period_start, current_period_end
+  ) values (
+    '$NO_SUB_USER',
+    '$TESTER_PLAN',
+    'active',
+    'access_code',
+    clock_timestamp() - interval '1 day',
+    clock_timestamp() + interval '29 days'
+  );
+
+  insert into public.pursuits (
+    id, user_id, job_id, status, created_at, updated_at
+  ) values (
+    '40000000-0000-0000-0000-000000000008',
+    '$NO_SUB_USER',
+    '$NEW_EMPTY_JOB',
+    'review_complete',
+    clock_timestamp(),
+    clock_timestamp()
+  );
+" >/dev/null
+
+LATEST_ACTIVE_RESULT="$("${PSQL[@]}" -At -c "
+  select public.persist_human_path_generation(
+    '40000000-0000-0000-0000-000000000008',
+    '$NO_SUB_USER',
+    '[{
+      \"name\": \"Stored Window Contact\",
+      \"title\": \"Recruiter\",
+      \"companyName\": \"Example\",
+      \"linkedinUrl\": \"https://www.linkedin.com/in/stored-window-contact\",
+      \"contactType\": \"recruiter\",
+      \"confidence\": \"medium\",
+      \"relevanceReason\": \"Current recruiter\",
+      \"roleConnection\": \"Potential hiring path\",
+      \"verificationNotes\": []
+    }]'::jsonb,
+    '{\"schemaVersion\":2,\"returnedCount\":1}'::jsonb,
+    12,
+    clock_timestamp()
+  );
+")"
+LATEST_ACTIVE_STATE="$("${PSQL[@]}" -At -F '|' -c "
+  select
+    '$LATEST_ACTIVE_RESULT'::jsonb ->> 'status',
+    '$LATEST_ACTIVE_RESULT'::jsonb #>> '{usage,used}',
+    '$LATEST_ACTIVE_RESULT'::jsonb #>> '{usage,remaining}',
+    ('$LATEST_ACTIVE_RESULT'::jsonb #>> '{usage,periodStart}')::timestamptz = current_period_start,
+    ('$LATEST_ACTIVE_RESULT'::jsonb #>> '{usage,periodEnd}')::timestamptz = current_period_end
+  from public.user_subscriptions
+  where user_id = '$NO_SUB_USER';
+")"
+if [[ "$LATEST_ACTIVE_STATE" != "human_path_generated|1|24|t|t" ]]; then
+  echo "Active access-code Human Path usage did not use its stored period: $LATEST_ACTIVE_RESULT"
+  exit 1
+fi
+
+UNCHECKED_EXECUTE="$("${PSQL[@]}" -At -c "
+  select has_function_privilege(
+    'service_role',
+    'public.persist_human_path_generation_unchecked_20260803(uuid,uuid,jsonb,jsonb,integer,timestamptz)',
+    'execute'
+  );
+")"
+if [[ "$UNCHECKED_EXECUTE" != "f" ]]; then
+  echo "Service role can bypass the access-code Human Path wrapper"
+  exit 1
+fi
+
 echo "subscription billing two-tier migration: passed"

@@ -11,6 +11,7 @@ PG_PORT="${STRIPE_BILLING_TEST_PORT:-55496}"
 PG_LOG="$TEST_ROOT/postgres.log"
 PG_BIN="$(pg_config --bindir)"
 MIGRATION="$REPO_ROOT/supabase/migrations/20260726000100_stripe_billing_backend.sql"
+CONVERSION_MIGRATION="$REPO_ROOT/supabase/migrations/20260803000300_expired_access_code_stripe_conversion.sql"
 
 cleanup() {
   if [[ -d "$PG_DATA" ]]; then
@@ -121,10 +122,15 @@ PSQL=("$PG_BIN/psql" -X -q -v ON_ERROR_STOP=1 -h "$PG_SOCKET" -p "$PG_PORT" -U p
 "${PSQL[@]}" -f "$MIGRATION" >/dev/null
 "${PSQL[@]}" -f "$MIGRATION" >/dev/null
 "${PSQL[@]}" -f "$MIGRATION" >/dev/null
+"${PSQL[@]}" -f "$CONVERSION_MIGRATION" >/dev/null
+"${PSQL[@]}" -f "$CONVERSION_MIGRATION" >/dev/null
+"${PSQL[@]}" -f "$CONVERSION_MIGRATION" >/dev/null
 
 "${PSQL[@]}" -c "
   insert into supabase_migrations.schema_migrations (version, name)
-  values ('20260726000100', 'stripe_billing_backend');
+  values
+    ('20260726000100', 'stripe_billing_backend'),
+    ('20260803000300', 'expired_access_code_stripe_conversion');
 " >/dev/null
 
 "${PSQL[@]}" -c "
@@ -448,6 +454,43 @@ begin
   );
   if v_result->>'status' <> 'non_stripe_entitlement_exists' then
     raise exception 'access-code entitlement was overwritten: %', v_result;
+  end if;
+
+  update public.user_subscriptions
+  set
+    status = 'canceled',
+    current_period_start = '2026-06-01T00:00:00Z',
+    current_period_end = '2026-07-01T00:00:00Z'
+  where user_id = '20000000-0000-0000-0000-000000000003';
+
+  v_result := public.persist_stripe_subscription_snapshot(
+    'evt_conflict',
+    '2026-07-26T15:00:00Z',
+    '2026-07-26T15:00:01Z',
+    '20000000-0000-0000-0000-000000000003',
+    'premium',
+    'active',
+    'active',
+    'cus_3',
+    'sub_3',
+    'price_premium',
+    false,
+    null,
+    'in_3',
+    '2026-07-01T00:00:00Z',
+    '2026-08-01T00:00:00Z'
+  );
+  if v_result->>'status' <> 'persisted' then
+    raise exception 'expired access-code entitlement did not convert: %', v_result;
+  end if;
+
+  select subscriptions.source, plans.name
+  into v_source, v_plan
+  from public.user_subscriptions subscriptions
+  join public.subscription_plans plans on plans.id = subscriptions.plan_id
+  where subscriptions.user_id = '20000000-0000-0000-0000-000000000003';
+  if v_source <> 'stripe' or v_plan <> 'premium' then
+    raise exception 'expired conversion persisted the wrong plan: %, %', v_source, v_plan;
   end if;
 
   select attempt_count into v_attempts

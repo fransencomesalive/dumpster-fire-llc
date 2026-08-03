@@ -12,18 +12,21 @@ import styles from "./account-popup.module.css";
 
 export type AccountPopupKind = "plan" | "billing" | "change";
 
-// Public tier names — never surface internal plan_name values (premium/tester) in UI copy.
-const PLAN_LABELS: Record<string, string> = { basic: "Smoldering", premium: "Roaring", tester: "Roaring" };
+// Public tier names. Never surface internal plan_name values in UI copy.
+const PLAN_LABELS: Record<string, string> = { basic: "Smoldering", premium: "Roaring", tester: "Full access" };
 
 function planLabel(plan: string | null | undefined): string {
   return plan && PLAN_LABELS[plan] ? PLAN_LABELS[plan] : "Smoldering";
 }
 
 function accountPlanLabel(account: AccountPlan | null): string {
-  return account?.publicPlanName || planLabel(account?.planCode || account?.planName);
+  const internalPlan = account?.planCode || account?.planName;
+  if (account?.source === "access_code" || internalPlan === "tester") return "Full access";
+  return account?.publicPlanName || planLabel(internalPlan);
 }
 
 function accountPlanPrice(account: AccountPlan | null): string {
+  if (account?.source === "access_code" || account?.planCode === "tester" || account?.planName === "tester") return "Access code";
   return account?.planCode === "basic" || account?.planName === "basic" ? "$22 / month" : "$32 / month";
 }
 
@@ -76,24 +79,31 @@ export default function AccountPopup({
   const planLimit = accountPlan?.limit ?? (accountPlan?.planCode === "basic" || accountPlan?.planName === "basic" ? 20 : 45);
   const planRemaining = Math.max(0, Math.min(planLimit, accountPlan?.remaining ?? planLimit));
   const planReset = formatAccountDate(accountPlan?.periodEnd);
-  const planIsRoaring = accountPlan?.planCode === "premium"
-    || accountPlan?.planName === "premium"
-    || accountPlan?.planName === "tester";
+  const accessCodeExpired = accountPlan?.source === "access_code"
+    && accountPlan?.subscriptionStatus !== "active"
+    && accountPlan?.subscriptionStatus !== "trialing";
+  const planIsRoaring = accountPlan?.source !== "access_code" && (
+    accountPlan?.planCode === "premium" || accountPlan?.planName === "premium"
+  );
   const planIsPastDue = accountPlan?.subscriptionStatus === "past_due" || accountPlan?.status === "past_due";
   const planChangeIsUpgrade = accountPlan?.planCode === "basic" || accountPlan?.planName === "basic";
   const usageWidth = planRemaining === 0 ? 100 : Math.round((planRemaining / Math.max(1, planLimit)) * 100);
+
+  function openPlanChooser() {
+    window.location.assign("/plan");
+  }
 
   async function redeemInviteCode() {
     if (!accessToken || !inviteCode.trim()) return;
     setRedeemingCode(true);
     try {
-      const result = await requestPublicProfileApi<{ status: string; planName: string }>(
+      await requestPublicProfileApi<{ status: string; planName: string }>(
         "/api/account/redeem-code",
         { method: "POST", accessToken, body: { code: inviteCode } },
       );
       setInviteCode("");
-      await refreshPlan().catch(() => null);
-      setActionMessage(`Access code accepted: the ${planLabel(result.planName)} plan is active.`);
+      const refreshed = await refreshPlan();
+      setActionMessage(`Access code accepted: ${accountPlanLabel(refreshed)} is active.`);
     } catch (error) {
       const body = (error as { body?: { error?: string } }).body;
       setActionMessage(body?.error || "That code did not work.");
@@ -188,6 +198,16 @@ export default function AccountPopup({
               {planIsRoaring ? <span className={styles.popupPlanBadge}>Top plan</span> : null}
               <span className={styles.popupPlanPrice}>{accountPlanPrice(accountPlan)}</span>
             </div>
+            {accessCodeExpired ? (
+              <>
+                <p className={styles.popupNote}>Your access-code period has ended. Choose a paid plan to keep using Apply Wizard.</p>
+                <div className={styles.popupFoot}>
+                  <button type="button" className={styles.popupBtnTeal} onClick={openPlanChooser}>Choose a plan</button>
+                  <button type="button" className={styles.popupBtnGhost} onClick={onClose}>Close</button>
+                </div>
+              </>
+            ) : (
+              <>
             <div className={styles.popupUsage}>
               <div className={styles.popupUsageTop}><span><b>{planRemaining}</b> of {planLimit} pursuits left</span></div>
               <div className={`${styles.popupMeter} ${planRemaining === 0 ? styles.popupMeterSpent : ""}`}>
@@ -218,6 +238,8 @@ export default function AccountPopup({
               ) : null}
               <button type="button" className={styles.popupBtnGhost} onClick={onClose}>Close</button>
             </div>
+              </>
+            )}
           </div>
         ) : kind === "billing" ? (
           <div className={styles.popupBody}>
@@ -264,28 +286,40 @@ export default function AccountPopup({
               </>
             ) : (
               <>
-                <p className={styles.popupNote}>This plan was unlocked with an access code, so there is no Stripe billing account to manage.</p>
-                <label className={styles.accountCodeLabel} htmlFor="billing-access-code">Access code</label>
-                <div className={styles.codeRow}>
-                  <input
-                    id="billing-access-code"
-                    className={styles.codeInput}
-                    value={inviteCode}
-                    onChange={(event) => setInviteCode(event.target.value)}
-                    placeholder="Enter code"
-                    type="text"
-                    aria-label="Access code"
-                  />
-                  <button
-                    type="button"
-                    className={styles.btnRedeem}
-                    disabled={redeemingCode || !inviteCode.trim()}
-                    onClick={() => void redeemInviteCode()}
-                  >
-                    Redeem
-                  </button>
-                </div>
-                {actionMessage ? <p className={styles.popupActionMessage} role="status">{actionMessage}</p> : null}
+                {accessCodeExpired ? (
+                  <>
+                    <p className={styles.popupNote}>Your access-code period has ended. Choose a paid plan to keep using Apply Wizard.</p>
+                    <div className={styles.popupFoot}>
+                      <button type="button" className={styles.popupBtnTeal} onClick={openPlanChooser}>Choose a plan</button>
+                      <button type="button" className={styles.popupBtnGhost} onClick={onClose}>Close</button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <p className={styles.popupNote}>This plan was unlocked with an access code, so there is no Stripe billing account to manage.</p>
+                    <label className={styles.accountCodeLabel} htmlFor="billing-access-code">Access code</label>
+                    <div className={styles.codeRow}>
+                      <input
+                        id="billing-access-code"
+                        className={styles.codeInput}
+                        value={inviteCode}
+                        onChange={(event) => setInviteCode(event.target.value)}
+                        placeholder="Enter code"
+                        type="text"
+                        aria-label="Access code"
+                      />
+                      <button
+                        type="button"
+                        className={styles.btnRedeem}
+                        disabled={redeemingCode || !inviteCode.trim()}
+                        onClick={() => void redeemInviteCode()}
+                      >
+                        Redeem
+                      </button>
+                    </div>
+                    {actionMessage ? <p className={styles.popupActionMessage} role="status">{actionMessage}</p> : null}
+                  </>
+                )}
               </>
             )}
           </div>
