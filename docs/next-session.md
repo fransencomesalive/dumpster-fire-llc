@@ -1,7 +1,40 @@
-# Next Session: Saved Scan Results and Custom URLs Verified
+# Next Session: Access-Code Release Verified
 
-_Updated 2026-07-30. Read `AGENTS.md` and follow the Session Start Protocol in
+_Updated 2026-08-03. Read `AGENTS.md` and follow the Session Start Protocol in
 `docs/project-operating-state.md` before editing._
+
+## 2026-08-03 access-code release complete
+
+Commit `c0664a1cef9f3b7861ec665a7ae48647382edef2` is on `origin/main`, GitHub CI run
+`30850024380` passed, and Vercel production deployment `dpl_3zkLmaKMcYiX5CtuZeGLovUE2nhi` is
+complete. Production migrations `20260726000100` and `20260803000100` through `20260803000300`
+are applied and recorded.
+
+The release gives new access-code redemptions one exact 30-day grant, prevents a second grant per
+account, meters Apply Wizard across the stored grant period, blocks new work at expiration while
+preserving cached results, and permits Stripe conversion only after a timed grant actually ends.
+Access-code accounts display **Full access** and **Access code**, including DUMPSTERFRIENDS, while
+retaining the internal premium plan and its 45-use allowance. The three existing accounts remain
+permanent by explicit prior decision; production postflight confirmed all three subscription rows
+and their three new durable grant-ledger rows remain active null-window grants.
+
+The two original GitHub failures were the same time-dependent saved-pursuits fixture. Its quota
+subscription ended August 1, so the August 3 runs counted zero prior uses and raised
+`pursuit_limit_reached:0:0`. The fixture now derives that scenario's period from the current UTC
+month, and the complete release gate passes.
+
+Next immediate starting point:
+
+1. Verify the first scheduled hourly expiry cron execution. Do not manually mutate production
+   accounts merely to manufacture evidence.
+2. In a Claude Design-enabled session, register and read back
+   `design-system/components/plan-billing-step.html` and
+   `design-system/components/plan-billing-detail.html`. Remote registration is **NOT VERIFIED**;
+   local parity and responsive rendering are verified.
+3. Use `env -u SUPABASE_ACCESS_TOKEN` for Supabase CLI commands until the known stale token line in
+   `.env.local` is replaced or removed securely. The CLI login stored by this release is valid.
+4. No access-code implementation is in flight. Resume unrelated planned product work only after
+   Randall explicitly approves its scope.
 
 ## 2026-07-30 saved-result and custom-URL release
 

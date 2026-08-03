@@ -1,6 +1,85 @@
 # Current State
 
-## 2026-08-03 - Access-code 30-day expiry: BUILT, COMMITTED, NOT DEPLOYED (Claude)
+## 2026-08-03 - Access-code expiry and paid conversion: LIVE (Codex)
+
+Implementation commit `c0664a1` is on `origin/main`. GitHub CI run `30850024380` passed its
+complete release check, including the real PostgreSQL migration chain, all 34 fixture suites,
+TypeScript, lint with four pre-existing warnings and zero errors, and the production build.
+Vercel reports production deployment `dpl_3zkLmaKMcYiX5CtuZeGLovUE2nhi` complete. The canonical
+production domain returns HTTP 200.
+
+### What the two red GitHub runs meant
+
+Runs for commits `ec439c1` and `42853cb` failed in the same saved-pursuits migration harness. The
+test subscription for its quota scenario was fixed to July 1 through August 1. When CI ran on
+August 3, the first use no longer counted in the active test period, so the later assertion received
+`pursuit_limit_reached:0:0` instead of the expected `pursuit_limit_reached:1:0`; PostgreSQL exited
+with code 3. This was a time-dependent test fixture, not an OG image failure. The fixture now derives
+that one scenario's period from the current UTC month. The previously failing harness passes in CI.
+
+### Released behavior
+
+- New access-code grants run for exactly 30 days from redemption.
+- One account can receive only one access-code grant. A second code cannot create another 30-day
+  window or consume another code use.
+- Apply Wizard usage for a timed grant is measured across the stored grant window, not reset at a
+  UTC month boundary. Preserved permanent grants and manual entitlements retain their existing UTC
+  calendar-month behavior.
+- Expiration is checked at the TypeScript and database boundaries. Cached Human Path results remain
+  replayable after expiration, while new paid work is blocked.
+- An expired timed grant can enter Stripe Checkout and can be replaced by the confirmed Stripe
+  webhook snapshot. Active timed grants, permanent grants, and manual entitlements cannot be
+  overwritten by Checkout.
+- Expired accounts return to the existing paid-plan chooser instead of being treated as active.
+- Every active access-code account, including DUMPSTERFRIENDS, is presented as **Full access** and
+  **Access code**. The internal `premium` mapping and its real 45-use allowance remain intact; the UI
+  no longer calls that grant Roaring or displays $32/month.
+- The new `access_code_already_redeemed` database result is an explicit HTTP 409 response rather
+  than a misleading 503.
+
+### Production database state
+
+The following migrations were applied in order and are recorded in production:
+
+1. `20260726000100_stripe_billing_backend.sql`
+2. `20260803000100_access_code_thirty_day_grant.sql`
+3. `20260803000200_access_code_grant_enforcement.sql`
+4. `20260803000300_expired_access_code_stripe_conversion.sql`
+
+Read-only production postflight confirmed:
+
+- three `access_code:active` subscriptions, all preserved permanent null-window grants;
+- three durable grant-ledger rows, all matching those permanent grants, with zero timed grants;
+- DUMPSTERFRIENDS still maps to internal `premium`, `use_count = 3`, `max_uses = 25`;
+- `stripe_webhook_events` exists and is readable by the service role, with zero events;
+- expiry, redemption, and Stripe snapshot RPCs are visible to the service role;
+- the unauthenticated production expiry route returns HTTP 401, which proves `CRON_SECRET` is
+  configured and the route is guarded rather than missing configuration.
+
+### Verification boundaries and next starting point
+
+- A destructive 30-day production redemption-expiration-payment journey was not run against the
+  three real accounts. The complete lifecycle is verified in CI with PostgreSQL and application
+  tests. Production data was read after migration but not modified for QA.
+- The authorized cron sweep was not manually invoked during postflight. The unauthenticated route,
+  production RPC visibility, migration record, and CI behavior are verified; the scheduled hourly
+  invocation remains the first live execution evidence.
+- Remote Claude Design registration for the two touched Plan/Billing cards is **NOT VERIFIED** in
+  this Codex environment. Local card/live parity and responsive rendering passed at 320, 375, 390,
+  1280, and 1440 pixels.
+- The Vercel-generated deployment URL returns an existing SSO 302, while the canonical production
+  domain is public and returns HTTP 200. No Vercel authentication setting was changed in this task.
+- `.env.local` still contains the known stale `SUPABASE_ACCESS_TOKEN`. The freshly authenticated CLI
+  session works when that local override is omitted, for example with `env -u SUPABASE_ACCESS_TOKEN`.
+  Do not treat the stale file token as valid.
+
+No additional access-code code work is in flight. The next operational checks are the first
+scheduled cron execution and remote Claude Design registration, without changing production code.
+
+## Superseded 2026-08-03 handoff - pre-release access-code state
+
+Historical only. Its deployment blocker and next steps were completed by `c0664a1` and the four
+production migrations recorded above.
 
 Commit `6aabc13`. **Blocked on one thing: the migration is not applied to production.**
 `expire_access_code_subscriptions()` returns 404 from the prod RPC endpoint, confirmed live.
@@ -55,7 +134,7 @@ redemption path increments `use_count` *before* upserting and has no already-ent
 repeat redemptions by the same person each burned a use. The RPC path added that guard on 07-24,
 so it cannot recur.
 
-### Blocker for Codex
+### Historical blocker for Codex (resolved)
 
 `SUPABASE_ACCESS_TOKEN` in `.env.local` is dead. Verified three ways: Management API
 `POST /v1/projects/{ref}/database/query` → 401, `GET /v1/projects` → 401, and
@@ -64,7 +143,7 @@ so it cannot recur.
 Management API applies succeeding through **Jul 20**, so the file is stale relative to what has
 been used since.
 
-### Next session starting point
+### Historical next-session starting point (completed)
 
 1. Apply `supabase/migrations/20260803000100_access_code_thirty_day_grant.sql` to production and
    record it in `schema_migrations`.
