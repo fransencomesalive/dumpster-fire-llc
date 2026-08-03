@@ -13,10 +13,15 @@
      exactly like the homepage renders it. Render at 1200×630, deviceScaleFactor 1. */
   @font-face { font-family:"Original Surfer"; src:url("../fonts/OriginalSurfer-Regular.ttf") format("truetype"); }
   @font-face { font-family:"Bemio"; src:url("../fonts/Bemio.otf") format("opentype"); }
+  @font-face { font-family:"Plantagenet Cherokee"; src:url("../fonts/PlantagenetCherokee.ttf") format("truetype"); }
 
   html, body { margin:0; padding:0; }
   .stage { position:relative; width:1200px; height:630px; overflow:hidden; box-sizing:border-box;
-    background-color:var(--c-paper); display:flex; align-items:center; }
+    background-color:var(--c-paper); display:flex; flex-direction:column; }
+
+  /* Lockup row keeps the approved 2026-07-14 geometry; the footer block below is
+     subtracted from its height so mascot + wordmark stay optically centered. */
+  .main { flex:1 1 auto; min-height:0; display:flex; align-items:center; }
 
   .mascot { flex:none; width:400px; height:auto; margin-left:92px; }
 
@@ -29,14 +34,31 @@
   .word .base { color:var(--c-teal); }
   .word .slip { position:absolute; left:0; top:0; color:var(--c-tomato);
     transform:translate(0.0417em, 0.0469em); mix-blend-mode:multiply; }
+
+  /* Footer · hero divider (ink rule + centered teal diamond) over the tagline,
+     centered on the 92px content margin the mascot sets. */
+  .footer { flex:none; width:1016px; margin:0 auto; padding-bottom:46px; }
+  .rule { display:flex; align-items:center; gap:14px; }
+  .rule::before, .rule::after { content:""; flex:1 1 auto; height:var(--line-reg); background:var(--c-ink); }
+  .ruleDot { flex:none; width:14px; height:14px; background:var(--c-teal);
+    border:var(--line-hair) solid var(--c-ink); transform:rotate(45deg); }
+  .tagline { margin:22px 0 0; text-align:center; color:var(--c-ink);
+    font-family:"Plantagenet Cherokee", var(--font-body); font-size:29px; line-height:1.2;
+    white-space:nowrap; }
 </style>
 </head>
 <body>
   <div class="stage">
-    <img class="mascot" src="../dumpsterfireguy.png" alt="" />
-    <div class="lockup">
-      <p class="lead">The Job Market Is A</p>
-      <h1 class="word"><span class="plate base">Dumpster Fire</span><span class="plate slip" aria-hidden="true">Dumpster Fire</span></h1>
+    <div class="main">
+      <img class="mascot" src="../dumpsterfireguy.png" alt="" />
+      <div class="lockup">
+        <p class="lead">The Job Market Is A</p>
+        <h1 class="word"><span class="plate base">Dumpster Fire</span><span class="plate slip" aria-hidden="true">Dumpster Fire</span></h1>
+      </div>
+    </div>
+    <div class="footer">
+      <div class="rule" aria-hidden="true"><span class="ruleDot"></span></div>
+      <p class="tagline">A job-search operating system for people who are done feeding the machine.</p>
     </div>
   </div>
 </body>
