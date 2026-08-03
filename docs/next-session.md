@@ -3,6 +3,22 @@
 _Updated 2026-08-03. Read `AGENTS.md` and follow the Session Start Protocol in
 `docs/project-operating-state.md` before editing._
 
+## 2026-08-03 new-account activity check
+
+Production has six Auth users total. Three accounts were created during the August 3
+America/Denver calendar day:
+
+- `rich@richardoedwardo.com` - incomplete initialized profile, no meaningful onboarding sections
+  saved, no subscription, and no access-code grant;
+- `kmaroonfoto@gmail.com` - no candidate profile, no subscription, and no access-code grant;
+- `ajobateh@gmail.com` - incomplete initialized profile, no meaningful onboarding sections saved,
+  no subscription, and no access-code grant.
+
+None completed onboarding and none redeemed DUMPSTERFRIENDS or another access code. The two
+initialized profile rows are bootstrap records, not saved user progress. Browser-local unsaved
+drafts are not visible server-side. Do not confuse these signups with the three older permanent
+access-code accounts in the release postflight.
+
 ## 2026-08-03 access-code release complete
 
 Commit `c0664a1cef9f3b7861ec665a7ae48647382edef2` is on `origin/main`, GitHub CI run

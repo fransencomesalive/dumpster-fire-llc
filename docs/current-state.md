@@ -1,5 +1,27 @@
 # Current State
 
+## 2026-08-03 - New-account onboarding and entitlement audit (Codex)
+
+A read-only production Supabase audit at approximately 21:50-21:52 UTC found six total Auth users,
+three of whom were created during the August 3 America/Denver calendar day. None of the three new
+accounts has completed onboarding, saved meaningful onboarding section data server-side, created a
+`user_subscriptions` row, or created an `access_code_subscription_grants` row. Therefore none of
+today's three signups redeemed DUMPSTERFRIENDS or any other access code.
+
+Account-level state:
+
+- `rich@richardoedwardo.com` - Auth user created at 19:32 UTC. The onboarding bootstrap initialized
+  an incomplete candidate profile at 19:36 UTC, but no user-entered section data was saved.
+- `kmaroonfoto@gmail.com` - Auth user created at 21:08 UTC. No candidate profile exists, so
+  server-side onboarding was not started.
+- `ajobateh@gmail.com` - Auth user created at 21:22 UTC. The onboarding bootstrap initialized an
+  incomplete candidate profile seconds later, but no user-entered section data was saved.
+
+The initialized profiles contain one automatically satisfied/default requirement and ten remaining
+requirements; this is not user-entered progress. Unsaved browser-local onboarding drafts cannot be
+observed through the production database. The three active permanent access-code subscriptions
+documented below belong to older accounts, not these three August 3 signups.
+
 ## 2026-08-03 - Access-code expiry and paid conversion: LIVE (Codex)
 
 Implementation commit `c0664a1` is on `origin/main`. GitHub CI run `30850024380` passed its
