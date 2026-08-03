@@ -1,5 +1,80 @@
 # Current State
 
+## 2026-08-03 - Access-code 30-day expiry: BUILT, COMMITTED, NOT DEPLOYED (Claude)
+
+Commit `6aabc13`. **Blocked on one thing: the migration is not applied to production.**
+`expire_access_code_subscriptions()` returns 404 from the prod RPC endpoint, confirmed live.
+
+### Correct tier vocabulary (verified in lib/billing/catalog.ts)
+
+Two public tiers only. Good / Gooder / Goodest are **retired — never use them again.**
+
+| Public name | Internal plan code | Price | Stripe lookup key |
+| --- | --- | --- | --- |
+| Smoldering | `basic` | $22/mo | `dumpster_fire_smoldering_monthly_v1` |
+| Roaring | `premium` | $32/mo | `dumpster_fire_roaring_monthly_v1` |
+
+`tester` ($0) is internal-only. `pro` was retired 2026-07-25. Both still exist as rows in
+`subscription_plans` but neither is part of the pricing structure. The five `GOODEST-*` access
+codes in prod are unused rows whose *names* embed a retired tier; they grant `tester`, which is
+the lower grant, so they should be deleted or renamed rather than handed out.
+
+### What the change does
+
+Access-code redemptions granted premium permanently. Three separate causes: the RPC stamped a
+calendar-month window, nothing enforced any window for non-stripe sources, and a legacy write path
+stamped no window at all.
+
+- `supabase/migrations/20260803000100_access_code_thirty_day_grant.sql` —
+  `redeem_access_code_subscription` now stamps `[redemption, redemption + 30 days)` instead of
+  `[month start, +1 month)`, so a redeemer on the 30th no longer gets one day. Adds
+  `expire_access_code_subscriptions()`, which flips closed grants to `canceled`. Expiry works by
+  flipping status rather than teaching every entitlement check about periods: both SQL sites
+  (`usage_ledger_quota_before_insert`, `persist_human_path_generation`) and the TypeScript path
+  already refuse a non-active status, so one flip closes every path at once.
+- `app/api/account/expire-access-codes/route.ts` + `lib/account/expire-access-codes.ts` — hourly
+  cron, CRON_SECRET-guarded, same application-level guard as source-scan/refine-postings.
+  **Requires `CRON_SECRET` in Vercel or it fails closed with 503.**
+- `lib/public-profile/subscription/enforcement.ts` — refuses a closed grant inline so the boundary
+  is exact rather than up to an hour late.
+- `lib/account/access-codes.ts` — legacy path now stamps the same 30-day window and `source`.
+- A null `current_period_end` never expires. That is what keeps the three existing redemptions
+  permanent, as Randall approved.
+
+### Verified production state (2026-08-03, service-role reads)
+
+- `DUMPSTERFRIENDS` → plan `premium` (Roaring), `use_count` **reset 12 → 3**, max 25, 22 remaining,
+  no expiry. The reset was applied and confirmed.
+- 3 `user_subscriptions` rows, all `access_code`, all `active`, all `current_period_end` NULL.
+  These are the only three auth users.
+- `expire_access_code_subscriptions()` → **404, not applied.**
+
+The 12 → 3 discrepancy was NOT caused by QA scripts (`qa-subscription-flag-on-production.mjs`
+seeds `user_subscriptions` directly and asserts the count is unchanged). Cause: the legacy
+redemption path increments `use_count` *before* upserting and has no already-entitled guard, so
+repeat redemptions by the same person each burned a use. The RPC path added that guard on 07-24,
+so it cannot recur.
+
+### Blocker for Codex
+
+`SUPABASE_ACCESS_TOKEN` in `.env.local` is dead. Verified three ways: Management API
+`POST /v1/projects/{ref}/database/query` → 401, `GET /v1/projects` → 401, and
+`supabase projects list` (CLI 2.101.0, independent client) → `Unauthorized`. Token parses clean
+(44 chars, `sbp_` prefix, no whitespace). `.env.local` was last written **Jul 2**; docs show
+Management API applies succeeding through **Jul 20**, so the file is stale relative to what has
+been used since.
+
+### Next session starting point
+
+1. Apply `supabase/migrations/20260803000100_access_code_thirty_day_grant.sql` to production and
+   record it in `schema_migrations`.
+2. Confirm `CRON_SECRET` is set in Vercel.
+3. Verify `expire_access_code_subscriptions()` no longer 404s, then push `6aabc13`.
+   **Order matters:** deploying before the migration lands makes the hourly cron 503 and enforces
+   the old calendar-month window on new redemptions.
+4. Decide what to do with the five `GOODEST-*` codes — delete or rename; they carry a retired tier
+   name and grant the lower `tester` plan.
+
 ## 2026-08-03 - OG share card gains the divider + tagline (Claude)
 
 Commit `ec439c1` is on `origin/main` and live in production. `https://www.thejobmarketisadumpsterfire.com/og-share.png`
@@ -41,7 +116,7 @@ any visual asset.** The local `design-system/` folder is well behind the project
    divider + tagline appear in the rendered preview.
 2. **Launch post is drafted but unpublished.** A LinkedIn post recruiting 10 testers exists only in
    the 2026-08-03 chat transcript, not in the repo. It offers the top subscription tier (now named
-   **Roaring**, not Goodest) in exchange for feedback on job matching, message generation, and bugs
+   **Roaring**) in exchange for feedback on job matching, message generation, and bugs
    filed through the in-site QA portal, gated on commenting "I AM NOT A ROBOT". If it matters,
    capture it into `docs/` before the transcript is lost.
 3. No code work is queued from this session. Verify item 1 first, then pick up from the
