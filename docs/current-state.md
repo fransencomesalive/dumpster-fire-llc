@@ -1,5 +1,52 @@
 # Current State
 
+## 2026-08-03 - OG share card gains the divider + tagline (Claude)
+
+Commit `ec439c1` is on `origin/main` and live in production. `https://www.thejobmarketisadumpsterfire.com/og-share.png`
+returns HTTP 200 as `image/png` at 205,895 bytes (was 196,373), and the homepage `og:image` tag
+resolves to it.
+
+The approved 1200x630 artwork now carries the hero divider (ink rule + centered teal diamond) and
+the tagline "A job-search operating system for people who are done feeding the machine." along the
+bottom of the frame, centered on the same 92px content margin the mascot sets. Approved by Randall
+in Claude Design (project `3af2f1ea-428c-49b3-8b02-c066ec0c7452`, group Sharing). The lockup row is
+now `flex:1` above the footer block so mascot + wordmark stay optically centered in the reduced
+height; mascot geometry, lockup, and the multiply overprint are unchanged from the approved
+2026-07-14/07-15 artwork.
+
+`scripts/render-og.sh` makes `public/og-share.png` reproducible from
+`design-system/components/og-share-compose.html`. Chrome is required and next/og cannot substitute:
+the wordmark registration uses `mix-blend-mode:multiply`, which Satori does not implement, so a
+Satori render collapses the overprint into a flat teal-with-tomato-outline wordmark. Re-run the
+script after any edit to the compose source.
+
+**Share copy was not touched.** The `og:title` / `og:description` / description decisions from
+2026-07-14 and 2026-07-16 in `app/layout.tsx` are intact, including putting the tagline in
+`og:title` because iMessage and most platforms render only image + title + domain.
+
+Process note for the next session: this session began from a checkout roughly 40 commits stale and
+most of its early work had to be discarded — including an unapproved OG layout built from
+`hero-matchbook` plus invention while an approved source
+(`components/og-share-compose.html`) already existed in Claude Design and `public/og-share.png` was
+already shipped. **Pull before doing anything, and query the Claude Design project before touching
+any visual asset.** The local `design-system/` folder is well behind the project on most cards; only
+`og-share-compose.html` is currently a byte-for-byte mirror.
+
+### Next session starting point
+
+1. **Facebook/LinkedIn re-scrape is outstanding (Randall's action, not verified here).** Run
+   `https://www.thejobmarketisadumpsterfire.com` through
+   https://developers.facebook.com/tools/debug/ and press **Scrape Again**, then LinkedIn's Post
+   Inspector. Both cache aggressively and will serve the previous card until forced. Verify the
+   divider + tagline appear in the rendered preview.
+2. **Launch post is drafted but unpublished.** A LinkedIn post recruiting 10 testers exists only in
+   the 2026-08-03 chat transcript, not in the repo. It offers the top subscription tier (now named
+   **Roaring**, not Goodest) in exchange for feedback on job matching, message generation, and bugs
+   filed through the in-site QA portal, gated on commenting "I AM NOT A ROBOT". If it matters,
+   capture it into `docs/` before the transcript is lost.
+3. No code work is queued from this session. Verify item 1 first, then pick up from the
+   `2026-07-30` entry below.
+
 ## 2026-07-30 (night) - Saved results leave scans; custom URL reaches Saved and Applied
 
 Commit `91d03cd` is on `origin/main` and live in Vercel deployment
