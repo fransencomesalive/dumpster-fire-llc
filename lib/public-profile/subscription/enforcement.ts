@@ -154,6 +154,18 @@ export function enforceSubscriptionFeature(
     };
   }
 
+  // Access-code grants run 30 days from redemption (Randall, 2026-08-03). The hourly
+  // sweep flips these rows to 'canceled', but the window is enforced here too so the
+  // boundary is exact rather than up to an hour late. A null period end never expires,
+  // which is what keeps the three pre-2026-08-03 redemptions permanent.
+  if (context.source === "access_code" && context.currentPeriodEnd) {
+    const grantEnd = Date.parse(context.currentPeriodEnd);
+    const requestedAt = Date.parse(options.at);
+    if (Number.isFinite(grantEnd) && Number.isFinite(requestedAt) && requestedAt >= grantEnd) {
+      return { status: "subscription_inactive", feature, subscriptionStatus: "canceled" };
+    }
+  }
+
   if (context.source === "stripe") {
     const start = Date.parse(context.currentPeriodStart ?? "");
     const end = Date.parse(context.currentPeriodEnd ?? "");

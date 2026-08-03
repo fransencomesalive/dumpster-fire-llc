@@ -108,6 +108,53 @@ assert.deepEqual(pastDue, {
   subscriptionStatus: "past_due",
 });
 
+// Access-code grants expire 30 days after redemption (Randall, 2026-08-03). Past the
+// grant end the context reads as canceled even while status is still 'active' in the
+// row, so the boundary does not wait for the hourly sweep.
+const accessCodeLive: SubscriptionContext = {
+  ...premium,
+  source: "access_code",
+  currentPeriodStart: "2026-06-01T00:00:00.000Z",
+  currentPeriodEnd: "2026-07-01T00:00:00.000Z",
+};
+assert.equal(
+  enforceSubscriptionFeature(accessCodeLive, [], "outreach_message", { at }).status,
+  "allowed",
+  "an access-code grant inside its 30-day window still works",
+);
+
+const accessCodeExpired: SubscriptionContext = {
+  ...accessCodeLive,
+  currentPeriodEnd: "2026-06-29T11:59:59.000Z",
+};
+assert.deepEqual(
+  enforceSubscriptionFeature(accessCodeExpired, [], "outreach_message", { at }),
+  { status: "subscription_inactive", feature: "outreach_message", subscriptionStatus: "canceled" },
+  "an access-code grant past its window is refused",
+);
+assert.deepEqual(
+  enforceSubscriptionFeature(accessCodeExpired, [], "pursuit", { at }),
+  { status: "subscription_inactive", feature: "pursuit", subscriptionStatus: "canceled" },
+);
+assert.deepEqual(
+  enforceSubscriptionFeature(accessCodeExpired, [], "pursued_jobs_export", { at }),
+  { status: "subscription_inactive", feature: "pursued_jobs_export", subscriptionStatus: "canceled" },
+);
+
+// A null period end never expires. This is what keeps the three redemptions that
+// predate the 30-day rule on permanent access.
+const accessCodePermanent: SubscriptionContext = {
+  ...premium,
+  source: "access_code",
+  currentPeriodStart: undefined,
+  currentPeriodEnd: undefined,
+};
+assert.equal(
+  enforceSubscriptionFeature(accessCodePermanent, [], "outreach_message", { at }).status,
+  "allowed",
+  "a null grant end never expires",
+);
+
 // tester (access-code free plan): pursuits 25, human path 25, outreach 75, export unlocked
 const testerSummary = summarizeSubscriptionUsage({ ...premium, planName: "tester" }, [usage("human_path", 25)], at);
 assert.equal(testerSummary.humanPath.limit, 25);
@@ -236,11 +283,16 @@ async function repositoryAssertions() {
     },
   );
 
+  // An access-code grant still meters against the calendar month rather than the
+  // stripe-style stored window, so usage recorded this month counts even though the
+  // grant started earlier. Before 2026-08-03 this fixture ended 2026-02-01 and was
+  // expected to stay allowed; the 30-day grant rule now refuses a closed window, so
+  // the window here is open and the expired case is asserted separately above.
   const accessCodeContext: SubscriptionContext = {
     ...smoldering,
     source: "access_code",
-    currentPeriodStart: "2026-01-01T00:00:00.000Z",
-    currentPeriodEnd: "2026-02-01T00:00:00.000Z",
+    currentPeriodStart: "2026-06-20T00:00:00.000Z",
+    currentPeriodEnd: "2026-07-20T00:00:00.000Z",
   };
   assert.deepEqual(
     enforceSubscriptionFeature(
@@ -256,6 +308,21 @@ async function repositoryAssertions() {
       limit: 20,
       remaining: 0,
     },
+  );
+
+  assert.deepEqual(
+    enforceSubscriptionFeature(
+      { ...accessCodeContext, currentPeriodEnd: "2026-02-01T00:00:00.000Z" },
+      [usage("apply_wizard", 19)],
+      "apply_wizard",
+      { at },
+    ),
+    {
+      status: "subscription_inactive",
+      feature: "apply_wizard",
+      subscriptionStatus: "canceled",
+    },
+    "a grant that closed in February is refused in June",
   );
 }
 

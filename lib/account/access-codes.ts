@@ -70,6 +70,11 @@ function qs(params: Record<string, string>) {
   return `?${new URLSearchParams(params).toString()}`;
 }
 
+// Access-code grants run 30 days from redemption (Randall, 2026-08-03). Mirrors the
+// `interval '30 days'` the atomic RPC uses in
+// supabase/migrations/20260803000100_access_code_thirty_day_grant.sql.
+const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+
 export function normalizeAccessCode(value: unknown) {
   return typeof value === "string" ? value.trim().toUpperCase().replace(/\s+/g, "") : "";
 }
@@ -202,6 +207,12 @@ export async function handleRedeemAccessCodeRequest(
     return json({ error: "That code was just used. Try again.", status: "retry" }, { status: 409 });
   }
 
+  // Same 30-day grant window the atomic RPC stamps (Randall, 2026-08-03). Without
+  // these columns this path writes a row that never expires, which is how the three
+  // pre-2026-08-03 redemptions ended up permanent.
+  const grantStart = new Date(now);
+  const grantEnd = new Date(grantStart.getTime() + THIRTY_DAYS_MS);
+
   await repositoryRequest("user_subscriptions", {
     method: "POST",
     query: "?on_conflict=user_id",
@@ -210,6 +221,9 @@ export async function handleRedeemAccessCodeRequest(
       user_id: session.userId,
       plan_id: plan.id,
       status: "active",
+      source: "access_code",
+      current_period_start: grantStart.toISOString(),
+      current_period_end: grantEnd.toISOString(),
       updated_at: now,
     },
   });
