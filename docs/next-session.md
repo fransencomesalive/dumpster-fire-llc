@@ -1,14 +1,14 @@
-# Next Session: 2026-08-04 JOB-021 and JOB-022 Awaiting Release Authorization
+# Next Session: 2026-08-04 JOB-021 and JOB-022 Live; Portable QA Lifecycle Awaiting Scope
 
 _Updated 2026-08-04. Read `AGENTS.md` and follow the Session Start Protocol in
 `docs/project-operating-state.md` before editing._
 
-## Current in-flight state
+## Current release state
 
-JOB-021 and JOB-022 are implemented and verified locally. Production migration
-`20260804000100_remote_preference_no_preference.sql` is applied and recorded, but the application
-changes are not committed, pushed, or deployed. Production remains at
-`ad493ca2351d4d2ec73c6dceba45b6605f476b4e`.
+JOB-021 and JOB-022 are live from commit `d24b4d1979899cb63d1893dbcdbeaaa838becc0a`
+in Vercel deployment `dpl_7BuDuMGctNeLJvicyv2oE6QQXVwX`. Production migration
+`20260804000100_remote_preference_no_preference.sql` is applied, GitHub Actions run `30941764134`
+passed, and the canonical domain returned HTTP 200 from that deployment.
 
 - JOB-021 adds a neutral **No preference** Remote Preference value across onboarding, dashboard
   editing, profile parsing, both matching paths, database validation, and local design-system cards.
@@ -16,14 +16,35 @@ changes are not committed, pushed, or deployed. Production remains at
   and **Needs work** states appear only when the final Voice & Personality save attempts to continue
   into scanning.
 
-Local evidence is complete: all 36 fixtures, TypeScript, Webpack production build, focused migration
-test, and the real-component browser journey passed. Browser geometry passed at 320, 375, 390, 1280,
-and 1440 pixels without overflow or browser errors. The default Turbopack build stalled and was
-stopped. Lint has zero errors and the same four pre-existing warnings.
+An authenticated disposable production account verified real `no_preference` API persistence and
+database readback, quiet resume save, visible blockers only on the final completion attempt, and no
+overflow or browser errors at 320, 375, 390, 1280, and 1440 pixels. Cleanup removed the Auth user,
+profile, and subscription. The reusable check is
+`scripts/qa/production-onboarding-review-browser.mjs`. Remote Claude Design registration remains
+**NOT VERIFIED** because this session has no Claude Design connector.
 
-Next immediate action: commit and push only `main`, wait for GitHub/Vercel success, verify HTTP 200
-and deployment identity, and run authenticated production checks. Remote Claude Design registration
-remains **NOT VERIFIED** because this session has no Claude Design connector.
+## Portable QA-agent decision boundary
+
+Telegram JOB-022 task `c6c4b098-8d19-4bfe-9bb2-ac270034f27d` had the right diagnosis. Its patch was
+rejected because the worker clone was at `7097285` while the task packet named app version
+`3504a87`, and the review flow had no refresh-and-rerun action. The active relay checks freshness
+only at approval time, then offers only approve or reject/delete. This was a lifecycle failure, not
+a disagreement with the shipped section-save solution.
+
+The portable `/Users/randallfransen/Sites/QA-AGENT` factory is still version `0.1.0`; it lacks the
+installed relay's version `0.2.1` agent execution and review subsystem. Do not patch only the
+installed Dumpster Fire relay and call the issue portable. The next implementation requires
+explicit cross-repository scope to:
+
+1. upstream the current execution/review subsystem into `QA-AGENT`;
+2. make the orchestrator sync the clean worker clone to `origin/main` before recording the base;
+3. add stale-result detection plus **Re-run on latest main**;
+4. preserve patch artifacts before discard; and
+5. test generated installs, then reprovision the Dumpster Fire relay without replacing local
+   configuration, data, outbox, identity, or secrets.
+
+Next immediate action: obtain explicit approval for that portable factory and installed-relay
+release scope. No cross-repository files have been edited yet.
 
 Durable lesson: never treat a successful section save as an attempt to complete onboarding. The
 user can be shown whole-profile blockers only at the transition toward scanning.

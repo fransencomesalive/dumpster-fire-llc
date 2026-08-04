@@ -1,6 +1,6 @@
 # Current State
 
-## 2026-08-04 - JOB-021 and JOB-022 approved implementation: LOCAL, NOT RELEASED (Codex)
+## 2026-08-04 - JOB-021 and JOB-022: LIVE (Codex)
 
 Randall approved both QA fixes and clarified JOB-022's workflow boundary: saving a resume or any
 other onboarding section is persistence only. It must not be interpreted as an attempt to finish
@@ -40,13 +40,55 @@ attempts to continue into scanning.
   Turbopack build stalled after its initial compile message and was stopped, so it is not counted as
   passing.
 
-### Release boundary and durable lesson
+### Production release and verification
 
-The production database migration `20260804000100_remote_preference_no_preference.sql` was applied
-and recorded through the linked Supabase CLI before the code release. The application changes are
-not yet committed, pushed, or deployed, so production still runs commit
-`ad493ca2351d4d2ec73c6dceba45b6605f476b4e`. Next, commit and push `main`, verify CI and Vercel, and
-run authenticated production checks for both behaviors.
+Commit `d24b4d1979899cb63d1893dbcdbeaaa838becc0a` is on `origin/main` and live in Vercel
+production deployment `dpl_7BuDuMGctNeLJvicyv2oE6QQXVwX`. GitHub Actions run `30941764134`
+passed, the canonical production domain returned HTTP 200 from that deployment, and production
+migration `20260804000100_remote_preference_no_preference.sql` is applied and recorded.
+
+An authenticated production-browser journey used disposable account
+`qa-onboarding-6bc69896-ffa1-4359-84b6-a6938dea8c95@dumpsterfire.test`. The real Identity & Search
+API accepted `no_preference` with HTTP 200 and production database readback returned
+`no_preference`. Resume save left the review panel closed with one **Complete** and four
+**In progress** states. The final completion attempt opened the panel with one **Complete** and
+four **Needs work** states. The rendered page had no horizontal overflow or browser errors at 320,
+375, 390, 1280, and 1440 pixels. The disposable Auth user, profile, and subscription were deleted;
+cleanup queries returned zero rows. The reusable production regression is
+`scripts/qa/production-onboarding-review-browser.mjs`.
+
+The first production-QA attempt interacted with the form after its Save control was visible but
+before it was enabled. That produced a false persistence failure. Waiting for the deployed form to
+finish loading and become interactive corrected the harness; this was not a production JOB-021
+defect.
+
+Remote Claude Design registration remains **NOT VERIFIED** because this Codex environment has no
+Claude Design connector.
+
+### Telegram JOB-022 investigation and portable QA-agent gap
+
+The Telegram task `c6c4b098-8d19-4bfe-9bb2-ac270034f27d` diagnosed JOB-022 correctly and proposed
+the same section-save versus completion-attempt separation now live. It was rejected at review not
+because its front-end interpretation conflicted with a back-end solution, but because the dedicated
+worker clone was still based on commit `7097285` while the app version in its task packet was
+`3504a87`. The review controller checked remote freshness only at approval time. Its available
+actions were approve the stale result or reject and remove it; there was no safe refresh-and-rerun
+action. Rejecting removed a directionally correct patch instead of preserving and rerunning it on
+current `main`.
+
+The portable factory at `/Users/randallfransen/Sites/QA-AGENT` is version `0.1.0` and does not yet
+contain the installed relay's `0.2.1` agent execution, workspace-guard, review-controller, database
+migration, or lifecycle implementation. Future installations therefore cannot inherit a lifecycle
+correction until that subsystem is first upstreamed into the portable factory.
+
+Recommended portable correction: the orchestrator, not the sandboxed coding agent, must fetch and
+fast-forward a clean dedicated worker clone before recording `base_commit`; compare the ticket app
+version with that base; recheck freshness before presenting review actions; offer **Re-run on latest
+main** when stale; archive an immutable patch before cleanup; and reserve **Discard patch** for an
+intentional deletion. Generated-install tests must advance a fixture origin, prove stale work cannot
+push, prove rerun uses the new base, and prove discard preserves the archive. Applying this is a
+separate cross-repository release: update `QA-AGENT`, then reprovision the installed Dumpster Fire
+relay while preserving its configuration, data, outbox, identity, and secrets.
 
 Durable product lesson from Randall's correction: a successful section save and a workflow
 completion attempt are different events. Section persistence must not surface whole-profile errors
