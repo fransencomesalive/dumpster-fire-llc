@@ -69,6 +69,38 @@ assert.match(regenerationPrompt, /Previous draft to replace/);
 assert.match(regenerationPrompt, /this is the previous draft/);
 assert.match(regenerationPrompt, /meaningfully revised alternative/);
 
+const selectedEvidence = {
+  id: "example-phred",
+  profileId: "profile-1",
+  title: "Workflow system",
+  oneHitter: "Cut workflow turnaround 40% in two quarters.",
+  link: "https://example.com/phred",
+  context: "Built an internal workflow system for ambiguous cross-functional delivery.",
+  createdAt: now,
+  updatedAt: now,
+};
+const evidenceDecision = {
+  selected: selectedEvidence,
+  relevanceScore: 0.45,
+  matchedSignals: ["ambiguous cross-functional delivery"],
+  recentUsageCount: 0,
+  consideredCount: 4,
+  comparableCandidateCount: 2,
+  diversityAffectedSelection: false,
+  candidates: [],
+};
+const evidencePrompt = buildOutreachUserPrompt({
+  profileMarkdown,
+  job,
+  contact,
+  evidenceDecision,
+  recentMessages: ["I previously described a different delivery system in this exact sentence."],
+});
+assert.match(evidencePrompt, /Job-specific Work Example decision/);
+assert.match(evidencePrompt, /Selected ID: example-phred/);
+assert.match(evidencePrompt, /Recent outreach language to avoid repeating/);
+assert.match(evidencePrompt, /different delivery system/);
+
 // 2b. Prompt caching: profile.md is passed as the cacheable prefix; the per-message
 // job + contact are the uncached tail. (No message reuse — every message is fresh.)
 let capturedArgs;
@@ -165,6 +197,89 @@ const cleanJson = JSON.stringify({ message: "Hi Dana, direct note about the role
   assert.equal(trackScoped.message.includes("Executive Producer"), false);
 }
 
+// 4cc. The job-aware decision rejects a different example and accepts the ranked example.
+{
+  const wrongExample = JSON.stringify({
+    message: "Hi Dana, I have relevant delivery experience at https://example.com/other.",
+    insertedExample: { id: "other", oneHitter: "Other example.", link: "https://example.com/other" },
+  });
+  const selectedExample = JSON.stringify({
+    message: "Hi Dana, I built a relevant workflow system at https://example.com/phred.",
+    insertedExample: {
+      id: "example-phred",
+      oneHitter: "Cut workflow turnaround 40% in two quarters.",
+      link: "https://example.com/phred",
+    },
+  });
+  const responses = [wrongExample, selectedExample];
+  const prompts = [];
+  const result = await generateOutreachMessage(
+    {
+      profileMarkdown: `${profileMarkdown}\nOther example.\nhttps://example.com/other`,
+      job,
+      contact,
+      evidenceDecision,
+    },
+    { callModel: async (args) => { prompts.push(args.user); return responses.shift(); } },
+  );
+  assert.ok(result);
+  assert.equal(result.insertedExample?.id, "example-phred");
+  assert.equal(prompts.length, 2);
+  assert.match(prompts[1], /work_example_does_not_match_job_selection/);
+  assert.match(prompts[1], /Rejected draft/);
+}
+
+// 4cd. An inventory with no relevant example cannot be bent into the message.
+{
+  const noRelevantDecision = {
+    ...evidenceDecision,
+    selected: undefined,
+    relevanceScore: undefined,
+    matchedSignals: [],
+    comparableCandidateCount: 0,
+  };
+  const violations = outreachHardRuleViolations(
+    {
+      message: "Hi Dana, see https://example.com/phred.",
+      insertedExample: {
+        id: "example-phred",
+        oneHitter: "Cut workflow turnaround 40% in two quarters.",
+        link: "https://example.com/phred",
+      },
+    },
+    profileMarkdown,
+    { job, contact, evidenceDecision: noRelevantDecision },
+  );
+  assert.ok(violations.includes("work_example_not_relevant_to_job"));
+}
+
+// 4ce. Distinctive recent language is rejected, while a fresh rewrite succeeds.
+{
+  const repeated = JSON.stringify({
+    message: "Hi Dana, I turn tangled approval chains into clear operating decisions without adding ceremony.",
+    insertedExample: null,
+  });
+  const fresh = JSON.stringify({
+    message: "Hi Dana, my background is simplifying delivery systems while keeping ownership visible.",
+    insertedExample: null,
+  });
+  const responses = [repeated, fresh];
+  const prompts = [];
+  const result = await generateOutreachMessage(
+    {
+      profileMarkdown: "I simplify delivery systems and keep ownership visible.",
+      job,
+      contact,
+      recentMessages: ["I turn tangled approval chains into clear operating decisions without adding ceremony."],
+    },
+    { callModel: async (args) => { prompts.push(args.user); return responses.shift(); } },
+  );
+  assert.ok(result);
+  assert.equal(prompts.length, 2);
+  assert.match(prompts[1], /repeated_recent_language/);
+  assert.match(prompts[1], /tangled approval chains/);
+}
+
 // 4d. Hard-rule contract: after exhausting attempts, no violating near-miss is returned.
 {
   let calls = 0;
@@ -196,6 +311,24 @@ assert.deepEqual(
     { job, contact, previousMessage: "  same   draft. " },
   ),
   ["unchanged_from_previous_draft"],
+);
+assert.deepEqual(
+  outreachHardRuleViolations(
+    {
+      message: "Hi Dana, I simplify ambiguous delivery work by making ownership visible. https://x.co/a",
+      insertedExample: null,
+    },
+    profileWithNumbers,
+    {
+      job,
+      contact,
+      recentMessages: [
+        "Hi Dana, the Program Director role at Acme caught my eye because I build durable operating rhythms. https://x.co/a",
+      ],
+    },
+  ),
+  [],
+  "shared recipient, job, company, and link alone do not count as repeated language",
 );
 assert.deepEqual(outreachHardRuleViolations({ message: "I wrangled forty docs.", insertedExample: null }, profileWithNumbers), ["ungrounded_numbers(forty)"]);
 // "15+" in the profile grounds the digits 15, but not the word "fifteen".

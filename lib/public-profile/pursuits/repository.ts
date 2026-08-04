@@ -450,6 +450,9 @@ export async function loadContactSuggestionsForPursuits(
 }
 
 function mapOutreachMessage(row: OutreachMessageRow): OutreachMessageRecord {
+  const regeneratedWorkExampleId = row.regeneration_count > 0
+    ? row.regeneration_context?.selection.workExample?.id
+    : undefined;
   return {
     id: row.id,
     pursuitId: row.pursuit_id,
@@ -463,7 +466,7 @@ function mapOutreachMessage(row: OutreachMessageRow): OutreachMessageRecord {
     rejectionReason: defined(row.rejection_reason),
     selectedRoleTrackId: defined(row.selected_role_track_id),
     selectedResumeId: defined(row.selected_resume_id),
-    selectedWorkExampleId: defined(row.selected_work_example_id),
+    selectedWorkExampleId: regeneratedWorkExampleId ?? defined(row.selected_work_example_id),
     generationRequestId: defined(row.generation_request_id),
     regenerationContext: defined(row.regeneration_context),
     sentAt: defined(row.sent_at),
@@ -581,6 +584,35 @@ export async function loadOutreachMessagesForPursuits(
     }),
   });
   return groupedByPursuit(rows.map(mapOutreachMessage));
+}
+
+export async function loadRecentOutreachMessagesForUser(
+  request: PublicProfileRepositoryRequest,
+  userId: string,
+  options: { limit?: number; pursuitLimit?: number } = {},
+): Promise<OutreachMessageRecord[]> {
+  const limit = Math.max(1, Math.min(25, Math.floor(options.limit ?? 12)));
+  const pursuitLimit = Math.max(limit, Math.min(50, Math.floor(options.pursuitLimit ?? 30)));
+  const pursuits = await request<Array<{ id: string }>>("pursuits", {
+    query: qs({
+      user_id: `eq.${userId}`,
+      status: "neq.deleted",
+      select: "id",
+      order: "last_activity_at.desc,id.desc",
+      limit: String(pursuitLimit),
+    }),
+  });
+  const pursuitIds = pursuits.map((pursuit) => pursuit.id);
+  if (pursuitIds.length === 0) return [];
+  const rows = await request<OutreachMessageRow[]>("outreach_messages", {
+    query: qs({
+      pursuit_id: `in.(${pursuitIds.join(",")})`,
+      select: OUTREACH_MESSAGE_SELECT,
+      order: "updated_at.desc,id.desc",
+      limit: String(limit),
+    }),
+  });
+  return rows.map(mapOutreachMessage);
 }
 
 export async function loadOutreachMessageById(

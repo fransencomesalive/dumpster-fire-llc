@@ -93,9 +93,9 @@ export type Resume = {
   updatedAt: string;
 };
 
-// Text-only outreach portfolio. The generator inserts one relevant example per
-// message (its `oneHitter` + optional `link`); the model decides which example
-// to use from context, so no relevance tagging is stored here.
+// Text-only outreach portfolio. Job-aware selection constrains which relevant example
+// may be used in a message (its `oneHitter` + optional `link`); the generator may use
+// resume or skill evidence instead, so no relevance tagging is stored here.
 export type WorkExample = {
   id: string;
   profileId: string;

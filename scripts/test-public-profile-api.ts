@@ -2243,11 +2243,24 @@ async function main() {
       status: "outreach_ready",
       selectedRoleTrackId: "track-1",
       selectedResumeId: "resume-1",
-      selectedWorkExampleId: "example-1",
+      selectedWorkExampleId: undefined,
     }),
     loadInitialOutreachCommit: noInitialOutreachCommit,
-    loadJob: async () => publicJob(),
+    loadJob: async () => publicJob({
+      description: "Lead an internal AI workflow system as a product and program partner.",
+    }),
     loadOutreachMessages: async () => [],
+    loadRecentOutreachMessages: async () => [{
+      id: "message-history",
+      pursuitId: "pursuit-history",
+      recipientType: "likely_hiring_manager",
+      channel: "other",
+      message: "A previously saved outreach draft with different language.",
+      status: "draft",
+      selectedWorkExampleId: "example-1",
+      createdAt: "2026-06-26T00:00:00.000Z",
+      updatedAt: "2026-06-26T00:00:00.000Z",
+    }],
     loadContactSuggestions: async () => [
       contactSuggestion({ selectedForOutreach: true }),
       contactSuggestion({ id: "contact-2", name: "Riley Chen", contactType: "recruiter", selectedForOutreach: true }),
@@ -2266,7 +2279,11 @@ async function main() {
       generatedForContacts.push(input);
       return {
         message: `Hi ${input.contact.name ?? input.contact.role} - interested in ${input.job.title}.`,
-        insertedExample: { oneHitter: "Cut turnaround 40%.", link: "https://example.com/x" },
+        insertedExample: {
+          id: "example-1",
+          oneHitter: "Cut internal workflow turnaround 40% in two quarters.",
+          link: "https://example.com/phred",
+        },
       };
     },
     persistOutreach: async (_request, result, drafts, input) => {
@@ -2303,6 +2320,19 @@ async function main() {
   });
   assert.equal(generatedForContacts.length, 2);
   assert.deepEqual(
+    (generatedForContacts[0] as { recentMessages: string[] }).recentMessages,
+    ["A previously saved outreach draft with different language."],
+  );
+  assert.match(
+    (generatedForContacts[1] as { recentMessages: string[] }).recentMessages[0],
+    /Hi Dana/,
+    "the second contact must see the first in-memory draft",
+  );
+  assert.equal(
+    (generatedForContacts[0] as { evidenceDecision: { selected?: { id: string } } }).evidenceDecision.selected?.id,
+    "example-1",
+  );
+  assert.deepEqual(
     (generatedForContacts[0] as {
       roleTrack?: { name: string; targetTitles: string[]; otherTrackTitles: string[] };
     }).roleTrack,
@@ -2320,6 +2350,14 @@ async function main() {
   assert.equal((persistedDrafts as GeneratedOutreachDraft[]).length, 2);
   assert.deepEqual((persistedDrafts as GeneratedOutreachDraft[]).map((draft) => draft.recipientType), ["likely_hiring_manager", "recruiter"]);
   assert.equal((persistedDrafts as GeneratedOutreachDraft[])[0].selectedWorkExampleId, "example-1");
+  assert.equal(
+    (persistedDrafts as GeneratedOutreachDraft[])[0].generationContext.selection.workExample?.id,
+    "example-1",
+  );
+  assert.equal(
+    (persistedDrafts as GeneratedOutreachDraft[])[0].generationContext.selection.workExampleDecision?.consideredCount,
+    agg.workExamples.length,
+  );
 
   let billingOutreachTransition: Extract<PursuitTransitionResult, { ok: true }> | undefined;
   const billingOutreachGenerated = await handlePublicProfilePursuitOutreachRequest(

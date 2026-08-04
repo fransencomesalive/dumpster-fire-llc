@@ -35,6 +35,7 @@ import {
   loadOutreachMessageById,
   loadOutreachMessagesForPursuit,
   loadOutreachMessagesForPursuits,
+  loadRecentOutreachMessagesForUser,
   loadPursuitByIdForUser,
   loadPursuitByJobForUser,
   loadPursuitEventsForPursuit,
@@ -124,6 +125,12 @@ import {
   type OutreachMessage,
   type OutreachRoleTrack,
 } from "./outreach-generator";
+import {
+  rankOutreachWorkExamples,
+  resolveInsertedWorkExample,
+  type OutreachEvidenceDecision,
+  type OutreachEvidenceHistoryEntry,
+} from "./outreach-evidence";
 import { evaluateMatch } from "./matching/engine";
 import type { MatchJob, MatchResult } from "./matching/types";
 import { evaluateCandidateProfileQuality } from "./profile-quality";
@@ -598,8 +605,15 @@ export type PublicProfilePursuitsHandlerOptions = PublicProfileMatchHandlerOptio
     job: OutreachJob;
     contact: OutreachContact;
     contactSuggestion: HumanPathContactSuggestion;
+    evidenceDecision: OutreachEvidenceDecision;
+    recentMessages: string[];
     previousMessage?: string;
   }) => Promise<OutreachMessage | OutreachGenerationOutcome | undefined>;
+  loadRecentOutreachMessages?: (
+    request: PublicProfileRepositoryRequest,
+    userId: string,
+    options: { limit: number; pursuitLimit: number },
+  ) => Promise<OutreachMessageRecord[]>;
   persistOutreach?: (
     request: PublicProfileRepositoryRequest,
     result: Extract<PursuitTransitionResult, { ok: true }>,
@@ -2189,11 +2203,13 @@ function outreachGenerationContext(input: {
   pursuit: Pursuit;
   job: PublicJobRecord;
   contact: HumanPathContactSuggestion;
+  evidenceDecision: OutreachEvidenceDecision;
+  workExampleId?: string;
   generatedAt: string;
 }): OutreachGenerationContext {
   const roleTrack = input.aggregate.roleTracks.find((item) => item.id === input.pursuit.selectedRoleTrackId);
   const resume = input.aggregate.resumes.find((item) => item.id === input.pursuit.selectedResumeId);
-  const workExample = input.aggregate.workExamples.find((item) => item.id === input.pursuit.selectedWorkExampleId);
+  const workExample = input.aggregate.workExamples.find((item) => item.id === input.workExampleId);
   const voice = input.aggregate.voicePersonality;
 
   return {
@@ -2223,6 +2239,17 @@ function outreachGenerationContext(input: {
           ...(workExample.link ? { link: workExample.link } : {}),
         },
       } : {}),
+      workExampleDecision: {
+        ...(input.evidenceDecision.selected ? { selectedWorkExampleId: input.evidenceDecision.selected.id } : {}),
+        ...(input.evidenceDecision.relevanceScore !== undefined
+          ? { relevanceScore: input.evidenceDecision.relevanceScore }
+          : {}),
+        matchedSignals: [...input.evidenceDecision.matchedSignals],
+        recentUsageCount: input.evidenceDecision.recentUsageCount,
+        consideredCount: input.evidenceDecision.consideredCount,
+        comparableCandidateCount: input.evidenceDecision.comparableCandidateCount,
+        diversityAffectedSelection: input.evidenceDecision.diversityAffectedSelection,
+      },
     },
     pursuit: {
       id: input.pursuit.id,
@@ -2253,6 +2280,25 @@ function normalizeOutreachGenerationOutcome(
   if (!result) return { status: "model_unavailable" };
   if ("status" in result) return result;
   return { status: "generated", outreach: result };
+}
+
+function outreachHistoryEntry(message: OutreachMessageRecord): OutreachEvidenceHistoryEntry {
+  return {
+    message: message.message,
+    ...(message.selectedWorkExampleId ? { selectedWorkExampleId: message.selectedWorkExampleId } : {}),
+  };
+}
+
+async function loadRecentOutreachHistory(
+  options: PublicProfilePursuitsHandlerOptions,
+  request: PublicProfileRepositoryRequest,
+  userId: string,
+) {
+  const loadRecentMessages = options.loadRecentOutreachMessages
+    ?? (options.generateOutreachForContact
+      ? async () => []
+      : loadRecentOutreachMessagesForUser);
+  return loadRecentMessages(request, userId, { limit: 12, pursuitLimit: 30 });
 }
 
 function outreachGenerationFailureResponse(
@@ -2519,6 +2565,15 @@ export async function handlePublicProfilePursuitOutreachRequest(
       }, { status: 409 });
     }
 
+    const recentMessages = (await loadRecentOutreachHistory(options, repositoryRequest, session.userId))
+      .filter((message) => message.id !== previousMessage.id);
+    const evidenceDecision = rankOutreachWorkExamples({
+      aggregate,
+      job: outreachJobFromPublicJob(job),
+      selectedRoleTrackId: pursuit.selectedRoleTrackId,
+      history: recentMessages.map(outreachHistoryEntry),
+    });
+
     const generateOutreachForContact = options.generateOutreachForContact
       ?? ((outreachInput) => {
         return generateOutreachMessageOutcome({
@@ -2526,6 +2581,8 @@ export async function handlePublicProfilePursuitOutreachRequest(
           roleTrack: outreachInput.roleTrack,
           job: outreachInput.job,
           contact: outreachInput.contact,
+          evidenceDecision: outreachInput.evidenceDecision,
+          recentMessages: outreachInput.recentMessages,
           previousMessage: outreachInput.previousMessage,
         }, {
           operation: "outreach_regeneration",
@@ -2544,10 +2601,13 @@ export async function handlePublicProfilePursuitOutreachRequest(
       job: outreachJobFromPublicJob(job),
       contact: outreachContactFromSuggestion(contactSuggestion),
       contactSuggestion,
+      evidenceDecision,
+      recentMessages: recentMessages.map((message) => message.message),
       previousMessage: previousMessage.message,
     }));
     if (generation.status !== "generated") return outreachGenerationFailureResponse(generation);
     const outreach = generation.outreach;
+    const insertedWorkExample = resolveInsertedWorkExample(aggregate.workExamples, outreach.insertedExample);
 
     const persistRegeneration = options.persistOutreachRegeneration ?? persistOutreachRegeneration;
     let persistedRegeneration: OutreachMessageRecord | PursuitOutreachRegenerationCommit | undefined;
@@ -2562,6 +2622,8 @@ export async function handlePublicProfilePursuitOutreachRequest(
           pursuit,
           job,
           contact: contactSuggestion,
+          evidenceDecision,
+          workExampleId: insertedWorkExample?.id,
           generatedAt,
         }),
         updatedAt: generatedAt,
@@ -2692,12 +2754,16 @@ export async function handlePublicProfilePursuitOutreachRequest(
   }
 
   const outreachJob = outreachJobFromPublicJob(job);
+  const recentOutreachMessages = await loadRecentOutreachHistory(options, repositoryRequest, session.userId);
+  const generationHistory = recentOutreachMessages.map(outreachHistoryEntry);
   const generateOutreachForContact = options.generateOutreachForContact
     ?? ((outreachInput) => generateOutreachMessageOutcome({
       profileMarkdown: outreachInput.profileMarkdown,
       roleTrack: outreachInput.roleTrack,
       job: outreachInput.job,
       contact: outreachInput.contact,
+      evidenceDecision: outreachInput.evidenceDecision,
+      recentMessages: outreachInput.recentMessages,
     }, {
       operation: "outreach_generation",
       providerUsage: {
@@ -2711,32 +2777,54 @@ export async function handlePublicProfilePursuitOutreachRequest(
   const generatedMessages: Array<{
     contact: HumanPathContactSuggestion;
     outreach: OutreachMessage;
+    evidenceDecision: OutreachEvidenceDecision;
+    workExampleId?: string;
   }> = [];
   for (const contactSuggestion of contactsToGenerate) {
+    const evidenceDecision = rankOutreachWorkExamples({
+      aggregate,
+      job: outreachJob,
+      selectedRoleTrackId: pursuit.selectedRoleTrackId,
+      history: generationHistory,
+    });
     const generation = normalizeOutreachGenerationOutcome(await generateOutreachForContact({
       profileMarkdown,
       roleTrack: outreachRoleTrack,
       job: outreachJob,
       contact: outreachContactFromSuggestion(contactSuggestion),
       contactSuggestion,
+      evidenceDecision,
+      recentMessages: generationHistory.slice(0, 12).map((entry) => entry.message),
     }));
     if (generation.status !== "generated") return outreachGenerationFailureResponse(generation);
-    generatedMessages.push({ contact: contactSuggestion, outreach: generation.outreach });
+    const insertedWorkExample = resolveInsertedWorkExample(aggregate.workExamples, generation.outreach.insertedExample);
+    generatedMessages.push({
+      contact: contactSuggestion,
+      outreach: generation.outreach,
+      evidenceDecision,
+      workExampleId: insertedWorkExample?.id,
+    });
+    generationHistory.unshift({
+      message: generation.outreach.message,
+      ...(insertedWorkExample ? { selectedWorkExampleId: insertedWorkExample.id } : {}),
+    });
   }
 
-  const drafts: GeneratedOutreachDraft[] = generatedMessages.map(({ contact, outreach }) => ({
+  const drafts: GeneratedOutreachDraft[] = generatedMessages.map(({ contact, outreach, evidenceDecision, workExampleId }) => ({
     contactSuggestionId: contact.id,
     recipientType: outreachRecipientType(contact.contactType),
     message: outreach.message,
     selectedRoleTrackId: pursuit.selectedRoleTrackId,
     selectedResumeId: pursuit.selectedResumeId,
-    selectedWorkExampleId: pursuit.selectedWorkExampleId,
+    selectedWorkExampleId: workExampleId,
     generationContext: outreachGenerationContext({
       aggregate,
       profileMarkdown,
       pursuit,
       job,
       contact,
+      evidenceDecision,
+      workExampleId,
       generatedAt,
     }),
     createdAt: generatedAt,

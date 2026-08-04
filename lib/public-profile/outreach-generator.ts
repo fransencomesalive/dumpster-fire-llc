@@ -1,5 +1,6 @@
 import type { CandidateProfileAggregate } from "./types";
 import type { ProviderUsageContext } from "../costs/anthropic-usage";
+import type { OutreachEvidenceDecision } from "./outreach-evidence";
 
 // Outreach generator (Phase E). Input: profile.md (leads with the distilled
 // Voice Profile) + one job + one contact. Output: one short outreach message
@@ -31,12 +32,15 @@ export type OutreachGeneratorInput = {
   roleTrack?: OutreachRoleTrack;
   job: OutreachJob;
   contact: OutreachContact;
+  evidenceDecision?: OutreachEvidenceDecision;
+  recentMessages?: string[];
   previousMessage?: string;
 };
 
 // The one Work Example the model wove in, surfaced so the UI can let the user
 // delete the inserted example from the draft.
 export type OutreachInsertedExample = {
+  id?: string;
   oneHitter: string;
   link?: string;
 };
@@ -67,7 +71,8 @@ export type OutreachGeneratorDependencies = {
 };
 
 // v4 prompt, ported 2026-07-14 from the message-gen-refinement harness after Randall's
-// approval. Platform-wide hard rules approved after v4 (no logistics talk, no em dashes)
+// approval, with universal job-aware evidence and recent-language constraints added
+// 2026-08-04. Platform-wide hard rules approved after v4 (no logistics talk, no em dashes)
 // are additive and must stay enforced here even while later prompt variants remain in the
 // isolated review track. Deliberately user-agnostic: nothing here may reference one user's
 // tics, projects, or credentials.
@@ -151,7 +156,7 @@ const systemPrompt = [
   "- This is a single first touch: no promised follow-ups or references to earlier messages.",
   "",
   "Output ONLY a JSON object, no prose, no markdown fences:",
-  '{"message": string, "insertedExample": {"oneHitter": string, "link"?: string} | null}.',
+  '{"message": string, "insertedExample": {"id"?: string, "oneHitter": string, "link"?: string} | null}.',
   "insertedExample is the exact Work Example used, or null if none was used.",
 ].join("\n");
 
@@ -173,9 +178,67 @@ const NUMBER_WORDS = [
 const NUMBER_WORD_PATTERN = new RegExp(`\\b(${NUMBER_WORDS.join("|")})\\b`, "g");
 const LOGISTICS_PATTERN = /\bremote\b|\bhybrid\b|on-?site\b|in-?office\b|in the office\b|relocat|time ?zones?\b|anchor days\b|based in\b/i;
 const LINK_PATTERN = /https?:\/\/[^\s<>"')\]]+/g;
+const REPETITION_STOP_WORDS = new Set([
+  "about", "after", "also", "and", "are", "been", "but", "can", "for", "from", "have",
+  "here", "into", "job", "just", "role", "that", "the", "their", "this", "through", "with",
+  "would", "your", "hello", "thanks", "thank", "team", "company",
+]);
 
 function messageLinks(body: string) {
   return (body.match(LINK_PATTERN) ?? []).map((link) => link.replace(/[.,!?;:]+$/, ""));
+}
+
+function repetitionWords(value: string, excluded: Set<string>) {
+  return value
+    .replace(LINK_PATTERN, " ")
+    .toLocaleLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
+    .split(/\s+/)
+    .filter((word) => word.length >= 3 && !REPETITION_STOP_WORDS.has(word) && !excluded.has(word));
+}
+
+function ngrams(words: string[], size: number) {
+  const values = new Set<string>();
+  for (let index = 0; index <= words.length - size; index += 1) {
+    values.add(words.slice(index, index + size).join(" "));
+  }
+  return values;
+}
+
+function repeatsRecentLanguage(
+  message: string,
+  input: Pick<OutreachGeneratorInput, "job" | "contact" | "recentMessages">,
+) {
+  const recentMessages = input.recentMessages?.slice(0, 5) ?? [];
+  if (recentMessages.length === 0) return false;
+  const excluded = new Set(repetitionWords([
+    input.job.title,
+    input.job.company,
+    input.contact.name,
+    input.contact.role,
+  ].filter(Boolean).join(" "), new Set()));
+  const currentWords = repetitionWords(message, excluded);
+  const currentSixGrams = ngrams(currentWords, 6);
+  const currentClauses = message
+    .split(/[.!?;:\n]+/)
+    .map((clause) => repetitionWords(clause, excluded))
+    .filter((words) => words.length >= 6);
+
+  return recentMessages.some((recent) => {
+    const recentWords = repetitionWords(recent, excluded);
+    if ([...ngrams(recentWords, 6)].some((gram) => currentSixGrams.has(gram))) return true;
+    const recentClauses = recent
+      .split(/[.!?;:\n]+/)
+      .map((clause) => repetitionWords(clause, excluded))
+      .filter((words) => words.length >= 6);
+    return currentClauses.some((currentClause) => recentClauses.some((recentClause) => {
+      const currentSet = new Set(currentClause);
+      const recentSet = new Set(recentClause);
+      const shared = [...currentSet].filter((word) => recentSet.has(word)).length;
+      return shared >= 6 && shared / Math.min(currentSet.size, recentSet.size) >= 0.7;
+    }));
+  });
 }
 
 // Numbers must come from the profile. Digits ground digits; number-words ground only as
@@ -197,7 +260,10 @@ function ungroundedNumbers(message: string, profileMarkdown: string): string[] {
 export function outreachHardRuleViolations(
   outreach: OutreachMessage,
   profileMarkdown: string,
-  context?: Pick<OutreachGeneratorInput, "roleTrack" | "job" | "contact" | "previousMessage">,
+  context?: Pick<
+    OutreachGeneratorInput,
+    "roleTrack" | "job" | "contact" | "evidenceDecision" | "recentMessages" | "previousMessage"
+  >,
 ): string[] {
   const violations: string[] = [];
   const body = outreach.message;
@@ -220,6 +286,18 @@ export function outreachHardRuleViolations(
   ) {
     violations.push("inserted_example_not_in_profile");
   }
+  if (context?.evidenceDecision) {
+    const selected = context.evidenceDecision.selected;
+    if (!selected && outreach.insertedExample) {
+      violations.push("work_example_not_relevant_to_job");
+    } else if (selected && outreach.insertedExample && (
+      outreach.insertedExample.id !== selected.id
+      || outreach.insertedExample.oneHitter !== selected.oneHitter
+      || outreach.insertedExample.link !== selected.link
+    )) {
+      violations.push("work_example_does_not_match_job_selection");
+    }
+  }
   if (
     context?.previousMessage
     && body.replace(/\s+/g, " ").trim().toLocaleLowerCase()
@@ -239,6 +317,9 @@ export function outreachHardRuleViolations(
         && !allowedTitleContext.includes(normalizedTitle);
     });
     if (leakedTitle) violations.push(`other_role_track_title(${leakedTitle})`);
+  }
+  if (context && repeatsRecentLanguage(body, context)) {
+    violations.push("repeated_recent_language");
   }
   return violations;
 }
@@ -265,12 +346,37 @@ export function buildOutreachPromptParts(input: OutreachGeneratorInput) {
         "",
       ]
     : [];
+  const selectedExample = input.evidenceDecision?.selected;
+  const evidenceDecision = input.evidenceDecision
+    ? [
+        "## Job-specific Work Example decision",
+        selectedExample
+          ? `Selected ID: ${selectedExample.id}\nTitle: ${selectedExample.title}\nOne-hitter: ${selectedExample.oneHitter}${selectedExample.link ? `\nLink: ${selectedExample.link}` : ""}`
+          : "No Work Example cleared the job-relevance threshold.",
+        selectedExample
+          ? `Matched job signals: ${input.evidenceDecision.matchedSignals.join(" | ") || "relevant profile language"}`
+          : "Use resume or skill evidence instead, and return insertedExample as null.",
+        selectedExample
+          ? "If you use a Work Example, use only this selected example and return its ID, one-hitter, and optional link exactly. You may return insertedExample as null when resume or skill evidence supports a more specific truthful message. Never substitute another example."
+          : "Do not use or cite a Work Example in this message.",
+        "",
+      ]
+    : [];
+  const recentLanguage = input.recentMessages && input.recentMessages.length > 0
+    ? [
+        "## Recent outreach language to avoid repeating",
+        "These are this candidate's own recent drafts. Do not reuse their claims in the same phrasing, sentence shape, or distinctive clause. The same uniquely relevant fact may be expressed freshly.",
+        ...input.recentMessages.slice(0, 5).map((message, index) => `Recent draft ${index + 1}:\n${message.trim()}`),
+        "",
+      ]
+    : [];
   const cachePrefix = [
     "## Profile",
     input.profileMarkdown.trim(),
   ].join("\n");
   const tail = [
     ...selectedRoleTrack,
+    ...evidenceDecision,
     "## Job",
     `Title: ${input.job.title}`,
     `Company: ${input.job.company}`,
@@ -279,6 +385,7 @@ export function buildOutreachPromptParts(input: OutreachGeneratorInput) {
     "",
     "## Contact",
     contactLine,
+    ...recentLanguage,
     ...(input.previousMessage
       ? [
           "",
@@ -312,7 +419,12 @@ function parseInsertedExample(value: unknown): OutreachInsertedExample | null {
   const oneHitter = typeof record.oneHitter === "string" ? record.oneHitter.trim() : "";
   if (!oneHitter) return null;
   const link = typeof record.link === "string" && record.link.trim() ? record.link.trim() : undefined;
-  return link ? { oneHitter, link } : { oneHitter };
+  const id = typeof record.id === "string" && record.id.trim() ? record.id.trim() : undefined;
+  return {
+    ...(id ? { id } : {}),
+    oneHitter,
+    ...(link ? { link } : {}),
+  };
 }
 
 function defaultCallModel(
@@ -364,7 +476,7 @@ function parseOutreachModelResponse(raw: string): OutreachMessage | undefined {
 
 function correctiveRetryTail(
   tail: string,
-  failure: { kind: "invalid_output" } | { kind: "hard_rules"; violations: string[] },
+  failure: { kind: "invalid_output" } | { kind: "hard_rules"; violations: string[]; rejectedMessage: string },
 ) {
   if (failure.kind === "invalid_output") {
     return [
@@ -379,6 +491,7 @@ function correctiveRetryTail(
     "",
     "## Required correction",
     `The previous draft failed these hard rules: ${failure.violations.join(", ")}.`,
+    `Rejected draft:\n${failure.rejectedMessage}`,
     "Rewrite the draft so every listed violation is removed. Do not repeat the rejected wording.",
   ].join("\n");
 }
@@ -395,7 +508,7 @@ export async function generateOutreachMessageOutcome(
   // prior failure back to the model so bounded retries are corrective rather than
   // repeating the same prompt and hoping for a different result.
   let lastViolations: string[] | undefined;
-  let lastFailure: { kind: "invalid_output" } | { kind: "hard_rules"; violations: string[] } | undefined;
+  let lastFailure: { kind: "invalid_output" } | { kind: "hard_rules"; violations: string[]; rejectedMessage: string } | undefined;
   for (let attempt = 1; attempt <= MAX_GENERATION_ATTEMPTS; attempt += 1) {
     const user = lastFailure ? correctiveRetryTail(tail, lastFailure) : tail;
     const raw = await callModel({ system: systemPrompt, user, cachePrefix });
@@ -408,7 +521,7 @@ export async function generateOutreachMessageOutcome(
     const violations = outreachHardRuleViolations(outreach, input.profileMarkdown, input);
     if (violations.length === 0) return { status: "generated", outreach };
     lastViolations = violations;
-    lastFailure = { kind: "hard_rules", violations };
+    lastFailure = { kind: "hard_rules", violations, rejectedMessage: outreach.message };
   }
   if (lastViolations) {
     console.warn("[llm:outreach] hard-rule violations unresolved after retries", { violations: lastViolations });

@@ -23,6 +23,7 @@ import {
   loadOutreachRegenerationCommit,
   loadOutreachMessageById,
   loadOutreachMessagesForPursuit,
+  loadRecentOutreachMessagesForUser,
   loadPursuitEventsForPursuit,
   loadPursuitTrackingEventsForUser,
   loadPursuitsForUser,
@@ -970,6 +971,53 @@ async function main() {
   assert.equal(outreachMessages[0].selectedWorkExampleId, "example-1");
   assert.equal(outreachMessages[0].sentAt, later);
 
+  const recentMessageCalls: Array<{ table: string; query?: string }> = [];
+  const recentMessageRequest: PublicProfileRepositoryRequest = async <T>(
+    table: string,
+    requestOptions: Parameters<PublicProfileRepositoryRequest>[1],
+  ) => {
+    recentMessageCalls.push({ table, query: requestOptions.query });
+    if (table === "pursuits") return [{ id: "pursuit-1" }, { id: "pursuit-2" }] as T;
+    return [{
+      id: "message-1",
+      pursuit_id: "pursuit-1",
+      contact_suggestion_id: "contact-1",
+      recipient_type: "likely_hiring_manager",
+      channel: "email",
+      message: "Hi Dana.",
+      previous_message: null,
+      regeneration_count: 0,
+      status: "draft",
+      rejection_reason: null,
+      selected_role_track_id: "track-1",
+      selected_resume_id: "resume-1",
+      selected_work_example_id: "example-1",
+      generation_request_id: "generation-1",
+      regeneration_context: null,
+      sent_at: null,
+      created_at: now,
+      updated_at: later,
+    }] as T;
+  };
+  const recentMessages = await loadRecentOutreachMessagesForUser(
+    recentMessageRequest,
+    "user-1",
+    { limit: 12, pursuitLimit: 30 },
+  );
+  assert.equal(recentMessages[0].message, "Hi Dana.");
+  assert.equal(recentMessageCalls.length, 2);
+  assert.equal(recentMessageCalls[0].table, "pursuits");
+  const recentPursuitQuery = decodeURIComponent(recentMessageCalls[0].query ?? "");
+  assert.ok(recentPursuitQuery.includes("user_id=eq.user-1"));
+  assert.ok(recentPursuitQuery.includes("status=neq.deleted"));
+  assert.ok(recentPursuitQuery.includes("order=last_activity_at.desc,id.desc"));
+  assert.ok(recentPursuitQuery.includes("limit=30"));
+  assert.equal(recentMessageCalls[1].table, "outreach_messages");
+  const recentOutreachQuery = decodeURIComponent(recentMessageCalls[1].query ?? "");
+  assert.ok(recentOutreachQuery.includes("pursuit_id=in.(pursuit-1,pursuit-2)"));
+  assert.ok(recentOutreachQuery.includes("order=updated_at.desc,id.desc"));
+  assert.ok(recentOutreachQuery.includes("limit=12"));
+
   const eventsRequest: PublicProfileRepositoryRequest = async <T>() => [{
     id: "event-1",
     pursuit_id: "pursuit-1",
@@ -1218,6 +1266,19 @@ async function main() {
   );
   assert.deepEqual(loadedInitialContext, { source: "initial_generation", generation: generationContext });
 
+  const regeneratedGenerationContext: OutreachGenerationContext = {
+    ...generationContext,
+    selection: {
+      ...generationContext.selection,
+      workExample: {
+        id: "example-regenerated",
+        title: "AI workflow system",
+        oneHitter: "Built an AI workflow system for a distributed operating team.",
+        context: "Internal AI operations",
+      },
+    },
+  };
+
   // Repository: regeneration updates the existing row only when its count is still zero,
   // then records the pursuit event and one outreach-message credit.
   const regenerationCalls: Array<{ table: string; method?: string; query?: string; headers?: Record<string, string>; body?: unknown }> = [];
@@ -1243,7 +1304,7 @@ async function main() {
           selected_resume_id: null,
           selected_work_example_id: "example-1",
           generation_request_id: "generation-1",
-          regeneration_context: generationContext,
+          regeneration_context: regeneratedGenerationContext,
           sent_at: null,
           created_at: now,
           updated_at: later,
@@ -1271,6 +1332,7 @@ async function main() {
   assert.equal(regeneratedMessage?.message.message, "Replacement draft.");
   assert.equal(regeneratedMessage?.message.previousMessage, "Original draft.");
   assert.equal(regeneratedMessage?.message.regenerationCount, 1);
+  assert.equal(regeneratedMessage?.message.selectedWorkExampleId, "example-regenerated");
   assert.equal(regenerationCalls.length, 1);
   assert.equal(regenerationCalls[0].table, "rpc/persist_outreach_regeneration");
   assert.equal(regenerationCalls[0].method, "POST");

@@ -30,6 +30,7 @@
     "test:job-link": "node scripts/test-job-link.mjs",
     "test:provider-anthropic": "node scripts/test-anthropic-usage.mjs",
     "test:matching": "node scripts/test-public-profile-matching.mjs",
+    "test:outreach-evidence": "node scripts/test-outreach-evidence-selection.mjs",
     "test:provider-usage": "node scripts/test-provider-usage.mjs",
     "test:unit-economics": "node scripts/test-subscription-unit-economics.mjs",
     "test:stripe-billing": "node scripts/test-stripe-billing.mjs",

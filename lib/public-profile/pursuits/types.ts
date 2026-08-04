@@ -421,6 +421,15 @@ export type OutreachGenerationContext = {
     roleTrack?: { id: string; name: string; targetTitles: string[] };
     resume?: { id: string; name: string; highlights: string[] };
     workExample?: { id: string; title: string; oneHitter: string; context: string; link?: string };
+    workExampleDecision?: {
+      selectedWorkExampleId?: string;
+      relevanceScore?: number;
+      matchedSignals: string[];
+      recentUsageCount: number;
+      consideredCount: number;
+      comparableCandidateCount: number;
+      diversityAffectedSelection: boolean;
+    };
   };
   pursuit: {
     id: string;

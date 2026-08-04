@@ -128,13 +128,13 @@ function outreachRequest() {
 type OutreachDeps = {
   aggregate: CandidateProfileAggregate;
   regenerateSpy: { calls: number };
-  capturedMarkdown: { value?: string };
+  capturedInput: { markdown?: string; roleTrackName?: string; selectedWorkExampleId?: string };
 };
 
 function outreachOptions({
   aggregate,
   regenerateSpy,
-  capturedMarkdown,
+  capturedInput,
 }: OutreachDeps): PublicProfilePursuitsHandlerOptions {
   return {
     now: () => later,
@@ -148,6 +148,16 @@ function outreachOptions({
       fresh.profile.generatedMarkdown = freshMarkdown;
       fresh.profile.markdownGeneratedAt = later;
       fresh.profile.updatedAt = later;
+      fresh.roleTracks[0].name = "AI Specialist";
+      fresh.workExamples.unshift({
+        id: "example-fresh",
+        profileId: fresh.profile.id,
+        title: "AI stakeholder workflow",
+        oneHitter: "Built an AI stakeholder alignment workflow.",
+        context: "Led AI stakeholder alignment for a cross-functional program.",
+        createdAt: later,
+        updatedAt: later,
+      });
       return {
         status: "regenerated",
         userId: "user-1",
@@ -160,8 +170,10 @@ function outreachOptions({
     loadContactSuggestions: async () => [contact()],
     loadSubscriptionContext: async () => subscription(),
     loadUsageEntries: async () => [],
-    generateOutreachForContact: async (input: { profileMarkdown: string }) => {
-      capturedMarkdown.value = input.profileMarkdown;
+    generateOutreachForContact: async (input) => {
+      capturedInput.markdown = input.profileMarkdown;
+      capturedInput.roleTrackName = input.roleTrack?.name;
+      capturedInput.selectedWorkExampleId = input.evidenceDecision.selected?.id;
       return { message: "Hi Dana, quick note.", insertedExample: null };
     },
     persistOutreach: async (_request, result, drafts) => ({
@@ -191,14 +203,16 @@ async function main() {
     aggregate.profile.updatedAt = later;
     aggregate.profile.markdownGeneratedAt = now;
     const regenerateSpy = { calls: 0 };
-    const capturedMarkdown: { value?: string } = {};
+    const capturedInput: OutreachDeps["capturedInput"] = {};
     const response = await handlePublicProfilePursuitOutreachRequest(
       outreachRequest(),
-      outreachOptions({ aggregate, regenerateSpy, capturedMarkdown }),
+      outreachOptions({ aggregate, regenerateSpy, capturedInput }),
     );
     assert.equal(response.status, 200);
     assert.equal(regenerateSpy.calls, 1, "a stale profile regenerates exactly once before outreach");
-    assert.equal(capturedMarkdown.value, freshMarkdown, "outreach must use the freshly regenerated markdown");
+    assert.equal(capturedInput.markdown, freshMarkdown, "outreach must use the freshly regenerated markdown");
+    assert.equal(capturedInput.roleTrackName, "AI Specialist", "outreach must use a role-track update from the refreshed profile");
+    assert.equal(capturedInput.selectedWorkExampleId, "example-fresh", "evidence ranking must use a work example added during profile refresh");
   }
 
   // Fresh profile: last generation (markdownGeneratedAt=now) is not older than the last edit.
@@ -207,14 +221,14 @@ async function main() {
     aggregate.profile.updatedAt = now;
     aggregate.profile.markdownGeneratedAt = now;
     const regenerateSpy = { calls: 0 };
-    const capturedMarkdown: { value?: string } = {};
+    const capturedInput: OutreachDeps["capturedInput"] = {};
     const response = await handlePublicProfilePursuitOutreachRequest(
       outreachRequest(),
-      outreachOptions({ aggregate, regenerateSpy, capturedMarkdown }),
+      outreachOptions({ aggregate, regenerateSpy, capturedInput }),
     );
     assert.equal(response.status, 200);
     assert.equal(regenerateSpy.calls, 0, "a fresh profile is not regenerated");
-    assert.equal(capturedMarkdown.value, staleMarkdown, "outreach uses the existing markdown when fresh");
+    assert.equal(capturedInput.markdown, staleMarkdown, "outreach uses the existing markdown when fresh");
   }
 
   console.log("public-profile regeneration tests passed");

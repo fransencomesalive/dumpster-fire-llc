@@ -22,6 +22,7 @@ const fixtureSuites = [
   "scripts/test-public-profile-generation.mjs",
   "scripts/test-public-profile-markdown.mjs",
   "scripts/test-public-profile-matching.mjs",
+  "scripts/test-outreach-evidence-selection.mjs",
   "scripts/test-public-profile-outreach.mjs",
   "scripts/test-public-profile-pursuits.mjs",
   "scripts/test-public-profile-quality.mjs",
