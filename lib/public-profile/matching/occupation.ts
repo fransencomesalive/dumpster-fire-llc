@@ -160,7 +160,7 @@ const laneRules: LaneRule[] = [
     task: [/\b(program|project|roadmap|stakeholder|cross functional|delivery|milestones|risk|scope|planning)\b/],
     disqualifiers: [
       /\b(technical program manager|engineering program manager|scrum master|agile)\b/,
-      /\b(it operations|safety|risk operations|partner operations|bank programs|infrastructure|supply chain|hardware operations|talent acquisition|performance and talent|compensation|data acquisition|cpu|storage|wan|procurement|brokerage|ecm|dms|b2b marketing|strategy operations|strategy & operations|product design program|onboarding project manager)\b/,
+      /\b(it operations|enterprise technology|sales operations|sales ops|revenue operations|revops|safety|risk operations|partner operations|bank programs|infrastructure|supply chain|hardware operations|talent acquisition|performance and talent|compensation|data acquisition|cpu|storage|wan|procurement|brokerage|ecm|dms|b2b marketing|strategy operations|strategy & operations|product design program|onboarding project manager)\b/,
     ],
     adjacent: ["creative-operations", "digital-production", "product-operations", "strategy-operations"],
   },
@@ -172,7 +172,7 @@ const laneRules: LaneRule[] = [
   },
   {
     lane: "product-owner-sales-ops",
-    title: [/\b(crm product owner|salesforce product owner|gtm product owner)\b/],
+    title: [/\b(crm product owner|salesforce product owner|gtm product owner)\b/, /\b(sales operations|sales ops|revenue operations|revops)\b/],
     task: [/\b(crm|salesforce|gtm systems|sales operations|revenue operations)\b/],
   },
   {
@@ -239,7 +239,7 @@ const laneRules: LaneRule[] = [
   },
   {
     lane: "technical-infrastructure-program",
-    title: [/\b(technical program manager|infrastructure partnership|ai infrastructure|hardware operations|cpu|storage|pop wan|it operations|it consultant|ecm|dms|dms saas)\b/],
+    title: [/\b(technical program manager|infrastructure partnership|ai infrastructure|hardware operations|cpu|storage|pop wan|it operations|it consultant|ecm|dms|dms saas)\b/, /\benterprise technology\b/],
     task: [/\b(infrastructure|hardware|compute|storage|network|wan|it operations|technical delivery|saas implementation|engineering program)\b/],
   },
   {

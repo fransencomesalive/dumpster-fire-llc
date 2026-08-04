@@ -124,8 +124,8 @@ const unrelatedDecision = rankOutreachWorkExamples({
 assert.equal(unrelatedDecision.selected, undefined, "an unrelated inventory must resolve to no Work Example");
 
 // Regression: Dropbox stored its AI requirement in requiredExperience, not the
-// general description. The selector must score that structured section and rotate
-// away from a recently overused AI example when a comparable current example exists.
+// general description. The selector must score that structured section. Recent
+// usage may only rotate when another current example remains comparably relevant.
 const phredExample = example(
   "phred",
   "P.H.R.E.D.",
@@ -163,9 +163,43 @@ const dropboxDecision = rankOutreachWorkExamples({
   },
   history: [{ message: `Prior AI note ${phredExample.link}`, selectedWorkExampleId: "phred" }],
 });
-assert.equal(dropboxDecision.selected?.id, "recon");
+assert.equal(dropboxDecision.selected?.id, "phred");
 assert.ok(dropboxDecision.requiredExperienceMatchedSignals.includes("AI"));
-assert.equal(dropboxDecision.diversityAffectedSelection, true);
+assert.equal(dropboxDecision.diversityAffectedSelection, false);
+
+// Regression: ordinary grammatical variants must not hide a curated skill.
+// This mirrors a creative-production posting that says "coordinating",
+// "designers", and "workflow" while the profile says AI Workflow Design.
+const workflowProfile = profileWith([
+  example(
+    "workflow-example",
+    "Project OS",
+    "A structured operating methodology for a production MVP.",
+    "I coordinated a complex mobile app and built workflow patterns that kept AI-assisted work connected.",
+  ),
+]);
+workflowProfile.skills = [{
+  id: "workflow-skill",
+  profileId: "profile-1",
+  skillName: "AI Workflow Design",
+  proficiency: "strong",
+  evidence: ["Created a new workflow for mobile app development."],
+  relatedWorkExampleIds: ["workflow-example"],
+  createdAt: now,
+  updatedAt: now,
+}];
+const workflowDecision = rankOutreachWorkExamples({
+  aggregate: workflowProfile,
+  job: {
+    title: "Creative Producer",
+    company: "Software Company",
+    description: "Be the operational backbone coordinating projects across a fast-moving creative team.",
+    responsibilities: ["Build and run a production workflow and intake process."],
+    requiredExperience: ["Strong project management instincts and fluency with creative workflows."],
+  },
+});
+assert.equal(workflowDecision.selected?.id, "workflow-example");
+assert.equal(workflowDecision.matchedSignals.includes("AI Workflow Design"), true);
 
 assert.equal(
   resolveInsertedWorkExample([aiExample], { id: "ai", oneHitter: aiExample.oneHitter })?.id,

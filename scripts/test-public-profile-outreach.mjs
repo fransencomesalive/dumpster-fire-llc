@@ -122,7 +122,7 @@ const structuredPrompt = buildOutreachUserPrompt({
 assert.match(structuredPrompt, /Required Experience:/);
 assert.match(structuredPrompt, /AI-enabled tools/);
 assert.match(structuredPrompt, /Matched Required Experience signals: AI/);
-assert.match(structuredPrompt, /MUST address at least one/);
+assert.match(structuredPrompt, /MUST use this selected Work Example and address at least one/);
 
 // 2b. Prompt caching: profile.md is passed as the cacheable prefix; the per-message
 // job + contact are the uncached tail. (No message reuse — every message is fresh.)
@@ -286,12 +286,28 @@ const cleanJson = JSON.stringify({ message: "Hi Dana, direct note about the role
     { job: structuredJob, contact, evidenceDecision: requiredEvidenceDecision },
   );
   assert.ok(missingRequirement.includes("matched_requirement_missing"));
+  assert.ok(missingRequirement.includes("matched_requirement_example_missing"));
   const requirementAddressed = outreachHardRuleViolations(
     { message: "Hi Dana, I use AI to keep complex program workflows connected.", insertedExample: null },
     profileMarkdown,
     { job: structuredJob, contact, evidenceDecision: requiredEvidenceDecision },
   );
   assert.equal(requirementAddressed.includes("matched_requirement_missing"), false);
+  assert.ok(requirementAddressed.includes("matched_requirement_example_missing"));
+  const requirementExampleUsed = outreachHardRuleViolations(
+    {
+      message: "Hi Dana, I use AI to keep complex program workflows connected. https://example.com/phred",
+      insertedExample: {
+        id: selectedEvidence.id,
+        oneHitter: selectedEvidence.oneHitter,
+        link: selectedEvidence.link,
+      },
+    },
+    profileMarkdown,
+    { job: structuredJob, contact, evidenceDecision: requiredEvidenceDecision },
+  );
+  assert.equal(requirementExampleUsed.includes("matched_requirement_missing"), false);
+  assert.equal(requirementExampleUsed.includes("matched_requirement_example_missing"), false);
 }
 
 // 4cg. Structural repetition is rejected even when the model swaps vocabulary.
@@ -311,6 +327,39 @@ const cleanJson = JSON.stringify({ message: "Hi Dana, direct note about the role
     },
   );
   assert.ok(repeatedStructure.includes("repeated_recent_structure"));
+}
+
+// 4ch. Reusing multiple marquee credentials is rejected even when the surrounding prose changes.
+{
+  const repeatedEvidence = outreachHardRuleViolations(
+    {
+      message: "Hi Dana, Swift taught me the operating cadence, and AKQA sharpened how I align senior teams.",
+      insertedExample: null,
+    },
+    "Swift and AKQA are verified resume employers.",
+    {
+      job,
+      contact,
+      recentMessages: [
+        "Hi Lee, I managed a major retainer at Swift and won new accounts while leading programs at AKQA.",
+      ],
+    },
+  );
+  assert.ok(repeatedEvidence.includes("repeated_recent_evidence"));
+
+  const singleRelevantCredential = outreachHardRuleViolations(
+    {
+      message: "Hi Dana, Swift is the most relevant operating example for this role.",
+      insertedExample: null,
+    },
+    "Swift is a verified resume employer.",
+    {
+      job,
+      contact,
+      recentMessages: ["Hi Lee, I managed a major retainer at Swift while leading programs at AKQA."],
+    },
+  );
+  assert.equal(singleRelevantCredential.includes("repeated_recent_evidence"), false);
 }
 
 // 4ce. Distinctive recent language is rejected, while a fresh rewrite succeeds.

@@ -33,6 +33,8 @@ export type MatchJob = {
   title: string;
   companyName: string;
   description: string;
+  responsibilities?: string[];
+  requiredExperience?: string[];
   location?: string;
   remoteType?: string;
   employmentType?: string;

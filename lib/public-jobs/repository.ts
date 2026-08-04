@@ -137,6 +137,8 @@ function matchJobFromRow(job: JobRow): MatchJob {
     title: job.title,
     companyName: job.company_name,
     description: job.description,
+    responsibilities: job.responsibilities ?? [],
+    requiredExperience: job.required_experience ?? [],
     location: defined(job.location),
     remoteType: defined(job.remote_type),
     employmentType: defined(job.employment_type),
@@ -346,6 +348,8 @@ function matchJobFromRecord(job: PublicJobRecord): MatchJob {
     title: job.title,
     companyName: job.companyName,
     description: job.description,
+    responsibilities: job.responsibilities,
+    requiredExperience: job.requiredExperience,
     location: job.location,
     remoteType: job.remoteType,
     employmentType: job.employmentType,
@@ -378,6 +382,13 @@ function feedbackContextForJob(
 ) {
   const matchJob = matchJobFromRecord(job);
   const matchingSignals = matchingSignalsForAggregate(aggregate);
+  const serializableMatchingSignals = {
+    ...matchingSignals,
+    lanes: {
+      coreLanes: [...matchingSignals.lanes.coreLanes].sort(),
+      stretchLanes: [...matchingSignals.lanes.stretchLanes].sort(),
+    },
+  };
   const result = evaluateMatch({ profile: aggregate, job: matchJob, evaluatedAt });
   const match: PublicJobMatchSummary = {
     score: result.internalScore,
@@ -389,7 +400,7 @@ function feedbackContextForJob(
   const matchContextHash = createHash("sha256")
     .update(JSON.stringify({
       matcherVersion: PUBLIC_JOB_MATCHER_VERSION,
-      matchingSignals,
+      matchingSignals: serializableMatchingSignals,
       job: matchJob,
     }))
     .digest("hex");
@@ -401,7 +412,7 @@ function feedbackContextForJob(
       profileId: aggregate.profile.id,
       profileVersion: aggregate.profile.version,
       profileUpdatedAt: aggregate.profile.updatedAt,
-      matchingSignals,
+      matchingSignals: serializableMatchingSignals,
     },
     jobSnapshot: matchJob,
     matchDetails: {

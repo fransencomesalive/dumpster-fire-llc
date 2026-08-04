@@ -1,5 +1,6 @@
 import {
   evaluatePublicJobDecision,
+  labelForDecisionScore,
   matchingSignalsForAggregate,
   type PublicMatchDecision,
 } from "./decision";
@@ -17,6 +18,7 @@ function readableRisk(risk: string) {
   if (risk.startsWith("hard exclude: ")) return capitalize(risk.slice("hard exclude: ".length));
   if (risk.startsWith("hard remote constraint: ")) return capitalize(risk.slice("hard remote constraint: ".length));
   if (risk.startsWith("hard compensation constraint: ")) return capitalize(risk.slice("hard compensation constraint: ".length));
+  if (risk.startsWith("hard location constraint: ")) return capitalize(risk.slice("hard location constraint: ".length));
   return risk;
 }
 
@@ -87,24 +89,36 @@ export function evaluateMatch(input: MatchInput): MatchResult {
     evaluatedAt,
     remoteExceptions: input.remoteExceptions,
   });
+  const resumeFit = categoryFits.find((fit) => fit.category === "resume")?.score ?? 0;
+  const workExampleFit = categoryFits.find((fit) => fit.category === "work_example")?.score ?? 0;
+  const thinStretchEvidence = decision.risks.some((risk) => risk.startsWith("Stretch title:"))
+    && Math.max(resumeFit, workExampleFit) < 0.6;
+  const calibratedDecision = thinStretchEvidence
+    ? {
+        ...decision,
+        score: Math.min(decision.score, 59),
+        risks: [...decision.risks, "Resume and Work Example support are too thin for a higher match rating."],
+      }
+    : decision;
+  const calibratedLabel = labelForDecisionScore(calibratedDecision.score);
   const recommendations = recommendMatchAssets(input.profile, input.job);
-  const whyMatched = unique(decision.positives).slice(0, 6);
-  const whyNotMatched = unique(decision.risks.map(readableRisk)).slice(0, 6);
+  const whyMatched = unique(calibratedDecision.positives).slice(0, 6);
+  const whyNotMatched = unique(calibratedDecision.risks.map(readableRisk)).slice(0, 6);
   const softExclusions = unique(
-    decision.risks
+    calibratedDecision.risks
       .filter((risk) => risk.startsWith("hard "))
       .map(readableRisk),
   );
 
   return {
-    internalScore: decision.score,
-    label: decision.label,
+    internalScore: calibratedDecision.score,
+    label: calibratedLabel,
     categoryFits,
     recommendations,
-    risks: risksForMatch(decision, decision.label),
+    risks: risksForMatch(calibratedDecision, calibratedLabel),
     whyMatched,
     whyNotMatched,
     softExclusions,
-    explanation: buildExplanation(decision.label, whyMatched, whyNotMatched),
+    explanation: buildExplanation(calibratedLabel, whyMatched, whyNotMatched),
   };
 }

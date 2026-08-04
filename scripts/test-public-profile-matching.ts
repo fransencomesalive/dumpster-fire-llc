@@ -316,4 +316,117 @@ const epWrongLane = evaluateMatch({
 assert.equal(epWrongLane.label, "Probably Not Worth Your Time", "engineering roles must not ride the word 'production'");
 assert.ok(epWrongLane.internalScore <= 37);
 
+// --- Production feedback regressions (2026-08-04) ---
+// Remote-work arrangement and geographic hiring eligibility are separate dimensions.
+// Explicit country restrictions must be compared with each user's profile location.
+for (const restrictedLocation of ["China", "Australia, New Zealand", "Argentina", "Romania"]) {
+  const restricted = evaluateMatch({
+    profile: profile(),
+    job: {
+      ...strongJob,
+      id: `job-restricted-${restrictedLocation}`,
+      location: restrictedLocation,
+      remoteType: "remote",
+    },
+    evaluatedAt: now,
+  });
+  assert.equal(restricted.label, "Probably Not Worth Your Time", `${restrictedLocation} restriction must not receive a remote boost`);
+  assert.ok(restricted.softExclusions.some((reason) => reason.toLowerCase().includes("location")));
+  const locationFit = restricted.categoryFits.find((fit) => fit.category === "location");
+  assert.equal(locationFit?.score, 0.05);
+  assert.ok(locationFit?.softExclusions.includes("Location eligibility conflict."));
+}
+
+const usRestricted = evaluateMatch({
+  profile: profile(),
+  job: { ...strongJob, id: "job-us-restricted", location: "Remote - US", remoteType: "remote" },
+  evaluatedAt: now,
+});
+assert.equal(usRestricted.label, "Strong Match", "a US restriction must remain compatible with Denver, CO");
+
+const canadianProfile = profile();
+canadianProfile.profile.location = "Toronto, ON, CA";
+const canadaRestricted = evaluateMatch({
+  profile: canadianProfile,
+  job: { ...strongJob, id: "job-canada-restricted", location: "Canada", remoteType: "remote" },
+  evaluatedAt: now,
+});
+assert.equal(canadaRestricted.label, "Strong Match", "a Canada restriction must remain compatible with Toronto, ON");
+
+const noPreferenceRestrictedProfile = profile();
+noPreferenceRestrictedProfile.profile.remotePreference = "no_preference";
+const noPreferenceRestricted = evaluateMatch({
+  profile: noPreferenceRestrictedProfile,
+  job: { ...strongJob, id: "job-no-preference-china", location: "China", remoteType: "remote" },
+  evaluatedAt: now,
+});
+assert.equal(noPreferenceRestricted.label, "Probably Not Worth Your Time", "No preference must not erase country eligibility");
+
+// Specialized operations titles outrank broad program/operations language. A user who targets
+// Marketing should not receive a Strong Match for Sales Operations merely because the posting
+// mentions hospitality, strategy, and cross-functional ownership.
+const marketingProfile = profile();
+marketingProfile.roleTracks[0] = {
+  ...marketingProfile.roleTracks[0],
+  name: "Marketing",
+  targetTitles: ["Director of Marketing", "Content Strategy Director"],
+  keyResponsibilities: ["Content Strategy", "Brand Voice"],
+  requiredExperiencePatterns: ["Marketing leadership"],
+  strongJobSignals: ["Hospitality", "Travel"],
+};
+if (marketingProfile.preferences) marketingProfile.preferences.targetIndustries = ["hospitality", "travel"];
+const salesOperations = evaluateMatch({
+  profile: marketingProfile,
+  job: {
+    id: "job-sales-operations-feedback",
+    title: "Senior Sales Operations Lead",
+    companyName: "Travel Marketplace",
+    description: "Own global acquisition strategy, sales forecasting, quotas, pipeline analysis, and cross-functional revenue operations.",
+    location: "United States",
+    remoteType: "remote",
+    compensationText: "$204,000 - $249,000",
+    postedAt: "2026-06-27T12:00:00.000Z",
+  },
+  evaluatedAt: now,
+});
+assert.equal(salesOperations.label, "Probably Not Worth Your Time");
+assert.ok(salesOperations.whyNotMatched.some((reason) => reason.includes("different lane")));
+
+// A generic Program Manager target does not override a title-qualified Enterprise Technology
+// specialization when the user's Role Tracks do not support that technical lane.
+const enterpriseTechnology = evaluateMatch({
+  profile: profile(),
+  job: {
+    id: "job-enterprise-technology-feedback",
+    title: "Senior Program Manager, Enterprise Technology & AI",
+    companyName: "Developer Platform",
+    description: "Lead enterprise IT programs spanning business systems, data, security, infrastructure, and enterprise architecture.",
+    location: "Remote - US",
+    remoteType: "remote",
+    postedAt: "2026-06-27T12:00:00.000Z",
+  },
+  evaluatedAt: now,
+});
+assert.equal(enterpriseTechnology.label, "Probably Not Worth Your Time");
+assert.ok(enterpriseTechnology.whyNotMatched.some((reason) => reason.includes("different lane")));
+
+// Stretch titles with thin résumé and Work Example support stay Weak even when generic strategy,
+// authority, industry, and remote signals would otherwise inflate the result.
+const thinStretch = evaluateMatch({
+  profile: profile(),
+  job: {
+    id: "job-thin-strategy-operations-feedback",
+    title: "Company Strategy & Operations",
+    companyName: "Payments Company",
+    description: "Lead corporate strategy, investment analysis, executive recommendations, and cross-functional strategic initiatives.",
+    location: "Remote - US",
+    remoteType: "remote",
+    postedAt: "2026-06-27T12:00:00.000Z",
+  },
+  evaluatedAt: now,
+});
+assert.equal(thinStretch.label, "Weak Match");
+assert.ok(thinStretch.internalScore <= 59);
+assert.ok(thinStretch.whyNotMatched.some((reason) => reason.includes("too thin")));
+
 console.log("public profile matching: all assertions passed");

@@ -12,6 +12,7 @@ import type {
   MatchCategory,
   MatchJob,
 } from "./types";
+import { assessLocationEligibility } from "./location-eligibility";
 
 const STOP_WORDS = new Set([
   "about",
@@ -75,10 +76,33 @@ function unique(values: string[]) {
   return output;
 }
 
+// Keep matching deterministic, but do not require identical grammatical forms.
+// Job postings and profiles routinely describe the same capability as a noun,
+// verb, or adjective ("coordination" / "coordinate" / "coordinating"). The
+// previous exact-token treatment missed that evidence entirely and especially
+// penalized curated multi-word skills inside otherwise relevant Work Examples.
+function wordRoot(value: string) {
+  let word = value;
+  if (word.length > 7 && word.endsWith("ational")) word = `${word.slice(0, -7)}ate`;
+  else if (word.length > 7 && word.endsWith("ation")) word = `${word.slice(0, -5)}ate`;
+  else if (word.length > 7 && word.endsWith("tion")) word = word.slice(0, -4);
+  else if (word.length > 6 && word.endsWith("ities")) word = `${word.slice(0, -5)}ity`;
+  else if (word.length > 5 && word.endsWith("ies")) word = `${word.slice(0, -3)}y`;
+  else if (word.length > 6 && word.endsWith("ing")) word = word.slice(0, -3);
+  else if (word.length > 5 && word.endsWith("ers")) word = word.slice(0, -3);
+  else if (word.length > 5 && word.endsWith("er")) word = word.slice(0, -2);
+  else if (word.length > 5 && word.endsWith("ed")) word = word.slice(0, -2);
+  else if (word.length > 5 && word.endsWith("es")) word = word.slice(0, -2);
+  else if (word.length > 4 && word.endsWith("s")) word = word.slice(0, -1);
+  if (word.length > 5 && word.endsWith("e")) word = word.slice(0, -1);
+  return word;
+}
+
 function words(value: string) {
   return normalize(value)
     .split(" ")
-    .filter((word) => word.length >= 4 && !STOP_WORDS.has(word));
+    .filter((word) => word.length >= 4 && !STOP_WORDS.has(word))
+    .map(wordRoot);
 }
 
 function categoryFit(
@@ -104,6 +128,8 @@ export function textForJob(job: MatchJob) {
     job.title,
     job.companyName,
     job.description,
+    ...(job.responsibilities ?? []),
+    ...(job.requiredExperience ?? []),
     job.location,
     job.remoteType,
     job.employmentType,
@@ -147,6 +173,32 @@ export function scoreSignalsAgainstText(signals: string[], text: string) {
     score: Math.max(0, Math.min(1, total / denominator)),
     matches: unique(matches),
   };
+}
+
+// Work Example context is prose, not a catalogue label. Compare a prose block
+// by the amount of concrete vocabulary it shares with the posting instead of
+// requiring most of a paragraph to appear in one job section. Three rooted
+// content-word matches are required so generic one-word overlap cannot qualify
+// an otherwise unrelated example.
+export function scoreEvidenceBlockAgainstText(evidence: string, text: string) {
+  const normalizedEvidence = normalize(evidence);
+  const normalizedText = ` ${normalize(text)} `;
+  if (!normalizedEvidence || !normalizedText.trim()) return 0;
+  if (normalizedText.includes(` ${normalizedEvidence} `)) return 1;
+
+  const evidenceWords = unique(words(evidence));
+  const orderedTextWords = words(text);
+  const textWords = new Set(orderedTextWords);
+  const matchedCount = evidenceWords.filter((word) => textWords.has(word)).length;
+  const rootedText = ` ${orderedTextWords.join(" ")} `;
+  const hasSharedPhrase = evidenceWords.some((word, index) => {
+    const next = evidenceWords[index + 1];
+    return Boolean(next && rootedText.includes(` ${word} ${next} `));
+  });
+  if (matchedCount >= 2 && hasSharedPhrase) return 0.65;
+  if (matchedCount < 3) return 0;
+  const coverage = matchedCount / Math.min(6, evidenceWords.length);
+  return coverage >= 0.5 ? Math.min(0.85, coverage * 0.75) : 0;
 }
 
 export function scoreTrackAgainstJob(track: RoleTrack, job: MatchJob) {
@@ -441,6 +493,18 @@ export function scoreLocationFit(
   const exception = remoteExceptionFor(job, remoteExceptions);
   const exceptionBoost = exception?.remoteRiskReduction === "high" ? 0.25 : exception?.remoteRiskReduction === "medium" ? 0.15 : exception ? 0.08 : 0;
   const exceptionReason = exception ? [`Remote exception noted: ${exception.reason}.`] : [];
+  const eligibility = assessLocationEligibility(profile.profile.location, job.location);
+
+  if (eligibility.status === "conflict") {
+    return categoryFit(
+      "location",
+      0.05,
+      [],
+      ["The posting's hiring location conflicts with the profile location."],
+      [],
+      ["Location eligibility conflict."],
+    );
+  }
 
   if (preference === "no_preference") {
     return categoryFit("location", 0.8, ["No remote-work preference is set."]);

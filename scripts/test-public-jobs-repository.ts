@@ -640,7 +640,16 @@ async function main() {
   assert.match(jobMatchFeedback[0].match_context_hash, /^[a-f0-9]{64}$/);
   assert.equal(feedback.feedback.matchContextHash, jobMatchFeedback[0].match_context_hash);
   assert.equal((jobMatchFeedback[0].profile_context.profileVersion as number), 1);
+  const feedbackSignals = jobMatchFeedback[0].profile_context.matchingSignals as {
+    candidateLocation?: unknown;
+    lanes?: { coreLanes?: unknown; stretchLanes?: unknown };
+  };
+  assert.equal(typeof feedbackSignals.candidateLocation, "string");
+  assert.ok(Array.isArray(feedbackSignals.lanes?.coreLanes));
+  assert.ok(Array.isArray(feedbackSignals.lanes?.stretchLanes));
   assert.equal(jobMatchFeedback[0].job_snapshot.title, "Program Director");
+  assert.ok(Array.isArray(jobMatchFeedback[0].job_snapshot.responsibilities));
+  assert.ok(Array.isArray(jobMatchFeedback[0].job_snapshot.requiredExperience));
   assert.ok(Array.isArray(jobMatchFeedback[0].match_details.categoryFits));
   assert.equal(jobMatchFeedbackWrites[0].query, "?on_conflict=user_id,job_id,matcher_version,match_context_hash");
   assert.equal(jobMatchFeedbackWrites[0].headers?.Prefer, "resolution=merge-duplicates");

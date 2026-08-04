@@ -17,6 +17,7 @@ import {
   type ProfileLanes,
 } from "./occupation";
 import { parseSalaryAmounts } from "./scorers";
+import { assessLocationEligibility } from "./location-eligibility";
 import type { MatchJob, MatchLabel } from "./types";
 
 export type PublicMatchDecision = {
@@ -87,6 +88,7 @@ export type ProfileMatchingSignals = {
   watchlistCompanies: string[];
   employmentTypes: string[];
   remotePreference: string;
+  candidateLocation: string;
   compensationFloor?: number;
 };
 
@@ -127,6 +129,7 @@ export function matchingSignalsForAggregate(aggregate: CandidateProfileAggregate
     watchlistCompanies: aggregate.companyWatchlist.map((item) => item.companyName),
     employmentTypes: aggregate.preferences?.employmentTypes ?? [],
     remotePreference: aggregate.profile.remotePreference ?? "",
+    candidateLocation: aggregate.profile.location,
     compensationFloor: aggregate.profile.targetCompensationMin
       ?? (hourlyFloor ? Math.round(hourlyFloor * HOURS_PER_YEAR) : undefined),
   };
@@ -149,6 +152,8 @@ export function evaluatePublicJobDecision(
     job.title,
     job.department ?? "",
     job.description,
+    ...(job.responsibilities ?? []),
+    ...(job.requiredExperience ?? []),
     job.companyName,
     job.location ?? "",
   ].join(" "));
@@ -168,7 +173,11 @@ export function evaluatePublicJobDecision(
   const classification = classifyOccupation({
     title: job.title,
     department: job.department,
-    description: job.description,
+    description: [
+      job.description,
+      ...(job.responsibilities ?? []),
+      ...(job.requiredExperience ?? []),
+    ].join(" "),
     companyName: job.companyName,
   });
   const lanePolarity = lanePolarityForProfile(classification.lane, signals.lanes);
@@ -254,6 +263,14 @@ export function evaluatePublicJobDecision(
   if (signals.watchlistCompanies.some((name) => normalize(name) === company)) {
     score += 6;
     positives.push("Company is on your watchlist.");
+  }
+
+  // Geographic hiring eligibility is independent of remote-work preference. A remote
+  // posting restricted to another country is not workable merely because it says remote.
+  const locationEligibility = assessLocationEligibility(signals.candidateLocation, job.location);
+  if (locationEligibility.status === "conflict") {
+    score -= 40;
+    risks.push(`hard location constraint: ${locationEligibility.reason}`);
   }
 
   // Remote/location, keyed to the profile preference (legacy engine assumed

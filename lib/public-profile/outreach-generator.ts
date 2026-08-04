@@ -188,6 +188,11 @@ const REPETITION_STOP_WORDS = new Set([
   "here", "into", "job", "just", "role", "that", "the", "their", "this", "through", "with",
   "would", "your", "hello", "thanks", "thank", "team", "company",
 ]);
+const EVIDENCE_TOKEN_STOP_WORDS = new Set([
+  "a", "an", "and", "being", "bringing", "built", "for", "happy", "hi", "i", "i've",
+  "i’m", "lead", "most", "my", "own", "the", "this", "would", "ai", "api", "qa", "llm",
+  "pm", "vp", "ceo", "cto", "cmo", "us", "usa", "uk",
+]);
 
 function messageLinks(body: string) {
   return (body.match(LINK_PATTERN) ?? []).map((link) => link.replace(/[.,!?;:]+$/, ""));
@@ -243,6 +248,36 @@ function repeatsRecentLanguage(
       const shared = [...currentSet].filter((word) => recentSet.has(word)).length;
       return shared >= 6 && shared / Math.min(currentSet.size, recentSet.size) >= 0.7;
     }));
+  });
+}
+
+function evidenceTokens(value: string) {
+  const tokens = new Set<string>();
+  for (const match of value.matchAll(/\b[A-Z][A-Za-z0-9+&.]{1,}\b/g)) {
+    const token = match[0].replace(/[.]+$/g, "").toLocaleLowerCase();
+    if (token.length < 2 || EVIDENCE_TOKEN_STOP_WORDS.has(token)) continue;
+    tokens.add(token);
+  }
+  return tokens;
+}
+
+function repeatsRecentEvidence(
+  message: string,
+  input: Pick<OutreachGeneratorInput, "job" | "contact" | "recentMessages">,
+) {
+  const recentMessages = input.recentMessages?.slice(0, 5) ?? [];
+  if (recentMessages.length === 0) return false;
+  const excluded = evidenceTokens([
+    input.job.title,
+    input.job.company,
+    input.contact.name,
+    input.contact.role,
+  ].filter(Boolean).join(" "));
+  const current = [...evidenceTokens(message)].filter((token) => !excluded.has(token));
+  if (current.length < 2) return false;
+  return recentMessages.some((recent) => {
+    const recentTokens = evidenceTokens(recent);
+    return current.filter((token) => recentTokens.has(token)).length >= 2;
   });
 }
 
@@ -358,6 +393,9 @@ export function outreachHardRuleViolations(
       violations.push("work_example_does_not_match_job_selection");
     }
     const requiredSignals = context.evidenceDecision.requiredExperienceMatchedSignals;
+    if (selected && requiredSignals.length > 0 && !outreach.insertedExample) {
+      violations.push("matched_requirement_example_missing");
+    }
     if (
       selected
       && requiredSignals.length > 0
@@ -388,6 +426,9 @@ export function outreachHardRuleViolations(
   }
   if (context && repeatsRecentLanguage(body, context)) {
     violations.push("repeated_recent_language");
+  }
+  if (context && repeatsRecentEvidence(body, context)) {
+    violations.push("repeated_recent_evidence");
   }
   if (context?.recentMessages && repeatsRecentStructure(body, context.recentMessages)) {
     violations.push("repeated_recent_structure");
@@ -430,11 +471,13 @@ export function buildOutreachPromptParts(input: OutreachGeneratorInput) {
         ...(selectedExample && input.evidenceDecision.requiredExperienceMatchedSignals.length > 0
           ? [
               `Matched Required Experience signals: ${input.evidenceDecision.requiredExperienceMatchedSignals.join(" | ")}`,
-              "The message MUST address at least one of those matched requirements using truthful evidence from the profile.",
+              "The message MUST use this selected Work Example and address at least one of those matched requirements using truthful evidence from the profile.",
             ]
           : []),
-        selectedExample
-          ? "If you use a Work Example, use only this selected example and return its ID, one-hitter, and optional link exactly. You may return insertedExample as null when resume or skill evidence supports a more specific truthful message. Never substitute another example."
+        selectedExample && input.evidenceDecision.requiredExperienceMatchedSignals.length > 0
+          ? "Use only this selected Work Example and return its ID, one-hitter, and optional link exactly. insertedExample must not be null. Never substitute another example."
+          : selectedExample
+            ? "If you use a Work Example, use only this selected example and return its ID, one-hitter, and optional link exactly. You may return insertedExample as null when resume or skill evidence supports a more specific truthful message. Never substitute another example."
           : "Do not use or cite a Work Example in this message.",
         "",
       ]

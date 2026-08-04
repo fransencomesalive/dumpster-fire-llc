@@ -1,5 +1,8 @@
 import type { CandidateProfileAggregate, WorkExample } from "./types";
-import { scoreSignalsAgainstText } from "./matching/scorers";
+import {
+  scoreEvidenceBlockAgainstText,
+  scoreSignalsAgainstText,
+} from "./matching/scorers";
 
 const MIN_RELEVANCE_SCORE = 0.1;
 const COMPARABLE_RELEVANCE_RATIO = 0.7;
@@ -65,15 +68,52 @@ function acronymSignals(values: string[]) {
   return unique(values.flatMap((value) => value.match(/\b[A-Z][A-Z0-9]{1,9}\b/g) ?? []));
 }
 
-function exampleSignals(aggregate: CandidateProfileAggregate, example: WorkExample) {
+function exampleSignalGroups(aggregate: CandidateProfileAggregate, example: WorkExample) {
   const relatedSkills = aggregate.skills.filter((skill) => skill.relatedWorkExampleIds.includes(example.id));
-  const evidence = [
+  const core = [
     example.title,
     example.oneHitter,
     example.context,
-    ...relatedSkills.flatMap((skill) => [skill.skillName, ...skill.evidence]),
   ];
-  return unique([...evidence, ...acronymSignals(evidence)]);
+  const curatedSkills = relatedSkills.flatMap((skill) => [skill.skillName, ...skill.evidence]);
+  const all = [...core, ...curatedSkills];
+  return {
+    core: unique(core),
+    all: unique([...all, ...acronymSignals(all)]),
+    curatedSkills: unique([...curatedSkills, ...acronymSignals(curatedSkills)]),
+    acronyms: acronymSignals(all),
+  };
+}
+
+// A linked skill is a deliberate profile assertion about what the example
+// demonstrates. Score that curated subset independently so one strong skill
+// match is not averaged away by a long example context or opaque project name.
+// We still require the skill language itself to match the current job.
+function scoreExampleAgainstText(
+  signalGroups: ReturnType<typeof exampleSignalGroups>,
+  text: string,
+) {
+  const all = scoreSignalsAgainstText(signalGroups.all, text);
+  const curatedSkills = scoreSignalsAgainstText(signalGroups.curatedSkills, text);
+  const acronyms = scoreSignalsAgainstText(signalGroups.acronyms, text);
+  const strongestBlock = [...signalGroups.core, ...signalGroups.curatedSkills]
+    .map((signal) => ({ signal, score: scoreEvidenceBlockAgainstText(signal, text) }))
+    .sort((a, b) => b.score - a.score)[0];
+  const strongestScore = Math.max(
+    all.score,
+    curatedSkills.score,
+    acronyms.score,
+    strongestBlock?.score ?? 0,
+  );
+  return {
+    score: strongestScore,
+    matches: unique([
+      ...acronyms.matches,
+      ...curatedSkills.matches,
+      ...all.matches,
+      ...(strongestBlock && strongestBlock.score > 0 ? [strongestBlock.signal] : []),
+    ]),
+  };
 }
 
 function roleTrackSignals(aggregate: CandidateProfileAggregate, selectedRoleTrackId?: string) {
@@ -126,15 +166,15 @@ export function rankOutreachWorkExamples(input: {
   const history = input.history ?? [];
   const trackSignals = roleTrackSignals(input.aggregate, input.selectedRoleTrackId);
   const ranked = input.aggregate.workExamples.map((workExample) => {
-    const signals = exampleSignals(input.aggregate, workExample);
-    const titleFit = scoreSignalsAgainstText(signals, input.job.title);
-    const descriptionFit = scoreSignalsAgainstText(signals, input.job.description);
+    const signalGroups = exampleSignalGroups(input.aggregate, workExample);
+    const titleFit = scoreExampleAgainstText(signalGroups, input.job.title);
+    const descriptionFit = scoreExampleAgainstText(signalGroups, input.job.description);
     const responsibilitiesText = (input.job.responsibilities ?? []).join(" ");
     const requiredExperienceText = (input.job.requiredExperience ?? []).join(" ");
-    const responsibilityFit = scoreSignalsAgainstText(signals, responsibilitiesText);
-    const requiredExperienceFit = scoreSignalsAgainstText(signals, requiredExperienceText);
+    const responsibilityFit = scoreExampleAgainstText(signalGroups, responsibilitiesText);
+    const requiredExperienceFit = scoreExampleAgainstText(signalGroups, requiredExperienceText);
     const trackFit = trackSignals.length > 0
-      ? scoreSignalsAgainstText(signals, trackSignals.join(" "))
+      ? scoreExampleAgainstText(signalGroups, trackSignals.join(" "))
       : { score: 0, matches: [] as string[] };
     const weightedFits = [
       { present: Boolean(input.job.title.trim()), weight: 0.2, score: titleFit.score },

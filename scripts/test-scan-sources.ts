@@ -146,6 +146,22 @@ assert.equal(html.companyName, "Example Co");
 assert.equal(html.salaryMin, 90000);
 assert.equal(html.salaryMax, 110000);
 
+// Himalayas exposes country eligibility through locationRestrictions. Preserve that field even
+// when the role is remote so matching can distinguish work arrangement from hiring jurisdiction.
+const himalayas = normalizeHtmlJob({
+  title: "Creative Project Manager",
+  applicationLink: "https://himalayas.app/companies/useful/jobs/creative-project-manager",
+  companyName: "Useful Studio",
+  locationRestrictions: ["Australia", "New Zealand"],
+  description: "Lead remote creative delivery.",
+}, source({
+  atsProvider: "html",
+  companyName: "Himalayas Broad Job Board",
+  careersUrl: "https://himalayas.app/jobs/api/search?q=creative%20project%20manager",
+}));
+assert.equal(himalayas.location, "Australia, New Zealand");
+assert.equal(himalayas.remoteType, "remote");
+
 // ---- Adzuna payload ----
 const adzunaSource = source({ atsProvider: "html", careersUrl: "https://api.adzuna.com/v1/api/jobs/us/search/1" });
 const adzuna = normalizeAdzunaPayload({
