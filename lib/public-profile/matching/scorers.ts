@@ -442,6 +442,10 @@ export function scoreLocationFit(
   const exceptionBoost = exception?.remoteRiskReduction === "high" ? 0.25 : exception?.remoteRiskReduction === "medium" ? 0.15 : exception ? 0.08 : 0;
   const exceptionReason = exception ? [`Remote exception noted: ${exception.reason}.`] : [];
 
+  if (preference === "no_preference") {
+    return categoryFit("location", 0.8, ["No remote-work preference is set."]);
+  }
+
   if (!remoteType) return categoryFit("location", 0.55, exceptionReason, ["Location or remote status is unclear."]);
 
   if (preference === "remote_only") {

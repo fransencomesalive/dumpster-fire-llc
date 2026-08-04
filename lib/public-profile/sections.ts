@@ -379,6 +379,7 @@ export type ApplyLeadershipProfileSectionResult = {
 };
 
 const remotePreferences = new Set<RemotePreference>([
+  "no_preference",
   "remote_only",
   "remote_preferred",
   "hybrid_ok",
@@ -801,7 +802,7 @@ export function parseIdentitySearchSectionPatch(input: unknown): ParseIdentitySe
     if (!remotePreferences.has(source.remotePreference as RemotePreference)) {
       issues.push({
         field: "remotePreference",
-        message: "remotePreference must be remote_only, remote_preferred, hybrid_ok, or onsite_ok.",
+        message: "remotePreference must be no_preference, remote_only, remote_preferred, hybrid_ok, or onsite_ok.",
       });
     } else {
       patch.remotePreference = source.remotePreference as RemotePreference;

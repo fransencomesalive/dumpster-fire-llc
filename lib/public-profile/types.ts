@@ -1,5 +1,5 @@
 export type ProfileStatus = "incomplete" | "complete";
-export type RemotePreference = "remote_only" | "remote_preferred" | "hybrid_ok" | "onsite_ok";
+export type RemotePreference = "no_preference" | "remote_only" | "remote_preferred" | "hybrid_ok" | "onsite_ok";
 export type EmploymentType = "full_time" | "contract" | "freelance" | "part_time";
 export type Priority = "low" | "medium" | "high";
 export type ParsingQuality = "failed" | "weak" | "complete";

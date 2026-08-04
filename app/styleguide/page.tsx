@@ -67,6 +67,7 @@ export default function StyleguidePage() {
         <div>
           <label htmlFor="sg-remote">Remote preference</label>
           <select id="sg-remote" defaultValue="Remote (US)">
+            <option>No preference</option>
             <option>Remote (US)</option>
             <option>Hybrid</option>
             <option>On-site</option>

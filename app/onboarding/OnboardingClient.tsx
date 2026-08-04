@@ -13,6 +13,11 @@ import {
 } from "@/lib/public-auth/supabase-browser";
 import { requestPublicProfileApi } from "@/lib/public-profile/client";
 import type { PublicProfileOnboardingSection, PublicProfileOnboardingSectionKey } from "@/lib/public-profile/onboarding";
+import {
+  nextOnboardingReviewState,
+  onboardingSectionReadiness,
+  type OnboardingReviewIntent,
+} from "@/lib/public-profile/onboarding-review";
 import { onboardingDraftKeyPrefix } from "../components/useAccountSession";
 import styles from "./onboarding.module.css";
 // Loader modal styles — the scan-progress component lives in the dashboard
@@ -24,7 +29,7 @@ import loaderStyles from "../dashboard/dashboard.module.css";
    (the new ~7-section IA from the generator redesign).
    ============================================================ */
 
-type RemotePreference = "remote_only" | "remote_preferred" | "hybrid_ok" | "onsite_ok";
+type RemotePreference = "no_preference" | "remote_only" | "remote_preferred" | "hybrid_ok" | "onsite_ok";
 
 type IdentitySearchSection = {
   fullName: string;
@@ -173,8 +178,6 @@ type ResumeScanState =
 /* ============================================================
    Constants
    ============================================================ */
-
-const notLoadedReadinessLabel = "Not loaded";
 
 
 
@@ -425,7 +428,7 @@ function readinessLabel(status: SectionReadinessStatus) {
     case "optional":
       return "Optional";
     default:
-      return notLoadedReadinessLabel;
+      return "In progress";
   }
 }
 
@@ -810,7 +813,10 @@ export default function OnboardingClient({
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [accessToken, setAccessToken] = useState("");
-  const [reviewOpen, setReviewOpen] = useState(false);
+  const [reviewState, setReviewState] = useState({
+    completionAttempted: false,
+    reviewOpen: false,
+  });
 
   const [identity, setIdentity] = useState<IdentitySearchSection>(emptyIdentity);
   const [roleTracks, setRoleTracks] = useState<RoleTrackSectionItem[]>([]);
@@ -891,16 +897,15 @@ export default function OnboardingClient({
     return new Map(sections.map((section) => {
       const blockers = profileQuality?.incompleteReasons.filter((reason) => reasonBelongsToSection(section.key, reason)) ?? [];
       const weakFields = profileQuality?.weakFields.filter((weakField) => weakFieldBelongsToSection(section.key, weakField)) ?? [];
-      const status: SectionReadinessStatus = !profileQuality
-        ? "not_loaded"
-        : !section.required
-          ? "optional"
-          : blockers.length === 0 && weakFields.length === 0
-            ? "complete"
-            : "incomplete";
+      const status: SectionReadinessStatus = onboardingSectionReadiness({
+        profileLoaded: Boolean(profileQuality),
+        required: section.required,
+        hasIssues: blockers.length > 0 || weakFields.length > 0,
+        completionAttempted: reviewState.completionAttempted,
+      });
       return [section.key, { status, blockers, weakFields }] as const;
     }));
-  }, [profileQuality, sections]);
+  }, [profileQuality, reviewState.completionAttempted, sections]);
 
   const completeRequiredSections = useMemo(() => {
     if (!profileQuality) return 0;
@@ -1129,9 +1134,7 @@ export default function OnboardingClient({
       const response = await requestPublicProfileApi<SectionResponse<T>>(path, { method: "PATCH", accessToken, body });
       onResult(response.section, response.profileQuality);
       applyProfileQuality(response.profileQuality);
-      // The review panel surfaces only when a save leaves the profile incomplete
-      // (design-pass note #8). A clean save clears it.
-      setReviewOpen(response.profileQuality.status === "incomplete");
+      applyOnboardingReview(response.profileQuality.status, "section_save");
       setMessage(`${label} saved.`);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Save failed.");
@@ -1153,6 +1156,13 @@ export default function OnboardingClient({
   // disabled save never leaves the user guessing (Randall, 2026-07-16).
   const card1MissingName = !(firstRun || creatingTrack ? newTrackName.trim() : activeTrack?.name.trim());
   const card1MissingResume = !(resumeScan.status === "read" || pastedResumeText.trim());
+
+  function applyOnboardingReview(
+    profileStatus: ProfileQualitySummary["status"],
+    intent: OnboardingReviewIntent,
+  ) {
+    setReviewState((current) => nextOnboardingReviewState({ current, profileStatus, intent }));
+  }
   // Scan the dropped/chosen PDF into text. The file itself is never stored.
   async function scanResumePdf(file: File) {
     if (!accessToken) return;
@@ -1328,7 +1338,7 @@ export default function OnboardingClient({
         fileSize: scan.status === "read" ? scan.fileSize : undefined,
       });
       applyProfileQuality(linkResponse.profileQuality);
-      setReviewOpen(linkResponse.profileQuality.status === "incomplete");
+      applyOnboardingReview(linkResponse.profileQuality.status, "section_save");
       setCreatingTrack(false);
       setNewTrackName("");
       setTrackMenuOpen(false);
@@ -1412,7 +1422,7 @@ export default function OnboardingClient({
     try {
       const response = await requestPublicProfileApi<SectionResponse<T>>(path, { method: "PATCH", accessToken, body });
       applyProfileQuality(response.profileQuality);
-      setReviewOpen(response.profileQuality.status === "incomplete");
+      applyOnboardingReview(response.profileQuality.status, "section_save");
       setMessage(`${label} saved.`);
       return response;
     } catch (error) {
@@ -1529,7 +1539,10 @@ export default function OnboardingClient({
       });
       setWritingSamples(writingResponse.section.writingSamples);
       applyProfileQuality(writingResponse.profileQuality);
-      setReviewOpen(writingResponse.profileQuality.status === "incomplete");
+      // This is the final onboarding section. Saving it is the user's attempt to
+      // finish the profile and move on to scanning, so only this save reveals
+      // any incomplete sections from earlier in the page.
+      applyOnboardingReview(writingResponse.profileQuality.status, "completion_attempt");
       // Populated prose fields collapse back to their saved-text/pencil read state.
       closeFields("voice.", "ws.");
       setMessage("Voice & Personality saved.");
@@ -1768,11 +1781,11 @@ export default function OnboardingClient({
     (section) => section.required && readinessBySection.get(section.key)?.status === "incomplete",
   );
 
-  const reviewPanel = reviewOpen && blockedSections.length > 0 ? (
-    <div className={styles.reviewPanel} role="status">
+  const reviewPanel = reviewState.reviewOpen && blockedSections.length > 0 ? (
+    <div className={styles.reviewPanel} id="profile-review" role="status">
       <div className={styles.reviewHead}>
         <h3>{`${blockedSections.length} section${blockedSections.length === 1 ? "" : "s"} need${blockedSections.length === 1 ? "s" : ""} attention before your profile is complete`}</h3>
-        <button type="button" className={styles.reviewClose} aria-label="Dismiss review" onClick={() => setReviewOpen(false)}>✕</button>
+        <button type="button" className={styles.reviewClose} aria-label="Dismiss review" onClick={() => setReviewState((current) => ({ ...current, reviewOpen: false }))}>✕</button>
       </div>
       <p>Fix these and save again. Everything else is already saved.</p>
       <ul className={styles.reviewList}>
@@ -2164,6 +2177,7 @@ export default function OnboardingClient({
               </div>
               <label>Email<input value={identity.email ?? ""} onChange={(event) => setIdentity({ ...identity, email: event.target.value })} /></label>
               <label>Remote preference<select value={identity.remotePreference} onChange={(event) => setIdentity({ ...identity, remotePreference: event.target.value as RemotePreference })}>
+                <option value="no_preference">No preference</option>
                 <option value="remote_only">Remote only</option>
                 <option value="remote_preferred">Remote preferred</option>
                 <option value="hybrid_ok">Hybrid OK</option>

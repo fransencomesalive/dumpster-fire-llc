@@ -78,6 +78,10 @@ async function main() {
   assert.equal(invalidEnum.ok, false);
   if (!invalidEnum.ok) assert.equal(invalidEnum.issues[0].field, "remotePreference");
 
+  const noPreference = parseIdentitySearchSectionPatch({ remotePreference: "no_preference" });
+  assert.equal(noPreference.ok, true);
+  if (noPreference.ok) assert.equal(noPreference.patch.remotePreference, "no_preference");
+
   const parsedIdentity = parseIdentitySearchSectionPatch({
     fullName: "  Avery Candidate  ",
     email: "",

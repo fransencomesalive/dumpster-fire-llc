@@ -89,6 +89,15 @@ Not yet built as public workflows:
 
 ## Canonical Next Product Task
 
+> **UPDATED 2026-08-04: JOB-021 / JOB-022 LOCAL, AWAITING RELEASE AUTHORIZATION.** Both QA fixes are
+> implemented and locally verified but are not committed, pushed, or deployed. JOB-021 adds neutral
+> Remote Preference value `no_preference`; production migration `20260804000100` is applied and
+> recorded. JOB-022 separates ordinary section saves from the final
+> completion attempt toward scanning, so resume and intermediate saves stay quiet. All 36 fixtures,
+> TypeScript, the Webpack production build, temporary-PostgreSQL migration test, and responsive
+> browser checks passed. Deployment is explicitly authorized; begin with `docs/next-session.md` and
+> complete the release verification. Remote Claude Design registration remains NOT VERIFIED.
+>
 > **UPDATED 2026-08-04: OUTREACH CORRECTION LIVE.** Commit `3504a87` fixes the reported Dropbox
 > outreach failure and is live in Vercel production deployment
 > `dpl_Ho7y9XKsEMSg1K64oca7Fy4TAaPk`. Outreach now includes structured Responsibilities and Required

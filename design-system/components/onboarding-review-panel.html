@@ -57,9 +57,9 @@
   .btnRedeem:hover { background-color: var(--role-info); box-shadow: var(--reg-box);
     text-shadow: 1px 1px 0 rgba(36,31,26,0.35); }
 
-  /* ======================= REVIEW PANEL (save-blocked state only) =======================
-     Appears ONLY when a save is attempted with missing/invalid sections. Tomato =
-     negative affordance (the thing to fix). Otherwise this panel is not on the page. */
+  /* ======================= REVIEW PANEL (completion-attempt state only) =======================
+     Appears ONLY when the final onboarding save attempts to move into scanning while required
+     sections are still incomplete. Earlier section saves never open it. */
   .reviewPanel { background-color: var(--c-paper-deep); background-image: var(--fiber-img), var(--grain-img);
     background-blend-mode: normal, soft-light; background-size: 170px 170px, 46px 46px;
     border: var(--line-reg) solid var(--c-ink); border-left: 6px solid var(--c-tomato);
@@ -83,10 +83,10 @@
 <div class="wrap">
   <div>
     <h1 class="page">Onboarding · Review Panel</h1>
-    <p class="lede">The save-blocked state. When the user saves with sections still missing or
-    invalid, this review panel appears above the form and lists exactly what to fix — and nothing
-    else was lost (everything valid is already saved). When there is nothing to fix, this panel is
-    not on the page at all. The account panel stays pinned at the top as always.</p>
+    <p class="lede">The completion-attempt state. Earlier section saves quietly record progress.
+    When the user saves the final Voice &amp; Personality section to move into scanning, this panel
+    appears only if required sections are still incomplete and lists exactly what remains. When
+    there is nothing to fix, the profile continues to scanning.</p>
   </div>
 
   <div class="scroller"><div class="frame">

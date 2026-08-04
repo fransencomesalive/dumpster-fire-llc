@@ -106,7 +106,7 @@
     font-size: 0.66rem; font-weight: 900; white-space: nowrap; background: var(--c-paper); color: var(--c-ink); }
   .badgeWork { background-color: var(--c-tomato); color: var(--c-paper); }
   .badgeDone { background-color: var(--c-teal); color: var(--c-paper); }
-  .badgeOpt  { background-color: var(--c-paper); color: var(--role-text-faint); }
+  .badgeOpt, .badgeProgress { background-color: var(--c-paper); color: var(--role-text-faint); }
 
   .isolated { max-width: 340px; }
 </style>
@@ -118,25 +118,25 @@
     <p class="lede">The persistent right-column section index for the signed-in profile page (Randall,
     2026-07-05). It replaces both the unformatted "Current blockers" text and the full-width numbered
     list that used to sit at the bottom of the page. Each row is a jump link to that section in the form,
-    with a status badge that reuses the onboarding readiness semantics — <strong>NEEDS WORK</strong>
-    (tomato), <strong>OPTIONAL</strong> (quiet), <strong>DONE</strong> (teal). The rail sticks as the
-    form scrolls. The account panel stays pinned above everything; the save-blocked review panel
-    (separate card) still appears above the form only when a save is blocked.</p>
+    with a status badge that reuses the onboarding readiness semantics. Before the final completion
+    attempt, unfinished sections stay quiet as <strong>IN PROGRESS</strong> while completed sections
+    show <strong>DONE</strong>. Only the attempt to move into scanning turns remaining required
+    sections into tomato <strong>NEEDS WORK</strong> states and opens the separate review panel.</p>
   </div>
 
   <!-- Isolated element -->
   <div>
-    <p class="stateLabel">The element, on its own</p>
+    <p class="stateLabel">Before the final completion attempt</p>
     <div class="isolated">
       <aside class="rail" aria-label="Profile sections">
         <div class="railHead"><span class="title">Sections</span><span class="count">4 of 6 clear</span></div>
         <ul class="railList">
           <li><a class="railItem" href="#s1"><span class="railNum">1</span>
-            <span class="railText"><span class="railName">Identity &amp; Search</span><span class="railNote">3 blockers</span></span>
-            <span class="railBadge badgeWork">Needs work</span></a></li>
+            <span class="railText"><span class="railName">Identity &amp; Search</span></span>
+            <span class="railBadge badgeProgress">In progress</span></a></li>
           <li><a class="railItem" href="#s2"><span class="railNum">2</span>
-            <span class="railText"><span class="railName">Role Tracks</span><span class="railNote">1 blocker</span></span>
-            <span class="railBadge badgeWork">Needs work</span></a></li>
+            <span class="railText"><span class="railName">Role Tracks</span></span>
+            <span class="railBadge badgeProgress">In progress</span></a></li>
           <li><a class="railItem" href="#s3"><span class="railNum">3</span>
             <span class="railText"><span class="railName">Resume Uploads</span></span>
             <span class="railBadge badgeDone">Done</span></a></li>
@@ -156,7 +156,7 @@
 
   <!-- In context -->
   <div>
-    <p class="stateLabel">In context · account panel on top, form left, sections rail right</p>
+    <p class="stateLabel">After the final completion attempt</p>
     <div class="scroller"><div class="frame">
       <section class="accountPanel" aria-label="Account">
         <div class="accountHead"><span class="title">Account</span></div>

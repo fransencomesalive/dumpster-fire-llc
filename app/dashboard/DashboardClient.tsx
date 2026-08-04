@@ -58,6 +58,7 @@ function formatJobDate(value?: string) {
 
 function formatRemotePreference(value: string) {
   switch (value) {
+    case "no_preference": return "No preference";
     case "remote_only": return "Remote only";
     case "remote_preferred": return "Remote preferred";
     case "hybrid_ok": return "Hybrid OK";
@@ -1205,6 +1206,7 @@ export default function DashboardClient() {
                         <div className={jobsStyles.editField}>
                           <span className={jobsStyles.metaLabel}>Remote preference</span>
                           <select className={jobsStyles.editControl} value={searchDraft.remotePreference} onChange={(event) => setSearchDraft((draft) => ({ ...draft, remotePreference: event.target.value }))}>
+                            <option value="no_preference">No preference</option>
                             <option value="remote_only">Remote only</option>
                             <option value="remote_preferred">Remote preferred</option>
                             <option value="hybrid_ok">Hybrid OK</option>

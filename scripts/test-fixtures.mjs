@@ -14,6 +14,7 @@ const fixtureSuites = [
   "scripts/test-provider-usage.mjs",
   "scripts/test-subscription-unit-economics.mjs",
   "scripts/test-public-auth-session.mjs",
+  "scripts/test-onboarding-review-state.mjs",
   "scripts/test-public-jobs-repository.mjs",
   "scripts/test-public-profile-api.mjs",
   "scripts/test-public-profile-catalogues.mjs",

@@ -1,7 +1,32 @@
-# Next Session: 2026-08-04 Outreach Requirement Correction Live
+# Next Session: 2026-08-04 JOB-021 and JOB-022 Awaiting Release Authorization
 
 _Updated 2026-08-04. Read `AGENTS.md` and follow the Session Start Protocol in
 `docs/project-operating-state.md` before editing._
+
+## Current in-flight state
+
+JOB-021 and JOB-022 are implemented and verified locally. Production migration
+`20260804000100_remote_preference_no_preference.sql` is applied and recorded, but the application
+changes are not committed, pushed, or deployed. Production remains at
+`ad493ca2351d4d2ec73c6dceba45b6605f476b4e`.
+
+- JOB-021 adds a neutral **No preference** Remote Preference value across onboarding, dashboard
+  editing, profile parsing, both matching paths, database validation, and local design-system cards.
+- JOB-022 keeps incomplete onboarding sections quiet during ordinary saves. The global review panel
+  and **Needs work** states appear only when the final Voice & Personality save attempts to continue
+  into scanning.
+
+Local evidence is complete: all 36 fixtures, TypeScript, Webpack production build, focused migration
+test, and the real-component browser journey passed. Browser geometry passed at 320, 375, 390, 1280,
+and 1440 pixels without overflow or browser errors. The default Turbopack build stalled and was
+stopped. Lint has zero errors and the same four pre-existing warnings.
+
+Next immediate action: commit and push only `main`, wait for GitHub/Vercel success, verify HTTP 200
+and deployment identity, and run authenticated production checks. Remote Claude Design registration
+remains **NOT VERIFIED** because this session has no Claude Design connector.
+
+Durable lesson: never treat a successful section save as an attempt to complete onboarding. The
+user can be shown whole-profile blockers only at the transition toward scanning.
 
 ## 2026-08-04 outreach correction state
 

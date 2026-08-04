@@ -1,5 +1,57 @@
 # Current State
 
+## 2026-08-04 - JOB-021 and JOB-022 approved implementation: LOCAL, NOT RELEASED (Codex)
+
+Randall approved both QA fixes and clarified JOB-022's workflow boundary: saving a resume or any
+other onboarding section is persistence only. It must not be interpreted as an attempt to finish
+the whole profile. The completion check becomes user-visible only when the final onboarding action
+attempts to continue into scanning.
+
+### Implemented behavior
+
+- JOB-022 separates ordinary `section_save` events from a `completion_attempt`. Before a completion
+  attempt, unfinished required sections use the existing quiet treatment and read **In progress**.
+  Saving Role Track & Resume, Identity & Search, Work Examples, or Skills does not open the global
+  review panel. Saving the final Voice & Personality section is the current transition toward
+  scanning; if required fields remain unfinished, that action opens the review panel and changes
+  the remaining section badges to **Needs work**.
+- JOB-021 adds **No preference** to every current Remote Preference editor and the matching domain.
+  It is neutral for remote, hybrid, onsite, and unknown job arrangements in both matching paths.
+  A database migration extends the existing `candidate_profiles` constraint without rewriting or
+  defaulting existing accounts.
+- Local design-system cards were updated for both states. Their existing manifest entries remain
+  present. Remote Claude Design registration is **NOT VERIFIED** because this Codex session has no
+  Claude Design connector.
+
+### Verification
+
+- Browser regression against the real onboarding component, with mocked local APIs and no
+  production data access: passed. Initial badges were five **In progress** states; saving a Role
+  Track and pasted resume produced one **Complete** plus four **In progress** states and no review
+  panel; the final Voice & Personality save produced one **Complete** plus four **Needs work** states
+  and opened the review panel.
+- Rendered browser checks passed at 320, 375, 390, 1280, and 1440 pixels with no horizontal overflow,
+  console errors, or page errors. Screenshots are temporary QA artifacts under
+  `/tmp/dumpster-fire-onboarding-qa`.
+- The remote-preference migration applied twice to a temporary PostgreSQL database, preserved all
+  four existing values, accepted `no_preference`, and rejected an invalid value.
+- All 36 fixture suites passed; TypeScript passed; lint had zero errors and the same four
+  pre-existing warnings; `npx next build --webpack` passed; `git diff --check` passed. The default
+  Turbopack build stalled after its initial compile message and was stopped, so it is not counted as
+  passing.
+
+### Release boundary and durable lesson
+
+The production database migration `20260804000100_remote_preference_no_preference.sql` was applied
+and recorded through the linked Supabase CLI before the code release. The application changes are
+not yet committed, pushed, or deployed, so production still runs commit
+`ad493ca2351d4d2ec73c6dceba45b6605f476b4e`. Next, commit and push `main`, verify CI and Vercel, and
+run authenticated production checks for both behaviors.
+
+Durable product lesson from Randall's correction: a successful section save and a workflow
+completion attempt are different events. Section persistence must not surface whole-profile errors
+for fields the user has not reached yet.
+
 ## 2026-08-04 - Outreach requirement matching and structural diversity correction: LIVE (Codex)
 
 Correction commit `3504a87ba7be2658579553a1321d09b61559997a` is on `origin/main` and live in

@@ -260,7 +260,9 @@ export function evaluatePublicJobDecision(
   // remote-only; the public profile carries the preference explicitly).
   const remoteType = normalize(job.remoteType ?? "");
   const remoteOnly = signals.remotePreference === "remote_only";
-  if (remoteType.includes("remote")) {
+  if (signals.remotePreference === "no_preference") {
+    evidence.push("No remote-work preference set.");
+  } else if (remoteType.includes("remote")) {
     score += 10;
     positives.push("Remote role.");
   } else if (remoteType.includes("onsite")) {

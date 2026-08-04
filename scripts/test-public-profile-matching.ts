@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import type { CandidateProfileAggregate } from "../lib/public-profile/types";
 import { evaluateMatch } from "../lib/public-profile/matching/engine";
+import {
+  evaluatePublicJobDecision,
+  matchingSignalsForAggregate,
+} from "../lib/public-profile/matching/decision";
 import type { MatchJob } from "../lib/public-profile/matching/types";
 import { completeCandidateProfileAggregate } from "./fixtures/public-profile";
 
@@ -106,6 +110,39 @@ const softEdge = evaluateMatch({
 assert.ok(softEdge.internalScore > 0);
 assert.ok(softEdge.whyNotMatched.some((reason) => reason.includes("Hybrid")));
 assert.ok(softEdge.categoryFits.some((fit) => fit.category === "location" && fit.reasons.some((reason) => reason.includes("Remote exception noted"))));
+
+const noPreferenceProfile = profile();
+noPreferenceProfile.profile.remotePreference = "no_preference";
+const noPreferenceRemote = evaluateMatch({
+  profile: noPreferenceProfile,
+  job: { ...strongJob, id: "job-no-preference-remote", location: "Remote", remoteType: "remote" },
+  evaluatedAt: now,
+});
+const noPreferenceOnsite = evaluateMatch({
+  profile: noPreferenceProfile,
+  job: { ...strongJob, id: "job-no-preference-onsite", location: "Onsite", remoteType: "onsite" },
+  evaluatedAt: now,
+});
+const noPreferenceRemoteFit = noPreferenceRemote.categoryFits.find((fit) => fit.category === "location");
+const noPreferenceOnsiteFit = noPreferenceOnsite.categoryFits.find((fit) => fit.category === "location");
+assert.equal(noPreferenceRemoteFit?.score, noPreferenceOnsiteFit?.score);
+assert.deepEqual(noPreferenceRemoteFit?.risks, []);
+assert.deepEqual(noPreferenceOnsiteFit?.risks, []);
+
+const noPreferenceSignals = matchingSignalsForAggregate(noPreferenceProfile);
+const neutralRemoteDecision = evaluatePublicJobDecision(
+  { ...strongJob, id: "decision-no-preference-remote", location: "", remoteType: "remote" },
+  noPreferenceSignals,
+  now,
+);
+const neutralOnsiteDecision = evaluatePublicJobDecision(
+  { ...strongJob, id: "decision-no-preference-onsite", location: "", remoteType: "onsite" },
+  noPreferenceSignals,
+  now,
+);
+assert.equal(neutralRemoteDecision.score, neutralOnsiteDecision.score);
+assert.equal(neutralRemoteDecision.risks.some((risk) => /remote|onsite/i.test(risk)), false);
+assert.equal(neutralOnsiteDecision.risks.some((risk) => /remote|onsite/i.test(risk)), false);
 
 const missingDataProfile = clone(profile());
 missingDataProfile.workExamples = [];
