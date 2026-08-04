@@ -89,6 +89,16 @@ Not yet built as public workflows:
 
 ## Canonical Next Product Task
 
+> **UPDATED 2026-08-04: SPECIALIZED ROLE SCAN CORRECTION LIVE.** Commit `39d5a08` is on
+> `origin/main`, GitHub Actions run `30950560309` passed, and Vercel production deployment
+> `dpl_Y7L9f1MN8iwWV9hL8grEfAhUiky2` returns HTTP 200. Compound marketing/creative project titles
+> now retain their functional specialty instead of activating the unrestricted program/project
+> lane. Successful scans replace the active recommendation snapshot and include structured job
+> sections. Larissa's current production profile was replayed and rebuilt from 84 to 75 active
+> rows; independent readback found zero generic program/project-lane jobs. The required disposable
+> authenticated scan persisted and re-rendered 75 results and cleaned every QA row. No work remains
+> in flight. Read `docs/next-session.md` and wait for Randall's next explicit scope.
+
 > **UPDATED 2026-08-04: SCAN AND OUTREACH FEEDBACK CORRECTIONS LIVE.** Commit
 > `a42a84936c94e206c68e19c3895b422aa26327fc` is on `origin/main`, GitHub Actions run
 > `30947750248` passed, and Vercel production deployment

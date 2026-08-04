@@ -1,9 +1,39 @@
-# Next Session: 2026-08-04 Scan and Outreach Feedback Corrections Live
+# Next Session: 2026-08-04 Specialized Role Scan Correction Live
 
 _Updated 2026-08-04. Read `AGENTS.md` and follow the Session Start Protocol in
 `docs/project-operating-state.md` before editing._
 
 ## Current production release
+
+Commit `39d5a08889a00f0f5da058e42a73635db483dc69` is on `origin/main`, GitHub Actions
+run `30950560309` passed, and Vercel production deployment
+`dpl_Y7L9f1MN8iwWV9hL8grEfAhUiky2` returns HTTP 200 from the canonical domain.
+
+The reported Larissa scan failure was not legacy profile data. Her current ten titles and current
+scan parameters were present, but `Marketing Project Manager` incorrectly promoted the entire
+generic program/project lane to core. Scans also accumulated old active rows instead of replacing
+the recommendation snapshot. The release gives compound marketing/creative project titles a
+specialized lane, expands recognition of marketing/content/creative/social leadership targets,
+expires stale active scan rows after every successful scan, fetches the stored structured job
+sections, and records `public-job-matcher-v3`.
+
+Exact production replay predicted 75 matches and zero generic program/project-lane titles. The
+named account was rebuilt from 84 active rows to 75 at `2026-08-04T21:06:25.116Z`; independent
+readback confirmed zero generic program/project-lane titles and all ten current title parameters.
+The API exposes 74 active cards because one current match is already saved/pursued and is correctly
+hidden from the card list.
+
+All 36 fixture suites, focused regressions, TypeScript, lint with zero errors, Webpack production
+build, and `git diff --check` passed. The authenticated production-browser journey used disposable
+account `scan-browser-qa-20260804-role-scan-final@example.invalid`, sent one successful production
+scan request (reference `05b9ec54-0621-484f-aa04-7421f4525dfa`), persisted and re-rendered 75 rows,
+and cleaned all disposable records to zero.
+
+Next immediate action: no scan implementation remains in flight. Wait for Randall's next explicit
+scope. If new scan feedback identifies another occupation family, diagnose it from that user's
+current profile and exact posting; do not encode a person-, company-, or job-specific exception.
+
+## Prior scan and outreach feedback release
 
 Commit `a42a84936c94e206c68e19c3895b422aa26327fc` is on `origin/main` and live in
 Vercel production deployment `dpl_pKJEa7VfbEzf4XnnpoWP5uM42p6y`. GitHub Actions run

@@ -1,5 +1,46 @@
 # Current State
 
+## 2026-08-04 - Specialized role matching and active scan replacement: LIVE (Codex)
+
+Commit `39d5a08889a00f0f5da058e42a73635db483dc69` is on `origin/main`, GitHub Actions
+run `30950560309` passed, and Vercel production deployment
+`dpl_Y7L9f1MN8iwWV9hL8grEfAhUiky2` serves the canonical domain with HTTP 200.
+
+Larissa's profile was current. Its Marketing Role Track contained the ten reported target titles,
+including `Marketing Project Manager`, and the latest scan context recorded those same titles. The
+failure was downstream: the occupation classifier reduced that compound title to the unrestricted
+`program-project-management` lane, so generic Program Manager, Program Director, and engineering
+Project Manager postings received a core-title boost. A second repository defect upserted each new
+top-75 set without expiring older active rows, which allowed her dashboard set to accumulate to 84.
+The scan candidate query also omitted stored Responsibilities and Required Experience.
+
+The universal correction adds a specialized marketing/creative project-management lane, preserves
+the functional meaning of compound project titles, recognizes the rest of the reported marketing,
+content, creative, and social-media leadership titles, and advances the matcher audit version to
+`public-job-matcher-v3`. Successful scans now replace the active recommendation set: rows outside
+the current top set become `expired`, while dismissed and pursuit lifecycle records remain intact.
+Structured Responsibilities and Required Experience are included in the candidate query.
+
+The exact read-only production replay resolved Larissa's current profile to marketing management,
+creative leadership, social creative, and marketing/creative project management. It predicted 75
+matches and zero generic program/project-lane titles. Her production scan set was then rebuilt at
+`2026-08-04T21:06:25.116Z`: active rows changed from 84 to 75, all ten current target titles were
+recorded in the scan parameters, and direct readback found zero generic program/project-lane jobs.
+The dashboard returns 74 cards because one current match already has a saved/pursued lifecycle and
+is intentionally hidden from the active-card response.
+
+Focused matcher and repository regressions, all 36 fixture suites, TypeScript, lint with zero
+errors and four pre-existing warnings, Webpack production build, and `git diff --check` passed.
+Required authenticated production scan verification passed on the exact deployment with disposable
+account `scan-browser-qa-20260804-role-scan-final@example.invalid`: it started with zero results,
+sent one `POST /api/jobs/scan`, received HTTP 200 with reference
+`05b9ec54-0621-484f-aa04-7421f4525dfa`, persisted 75 rows, rendered the same count after reload,
+reported no browser errors, and cleaned Auth, profile, and scan rows to zero.
+
+Durable lesson from Randall's correction: a compound target title must keep its functional
+specialty when profile lanes are derived. A successful scan is a current recommendation snapshot,
+not an append-only history; old active recommendations must be reconciled out.
+
 ## 2026-08-04 - Scan and outreach feedback corrections: LIVE (Codex)
 
 Commit `a42a84936c94e206c68e19c3895b422aa26327fc` is on `origin/main`, GitHub Actions
