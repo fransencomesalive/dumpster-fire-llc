@@ -1,10 +1,79 @@
 # Current State
 
-## 2026-08-04 - Outreach relevance, blocked job links, and paired scan details: LIVE (Codex)
+## 2026-08-04 - Outreach requirement matching and structural diversity correction: LIVE (Codex)
 
-The current combined release is commit `b7f2c999e5cef2d5229af43e0c90c096a08cd7c3` on
-`origin/main`, live in Vercel production deployment `dpl_6AguuiHqmenUVXmJXYtKYuvGSYP8`.
-The canonical production domain returns HTTP 200. The release contains these commits in order:
+Correction commit `3504a87ba7be2658579553a1321d09b61559997a` is on `origin/main` and live in
+Vercel production deployment `dpl_Ho7y9XKsEMSg1K64oca7Fy4TAaPk`. GitHub CI run
+`30938464311` passed, Vercel's deployment record reports success, and the canonical production
+domain returns HTTP 200 from that deployment.
+
+### Reported production failure and root cause
+
+Randall reported that a Dropbox Program Manager, Workforce Planning message reused the same
+attraction opener, career-summary middle, personal-preference close, and AKQA / Swift examples,
+while omitting AI. The official posting and the stored production job both contained an explicit
+requirement to use automation and AI-enabled tools, but that requirement lived in the structured
+`required_experience` array. The outreach adapter, evidence selector, and model prompt passed only
+the general description. The selector therefore recorded no matched signals, selected no Work
+Example, and told the model not to use one. The old diversity check compared repeated wording but
+did not recognize the same rhetorical structure written with different words.
+
+A read-only production audit confirmed this was not stale profile data. The generation request had
+loaded the current profile, including all five Work Examples, the AI Specialist Role Track, and the
+AI Workflow Design skill. The failure was in the job-to-evidence path after profile loading.
+
+### Corrected behavior
+
+- Outreach now carries and displays the job's structured Responsibilities and Required Experience
+  sections through the API adapter, evidence ranking, prompt, and persisted generation diagnostics.
+- Every user's complete Work Example inventory remains eligible. Title, description,
+  responsibilities, explicit requirements, and the selected Role Track are scored independently;
+  Required Experience receives the strongest weight so an explicit supported requirement cannot
+  be drowned out by generic description language.
+- Compact domain signals such as AI, API, QA, and LLM remain matchable even when they appear inside
+  longer profile evidence. This is universal signal handling, not a Dropbox-, user-, or
+  industry-specific rule.
+- When a selected example supports an explicit requirement, the prompt requires the draft to
+  address at least one matched requirement. The hard-rule validator rejects a draft that omits it.
+- Diversity validation now rejects repeated rhetorical skeletons in addition to repeated phrases.
+  The detector covers the observed attraction-opener, career-sweep, personal-preference or
+  familiarity claim, and talk-close pattern without banning any single phrase in isolation.
+
+### Exact-job verification and durable lesson
+
+A non-persisting check loaded the exact production profile, recent outreach history, and stored
+Dropbox job, but used a local stub response so private profile data was not resent to an AI provider.
+The corrected engine selected R.E.C.O.N.; matched `AI` specifically from Required Experience;
+reported that recent-use diversity changed the selection; included the AI requirement in the
+prompt; and required the message to address it. The previously generated Dropbox message was
+rejected for `matched_requirement_missing`, `repeated_recent_language`, and
+`repeated_recent_structure`.
+
+Durable verification lesson from Randall's correction: an outreach relevance or diversity change
+is not verified by selector fixtures and deployment alone. Verification must use the reported
+profile and exact job record, confirm every structured job section reaches selection and prompting,
+and test both factual coverage and rhetorical structure. Lexical variation is not message
+diversity. A fresh persisted production model generation was not created because that would alter
+the user's pursuit and consume provider usage without separate authorization.
+
+Verification:
+
+- exact production-data, local-stub regression: passed;
+- all 35 fixture suites: passed;
+- TypeScript: passed;
+- lint: zero errors and the same four pre-existing warnings;
+- `git diff --check`: passed;
+- the default Turbopack build produced no new output and was stopped; the documented
+  `npx next build --webpack` fallback passed;
+- GitHub CI run `30938464311`: passed;
+- Vercel production deployment record: successful;
+- canonical production domain: HTTP 200 from `dpl_Ho7y9XKsEMSg1K64oca7Fy4TAaPk`.
+
+## Prior 2026-08-04 release - Outreach relevance, blocked links, and paired scan details
+
+Before the correction above, the combined release was commit
+`b7f2c999e5cef2d5229af43e0c90c096a08cd7c3` on `origin/main`, live in Vercel production deployment
+`dpl_6AguuiHqmenUVXmJXYtKYuvGSYP8`. The release contained these commits in order:
 
 1. `5e8a91c1666f2fcf72b1dfbd0336b44d800cd8de` - outreach evidence relevance and diversity;
 2. `376d128efed6f2c69e370a2e4de5708fc64ee7e7` - indexed fallback for blocked job links;

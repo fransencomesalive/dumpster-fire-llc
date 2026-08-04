@@ -1,14 +1,48 @@
-# Next Session: 2026-08-04 Production Fixes Verified
+# Next Session: 2026-08-04 Outreach Requirement Correction Live
 
 _Updated 2026-08-04. Read `AGENTS.md` and follow the Session Start Protocol in
 `docs/project-operating-state.md` before editing._
 
-## 2026-08-04 immediate state
+## 2026-08-04 outreach correction state
 
-`origin/main` and production are at `b7f2c999e5cef2d5229af43e0c90c096a08cd7c3` on Vercel
-deployment `dpl_6AguuiHqmenUVXmJXYtKYuvGSYP8`. The canonical domain returns HTTP 200. This combined
-deployment contains the outreach evidence selection release (`5e8a91c`), indexed blocked-link
-fallback (`376d128`), and paired scan-card expansion (`b7f2c99`).
+`origin/main` contains outreach correction commit `3504a87ba7be2658579553a1321d09b61559997a`,
+live in Vercel production deployment `dpl_Ho7y9XKsEMSg1K64oca7Fy4TAaPk`. GitHub CI run
+`30938464311` passed, Vercel reports the deployment successful, and the canonical domain returns
+HTTP 200 from that deployment.
+
+The earlier `5e8a91c` relevance/diversity release was incomplete for jobs whose important criteria
+are stored outside the general description. The reported Dropbox posting put its AI requirement in
+`required_experience`, but outreach previously passed only title, company, and description into
+selection and prompting. It also detected repeated phrases but not a repeated rhetorical skeleton.
+
+The live correction now:
+
+1. passes structured Responsibilities and Required Experience through selection and prompting;
+2. scores every Work Example against each job section, with explicit requirements weighted most;
+3. preserves short domain signals such as AI during evidence matching;
+4. requires and validates mention of a matched explicit requirement when supported by the selected
+   example; and
+5. rejects the observed repeated attraction, career-sweep, preference/familiarity, talk-close
+   structure even when the words change.
+
+The exact production profile and Dropbox job were rechecked without persisting a new message or
+resending private profile data to an AI provider. The corrected engine selected R.E.C.O.N., matched
+AI from Required Experience, and rejected the old message for missing that requirement plus lexical
+and structural repetition. Do not describe this as a fresh persisted production provider-output
+journey. If Randall asks to test a real new message, obtain explicit authorization because it will
+send the current profile to the configured provider and may consume metered usage.
+
+Durable lesson: never verify outreach relevance/diversity from generic fixtures alone. Use the
+reported user/profile and exact stored job; confirm structured fields reach both ranking and the
+prompt; test factual requirement coverage and rhetorical structure separately.
+
+## Prior 2026-08-04 combined release baseline
+
+Before the outreach correction above, `origin/main` and production were at
+`b7f2c999e5cef2d5229af43e0c90c096a08cd7c3` on Vercel deployment
+`dpl_6AguuiHqmenUVXmJXYtKYuvGSYP8`. That combined deployment contained the original outreach
+evidence selection release (`5e8a91c`), indexed blocked-link fallback (`376d128`), and paired
+scan-card expansion (`b7f2c99`).
 
 Current product behavior:
 

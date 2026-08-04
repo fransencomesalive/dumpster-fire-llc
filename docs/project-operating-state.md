@@ -89,6 +89,15 @@ Not yet built as public workflows:
 
 ## Canonical Next Product Task
 
+> **UPDATED 2026-08-04: OUTREACH CORRECTION LIVE.** Commit `3504a87` fixes the reported Dropbox
+> outreach failure and is live in Vercel production deployment
+> `dpl_Ho7y9XKsEMSg1K64oca7Fy4TAaPk`. Outreach now includes structured Responsibilities and Required
+> Experience in job-specific evidence ranking and prompting, requires a supported matched
+> requirement to appear in the draft, and detects repeated rhetorical structure as well as repeated
+> wording. Exact production-data verification selected R.E.C.O.N. and matched the Dropbox AI
+> requirement; it used a local stub and did not persist or purchase a fresh provider generation.
+> Begin with `docs/next-session.md` and wait for Randall's next explicit scope.
+>
 > **UPDATED 2026-08-04: CURRENT RELEASE STATE.** Outreach now uses universal job-aware work-example
 > ranking plus recent-message diversity from each user's current profile; blocked job links have an
 > exact-posting indexed fallback; and dashboard Responsibilities / Required Experience lists expand
