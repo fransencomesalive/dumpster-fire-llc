@@ -964,6 +964,8 @@ function outreachJobFromPublicJob(job: PublicJobRecord): OutreachJob {
     title: job.title,
     company: job.companyName,
     description: job.description,
+    responsibilities: job.responsibilities,
+    requiredExperience: job.requiredExperience,
   };
 }
 
@@ -2245,6 +2247,8 @@ function outreachGenerationContext(input: {
           ? { relevanceScore: input.evidenceDecision.relevanceScore }
           : {}),
         matchedSignals: [...input.evidenceDecision.matchedSignals],
+        responsibilityMatchedSignals: [...input.evidenceDecision.responsibilityMatchedSignals],
+        requiredExperienceMatchedSignals: [...input.evidenceDecision.requiredExperienceMatchedSignals],
         recentUsageCount: input.evidenceDecision.recentUsageCount,
         consideredCount: input.evidenceDecision.consideredCount,
         comparableCandidateCount: input.evidenceDecision.comparableCandidateCount,

@@ -13,6 +13,8 @@ export type OutreachJob = {
   title: string;
   company: string;
   description: string;
+  responsibilities?: string[];
+  requiredExperience?: string[];
 };
 
 export type OutreachContact = {
@@ -127,6 +129,9 @@ const systemPrompt = [
   "",
   "SUBSTANCE",
   "Use one or two concrete points. Prefer verified first-person facts over positioning claims.",
+  "Responsibilities and Required Experience are part of the job, not optional appendix text.",
+  "When the job-specific evidence decision identifies profile support for a stated requirement,",
+  "the message must address at least one such requirement with truthful first-person evidence.",
   "Consider the FULL set of resume highlights and skills, not just the most famous credentials:",
   "pick what is most relevant to THIS job, use at most two resume highlights per message, and do",
   "not lean on the same marquee names or the same highlight sentence in every message. Never",
@@ -241,6 +246,61 @@ function repeatsRecentLanguage(
   });
 }
 
+const RHETORICAL_STRUCTURE_PATTERNS = [
+  {
+    name: "attraction_opener",
+    pattern: /\bwhat (?:pulls|draws) me (?:in|to)\b|\b(?:the|this) .{0,40}\bpart.{0,60}\bcaught my eye\b|\bthis (?:role|one).{0,60}\b(?:fits how|lines up with how|reads like)\b/i,
+  },
+  {
+    name: "career_sweep",
+    pattern: /\bmost of my (?:career|experience)\b|\bmy (?:whole|entire) (?:career|resume)\b|\bi(?:'|’)ve spent [^.\n]{0,30}\byears\b/i,
+  },
+  {
+    name: "personal_preference",
+    pattern: /\b(?:i(?:'|’)m|i am|who(?:'|’)s) happiest\b|\bthe part i (?:actually )?(?:enjoy|like|love)\b|\bwhere i (?:live|thrive)\b/i,
+  },
+  {
+    name: "familiarity_claim",
+    pattern: /\bexactly this\b|\bfamiliar ground\b|\bsecond nature\b|\bwhere i live\b|\bmy whole (?:career|resume)\b/i,
+  },
+  {
+    name: "talk_close",
+    pattern: /\b(?:would|i(?:'|’)d) love to talk\b|\bhappy to (?:talk|walk you through|connect)\b|\bworth a (?:chat|conversation)\b/i,
+  },
+] as const;
+
+function rhetoricalStructure(value: string) {
+  return RHETORICAL_STRUCTURE_PATTERNS
+    .filter(({ pattern }) => pattern.test(value))
+    .map(({ name }) => name);
+}
+
+function repeatsRecentStructure(message: string, recentMessages: string[]) {
+  const current = new Set(rhetoricalStructure(message));
+  if (current.size < 3) return false;
+  return recentMessages.slice(0, 5).some((recent) => {
+    const shared = rhetoricalStructure(recent).filter((marker) => current.has(marker));
+    return shared.length >= 3;
+  });
+}
+
+function messageMentionsSignal(message: string, signal: string) {
+  const normalize = (value: string) => value
+    .toLocaleLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const normalizedMessage = ` ${normalize(message)} `;
+  const normalizedSignal = normalize(signal);
+  if (!normalizedSignal) return false;
+  if (normalizedMessage.includes(` ${normalizedSignal} `)) return true;
+  const signalWords = normalizedSignal.split(" ").filter((word) => word === "ai" || word.length >= 4);
+  if (signalWords.length === 0) return false;
+  const messageWords = new Set(normalize(message).split(" "));
+  const shared = signalWords.filter((word) => messageWords.has(word)).length;
+  return shared / signalWords.length >= 0.6;
+}
+
 // Numbers must come from the profile. Digits ground digits; number-words ground only as
 // words ("15+" in the profile does not license "fifteen docs" — describe without the
 // count). "one"/"two" are skipped as overwhelmingly rhetorical.
@@ -297,6 +357,14 @@ export function outreachHardRuleViolations(
     )) {
       violations.push("work_example_does_not_match_job_selection");
     }
+    const requiredSignals = context.evidenceDecision.requiredExperienceMatchedSignals;
+    if (
+      selected
+      && requiredSignals.length > 0
+      && !requiredSignals.some((signal) => messageMentionsSignal(body, signal))
+    ) {
+      violations.push("matched_requirement_missing");
+    }
   }
   if (
     context?.previousMessage
@@ -320,6 +388,9 @@ export function outreachHardRuleViolations(
   }
   if (context && repeatsRecentLanguage(body, context)) {
     violations.push("repeated_recent_language");
+  }
+  if (context?.recentMessages && repeatsRecentStructure(body, context.recentMessages)) {
+    violations.push("repeated_recent_structure");
   }
   return violations;
 }
@@ -356,6 +427,12 @@ export function buildOutreachPromptParts(input: OutreachGeneratorInput) {
         selectedExample
           ? `Matched job signals: ${input.evidenceDecision.matchedSignals.join(" | ") || "relevant profile language"}`
           : "Use resume or skill evidence instead, and return insertedExample as null.",
+        ...(selectedExample && input.evidenceDecision.requiredExperienceMatchedSignals.length > 0
+          ? [
+              `Matched Required Experience signals: ${input.evidenceDecision.requiredExperienceMatchedSignals.join(" | ")}`,
+              "The message MUST address at least one of those matched requirements using truthful evidence from the profile.",
+            ]
+          : []),
         selectedExample
           ? "If you use a Work Example, use only this selected example and return its ID, one-hitter, and optional link exactly. You may return insertedExample as null when resume or skill evidence supports a more specific truthful message. Never substitute another example."
           : "Do not use or cite a Work Example in this message.",
@@ -382,6 +459,12 @@ export function buildOutreachPromptParts(input: OutreachGeneratorInput) {
     `Company: ${input.job.company}`,
     "Description:",
     input.job.description.trim(),
+    ...(input.job.responsibilities && input.job.responsibilities.length > 0
+      ? ["", "Responsibilities:", ...input.job.responsibilities.map((item) => `- ${item}`)]
+      : []),
+    ...(input.job.requiredExperience && input.job.requiredExperience.length > 0
+      ? ["", "Required Experience:", ...input.job.requiredExperience.map((item) => `- ${item}`)]
+      : []),
     "",
     "## Contact",
     contactLine,
@@ -553,6 +636,15 @@ function optionalString(value: unknown) {
   return cleaned ? cleaned : undefined;
 }
 
+function optionalStringArray(value: unknown) {
+  if (!Array.isArray(value)) return undefined;
+  const cleaned = value.flatMap((item) => {
+    const text = cleanString(item);
+    return text ? [text] : [];
+  });
+  return cleaned.length > 0 ? cleaned : undefined;
+}
+
 export function parseOutreachRequest(input: unknown): ParseOutreachRequestResult {
   if (!input || typeof input !== "object" || Array.isArray(input)) {
     return { ok: false, issues: [{ field: "body", message: "Expected an outreach request JSON object." }] };
@@ -565,6 +657,8 @@ export function parseOutreachRequest(input: unknown): ParseOutreachRequestResult
   const title = cleanString(jobSource.title);
   const company = cleanString(jobSource.company);
   const description = cleanString(jobSource.description);
+  const responsibilities = optionalStringArray(jobSource.responsibilities);
+  const requiredExperience = optionalStringArray(jobSource.requiredExperience);
   const role = cleanString(contactSource.role);
 
   if (!title) issues.push({ field: "job.title", message: "job.title is required." });
@@ -577,7 +671,13 @@ export function parseOutreachRequest(input: unknown): ParseOutreachRequestResult
   return {
     ok: true,
     value: {
-      job: { title, company, description },
+      job: {
+        title,
+        company,
+        description,
+        ...(responsibilities ? { responsibilities } : {}),
+        ...(requiredExperience ? { requiredExperience } : {}),
+      },
       contact: {
         name: optionalString(contactSource.name),
         role,

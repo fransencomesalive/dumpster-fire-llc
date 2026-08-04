@@ -83,6 +83,8 @@ const evidenceDecision = {
   selected: selectedEvidence,
   relevanceScore: 0.45,
   matchedSignals: ["ambiguous cross-functional delivery"],
+  responsibilityMatchedSignals: [],
+  requiredExperienceMatchedSignals: [],
   recentUsageCount: 0,
   consideredCount: 4,
   comparableCandidateCount: 2,
@@ -100,6 +102,27 @@ assert.match(evidencePrompt, /Job-specific Work Example decision/);
 assert.match(evidencePrompt, /Selected ID: example-phred/);
 assert.match(evidencePrompt, /Recent outreach language to avoid repeating/);
 assert.match(evidencePrompt, /different delivery system/);
+
+const requiredEvidenceDecision = {
+  ...evidenceDecision,
+  matchedSignals: ["AI"],
+  requiredExperienceMatchedSignals: ["AI"],
+};
+const structuredJob = {
+  ...job,
+  responsibilities: ["Own planning cycles and executive reporting."],
+  requiredExperience: ["Use automation and AI-enabled tools to simplify operational workflows."],
+};
+const structuredPrompt = buildOutreachUserPrompt({
+  profileMarkdown,
+  job: structuredJob,
+  contact,
+  evidenceDecision: requiredEvidenceDecision,
+});
+assert.match(structuredPrompt, /Required Experience:/);
+assert.match(structuredPrompt, /AI-enabled tools/);
+assert.match(structuredPrompt, /Matched Required Experience signals: AI/);
+assert.match(structuredPrompt, /MUST address at least one/);
 
 // 2b. Prompt caching: profile.md is passed as the cacheable prefix; the per-message
 // job + contact are the uncached tail. (No message reuse — every message is fresh.)
@@ -236,6 +259,8 @@ const cleanJson = JSON.stringify({ message: "Hi Dana, direct note about the role
     selected: undefined,
     relevanceScore: undefined,
     matchedSignals: [],
+    responsibilityMatchedSignals: [],
+    requiredExperienceMatchedSignals: [],
     comparableCandidateCount: 0,
   };
   const violations = outreachHardRuleViolations(
@@ -251,6 +276,41 @@ const cleanJson = JSON.stringify({ message: "Hi Dana, direct note about the role
     { job, contact, evidenceDecision: noRelevantDecision },
   );
   assert.ok(violations.includes("work_example_not_relevant_to_job"));
+}
+
+// 4cf. A selected example that supports a stated requirement cannot be ignored.
+{
+  const missingRequirement = outreachHardRuleViolations(
+    { message: "Hi Dana, I build clear operating rhythms for complex programs.", insertedExample: null },
+    profileMarkdown,
+    { job: structuredJob, contact, evidenceDecision: requiredEvidenceDecision },
+  );
+  assert.ok(missingRequirement.includes("matched_requirement_missing"));
+  const requirementAddressed = outreachHardRuleViolations(
+    { message: "Hi Dana, I use AI to keep complex program workflows connected.", insertedExample: null },
+    profileMarkdown,
+    { job: structuredJob, contact, evidenceDecision: requiredEvidenceDecision },
+  );
+  assert.equal(requirementAddressed.includes("matched_requirement_missing"), false);
+}
+
+// 4cg. Structural repetition is rejected even when the model swaps vocabulary.
+{
+  const repeatedStructure = outreachHardRuleViolations(
+    {
+      message: "Hi Dana. What pulls me in here is the operating challenge. Most of my career has been this kind of work. I'm happiest bringing order to it. Would love to talk.",
+      insertedExample: null,
+    },
+    "Most of my career is program work.",
+    {
+      job,
+      contact,
+      recentMessages: [
+        "Hi Lee. The systems part caught my eye. I'm a generalist who's happiest making the pieces connect. Would love to talk.",
+      ],
+    },
+  );
+  assert.ok(repeatedStructure.includes("repeated_recent_structure"));
 }
 
 // 4ce. Distinctive recent language is rejected, while a fresh rewrite succeeds.
@@ -348,6 +408,11 @@ assert.equal(goodRequest.ok, true);
 if (goodRequest.ok) {
   assert.equal(goodRequest.value.job.title, "Program Director");
   assert.equal(goodRequest.value.contact.role, "Hiring Manager");
+}
+const structuredRequest = parseOutreachRequest({ job: structuredJob, contact });
+assert.equal(structuredRequest.ok, true);
+if (structuredRequest.ok) {
+  assert.deepEqual(structuredRequest.value.job.requiredExperience, structuredJob.requiredExperience);
 }
 
 // 6. Service-for-user status mapping.

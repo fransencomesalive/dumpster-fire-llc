@@ -425,6 +425,8 @@ export type OutreachGenerationContext = {
       selectedWorkExampleId?: string;
       relevanceScore?: number;
       matchedSignals: string[];
+      responsibilityMatchedSignals: string[];
+      requiredExperienceMatchedSignals: string[];
       recentUsageCount: number;
       consideredCount: number;
       comparableCandidateCount: number;

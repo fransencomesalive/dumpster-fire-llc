@@ -15,6 +15,8 @@ export type OutreachEvidenceCandidate = {
   workExample: WorkExample;
   relevanceScore: number;
   matchedSignals: string[];
+  responsibilityMatchedSignals: string[];
+  requiredExperienceMatchedSignals: string[];
   recentUsageCount: number;
   diversityPenalty: number;
   adjustedScore: number;
@@ -25,6 +27,8 @@ export type OutreachEvidenceDecision = {
   selected?: WorkExample;
   relevanceScore?: number;
   matchedSignals: string[];
+  responsibilityMatchedSignals: string[];
+  requiredExperienceMatchedSignals: string[];
   recentUsageCount: number;
   consideredCount: number;
   comparableCandidateCount: number;
@@ -36,6 +40,8 @@ type OutreachEvidenceJob = {
   title: string;
   company: string;
   description: string;
+  responsibilities?: string[];
+  requiredExperience?: string[];
 };
 
 function normalized(value: string | undefined) {
@@ -52,14 +58,22 @@ function unique(values: string[]) {
   });
 }
 
+// Preserve compact domain acronyms as independent signals. Long profile fields are
+// intentionally scored as evidence blocks, but requirements often name a short exact
+// capability such as AI, API, QA, or LLM that would otherwise disappear inside prose.
+function acronymSignals(values: string[]) {
+  return unique(values.flatMap((value) => value.match(/\b[A-Z][A-Z0-9]{1,9}\b/g) ?? []));
+}
+
 function exampleSignals(aggregate: CandidateProfileAggregate, example: WorkExample) {
   const relatedSkills = aggregate.skills.filter((skill) => skill.relatedWorkExampleIds.includes(example.id));
-  return unique([
+  const evidence = [
     example.title,
     example.oneHitter,
     example.context,
     ...relatedSkills.flatMap((skill) => [skill.skillName, ...skill.evidence]),
-  ]);
+  ];
+  return unique([...evidence, ...acronymSignals(evidence)]);
 }
 
 function roleTrackSignals(aggregate: CandidateProfileAggregate, selectedRoleTrackId?: string) {
@@ -115,14 +129,27 @@ export function rankOutreachWorkExamples(input: {
     const signals = exampleSignals(input.aggregate, workExample);
     const titleFit = scoreSignalsAgainstText(signals, input.job.title);
     const descriptionFit = scoreSignalsAgainstText(signals, input.job.description);
+    const responsibilitiesText = (input.job.responsibilities ?? []).join(" ");
+    const requiredExperienceText = (input.job.requiredExperience ?? []).join(" ");
+    const responsibilityFit = scoreSignalsAgainstText(signals, responsibilitiesText);
+    const requiredExperienceFit = scoreSignalsAgainstText(signals, requiredExperienceText);
     const trackFit = trackSignals.length > 0
       ? scoreSignalsAgainstText(signals, trackSignals.join(" "))
       : { score: 0, matches: [] as string[] };
-    const relevanceScore = roundScore(
-      (titleFit.score * 0.25)
-      + (descriptionFit.score * 0.6)
-      + (trackFit.score * 0.15),
-    );
+    const weightedFits = [
+      { present: Boolean(input.job.title.trim()), weight: 0.2, score: titleFit.score },
+      { present: Boolean(input.job.description.trim()), weight: 0.35, score: descriptionFit.score },
+      { present: Boolean(responsibilitiesText.trim()), weight: 0.15, score: responsibilityFit.score },
+      // Explicit requirements are the strongest evidence boundary. If the posting says a
+      // capability is required and the profile supports it, general description language
+      // must not drown that signal out.
+      { present: Boolean(requiredExperienceText.trim()), weight: 0.55, score: requiredExperienceFit.score },
+      { present: trackSignals.length > 0, weight: 0.1, score: trackFit.score },
+    ].filter((fit) => fit.present);
+    const totalWeight = weightedFits.reduce((sum, fit) => sum + fit.weight, 0);
+    const relevanceScore = roundScore(totalWeight > 0
+      ? weightedFits.reduce((sum, fit) => sum + fit.score * fit.weight, 0) / totalWeight
+      : 0);
     const usage = recentUsage(history, workExample);
     return {
       workExample,
@@ -130,8 +157,12 @@ export function rankOutreachWorkExamples(input: {
       matchedSignals: unique([
         ...titleFit.matches,
         ...descriptionFit.matches,
+        ...responsibilityFit.matches,
+        ...requiredExperienceFit.matches,
         ...trackFit.matches,
       ]),
+      responsibilityMatchedSignals: responsibilityFit.matches,
+      requiredExperienceMatchedSignals: requiredExperienceFit.matches,
       recentUsageCount: usage.count,
       diversityPenalty: roundScore(usage.penalty),
       adjustedScore: roundScore(relevanceScore - usage.penalty),
@@ -146,6 +177,8 @@ export function rankOutreachWorkExamples(input: {
   if (!best || best.relevanceScore < MIN_RELEVANCE_SCORE || best.matchedSignals.length === 0) {
     return {
       matchedSignals: [],
+      responsibilityMatchedSignals: [],
+      requiredExperienceMatchedSignals: [],
       recentUsageCount: 0,
       consideredCount: ranked.length,
       comparableCandidateCount: 0,
@@ -174,6 +207,8 @@ export function rankOutreachWorkExamples(input: {
     selected: selected.workExample,
     relevanceScore: selected.relevanceScore,
     matchedSignals: selected.matchedSignals,
+    responsibilityMatchedSignals: selected.responsibilityMatchedSignals,
+    requiredExperienceMatchedSignals: selected.requiredExperienceMatchedSignals,
     recentUsageCount: selected.recentUsageCount,
     consideredCount: ranked.length,
     comparableCandidateCount: comparable.length,

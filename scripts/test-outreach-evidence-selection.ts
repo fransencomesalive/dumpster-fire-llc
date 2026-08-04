@@ -123,6 +123,50 @@ const unrelatedDecision = rankOutreachWorkExamples({
 });
 assert.equal(unrelatedDecision.selected, undefined, "an unrelated inventory must resolve to no Work Example");
 
+// Regression: Dropbox stored its AI requirement in requiredExperience, not the
+// general description. The selector must score that structured section and rotate
+// away from a recently overused AI example when a comparable current example exists.
+const phredExample = example(
+  "phred",
+  "P.H.R.E.D.",
+  "Project Hub for Retrieval, Execution, & Delivery",
+  "Built an operating system and orchestration agent that keeps AI-assisted work connected.",
+  "https://example.com/phred",
+);
+const reconExample = example(
+  "recon",
+  "R.E.C.O.N.",
+  "Route Environment & Condition Observation for Navigation",
+  "Built an AI-assisted route intelligence platform with workflow automation and AI-generated analysis.",
+  "https://example.com/recon",
+);
+const dropboxProfile = profileWith([phredExample, reconExample, clinicalExample]);
+dropboxProfile.skills = [{
+  id: "skill-ai",
+  profileId: "profile-1",
+  skillName: "AI Workflow Design",
+  proficiency: "expert",
+  evidence: ["Created a workflow for AI-assisted product development."],
+  relatedWorkExampleIds: ["phred"],
+  createdAt: now,
+  updatedAt: now,
+}];
+const dropboxDecision = rankOutreachWorkExamples({
+  aggregate: dropboxProfile,
+  selectedRoleTrackId: dropboxProfile.roleTracks[0]?.id,
+  job: {
+    title: "Program Manager, Workforce Planning",
+    company: "Dropbox",
+    description: "Build and operate systems, operating rhythms, and governance for workforce planning.",
+    responsibilities: ["Own planning cycles, executive reporting, and delivery infrastructure."],
+    requiredExperience: ["Use automation and AI-enabled tools to simplify operational workflows."],
+  },
+  history: [{ message: `Prior AI note ${phredExample.link}`, selectedWorkExampleId: "phred" }],
+});
+assert.equal(dropboxDecision.selected?.id, "recon");
+assert.ok(dropboxDecision.requiredExperienceMatchedSignals.includes("AI"));
+assert.equal(dropboxDecision.diversityAffectedSelection, true);
+
 assert.equal(
   resolveInsertedWorkExample([aiExample], { id: "ai", oneHitter: aiExample.oneHitter })?.id,
   "ai",
