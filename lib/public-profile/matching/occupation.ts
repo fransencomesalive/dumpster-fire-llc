@@ -18,6 +18,7 @@ export type OccupationLane =
   | "technical-production"
   | "social-creative"
   | "creative-operations"
+  | "marketing-creative-project-management"
   | "program-project-management"
   | "product-operations"
   | "product-owner-sales-ops"
@@ -120,7 +121,10 @@ const laneRules: LaneRule[] = [
   },
   {
     lane: "creative-leadership",
-    title: [/\b(creative director|associate creative director|executive creative director|group creative director|head of creative|creative lead)\b/],
+    title: [
+      /\b(creative director|associate creative director|executive creative director|group creative director|head of creative|creative lead)\b/,
+      /\b(director of content|head of content|head of brand creative)\b/,
+    ],
     task: [/\b(creative direction|lead creative|concept|campaign|team leadership|creative review|brand system)\b/],
     adjacent: ["art-direction", "creative-strategy"],
   },
@@ -144,7 +148,10 @@ const laneRules: LaneRule[] = [
   },
   {
     lane: "social-creative",
-    title: [/\b(social producer|social creative|social content|social creative lead|content creator)\b/],
+    title: [
+      /\b(social producer|social creative|social content|social creative lead|content creator)\b/,
+      /\b(director of social media|social media director)\b/,
+    ],
     task: [/\b(social content|social creative|platform creative|tiktok|instagram|youtube|short form|creator)\b/],
     adjacent: ["creative-writing", "content-video-production"],
   },
@@ -155,11 +162,27 @@ const laneRules: LaneRule[] = [
     adjacent: ["program-project-management", "digital-production"],
   },
   {
+    // Compound project/program titles retain their functional specialty. Without
+    // this lane, a target such as "Marketing Project Manager" made every generic
+    // Program Manager a core match for that user.
+    lane: "marketing-creative-project-management",
+    title: [
+      /\b(marketing|creative|brand|content|communications?|campaign) (program|project) (manager|lead|director)\b/,
+      /\b(program|project) (manager|lead|director) (marketing|creative|brand|content|communications?|campaign)\b/,
+    ],
+    task: [
+      /\b(marketing campaign|campaign management|creative assets|creative workflow|content production|brand marketing|audience|media plan|social media)\b/,
+    ],
+    adjacent: ["creative-operations", "digital-production", "marketing-management"],
+  },
+  {
     lane: "program-project-management",
     title: [/\b(program manager|project manager|program lead|program director|delivery lead|operations lead|producer program)\b/],
     task: [/\b(program|project|roadmap|stakeholder|cross functional|delivery|milestones|risk|scope|planning)\b/],
     disqualifiers: [
       /\b(technical program manager|engineering program manager|scrum master|agile)\b/,
+      /\b(marketing|creative|brand|content|communications?|campaign) (program|project) (manager|lead|director)\b/,
+      /\b(program|project) (manager|lead|director) (marketing|creative|brand|content|communications?|campaign)\b/,
       /\b(it operations|enterprise technology|sales operations|sales ops|revenue operations|revops|safety|risk operations|partner operations|bank programs|infrastructure|supply chain|hardware operations|talent acquisition|performance and talent|compensation|data acquisition|cpu|storage|wan|procurement|brokerage|ecm|dms|b2b marketing|strategy operations|strategy & operations|product design program|onboarding project manager)\b/,
     ],
     adjacent: ["creative-operations", "digital-production", "product-operations", "strategy-operations"],
@@ -201,7 +224,10 @@ const laneRules: LaneRule[] = [
   },
   {
     lane: "marketing-management",
-    title: [/\b(marketing manager|partner marketing|product marketing|customer marketing|consumer marketing|field marketing|growth marketing|marketing lead|marketer)\b/],
+    title: [
+      /\b(marketing manager|partner marketing|product marketing|customer marketing|consumer marketing|field marketing|growth marketing|marketing lead|marketer)\b/,
+      /\b(director of marketing|brand marketing director|digital marketing director|marketing director)\b/,
+    ],
     task: [/\b(marketing strategy|co marketing|demand generation|growth|customer acquisition|media buying|paid social|marketing campaign)\b/],
     adjacent: ["creative-strategy", "social-creative"],
   },

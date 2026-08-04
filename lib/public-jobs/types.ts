@@ -1,7 +1,7 @@
 import type { MatchLabel } from "../public-profile/matching/types";
 import type { PursuitJobSnapshot } from "../public-profile/pursuits/types";
 
-export const PUBLIC_JOB_MATCHER_VERSION = "public-job-matcher-v2" as const;
+export const PUBLIC_JOB_MATCHER_VERSION = "public-job-matcher-v3" as const;
 
 export const PUBLIC_JOB_FEEDBACK_REASON_CODES = [
   "wrong_role_title",

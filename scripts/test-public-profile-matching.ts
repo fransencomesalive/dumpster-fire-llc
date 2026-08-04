@@ -429,4 +429,71 @@ assert.equal(thinStretch.label, "Weak Match");
 assert.ok(thinStretch.internalScore <= 59);
 assert.ok(thinStretch.whyNotMatched.some((reason) => reason.includes("too thin")));
 
+// Compound functional titles stay in their specific occupation family. A profile
+// targeting Marketing Project Manager must not inherit the entire generic program
+// management lane, while nearby marketing/creative project roles remain eligible.
+const marketingCreativeProfile = profile();
+marketingCreativeProfile.roleTracks[0] = {
+  ...marketingCreativeProfile.roleTracks[0],
+  name: "Marketing",
+  targetTitles: [
+    "Director of Marketing",
+    "Creative Director",
+    "Director of Content",
+    "Head of Content",
+    "Head of Creative",
+    "Head of Brand Creative",
+    "Brand Marketing Director",
+    "Director of Social Media",
+    "Digital Marketing Director",
+    "Marketing Project Manager",
+  ],
+  keyResponsibilities: ["Lead brand marketing campaigns", "Own creative and content strategy"],
+  requiredExperiencePatterns: ["Marketing leadership", "Creative team leadership"],
+  strongJobSignals: ["Brand marketing", "Content production", "Social media"],
+  weakJobSignals: [],
+  mismatchSignals: [],
+};
+const marketingCreativeSignals = matchingSignalsForAggregate(marketingCreativeProfile);
+assert.ok(marketingCreativeSignals.lanes.coreLanes.has("marketing-creative-project-management"));
+assert.ok(marketingCreativeSignals.lanes.coreLanes.has("marketing-management"));
+assert.ok(marketingCreativeSignals.lanes.coreLanes.has("creative-leadership"));
+assert.ok(marketingCreativeSignals.lanes.coreLanes.has("social-creative"));
+assert.equal(marketingCreativeSignals.lanes.coreLanes.has("program-project-management"), false);
+
+for (const title of [
+  "Senior Program Manager",
+  "Program Director, Workforce Planning",
+  "Project Manager, New Product Engineering",
+]) {
+  const genericProgramDecision = evaluatePublicJobDecision({
+    id: `generic-${title}`,
+    title,
+    companyName: "Generic Company",
+    description: "Own cross-functional planning, stakeholder alignment, delivery milestones, risk, scope, and executive reporting.",
+    location: "Remote - US",
+    remoteType: "remote",
+    postedAt: "2026-06-27T12:00:00.000Z",
+  }, marketingCreativeSignals, now);
+  assert.equal(genericProgramDecision.included, false, `${title} must not inherit a compound marketing project target`);
+  assert.equal(genericProgramDecision.label, "Probably Not Worth Your Time");
+  assert.ok(genericProgramDecision.risks.some((risk) => risk.includes("different lane")));
+}
+
+for (const title of ["Marketing Project Manager", "Creative Project Manager", "Campaign Program Lead"]) {
+  const specializedDecision = evaluatePublicJobDecision({
+    id: `specialized-${title}`,
+    title,
+    companyName: "Creative Company",
+    description: "Own brand marketing campaigns, creative assets, content production, stakeholder planning, and cross-functional delivery.",
+    location: "Remote - US",
+    remoteType: "remote",
+    postedAt: "2026-06-27T12:00:00.000Z",
+  }, marketingCreativeSignals, now);
+  assert.equal(specializedDecision.included, true, `${title} should remain eligible for this profile`);
+  assert.equal(specializedDecision.roleFamily, title === "Marketing Project Manager"
+    ? "profile-target"
+    : "marketing-creative-project-management");
+}
+
 console.log("public profile matching: all assertions passed");

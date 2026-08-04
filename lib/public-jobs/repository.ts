@@ -530,6 +530,41 @@ const USER_BOARD_FETCH_CONCURRENCY = 3;
 const MAX_JOBS_PER_USER_BOARD = 100;
 const SCAN_POOL_PAGE_SIZE = 1000;
 const MAX_SCAN_POOL_ROWS = 10000;
+const ACTIVE_RESULT_EXPIRATION_BATCH_SIZE = 100;
+
+async function reconcileActiveScanResults(
+  request: PublicProfileRepositoryRequest,
+  userId: string,
+  matchedJobIds: Set<string>,
+  scannedAt: string,
+) {
+  const activeRows = await request<{ job_id: string }[]>("job_scan_results", {
+    query: qs({
+      user_id: `eq.${userId}`,
+      status: "eq.active",
+      select: "job_id",
+    }),
+  });
+  const staleJobIds = activeRows
+    .map((row) => row.job_id)
+    .filter((jobId) => !matchedJobIds.has(jobId));
+
+  for (let offset = 0; offset < staleJobIds.length; offset += ACTIVE_RESULT_EXPIRATION_BATCH_SIZE) {
+    const batch = staleJobIds.slice(offset, offset + ACTIVE_RESULT_EXPIRATION_BATCH_SIZE);
+    await request("job_scan_results", {
+      method: "PATCH",
+      query: qs({
+        user_id: `eq.${userId}`,
+        status: "eq.active",
+        job_id: `in.(${batch.join(",")})`,
+      }),
+      body: {
+        status: "expired",
+        updated_at: scannedAt,
+      },
+    });
+  }
+}
 
 async function mapWithConcurrency<T>(items: T[], limit: number, task: (item: T) => Promise<void>) {
   const queue = [...items];
@@ -615,7 +650,7 @@ export async function runPublicJobsScanForUser(
   for (let offset = 0; candidateRows.length < MAX_SCAN_POOL_ROWS; offset += SCAN_POOL_PAGE_SIZE) {
     const page = await request<JobRow[]>("jobs", {
       query: qs({
-        select: "id,source,source_url,owner_user_id,company_name,title,location,remote_type,employment_type,compensation_text,department,description,posted_at,scraped_at,created_at,updated_at",
+        select: "id,source,source_url,owner_user_id,company_name,title,location,remote_type,employment_type,compensation_text,department,description,posted_at,scraped_at,created_at,updated_at,responsibilities,required_experience",
         or: `(owner_user_id.is.null,owner_user_id.eq.${userId})`,
         order: "scraped_at.desc,id.asc",
         limit: String(SCAN_POOL_PAGE_SIZE),
@@ -684,6 +719,16 @@ export async function runPublicJobsScanForUser(
       })),
     });
   }
+
+  // A successful scan replaces the active recommendation set. Preserve saved,
+  // pursued, and dismissed lifecycle states, while expiring active rows that no
+  // longer survive the current profile, pool, ranking, dedupe, or result cap.
+  await reconcileActiveScanResults(
+    request,
+    userId,
+    new Set(matchedJobs.map((job) => job.id)),
+    scannedAt,
+  );
 
   const response = await readPublicJobsForUser(request, userId, scannedAt);
   if ("status" in response) return response;

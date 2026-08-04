@@ -36,6 +36,8 @@ type JobRow = {
   employment_type: string | null;
   compensation_text: string | null;
   description: string;
+  responsibilities?: string[] | null;
+  required_experience?: string[] | null;
   posted_at: string | null;
   scraped_at: string;
   created_at: string;
@@ -193,6 +195,7 @@ const jobSources: JobSourceRow[] = [];
 const unrecognizedBoardSubmissions: Array<{ user_id: string; url: string; reason: string }> = [];
 let failSubmissionLogging = false;
 let profileRemotePreference = "remote_preferred";
+const scanCandidateSelects: string[] = [];
 
 const request: PublicProfileRepositoryRequest = async <T>(
   table: string,
@@ -338,6 +341,8 @@ const request: PublicProfileRepositoryRequest = async <T>(
         if (existing) {
           existing.title = (row.title as string) ?? existing.title;
           existing.description = (row.description as string) ?? existing.description;
+          existing.responsibilities = (row.responsibilities as string[] | null | undefined) ?? existing.responsibilities;
+          existing.required_experience = (row.required_experience as string[] | null | undefined) ?? existing.required_experience;
           existing.updated_at = (row.updated_at as string) ?? existing.updated_at;
           existing.scraped_at = (row.scraped_at as string) ?? existing.scraped_at;
         } else {
@@ -353,6 +358,8 @@ const request: PublicProfileRepositoryRequest = async <T>(
             employment_type: (row.employment_type as string | null) ?? null,
             compensation_text: (row.compensation_text as string | null) ?? null,
             description: (row.description as string) ?? "",
+            responsibilities: (row.responsibilities as string[] | null) ?? null,
+            required_experience: (row.required_experience as string[] | null) ?? null,
             posted_at: (row.posted_at as string | null) ?? null,
             scraped_at: (row.scraped_at as string) ?? now,
             created_at: now,
@@ -372,6 +379,8 @@ const request: PublicProfileRepositoryRequest = async <T>(
     // Honor the owner-scoped candidate filter like PostgREST would.
     const ownerFilter = query.match(/or=\(owner_user_id\.is\.null,owner_user_id\.eq\.([^)]+)\)/);
     if (ownerFilter) {
+      const selected = query.match(/select=([^&]+)/)?.[1];
+      if (selected) scanCandidateSelects.push(selected);
       return jobs.filter((job) => job.owner_user_id === null || job.owner_user_id === ownerFilter[1]) as T;
     }
     return jobs as T;
@@ -466,10 +475,14 @@ const request: PublicProfileRepositoryRequest = async <T>(
 
     if (options.method === "PATCH") {
       const jobId = query.match(/job_id=eq\.([^&]+)/)?.[1];
+      const jobIds = query.match(/job_id=in\.\(([^)]+)\)/)?.[1].split(",") ?? [];
+      const statusFilter = query.match(/status=eq\.([^&]+)/)?.[1];
       const body = options.body as Partial<ScanResultRow>;
       for (const row of scanResults) {
         if (row.user_id !== userId) continue;
         if (jobId && row.job_id !== jobId) continue;
+        if (jobIds.length > 0 && !jobIds.includes(row.job_id)) continue;
+        if (statusFilter && row.status !== statusFilter) continue;
         if (body.status) row.status = body.status;
         if (body.updated_at) row.updated_at = body.updated_at;
       }
@@ -597,6 +610,28 @@ async function main() {
   if ("status" in emptyRead) throw new Error("Expected jobs response");
   assert.equal(emptyRead.jobs.length, 0);
 
+  scanResults.push({
+    user_id: userId,
+    profile_id: profileId,
+    job_id: "job-stale-active",
+    status: "active",
+    scan_context: {},
+    first_seen_at: now,
+    last_seen_at: now,
+    created_at: now,
+    updated_at: now,
+  }, {
+    user_id: userId,
+    profile_id: profileId,
+    job_id: "job-2",
+    status: "dismissed",
+    scan_context: {},
+    first_seen_at: now,
+    last_seen_at: now,
+    created_at: now,
+    updated_at: now,
+  });
+
   const scan = await runPublicJobsScanForUser(request, userId, now);
   assert.equal("status" in scan, false);
   if ("status" in scan) throw new Error("Expected scan response");
@@ -612,6 +647,13 @@ async function main() {
   assert.equal(typeof scan.jobs[0].match?.label, "string");
   assert.equal(scan.jobs[0].match?.matcherVersion, PUBLIC_JOB_MATCHER_VERSION);
   assert.equal(scan.jobs[0].match?.evaluatedAt, now);
+  assert.ok(scanCandidateSelects.some((select) => select.includes("responsibilities,required_experience")));
+  assert.equal(scanResults.find((row) => row.job_id === "job-stale-active")?.status, "expired");
+  assert.equal(scanResults.find((row) => row.job_id === "job-2")?.status, "dismissed");
+  assert.deepEqual(
+    scanResults.filter((row) => row.status === "active").map((row) => row.job_id),
+    ["job-1"],
+  );
 
   const feedback = await savePublicJobMatchFeedbackForUser(request, userId, {
     jobId: "job-1",
