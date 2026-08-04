@@ -1,7 +1,54 @@
-# Next Session: 2026-08-04 JOB-021, JOB-022, and Portable QA Lifecycle Live
+# Next Session: 2026-08-04 Scan and Outreach Feedback Corrections Live
 
 _Updated 2026-08-04. Read `AGENTS.md` and follow the Session Start Protocol in
 `docs/project-operating-state.md` before editing._
+
+## Current production release
+
+Commit `a42a84936c94e206c68e19c3895b422aa26327fc` is on `origin/main` and live in
+Vercel production deployment `dpl_pKJEa7VfbEzf4XnnpoWP5uM42p6y`. GitHub Actions run
+`30947750248` passed and the canonical domain returned HTTP 200.
+
+The release addresses all nine current job-scan feedback rows and both current outreach-feedback
+rows with universal rules:
+
+- remote-work arrangement no longer overrides explicit country eligibility; Himalayas
+  `locationRestrictions` are preserved and compared with each profile location;
+- Sales Operations and Enterprise Technology titles are classified into their specialized lanes,
+  while stretch roles with thin resume and Work Example support are capped below Potential Match;
+- job matching and feedback snapshots now include structured Responsibilities and Required
+  Experience, and feedback lane sets serialize as auditable arrays;
+- outreach ranks every current Work Example, recognizes ordinary grammatical variants, treats a
+  skill linked to an example as curated evidence, and compares long-form example context without
+  accepting isolated generic word overlap;
+- a selected example that supports Required Experience must actually appear in the generated
+  message; repeated multi-employer credential combinations are rejected alongside repeated wording
+  and rhetorical structure.
+
+The deterministic evidence selector, not cloud determinism or stale profile loading, caused the
+reported Perplexity miss. The exact Ashby source contained no AI employer description, but the
+posting itself asked for production workflow and cross-team coordination. The corrected selector
+considered all five current examples and selected P.H.R.E.D. from its linked AI Workflow Design
+skill plus its production-MVP, coordination, and workflow context. The selected Role Track
+influences ranking but does not exclude examples or skills associated with other profile work.
+
+The read-only exact-production regression passed all 11 feedback records. Historical scan scores
+were recalculated to the expected lower bands, and the two old outreach messages were rejected by
+the current hard rules. This did not purchase or persist a fresh provider-generated message, so a
+new real outreach draft remains **NOT VERIFIED** and requires Randall's explicit authorization.
+
+All 36 fixture suites, focused tests, typecheck, lint (zero errors and four pre-existing warnings),
+Webpack production build, and `git diff --check` passed. The default Turbopack build stalled without
+progress and was stopped; it is not counted as passing. An authenticated production-browser scan
+started with zero results, sent one `POST /api/jobs/scan`, received HTTP 200, persisted 75 active
+matches, rendered all 75 after reload, and recorded request reference
+`c410328a-9b48-4295-91c8-bbbaa72b5402`. Disposable account
+`scan-browser-qa-1785875260304-28e835e5@example.invalid` and all profile/scan rows were deleted;
+cleanup returned zero.
+
+Next immediate action: no feedback implementation remains in flight. Wait for Randall's next
+explicit scope. If he wants a real outreach-output review, obtain explicit authorization before
+sending the current profile to the configured provider or consuming metered usage.
 
 ## Current release state
 

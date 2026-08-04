@@ -1,5 +1,39 @@
 # Current State
 
+## 2026-08-04 - Scan and outreach feedback corrections: LIVE (Codex)
+
+Commit `a42a84936c94e206c68e19c3895b422aa26327fc` is on `origin/main`, GitHub Actions
+run `30947750248` passed, and Vercel production deployment
+`dpl_pKJEa7VfbEzf4XnnpoWP5uM42p6y` is serving the canonical domain with HTTP 200.
+
+A read-only production audit retrieved nine job-match feedback records and two outreach-message
+feedback records. The corrected engine now separates country eligibility from remote preference,
+preserves Himalayas locale restrictions, classifies Sales Operations and Enterprise Technology
+outside broad program lanes, and prevents thin stretch evidence from reaching Potential Match.
+Structured Responsibilities and Required Experience now reach both matching and feedback snapshots.
+
+Outreach still considers every Work Example in the current profile. The selected Role Track is a
+ranking input, not an inventory filter. Curated skills linked to an example are scored independently
+from the example's title and long context; grammatical variants and supported prose overlap are
+recognized without lowering the relevance threshold. When an example supports explicit Required
+Experience, the model must use it, and the validator rejects omission. A new detector also rejects
+reuse of multiple distinctive resume credentials across recent drafts.
+
+The Perplexity miss was caused by the deterministic lexical relevance gate, not cloud determinism
+and not stale profile data. Ashby's source posting carries no AI company description. The corrected
+job-grounded comparison nevertheless selects P.H.R.E.D. from all five current examples because its
+AI Workflow Design skill and its production-workflow and coordination context match the posting.
+The exact production-data audit passed all 11 submitted feedback cases. No fresh provider message
+was purchased or persisted; actual new provider output remains **NOT VERIFIED** without explicit
+authorization.
+
+All 36 fixture suites, focused regressions, typecheck, lint with zero errors, Webpack production
+build, and `git diff --check` passed. The default Turbopack build stalled after entering compilation
+and was stopped. Required production scan verification passed on the exact deployment: disposable
+account `scan-browser-qa-1785875260304-28e835e5@example.invalid` began with zero results, one
+`POST /api/jobs/scan` returned HTTP 200, 75 active rows persisted and rendered after reload, and
+cleanup removed the Auth user, profile, and all scan rows.
+
 ## 2026-08-04 - Portable stale-safe QA lifecycle: LIVE (Codex)
 
 The Telegram JOB-022 workstream was stopped because it had been generated from stale worker base
