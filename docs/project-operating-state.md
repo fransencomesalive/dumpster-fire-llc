@@ -89,6 +89,15 @@ Not yet built as public workflows:
 
 ## Canonical Next Product Task
 
+> **UPDATED 2026-08-04: CURRENT RELEASE STATE.** Outreach now uses universal job-aware work-example
+> ranking plus recent-message diversity from each user's current profile; blocked job links have an
+> exact-posting indexed fallback; and dashboard Responsibilities / Required Experience lists expand
+> and collapse together. The combined release is `b7f2c999e5cef2d5229af43e0c90c096a08cd7c3`, live as
+> `dpl_6AguuiHqmenUVXmJXYtKYuvGSYP8`. The exact reported Indeed URL and the paired expansion behavior
+> were production-verified with disposable cleanup. No implementation work from this release is in
+> flight. Start with `docs/next-session.md`, run `session check`, and wait for Randall's next explicit
+> scope rather than automatically beginning an older queued task.
+>
 > **UPDATED 2026-07-28: CURRENT IMMEDIATE TASK.** The first-user production scan blocker is fixed
 > and verified through the real authenticated dashboard control with the legacy token mirror
 > deliberately absent. The final production run returned, persisted, and re-rendered 75 matches;

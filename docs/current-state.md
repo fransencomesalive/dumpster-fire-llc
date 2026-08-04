@@ -1,5 +1,89 @@
 # Current State
 
+## 2026-08-04 - Outreach relevance, blocked job links, and paired scan details: LIVE (Codex)
+
+The current combined release is commit `b7f2c999e5cef2d5229af43e0c90c096a08cd7c3` on
+`origin/main`, live in Vercel production deployment `dpl_6AguuiHqmenUVXmJXYtKYuvGSYP8`.
+The canonical production domain returns HTTP 200. The release contains these commits in order:
+
+1. `5e8a91c1666f2fcf72b1dfbd0336b44d800cd8de` - outreach evidence relevance and diversity;
+2. `376d128efed6f2c69e370a2e4de5708fc64ee7e7` - indexed fallback for blocked job links;
+3. `b7f2c999e5cef2d5229af43e0c90c096a08cd7c3` - synchronized Responsibilities and Required
+   Experience expansion on dashboard job cards.
+
+### Outreach evidence behavior
+
+- Every outreach generation and regeneration loads the user's current profile aggregate and recent
+  outreach history. Profile edits, including newly added AI skills, work examples, and role tracks,
+  are therefore part of later generation requests; no fixed two-example prompt list is used.
+- The selector evaluates every work example in the profile. It does not hard-limit candidates to
+  the selected or recommended Role Track. Job-description fit carries 60 percent of relevance,
+  job-title fit carries 25 percent, and alignment with the pursuit's selected Role Track carries
+  15 percent. The track influences ranking without hiding strong cross-track examples.
+- A work example's linked skills and skill evidence contribute to that example's signals. Skills
+  do not globally attach unrelated examples to a track.
+- Only job-relevant examples above the minimum threshold are eligible. Recent use applies a
+  bounded diversity penalty among comparably relevant candidates, so variety cannot replace job
+  fit. Recent message language is also checked to prevent repeated phrasing across pursuits.
+- The selected example ID, relevance score, matched signals, recent-use count, candidate counts,
+  and whether diversity affected selection are retained in generation context for auditability.
+- This release was deployed and the release checks passed. It did not add a new paid authenticated
+  production outreach generation journey, so do not present it as a fresh provider-output audit.
+
+### Blocked job-link recovery
+
+- Normal page retrieval and structured ATS connectors remain first. Only `fetch_failed` and
+  `extraction_unavailable` outcomes invoke the indexed fallback; unsafe URLs, unsupported boards,
+  and oversized responses do not.
+- The fallback uses the existing Anthropic account with Haiku 4.5 web fetch and limited web search.
+  It requires the exact supplied URL to be repeated, supporting source URLs, a valid verified
+  posting, and substantive content. It never substitutes a similar job.
+- The originally pasted URL remains the persisted source URL. The provider's canonical URL is not
+  allowed to destabilize the content hash. Provider tokens, web-search fees, duration, outcome,
+  and request correlation remain in the existing best-effort usage ledger.
+- On the combined deployment, the exact reported URL
+  `https://www.indeed.com/viewjob?jk=7f4b9d403820f593` returned HTTP 200 from
+  `POST /api/jobs/from-link`, persisted `Sr. Director, Global Content & Product Operations` at
+  `iHerb, LLC`, retained the exact Indeed source URL, and stored a 704-character description with
+  six responsibilities and six requirements. Cleanup left zero disposable job rows and the Auth
+  user readback returned 404.
+
+### Paired scan-card expansion
+
+- Root cause: the grid stretched both outer cards to the taller row height, but each
+  `MatchSection` owned independent expansion state. Expanding one list therefore left the other
+  list clamped inside a tall empty container.
+- `app/dashboard/DashboardClient.tsx` now owns one card-level expansion state and passes it to both
+  sections. Clicking either `Show more` reveals both complete lists; clicking either `Show less`
+  reclamps both.
+- No CSS, copy, or design-system file changed. The approved Dashboard Jobs, Match Card, and Scan
+  Page cards already show both columns fully expanded, so the live behavior now matches those
+  approved states without a new visual treatment or remote asset-registration task.
+- Authenticated production-browser QA loaded the actual deployed bundle with controlled long job
+  data at 320, 375, 390, 1280, and 1440 pixels. At every width both lists expanded and collapsed
+  together, no horizontal overflow or browser error occurred, and desktop visible border edges
+  matched exactly. The disposable Auth account was deleted and its 404 readback was verified.
+- The controlled job response isolated this client-side behavior. It was not a fresh production
+  Run scan journey and must not replace the separate Production Scan Verification gate.
+
+### Release verification and next starting point
+
+- `npm run typecheck`: passed.
+- `npm run lint`: zero errors and the same four pre-existing unused-variable warnings.
+- `npm run test:fixtures`: all 35 suites passed.
+- `npm run build`: passed. The first sandbox-restricted build stopped after producing no new output;
+  the deployment-network rerun compiled successfully in 1.856 seconds and completed every build
+  stage.
+- `git diff --check`: passed before commit.
+- Vercel status for `b7f2c99` completed successfully; production deployment identity was confirmed
+  from the canonical domain's response headers.
+
+No implementation work from this release is in flight. Start the next session with `session check`
+and wait for Randall to name the next scope. Older outstanding operational items remain outstanding:
+the first observed scheduled access-code expiry cron execution, any explicitly documented remote
+Claude Design registrations, Phase 4 Markdown export approval, and Next.js 16.2.12 security
+maintenance. Do not fold any of them into unrelated work.
+
 ## 2026-08-03 - New-account onboarding and entitlement audit (Codex)
 
 A read-only production Supabase audit at approximately 21:50-21:52 UTC found six total Auth users,

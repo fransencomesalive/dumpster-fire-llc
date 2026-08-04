@@ -1,7 +1,47 @@
-# Next Session: Access-Code Release Verified
+# Next Session: 2026-08-04 Production Fixes Verified
 
-_Updated 2026-08-03. Read `AGENTS.md` and follow the Session Start Protocol in
+_Updated 2026-08-04. Read `AGENTS.md` and follow the Session Start Protocol in
 `docs/project-operating-state.md` before editing._
+
+## 2026-08-04 immediate state
+
+`origin/main` and production are at `b7f2c999e5cef2d5229af43e0c90c096a08cd7c3` on Vercel
+deployment `dpl_6AguuiHqmenUVXmJXYtKYuvGSYP8`. The canonical domain returns HTTP 200. This combined
+deployment contains the outreach evidence selection release (`5e8a91c`), indexed blocked-link
+fallback (`376d128`), and paired scan-card expansion (`b7f2c99`).
+
+Current product behavior:
+
+1. Outreach considers every current profile work example against the specific job. The selected
+   Role Track influences ranking but does not exclude relevant examples from other tracks. Linked
+   skills supply example evidence. Recent example use and recent phrasing affect diversity only
+   after relevance is established. Current profile data and recent persisted messages are loaded
+   for each generation or regeneration request.
+2. A job link that defeats normal server retrieval can use the metered, exact-posting indexed
+   fallback. The original pasted URL stays canonical in Dumpster Fire storage. The reported Indeed
+   URL was ingested successfully on the current deployment as the iHerb Sr. Director posting, and
+   the disposable production data was deleted.
+3. Responsibilities and Required Experience share one expansion state per job card. Either control
+   expands or collapses both lists. The deployed interaction passed authenticated browser checks at
+   320, 375, 390, 1280, and 1440 pixels with no browser errors or horizontal overflow.
+
+Verification for the combined release:
+
+- all 35 fixture suites passed;
+- TypeScript passed;
+- lint reported zero errors and the same four pre-existing warnings;
+- the production build passed;
+- Vercel completed the deployment;
+- all disposable production QA accounts were deleted and cleanup audits passed.
+
+Important boundary: the scan-card browser QA used controlled API job data to isolate the deployed
+client interaction. It is not a new Run scan production journey and does not replace the repository's
+Production Scan Verification requirements.
+
+No work from this release remains in flight. Begin with `session check`, confirm a clean synchronized
+`main`, and wait for Randall's next explicit scope. Do not silently start older queued work. The
+previously recorded access-code cron observation, remote Claude Design registration tasks, Phase 4
+Markdown export, and Next.js security maintenance remain separate potential tasks.
 
 ## 2026-08-03 new-account activity check
 
