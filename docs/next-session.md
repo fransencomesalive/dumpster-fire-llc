@@ -1,13 +1,14 @@
-# Next Session: 2026-08-04 JOB-021 and JOB-022 Live; Portable QA Lifecycle Awaiting Scope
+# Next Session: 2026-08-04 JOB-021, JOB-022, and Portable QA Lifecycle Live
 
 _Updated 2026-08-04. Read `AGENTS.md` and follow the Session Start Protocol in
 `docs/project-operating-state.md` before editing._
 
 ## Current release state
 
-JOB-021 and JOB-022 are live from commit `d24b4d1979899cb63d1893dbcdbeaaa838becc0a`
-in Vercel deployment `dpl_7BuDuMGctNeLJvicyv2oE6QQXVwX`. Production migration
-`20260804000100_remote_preference_no_preference.sql` is applied, GitHub Actions run `30941764134`
+JOB-021 and JOB-022 were implemented in commit `d24b4d1979899cb63d1893dbcdbeaaa838becc0a`.
+The current app release is commit `8230668db263a6f494baf7aaa157e819257a79ac` in Vercel deployment
+`dpl_HEBdGpPVgT3WAvUUfzQTYh8yiUmx`. Production migration
+`20260804000100_remote_preference_no_preference.sql` is applied, GitHub Actions run `30942635468`
 passed, and the canonical domain returned HTTP 200 from that deployment.
 
 - JOB-021 adds a neutral **No preference** Remote Preference value across onboarding, dashboard
@@ -23,28 +24,40 @@ profile, and subscription. The reusable check is
 `scripts/qa/production-onboarding-review-browser.mjs`. Remote Claude Design registration remains
 **NOT VERIFIED** because this session has no Claude Design connector.
 
-## Portable QA-agent decision boundary
+## Portable QA-agent release complete
 
 Telegram JOB-022 task `c6c4b098-8d19-4bfe-9bb2-ac270034f27d` had the right diagnosis. Its patch was
 rejected because the worker clone was at `7097285` while the task packet named app version
-`3504a87`, and the review flow had no refresh-and-rerun action. The active relay checks freshness
-only at approval time, then offers only approve or reject/delete. This was a lifecycle failure, not
-a disagreement with the shipped section-save solution.
+`3504a87`, and the former review flow had no refresh-and-rerun action. That relay version checked
+freshness only at approval time, then offered only approve or reject/delete. This was a lifecycle
+failure, not a disagreement with the shipped section-save solution.
 
-The portable `/Users/randallfransen/Sites/QA-AGENT` factory is still version `0.1.0`; it lacks the
-installed relay's version `0.2.1` agent execution and review subsystem. Do not patch only the
-installed Dumpster Fire relay and call the issue portable. The next implementation requires
-explicit cross-repository scope to:
+Randall approved the cross-repository scope and the portable lifecycle is released. The
+`QA-AGENT` factory is version `0.3.0` at local commit
+`35bca55ddb3cb085d9e440174873118862a14585`. It has no configured remote, so it is committed but not
+pushed. The installed Dumpster Fire relay was upgraded from that clean source, committed as
+`9666a36`, and pushed to its `origin/main`.
 
-1. upstream the current execution/review subsystem into `QA-AGENT`;
-2. make the orchestrator sync the clean worker clone to `origin/main` before recording the base;
-3. add stale-result detection plus **Re-run on latest main**;
-4. preserve patch artifacts before discard; and
-5. test generated installs, then reprovision the Dumpster Fire relay without replacing local
-   configuration, data, outbox, identity, or secrets.
+The orchestrator now claims work and synchronizes the clean worker clone to current `origin/main`
+before starting an agent. It rechecks the remote commit at completion, removes approval from stale
+or unverifiable results, offers **Re-run on latest main**, and archives the exact patch before rerun
+or discard. Idle worker polls do not fetch. The same behavior, migration `008`, and generated-install
+regressions are part of every future install from the factory.
 
-Next immediate action: obtain explicit approval for that portable factory and installed-relay
-release scope. No cross-repository files have been edited yet.
+Factory and relay suites passed with 586 tests, 577 passed, zero failed, and nine skipped. The
+generated-install verifier passed. The restarted public relay returned HTTP 200, its complete
+production verifier passed, and live Telegram callback verification passed with the exact webhook,
+zero pending updates, and no errors. The connected Codex worker clone is clean at app commit
+`8230668db263a6f494baf7aaa157e819257a79ac`, equal to `origin/main`.
+
+The relay is JSON-backed, so migration `008` was packaged but not applied to a live database. The
+optional Claude worker remains unavailable because its configured Claude executable is absent;
+Codex is the active connected provider. Existing untracked relay artifacts under `data/backups/`
+and `scripts/resend-notification.js` remain untouched.
+
+Next immediate action: no QA lifecycle work remains in flight. Run `session check`, confirm clean
+main, and wait for Randall's next explicit product scope. If the portable factory needs off-machine
+distribution, first obtain explicit approval to create and configure its Git remote.
 
 Durable lesson: never treat a successful section save as an attempt to complete onboarding. The
 user can be shown whole-profile blockers only at the transition toward scanning.

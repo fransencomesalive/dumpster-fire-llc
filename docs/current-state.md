@@ -1,5 +1,46 @@
 # Current State
 
+## 2026-08-04 - Portable stale-safe QA lifecycle: LIVE (Codex)
+
+The Telegram JOB-022 workstream was stopped because it had been generated from stale worker base
+`7097285`, not because its section-save diagnosis conflicted with the shipped app solution. The
+review flow had no safe way to preserve the patch and rerun it on current `main`.
+
+Randall approved the cross-repository correction. The portable factory at
+`/Users/randallfransen/Sites/QA-AGENT` is now version `0.3.0`. Its final local factory commit is
+`35bca55ddb3cb085d9e440174873118862a14585`; the factory has no Git remote, so this commit exists
+locally only. The installed relay at `/Users/randallfransen/Sites/dumpster-fire-relay` was upgraded
+from that clean factory commit, committed as `9666a36`, and pushed to its `origin/main`.
+
+The portable lifecycle now:
+
+- claims available work, then fetches and fast-forwards the dedicated clean worker clone to current
+  `origin/main` before any coding agent starts; idle polls do not fetch;
+- records and rechecks the remote commit at completion, and never offers approval when the result is
+  stale or cannot be verified;
+- offers **Approve and push**, **Re-run on latest main**, and **Discard patch** for current work,
+  while stale work offers only rerun or discard;
+- archives the exact patch under `outbox/review-archives/` before rerun or discard;
+- preserves the original task packet and provider when rerunning on the latest base; and
+- includes the JSON and PostgreSQL lifecycle implementations, migration `008`, generated-install
+  coverage, and regression tests that prove a failed pre-execution sync never starts the agent.
+
+Verification passed in both the factory and installed relay: 586 tests, 577 passed, zero failed,
+and nine intentionally skipped. The generated-install verifier also passed. After service restart,
+the public relay readiness endpoint returned HTTP 200, the complete production verifier passed,
+and live Telegram verification confirmed the exact webhook, `callback_query` support, zero pending
+updates, and no webhook error. The Codex worker is connected and its dedicated app clone is clean at
+`8230668db263a6f494baf7aaa157e819257a79ac`, equal to `origin/main`.
+
+The installed relay uses its JSON store, so no live database migration was required. Migration
+`008` ships with the portable release for future PostgreSQL-backed installs. The upgrade preserved
+the install identity, project configuration, runtime data, outbox, and secrets. Existing unrelated
+untracked relay artifacts, `data/backups/` and `scripts/resend-notification.js`, remain untouched.
+
+Known gap: the optional Claude worker service still cannot pass executor preflight because its
+configured Claude binary does not exist on this machine. This predates the release and does not
+affect the active, connected Codex worker path.
+
 ## 2026-08-04 - JOB-021 and JOB-022: LIVE (Codex)
 
 Randall approved both QA fixes and clarified JOB-022's workflow boundary: saving a resume or any
@@ -65,7 +106,7 @@ defect.
 Remote Claude Design registration remains **NOT VERIFIED** because this Codex environment has no
 Claude Design connector.
 
-### Telegram JOB-022 investigation and portable QA-agent gap
+### Telegram JOB-022 investigation and portable QA-agent gap (resolved above)
 
 The Telegram task `c6c4b098-8d19-4bfe-9bb2-ac270034f27d` diagnosed JOB-022 correctly and proposed
 the same section-save versus completion-attempt separation now live. It was rejected at review not
@@ -76,19 +117,16 @@ actions were approve the stale result or reject and remove it; there was no safe
 action. Rejecting removed a directionally correct patch instead of preserving and rerunning it on
 current `main`.
 
-The portable factory at `/Users/randallfransen/Sites/QA-AGENT` is version `0.1.0` and does not yet
-contain the installed relay's `0.2.1` agent execution, workspace-guard, review-controller, database
-migration, or lifecycle implementation. Future installations therefore cannot inherit a lifecycle
-correction until that subsystem is first upstreamed into the portable factory.
+At the time of this investigation, the portable factory at `/Users/randallfransen/Sites/QA-AGENT`
+was version `0.1.0` and did not contain the installed relay's `0.2.1` execution and review
+subsystem. The portable `0.3.0` release recorded above closes that gap for future installations.
 
-Recommended portable correction: the orchestrator, not the sandboxed coding agent, must fetch and
+The implemented portable correction makes the orchestrator, not the sandboxed coding agent, fetch and
 fast-forward a clean dedicated worker clone before recording `base_commit`; compare the ticket app
 version with that base; recheck freshness before presenting review actions; offer **Re-run on latest
 main** when stale; archive an immutable patch before cleanup; and reserve **Discard patch** for an
-intentional deletion. Generated-install tests must advance a fixture origin, prove stale work cannot
-push, prove rerun uses the new base, and prove discard preserves the archive. Applying this is a
-separate cross-repository release: update `QA-AGENT`, then reprovision the installed Dumpster Fire
-relay while preserving its configuration, data, outbox, identity, and secrets.
+intentional deletion. Generated-install tests advance a fixture origin, prove stale work cannot
+push, prove rerun uses the new base, and prove discard preserves the archive.
 
 Durable product lesson from Randall's correction: a successful section save and a workflow
 completion attempt are different events. Section persistence must not surface whole-profile errors

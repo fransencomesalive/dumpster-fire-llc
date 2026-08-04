@@ -89,20 +89,24 @@ Not yet built as public workflows:
 
 ## Canonical Next Product Task
 
-> **UPDATED 2026-08-04: JOB-021 / JOB-022 LIVE.** Commit `d24b4d1` is on `origin/main` and live in
-> Vercel production deployment `dpl_7BuDuMGctNeLJvicyv2oE6QQXVwX`; GitHub Actions run
-> `30941764134` passed and the canonical domain returned HTTP 200. Production migration
+> **UPDATED 2026-08-04: JOB-021 / JOB-022 LIVE.** Implementation commit `d24b4d1` is on
+> `origin/main`; the current release is `8230668` in Vercel production deployment
+> `dpl_HEBdGpPVgT3WAvUUfzQTYh8yiUmx`. GitHub Actions run `30942635468` passed and the canonical
+> domain returned HTTP 200. Production migration
 > `20260804000100` is applied. An authenticated disposable-account journey verified real
 > `no_preference` persistence and database readback, quiet resume/intermediate saves, blockers on
 > the final completion attempt, responsive geometry at every required breakpoint, and complete
 > cleanup. Remote Claude Design registration remains NOT VERIFIED.
 >
-> **UPDATED 2026-08-04: PORTABLE QA LIFECYCLE AWAITING EXPLICIT CROSS-REPO SCOPE.** Telegram JOB-022
-> was directionally correct but ran from stale worker base `7097285` against app version `3504a87`.
-> Review offered approve or reject/delete, not rerun on current `main`. The portable `QA-AGENT`
-> factory is version `0.1.0` and lacks the installed relay's `0.2.1` execution/review subsystem.
-> Read `docs/next-session.md` for the upstream, pre-execution sync, stale-rerun, patch-archive, and
-> generated-install test plan. Do not edit the external factory or relay without explicit scope.
+> **UPDATED 2026-08-04: PORTABLE QA LIFECYCLE LIVE.** The `QA-AGENT` factory is version `0.3.0` at
+> local commit `35bca55` and the installed relay is pushed on `origin/main` at `9666a36`. Workers
+> claim available work, synchronize the clean clone to current `origin/main` before agent execution,
+> fail closed if synchronization cannot be proven, and recheck freshness at completion. Stale work
+> cannot be approved and can be archived and rerun on current main. Generated-install verification,
+> both full suites, public relay HTTP 200, the complete production verifier, and live Telegram
+> callback verification passed. The factory has no Git remote; its commit is local only. The
+> optional Claude worker remains unavailable because its configured binary is absent; the active
+> Codex worker is connected. Read `docs/next-session.md` for exact evidence.
 >
 > **UPDATED 2026-08-04: OUTREACH CORRECTION LIVE.** Commit `3504a87` fixes the reported Dropbox
 > outreach failure and is live in Vercel production deployment
