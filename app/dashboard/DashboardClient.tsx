@@ -124,8 +124,19 @@ function highlightText(text: string, signals: string[]): ReactNode {
 // clamp + "Show more" toggle.
 const MATCH_CLAMP_PX = 148;
 
-function MatchSection({ label, items, signals }: { label: string; items: string[]; signals: string[] }) {
-  const [expanded, setExpanded] = useState(false);
+function MatchSection({
+  label,
+  items,
+  signals,
+  expanded,
+  onToggle,
+}: {
+  label: string;
+  items: string[];
+  signals: string[];
+  expanded: boolean;
+  onToggle: () => void;
+}) {
   const [overflowing, setOverflowing] = useState(false);
   const listRef = useRef<HTMLUListElement>(null);
   useEffect(() => {
@@ -141,7 +152,7 @@ function MatchSection({ label, items, signals }: { label: string; items: string[
         {items.map((item, index) => <li key={index}>{highlightText(item, signals)}</li>)}
       </ul>
       {overflowing ? (
-        <button type="button" className={jobsStyles.matchSectionToggle} onClick={() => setExpanded((value) => !value)}>
+        <button type="button" className={jobsStyles.matchSectionToggle} onClick={onToggle}>
           {expanded ? "Show less" : "Show more"}
         </button>
       ) : null}
@@ -219,6 +230,7 @@ function JobCard({
   const [saving, setSaving] = useState(false);
   const [errored, setErrored] = useState(false);
   const [acked, setAcked] = useState(false);
+  const [matchSectionsExpanded, setMatchSectionsExpanded] = useState(false);
   const frontRef = useRef<HTMLElement>(null);
   const backRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -360,8 +372,20 @@ function JobCard({
 
           {job.responsibilities.length > 0 || job.requiredExperience.length > 0 ? (
             <div className={jobsStyles.matchSections}>
-              <MatchSection label="Responsibilities" items={job.responsibilities} signals={signals} />
-              <MatchSection label="Required experience" items={job.requiredExperience} signals={signals} />
+              <MatchSection
+                label="Responsibilities"
+                items={job.responsibilities}
+                signals={signals}
+                expanded={matchSectionsExpanded}
+                onToggle={() => setMatchSectionsExpanded((value) => !value)}
+              />
+              <MatchSection
+                label="Required experience"
+                items={job.requiredExperience}
+                signals={signals}
+                expanded={matchSectionsExpanded}
+                onToggle={() => setMatchSectionsExpanded((value) => !value)}
+              />
             </div>
           ) : null}
 
