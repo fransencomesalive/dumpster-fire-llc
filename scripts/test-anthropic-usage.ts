@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import {
   ANTHROPIC_MODEL,
+  ANTHROPIC_HAIKU_MODEL,
+  ANTHROPIC_HAIKU_RATE_CARD_VERSION,
   ANTHROPIC_RATE_CARD_VERSION,
   anthropicUsageCounters,
   callMeteredAnthropicText,
@@ -26,8 +28,14 @@ assert.deepEqual(anthropicUsageCounters(usage), {
   cacheReadTokens: 50,
   cacheWrite5mTokens: 30,
   cacheWrite1hTokens: 10,
+  webSearchRequests: 0,
+  webFetchRequests: 0,
 });
 assert.equal(estimateAnthropicCostMicros(usage), 1_313);
+assert.equal(estimateAnthropicCostMicros({
+  ...usage,
+  server_tool_use: { web_search_requests: 2, web_fetch_requests: 1 },
+}, ANTHROPIC_HAIKU_MODEL), 20_263);
 
 const request = {
   model: ANTHROPIC_MODEL,
@@ -153,6 +161,35 @@ async function main() {
   });
   console.error = originalError;
   assert.equal(survivesSinkFailure, "still returned");
+
+  const webToolEvents: ProviderUsageEventInput[] = [];
+  const joinedText = await callMeteredAnthropicText({
+    operation: "pasted_job_indexed_retrieval",
+    logLabel: "test",
+    usageContext: { sink: async (event) => { webToolEvents.push(event); } },
+    request: { ...request, model: ANTHROPIC_HAIKU_MODEL },
+  }, {
+    call: async () => ({
+      content: [
+        { type: "server_tool_use" },
+        { type: "text", text: "first" },
+        { type: "text", text: "second" },
+      ],
+      model: ANTHROPIC_HAIKU_MODEL,
+      usage: {
+        input_tokens: 100,
+        output_tokens: 20,
+        cache_creation_input_tokens: 0,
+        cache_read_input_tokens: 0,
+        cache_creation: null,
+        server_tool_use: { web_search_requests: 1, web_fetch_requests: 1 },
+      },
+    }),
+    nowMs: () => 40,
+  });
+  assert.equal(joinedText, "first\nsecond");
+  assert.equal(webToolEvents[0]?.estimatedCostMicros, 10_200);
+  assert.equal(webToolEvents[0]?.rateCardVersion, ANTHROPIC_HAIKU_RATE_CARD_VERSION);
 
   const originalInfo = console.info;
   console.info = () => undefined;

@@ -35,6 +35,7 @@
     "test:unit-economics": "node scripts/test-subscription-unit-economics.mjs",
     "test:stripe-billing": "node scripts/test-stripe-billing.mjs",
     "qa:production-apply-wizard": "node --env-file=.env.local scripts/qa/production-apply-wizard-browser.mjs",
+    "qa:production-job-link": "node --env-file=.env.local scripts/qa/production-job-link.mjs",
     "qa:production-scan": "node --env-file=.env.local scripts/qa/production-scan-browser.mjs",
     "qa:production-subscription": "node --env-file=.env.local scripts/qa-subscription-flag-on-production.mjs",
     "report:unit-economics": "node scripts/report-subscription-unit-economics.mjs",

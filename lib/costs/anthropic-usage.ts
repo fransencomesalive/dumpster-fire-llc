@@ -7,6 +7,9 @@ import type { ProviderUsageSink } from "./provider-usage";
 export const ANTHROPIC_MODEL = "claude-opus-4-8";
 export const ANTHROPIC_RATE_CARD_VERSION =
   "anthropic-opus-4-8-standard-global-2026-07-24";
+export const ANTHROPIC_HAIKU_MODEL = "claude-haiku-4-5-20251001";
+export const ANTHROPIC_HAIKU_RATE_CARD_VERSION =
+  "anthropic-haiku-4-5-standard-global-web-tools-2026-08-04";
 
 export type ProviderUsageContext = {
   sink?: ProviderUsageSink;
@@ -23,7 +26,7 @@ type AnthropicUsageLike = Pick<
   | "cache_creation_input_tokens"
   | "cache_read_input_tokens"
   | "cache_creation"
->;
+> & Partial<Pick<Usage, "server_tool_use">>;
 
 type AnthropicMessageLike = {
   content: Array<{ type: string; text?: string }>;
@@ -46,6 +49,7 @@ export type MeteredAnthropicTextInput = {
   usageContext?: ProviderUsageContext;
   logLabel: string;
   timeoutMs?: number;
+  maxRetries?: number;
 };
 
 function nonNegative(value: number | null | undefined) {
@@ -64,10 +68,21 @@ export function anthropicUsageCounters(usage: AnthropicUsageLike) {
     cacheWrite1hTokens: nonNegative(
       usage.cache_creation?.ephemeral_1h_input_tokens,
     ),
+    webSearchRequests: nonNegative(usage.server_tool_use?.web_search_requests),
+    webFetchRequests: nonNegative(usage.server_tool_use?.web_fetch_requests),
   };
 }
 
-export function estimateAnthropicCostMicros(usage: AnthropicUsageLike) {
+function rateCardVersion(model: string) {
+  return model.includes("haiku-4-5")
+    ? ANTHROPIC_HAIKU_RATE_CARD_VERSION
+    : ANTHROPIC_RATE_CARD_VERSION;
+}
+
+export function estimateAnthropicCostMicros(
+  usage: AnthropicUsageLike,
+  model = ANTHROPIC_MODEL,
+) {
   const counters = anthropicUsageCounters(usage);
   const detailedCacheTokens =
     counters.cacheWrite5mTokens + counters.cacheWrite1hTokens;
@@ -75,15 +90,20 @@ export function estimateAnthropicCostMicros(usage: AnthropicUsageLike) {
     ? counters.cacheWrite5mTokens
     : counters.cacheWriteTokens;
 
-  // Quarter-micro arithmetic preserves the $6.25/M and $0.50/M rates until the
-  // final integer-micro persistence boundary.
-  const quarterMicros =
-    counters.inputTokens * 20
-    + cacheWrite5mTokens * 25
-    + counters.cacheWrite1hTokens * 40
-    + counters.cacheReadTokens * 2
-    + counters.outputTokens * 100;
-  return Math.round(quarterMicros / 4);
+  const modelMicros = model.includes("haiku-4-5")
+    ? counters.inputTokens
+      + cacheWrite5mTokens * 1.25
+      + counters.cacheWrite1hTokens * 2
+      + counters.cacheReadTokens * 0.1
+      + counters.outputTokens * 5
+    : counters.inputTokens * 5
+      + cacheWrite5mTokens * 6.25
+      + counters.cacheWrite1hTokens * 10
+      + counters.cacheReadTokens * 0.5
+      + counters.outputTokens * 25;
+  // Anthropic charges $10 per 1,000 web searches. Web fetch has no separate
+  // tool fee, though fetched content still contributes normal input tokens.
+  return Math.round(modelMicros + counters.webSearchRequests * 10_000);
 }
 
 async function emitUsage(
@@ -113,7 +133,7 @@ export async function callMeteredAnthropicText(
     const client = new Anthropic({
       apiKey,
       timeout: input.timeoutMs ?? 30_000,
-      maxRetries: 1,
+      maxRetries: input.maxRetries ?? 1,
     });
     return client.messages.create(request);
   });
@@ -127,8 +147,10 @@ export async function callMeteredAnthropicText(
   const startedAt = nowMs();
   try {
     const response = await execute(input.request);
-    const textBlock = response.content.find((block) => block.type === "text");
-    const text = textBlock && "text" in textBlock ? textBlock.text : undefined;
+    const text = response.content.flatMap((block) =>
+      block.type === "text" && "text" in block && typeof block.text === "string"
+        ? [block.text]
+        : []).join("\n") || undefined;
     const counters = anthropicUsageCounters(response.usage);
     await emitUsage(input.usageContext?.sink, {
       userId: input.usageContext?.userId,
@@ -145,8 +167,11 @@ export async function callMeteredAnthropicText(
       resultCount: text?.trim() ? 1 : 0,
       durationMs: Math.max(0, Math.round(nowMs() - startedAt)),
       outcome: text?.trim() ? "success" : "empty",
-      estimatedCostMicros: estimateAnthropicCostMicros(response.usage),
-      rateCardVersion: ANTHROPIC_RATE_CARD_VERSION,
+      estimatedCostMicros: estimateAnthropicCostMicros(
+        response.usage,
+        response.model || String(input.request.model),
+      ),
+      rateCardVersion: rateCardVersion(response.model || String(input.request.model)),
       requestCorrelationId:
         input.usageContext?.requestCorrelationId
         ?? response._request_id
@@ -174,7 +199,7 @@ export async function callMeteredAnthropicText(
       durationMs: Math.max(0, Math.round(nowMs() - startedAt)),
       outcome: "failure",
       estimatedCostMicros: 0,
-      rateCardVersion: ANTHROPIC_RATE_CARD_VERSION,
+      rateCardVersion: rateCardVersion(String(input.request.model)),
       requestCorrelationId: input.usageContext?.requestCorrelationId,
     });
     const providerError = error as {

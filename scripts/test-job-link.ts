@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { handlePublicJobFromLinkRequest } from "../lib/public-jobs/api";
 import { ingestJobFromLink } from "../lib/public-jobs/ingest-link";
+import { parseIndexedPostingResponse } from "../lib/public-jobs/indexed-posting";
 import type { PublicProfileRepositoryRequest } from "../lib/public-profile/repository";
 
 const now = "2026-07-14T18:00:00.000Z";
@@ -52,6 +53,35 @@ function mockRequest(
 }
 
 async function main() {
+  const blockedSourceUrl = "https://www.indeed.com/viewjob?jk=blocked-posting";
+  const indexedResponse = JSON.stringify({
+    sourceUrl: blockedSourceUrl,
+    canonicalUrl: "https://careers.example.test/jobs/director-1",
+    title: "Global Operations Director",
+    companyName: "Useful Co",
+    description: "Lead global content operations, modernize production workflows, and build measurable systems across a distributed organization.",
+    responsibilities: ["Modernize production workflows."],
+    requiredExperience: ["Experience leading global content operations."],
+    evidenceUrls: [blockedSourceUrl, "https://careers.example.test/jobs/director-1"],
+  });
+  assert.equal(
+    parseIndexedPostingResponse(indexedResponse, blockedSourceUrl)?.posting.title,
+    "Global Operations Director",
+  );
+  assert.equal(
+    parseIndexedPostingResponse(indexedResponse, "https://www.indeed.com/viewjob?jk=different"),
+    undefined,
+    "indexed retrieval must repeat the exact requested source URL",
+  );
+  assert.equal(
+    parseIndexedPostingResponse(JSON.stringify({
+      ...JSON.parse(indexedResponse),
+      evidenceUrls: [],
+    }), blockedSourceUrl),
+    undefined,
+    "indexed retrieval must include supporting source URLs",
+  );
+
   // Unsafe URLs stop before storage, fetch, or model work.
   {
     let fetched = false;
@@ -153,6 +183,49 @@ async function main() {
     const dedupe = calls.find((call) => call.method === "GET");
     assert.ok(dedupe);
     assert.match(decodeURIComponent(dedupe.query ?? ""), /or=\(owner_user_id\.is\.null,owner_user_id\.eq\.user-1\)/);
+  }
+
+  // A server-blocked aggregator page falls back to indexed retrieval. The
+  // original pasted URL remains the stored source even when an employer URL is
+  // found and used as supporting evidence.
+  {
+    const insertedRow = { id: "job-indexed", title: "Global Operations Director", company_name: "Useful Co" };
+    const { request, calls } = mockRequest((call) => call.method === "POST" ? [insertedRow] : []);
+    let resolvedUrl = "";
+    const result = await ingestJobFromLink({ url: blockedSourceUrl, userId: "user-indexed" }, {
+      request,
+      resolveHostname: publicResolver,
+      fetchImpl: async () => new Response("Blocked", { status: 403 }),
+      resolveIndexedPostingImpl: async (sourceUrl) => {
+        resolvedUrl = sourceUrl;
+        return parseIndexedPostingResponse(indexedResponse, sourceUrl);
+      },
+      now: () => now,
+    });
+    assert.deepEqual(result, {
+      status: "ingested",
+      jobId: "job-indexed",
+      title: "Global Operations Director",
+      company: "Useful Co",
+    });
+    assert.equal(resolvedUrl, blockedSourceUrl);
+    const insert = calls.find((call) => call.table === "jobs" && call.method === "POST");
+    assert.equal((insert?.body as Record<string, unknown>).source_url, blockedSourceUrl);
+    assert.match(String((insert?.body as Record<string, unknown>).description), /modernize production workflows/);
+  }
+
+  // If indexed retrieval cannot verify the exact posting, retain the original
+  // fetch failure and never insert guessed job data.
+  {
+    const { request, calls } = mockRequest(() => []);
+    const result = await ingestJobFromLink({ url: blockedSourceUrl, userId: "user-indexed-empty" }, {
+      request,
+      resolveHostname: publicResolver,
+      fetchImpl: async () => new Response("Blocked", { status: 403 }),
+      resolveIndexedPostingImpl: async () => undefined,
+    });
+    assert.deepEqual(result, { status: "fetch_failed" });
+    assert.equal(calls.some((call) => call.table === "jobs" && call.method === "POST"), false);
   }
 
   // A complete JSON-LD JobPosting is deterministic and never calls the model.
@@ -389,6 +462,7 @@ async function main() {
   {
     const { request, calls } = mockRequest(() => []);
     let modeled = false;
+    let indexed = false;
     const result = await ingestJobFromLink({ url: "https://jobs.example.test/large", userId: "user-5" }, {
       request,
       resolveHostname: publicResolver,
@@ -400,10 +474,15 @@ async function main() {
         modeled = true;
         return undefined;
       },
+      resolveIndexedPostingImpl: async () => {
+        indexed = true;
+        return undefined;
+      },
     });
     assert.deepEqual(result, { status: "response_too_large" });
     assert.equal(calls.some((call) => call.table === "jobs" && call.method === "POST"), false);
     assert.equal(modeled, false);
+    assert.equal(indexed, false);
   }
 
   // The streaming cap still applies when Content-Length is absent or inaccurate.

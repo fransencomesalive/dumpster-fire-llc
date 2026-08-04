@@ -11,6 +11,10 @@ import { parsePosting } from "../scan/sources/parse-posting";
 import { textFromHtml } from "../scan/sources/connectors";
 import { resolveBoardFromUrl, type ResolvedBoard } from "../scan/sources/board-registry";
 import { fetchBoardPosting, type BoardPostingDependencies } from "./board-posting";
+import {
+  resolveIndexedJobPosting,
+  type IndexedPostingDependencies,
+} from "./indexed-posting";
 import { assertSafePublicUrl, type HostnameResolver } from "../scan/sources/url-safety";
 
 type StoredJob = {
@@ -55,6 +59,8 @@ export type IngestJobFromLinkDependencies = {
   maxResponseBytes?: number;
   boardPosting?: BoardPostingDependencies;
   fetchBoardPostingImpl?: typeof fetchBoardPosting;
+  resolveIndexedPostingImpl?: typeof resolveIndexedJobPosting;
+  indexedPosting?: Omit<IndexedPostingDependencies, "providerUsage">;
 };
 
 const DEFAULT_TIMEOUT_MS = 12_000;
@@ -614,9 +620,34 @@ export async function ingestJobFromLink(
     if (configuredToken) board = { ...board, atsBoardToken: configuredToken, confidence: "exact" };
   }
 
-  const fetched = board
+  let fetched = board
     ? await fetchViaBoardApi(sourceUrl, board, dependencies) ?? await fetchJobPage(sourceUrl, dependencies)
     : await fetchJobPage(sourceUrl, dependencies);
+  if (fetched.status === "fetch_failed" || fetched.status === "extraction_unavailable") {
+    const resolveIndexedPosting = dependencies.resolveIndexedPostingImpl ?? resolveIndexedJobPosting;
+    const indexed = await resolveIndexedPosting(sourceUrl, {
+      ...dependencies.indexedPosting,
+      providerUsage: {
+        sink: createBestEffortProviderUsageSink(dependencies.request),
+        userId: input.userId,
+        requestCorrelationId: randomUUID(),
+      },
+    }).catch(() => undefined);
+    if (indexed) {
+      const { posting } = indexed;
+      const pageText = [
+        `Job title: ${posting.title}`,
+        `Company: ${posting.companyName}`,
+        posting.description,
+      ].join("\n");
+      fetched = {
+        status: "ok",
+        pageText,
+        sourceContentHash: sourceContentHash(pageText),
+        deterministicPosting: posting,
+      };
+    }
+  }
   if (fetched.status !== "ok") return fetched;
 
   const reusable = fetched.deterministicPosting
