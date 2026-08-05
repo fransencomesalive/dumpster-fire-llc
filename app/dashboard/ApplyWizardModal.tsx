@@ -784,6 +784,20 @@ export default function ApplyWizardModal({
     await readPursuit(id);
   }
 
+  function retryOutreach() {
+    if (!pursuitId) return;
+    const contactIds = [...selectedContactIds];
+    if (contactIds.length === 0) return;
+    setOutreachError(null);
+    void run(async () => {
+      try {
+        await generateOutreach(pursuitId, contactIds);
+      } catch (err) {
+        setOutreachError(errorMessage(err, "We couldn't generate these drafts. Try again."));
+      }
+    });
+  }
+
   function regenerateOutreach(message: OutreachMessageRecord) {
     if (!pursuitId) return;
     let idempotencyKey = regenerationKeysRef.current.get(message.id);
@@ -954,7 +968,11 @@ export default function ApplyWizardModal({
       ) : mode === "stepper" && step === 2 ? (
         <button type="button" className={styles.modalBtnSave} onClick={submitContacts} disabled={!ready || busy || providerUnavailable || noContactsFound}>Continue</button>
       ) : mode === "stepper" && step === 3 ? (
-        <button type="button" className={styles.modalBtnSave} onClick={() => { if (!actionInFlightRef.current.active) { setStep(4); setReached(4); } }} disabled={!ready || busy}>Continue</button>
+        outreachError ? (
+          <button type="button" className={styles.modalBtnSave} onClick={retryOutreach} disabled={!ready || busy}>Try again</button>
+        ) : (
+          <button type="button" className={styles.modalBtnSave} onClick={() => { if (!actionInFlightRef.current.active) { setStep(4); setReached(4); } }} disabled={!ready || busy}>Continue</button>
+        )
       ) : (
         <button type="button" className={`${styles.modalBtnSave} ${isApplied ? styles.modalBtnSaveOn : ""}`} onClick={saveTracking} disabled={!ready || busy}>{saveLabel}</button>
       )}

@@ -607,6 +607,7 @@ export type PublicProfilePursuitsHandlerOptions = PublicProfileMatchHandlerOptio
     contactSuggestion: HumanPathContactSuggestion;
     evidenceDecision: OutreachEvidenceDecision;
     recentMessages: string[];
+    companionMessages: string[];
     previousMessage?: string;
   }) => Promise<OutreachMessage | OutreachGenerationOutcome | undefined>;
   loadRecentOutreachMessages?: (
@@ -2293,6 +2294,18 @@ function outreachHistoryEntry(message: OutreachMessageRecord): OutreachEvidenceH
   };
 }
 
+function contactOutreachIdempotencyKey(
+  pursuitId: string,
+  requestKey: string,
+  contactId: string,
+) {
+  const digest = createHash("sha256")
+    .update(`${requestKey}:${contactId}`)
+    .digest("hex")
+    .slice(0, 32);
+  return `initial-outreach:${pursuitId}:${digest}`;
+}
+
 async function loadRecentOutreachHistory(
   options: PublicProfilePursuitsHandlerOptions,
   request: PublicProfileRepositoryRequest,
@@ -2392,9 +2405,10 @@ export async function handlePublicProfilePursuitOutreachRequest(
 
   // A client retry after a committed response was lost must not depend on the
   // candidate profile, live posting, selected-contact set, or model being unchanged.
-  // With an explicit key we replay that request; without one we replay the latest
-  // committed initial generation for this owned pursuit.
-  if (!regenerate) {
+  // With an explicit key we replay that exact request. Requests without a key continue
+  // through the persisted per-contact coverage check below so a partial generation can retry
+  // its missing contacts instead of replaying one earlier contact and stopping.
+  if (!regenerate && requestedIdempotencyKey) {
     const loadInitialCommit = options.loadInitialOutreachCommit ?? loadInitialOutreachGenerationCommit;
     const existingCommit = await loadInitialCommit(repositoryRequest, {
       userId: session.userId,
@@ -2607,6 +2621,7 @@ export async function handlePublicProfilePursuitOutreachRequest(
       contactSuggestion,
       evidenceDecision,
       recentMessages: recentMessages.map((message) => message.message),
+      companionMessages: [],
       previousMessage: previousMessage.message,
     }));
     if (generation.status !== "generated") return outreachGenerationFailureResponse(generation);
@@ -2759,7 +2774,14 @@ export async function handlePublicProfilePursuitOutreachRequest(
 
   const outreachJob = outreachJobFromPublicJob(job);
   const recentOutreachMessages = await loadRecentOutreachHistory(options, repositoryRequest, session.userId);
-  const generationHistory = recentOutreachMessages.map(outreachHistoryEntry);
+  // Messages for this pursuit concern the same job and often need the same strongest evidence.
+  // They are soft composition context, not historical hard-rule input. Treating them as ordinary
+  // recent outreach caused JOB-023: a valid first contact draft made every later contact fail the
+  // repeated-language and repeated-evidence validators.
+  const historicalGenerationHistory = recentOutreachMessages
+    .filter((message) => message.pursuitId !== pursuit.id)
+    .map(outreachHistoryEntry);
+  const companionMessages = existingMessages.map((message) => message.message);
   const generateOutreachForContact = options.generateOutreachForContact
     ?? ((outreachInput) => generateOutreachMessageOutcome({
       profileMarkdown: outreachInput.profileMarkdown,
@@ -2768,6 +2790,7 @@ export async function handlePublicProfilePursuitOutreachRequest(
       contact: outreachInput.contact,
       evidenceDecision: outreachInput.evidenceDecision,
       recentMessages: outreachInput.recentMessages,
+      companionMessages: outreachInput.companionMessages,
     }, {
       operation: "outreach_generation",
       providerUsage: {
@@ -2781,15 +2804,23 @@ export async function handlePublicProfilePursuitOutreachRequest(
   const generatedMessages: Array<{
     contact: HumanPathContactSuggestion;
     outreach: OutreachMessage;
-    evidenceDecision: OutreachEvidenceDecision;
-    workExampleId?: string;
+    persistedMessages: OutreachMessageRecord[];
   }> = [];
+  const failures: Array<{
+    contactId: string;
+    outcome?: Exclude<OutreachGenerationOutcome, { status: "generated" }>;
+    status: Exclude<OutreachGenerationOutcome, { status: "generated" }>["status"] | "persistence_failed";
+  }> = [];
+  const persistOutreach = options.persistOutreach ?? persistOutreachGeneration;
+  let pursuitDebited = false;
+  let outreachDebited = 0;
+  let persistedPursuit = result.pursuit;
   for (const contactSuggestion of contactsToGenerate) {
     const evidenceDecision = rankOutreachWorkExamples({
       aggregate,
       job: outreachJob,
       selectedRoleTrackId: pursuit.selectedRoleTrackId,
-      history: generationHistory,
+      history: historicalGenerationHistory,
     });
     const generation = normalizeOutreachGenerationOutcome(await generateOutreachForContact({
       profileMarkdown,
@@ -2798,84 +2829,122 @@ export async function handlePublicProfilePursuitOutreachRequest(
       contact: outreachContactFromSuggestion(contactSuggestion),
       contactSuggestion,
       evidenceDecision,
-      recentMessages: generationHistory.slice(0, 12).map((entry) => entry.message),
+      recentMessages: historicalGenerationHistory.slice(0, 12).map((entry) => entry.message),
+      companionMessages: companionMessages.slice(0, 12),
     }));
-    if (generation.status !== "generated") return outreachGenerationFailureResponse(generation);
+    if (generation.status !== "generated") {
+      failures.push({ contactId: contactSuggestion.id, status: generation.status, outcome: generation });
+      continue;
+    }
     const insertedWorkExample = resolveInsertedWorkExample(aggregate.workExamples, generation.outreach.insertedExample);
+    const draft: GeneratedOutreachDraft = {
+      contactSuggestionId: contactSuggestion.id,
+      recipientType: outreachRecipientType(contactSuggestion.contactType),
+      message: generation.outreach.message,
+      selectedRoleTrackId: pursuit.selectedRoleTrackId,
+      selectedResumeId: pursuit.selectedResumeId,
+      selectedWorkExampleId: insertedWorkExample?.id,
+      generationContext: outreachGenerationContext({
+        aggregate,
+        profileMarkdown,
+        pursuit,
+        job,
+        contact: contactSuggestion,
+        evidenceDecision,
+        workExampleId: insertedWorkExample?.id,
+        generatedAt,
+      }),
+      createdAt: generatedAt,
+    };
+    const contactResult = transitionPursuit(pursuit, "outreach_generated", generatedAt, {
+      contactIds: [contactSuggestion.id],
+      messageCount: 1,
+      chargePursuit: shouldChargePursuit && !pursuitDebited,
+      chargeUsage: !billingEnabled,
+    });
+    if (contactResult.ok === false) {
+      failures.push({ contactId: contactSuggestion.id, status: "persistence_failed" });
+      continue;
+    }
+    let persisted: PursuitInitialOutreachCommit | void;
+    try {
+      persisted = await persistOutreach(repositoryRequest, contactResult, [draft], {
+        idempotencyKey: contactOutreachIdempotencyKey(
+          pursuit.id,
+          generationIdempotencyKey,
+          contactSuggestion.id,
+        ),
+      });
+    } catch (error) {
+      const blocked = transactionalSubscriptionError(error);
+      if (blocked && generatedMessages.length === 0 && existingMessages.length === 0) return blocked;
+      console.error("[outreach] per-contact persistence failed", {
+        pursuitId: pursuit.id,
+        contactId: contactSuggestion.id,
+        error,
+      });
+      failures.push({ contactId: contactSuggestion.id, status: "persistence_failed" });
+      continue;
+    }
+    if (!persisted || persisted.messages.length === 0) {
+      failures.push({ contactId: contactSuggestion.id, status: "persistence_failed" });
+      continue;
+    }
     generatedMessages.push({
       contact: contactSuggestion,
       outreach: generation.outreach,
-      evidenceDecision,
-      workExampleId: insertedWorkExample?.id,
+      persistedMessages: persisted.messages,
     });
-    generationHistory.unshift({
-      message: generation.outreach.message,
-      ...(insertedWorkExample ? { selectedWorkExampleId: insertedWorkExample.id } : {}),
-    });
+    companionMessages.unshift(generation.outreach.message);
+    persistedPursuit = persisted.pursuit;
+    pursuitDebited ||= persisted.pursuitDebited;
+    outreachDebited += persisted.outreachDebited;
   }
 
-  const drafts: GeneratedOutreachDraft[] = generatedMessages.map(({ contact, outreach, evidenceDecision, workExampleId }) => ({
-    contactSuggestionId: contact.id,
-    recipientType: outreachRecipientType(contact.contactType),
-    message: outreach.message,
-    selectedRoleTrackId: pursuit.selectedRoleTrackId,
-    selectedResumeId: pursuit.selectedResumeId,
-    selectedWorkExampleId: workExampleId,
-    generationContext: outreachGenerationContext({
-      aggregate,
-      profileMarkdown,
-      pursuit,
+  if (failures.length > 0 && generatedMessages.length === 0 && existingMessages.length === 0) {
+    const firstGenerationFailure = failures.find((failure) => failure.outcome)?.outcome;
+    if (firstGenerationFailure) return outreachGenerationFailureResponse(firstGenerationFailure);
+    return json({
+      error: "The messages were generated but could not be saved. Try again.",
+      status: "persistence_failed",
+      retryable: true,
+      saved: false,
+    }, { status: 503 });
+  }
+
+  const responseMessages = generatedMessages.flatMap(({ contact, outreach, persistedMessages }) =>
+    persistedMessages.map((message) => ({
+      ...message,
+      insertedExample: contact.id === message.contactSuggestionId ? outreach.insertedExample : null,
+    }))
+  );
+  if (failures.length > 0) {
+    return json({
+      status: "outreach_partial",
+      error: "Some drafts couldn't be generated. Try again for the remaining contacts.",
+      retryable: true,
+      saved: true,
+      profileId: aggregate.profile.id,
       job,
-      contact,
-      evidenceDecision,
-      workExampleId,
-      generatedAt,
-    }),
-    createdAt: generatedAt,
-  }));
-  const persistOutreach = options.persistOutreach ?? persistOutreachGeneration;
-  let persisted: PursuitInitialOutreachCommit | void;
-  try {
-    persisted = await persistOutreach(repositoryRequest, result, drafts, {
-      idempotencyKey: generationIdempotencyKey,
-    });
-  } catch (error) {
-    const blocked = transactionalSubscriptionError(error);
-    if (blocked) return blocked;
-    return json({
-      error: "The messages were generated but could not be saved. Try again.",
-      status: "persistence_failed",
-      retryable: true,
-      saved: false,
-    }, { status: 503 });
+      pursuit: persistedPursuit,
+      messages: responseMessages,
+      generatedContactIds: generatedMessages.map(({ contact }) => contact.id),
+      failedContactIds: failures.map((failure) => failure.contactId),
+      event: result.event,
+      subscription: enforcement,
+      metering: { pursuitDebited, outreachDebited },
+    }, { status: 207 });
   }
-  if (!persisted) {
-    return json({
-      error: "The messages were generated but could not be saved. Try again.",
-      status: "persistence_failed",
-      retryable: true,
-      saved: false,
-    }, { status: 503 });
-  }
-  const persistedCommit = persisted;
 
   return json({
     status: "outreach_generated",
     profileId: aggregate.profile.id,
     job,
-    pursuit: persistedCommit.pursuit,
-    messages: persistedCommit.messages.map((message) => ({
-      ...message,
-      insertedExample: generatedMessages.find(
-        ({ contact }) => contact.id === message.contactSuggestionId,
-      )?.outreach.insertedExample ?? null,
-    })),
+    pursuit: persistedPursuit,
+    messages: responseMessages,
     event: result.event,
     subscription: enforcement,
-    metering: {
-      pursuitDebited: persistedCommit.pursuitDebited,
-      outreachDebited: persistedCommit.outreachDebited,
-    },
+    metering: { pursuitDebited, outreachDebited },
   });
 }
 

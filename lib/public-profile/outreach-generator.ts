@@ -36,6 +36,7 @@ export type OutreachGeneratorInput = {
   contact: OutreachContact;
   evidenceDecision?: OutreachEvidenceDecision;
   recentMessages?: string[];
+  companionMessages?: string[];
   previousMessage?: string;
 };
 
@@ -490,6 +491,14 @@ export function buildOutreachPromptParts(input: OutreachGeneratorInput) {
         "",
       ]
     : [];
+  const companionLanguage = input.companionMessages && input.companionMessages.length > 0
+    ? [
+        "## Other drafts for this same job",
+        "These drafts are going to different contacts for this job. Shared job facts and the strongest relevant evidence may repeat. Vary the opening, sentence construction, and close when it stays natural, but do not omit the best evidence just to sound different.",
+        ...input.companionMessages.slice(0, 5).map((message, index) => `Companion draft ${index + 1}:\n${message.trim()}`),
+        "",
+      ]
+    : [];
   const cachePrefix = [
     "## Profile",
     input.profileMarkdown.trim(),
@@ -512,6 +521,7 @@ export function buildOutreachPromptParts(input: OutreachGeneratorInput) {
     "## Contact",
     contactLine,
     ...recentLanguage,
+    ...companionLanguage,
     ...(input.previousMessage
       ? [
           "",

@@ -115,7 +115,23 @@ async function seedCompleteProfile({ userId, email, profileId, roleTrackId, resu
     remote_preference: "remote_preferred",
     target_compensation_min: 90000,
     target_compensation_preferred: 150000,
-    generated_markdown: "# Production Apply Wizard QA",
+    generated_markdown: [
+      "# Production Apply Wizard QA",
+      "",
+      "## Voice Profile",
+      "Direct, warm, and specific. Likes clear plans, honest tradeoffs, and work that gets shipped.",
+      "",
+      "## Role Track",
+      "Program Manager focused on product operations and cross-functional delivery.",
+      "",
+      "## Resume",
+      "Led cross-functional operating programs and built practical delivery systems.",
+      "",
+      "## Work Examples",
+      `### Museum typography study (${workExampleId})`,
+      "Catalogued letterform details across a regional museum archive.",
+      "Documented historical print typography for a personal reference collection.",
+    ].join("\n"),
     markdown_generated_at: now,
   } }, "Candidate profile seed");
   await rest("candidate_profile_preferences", { method: "POST", body: {
@@ -160,16 +176,16 @@ async function seedCompleteProfile({ userId, email, profileId, roleTrackId, resu
   await rest("work_examples", { method: "POST", body: {
     id: workExampleId,
     profile_id: profileId,
-    title: "Operating cadence",
-    one_hitter: "Built a cross-functional operating cadence from strategy through launch.",
-    context: "Aligned product, operations, and delivery teams around a measurable plan.",
+    title: "Museum typography study",
+    one_hitter: "Catalogued letterform details across a regional museum archive.",
+    context: "Documented historical print typography for a personal reference collection.",
   } }, "Work example seed");
   await rest("skill_profiles", { method: "POST", body: {
     id: skillId,
     profile_id: profileId,
-    skill_name: "Program leadership",
+    skill_name: "Print typography research",
     proficiency: "expert",
-    evidence: ["Led integrated product operations programs"],
+    evidence: ["Catalogued historical letterforms"],
   } }, "Skill seed");
   await rest("skill_work_examples", { method: "POST", body: {
     skill_id: skillId,
@@ -272,6 +288,8 @@ const evidence = {
   requests: [],
   persisted: null,
   reload: null,
+  partialRetry: null,
+  responsive: [],
   cleanup: null,
   consoleErrors: [],
   pageErrors: [],
@@ -344,10 +362,13 @@ try {
 
   await dialog.getByText(/Found \d+ potential contacts?\./).waitFor({ timeout: 30000 });
   const contactInputs = dialog.locator('label input[type="checkbox"]');
-  expect(await contactInputs.count() > 0, "Human Path returned no selectable contacts");
-  if (await dialog.locator('label input[type="checkbox"]:checked').count() === 0) {
-    await contactInputs.first().check();
+  const availableContactCount = await contactInputs.count();
+  expect(availableContactCount >= 2, "Human Path returned fewer than two selectable contacts");
+  for (let index = 0; index < availableContactCount; index += 1) {
+    if (await contactInputs.nth(index).isChecked()) await contactInputs.nth(index).uncheck();
   }
+  await contactInputs.nth(0).check();
+  await contactInputs.nth(1).check();
 
   const contactsPromise = page.waitForResponse(
     (response) => response.url().includes("/api/public-profile/pursuits/contacts")
@@ -363,7 +384,6 @@ try {
   await dialog.getByRole("button", { name: "Continue", exact: true }).click();
   evidence.requests.push(await assertApiResponse(await contactsPromise, "POST /api/public-profile/pursuits/contacts"));
   const outreachResponse = await outreachPromise;
-  const initialOutreachBody = outreachResponse.request().postDataJSON();
   evidence.requests.push(await assertApiResponse(outreachResponse, "POST /api/public-profile/pursuits/outreach"));
 
   const messageTextareas = dialog.locator("textarea");
@@ -372,14 +392,6 @@ try {
   expect(initialMessages.length > 0, "Outreach rendered no draft messages");
   expect(!initialMessages.some((message) => message.includes("—")), "A generated message contains an em dash");
   expect(!/Outreach generation not configured|No drafts yet/i.test(await dialog.innerText()), "Outreach showed the old false-empty state");
-
-  const initialReplay = await replayBrowserRequest(
-    page,
-    "/api/public-profile/pursuits/outreach",
-    initialOutreachBody,
-  );
-  expect(initialReplay.status === 200, `Initial outreach exact retry returned HTTP ${initialReplay.status}`);
-  evidence.requests.push({ label: "POST /api/public-profile/pursuits/outreach exact replay", status: initialReplay.status });
 
   const regenerateButton = dialog.getByRole("button", { name: "Regenerate", exact: true }).first();
   const regenerationPromise = page.waitForResponse(
@@ -414,7 +426,7 @@ try {
   const [pursuits, contacts, messages, generationRequests, regenerationRequests, events, usage] = await Promise.all([
     rest(`pursuits?id=eq.${pursuitId}&user_id=eq.${userId}&select=id,status,selected_role_track_id,tracking_started_at`, {}, "Pursuit persistence audit"),
     rest(`contact_suggestions?pursuit_id=eq.${pursuitId}&select=id,contact_type,selected_for_outreach`, {}, "Contact persistence audit"),
-    rest(`outreach_messages?pursuit_id=eq.${pursuitId}&select=id,message,previous_message,regeneration_count,status`, {}, "Message persistence audit"),
+    rest(`outreach_messages?pursuit_id=eq.${pursuitId}&select=id,contact_suggestion_id,generation_request_id,message,previous_message,regeneration_count,status`, {}, "Message persistence audit"),
     rest(`pursuit_outreach_generation_requests?pursuit_id=eq.${pursuitId}&select=id,idempotency_key`, {}, "Initial generation request audit"),
     rest(`pursuit_outreach_regeneration_requests?pursuit_id=eq.${pursuitId}&select=id,idempotency_key,message_id`, {}, "Regeneration request audit"),
     rest(`pursuit_events?pursuit_id=eq.${pursuitId}&select=id,event_type`, {}, "Pursuit event audit"),
@@ -424,9 +436,12 @@ try {
   expect(contacts.length > 0 && contacts.some((contact) => contact.selected_for_outreach), "Selected contacts were not persisted");
   expect(messages.length === initialMessages.length, "Persisted message count does not match rendered drafts");
   expect(messages.some((message) => message.regeneration_count === 1), "Regenerated message was not persisted in place");
-  expect(generationRequests.length === 1, "Initial exact retry duplicated or lost its generation request");
+  const persistedRegeneratedMessage = messages.find((message) => message.regeneration_count === 1)?.message;
+  expect(typeof persistedRegeneratedMessage === "string", "The persisted regenerated message has no text");
+  expect(generationRequests.length === initialMessages.length, "Initial generation did not persist one request per contact");
+  expect(new Set(generationRequests.map((request) => request.idempotency_key)).size === generationRequests.length, "Per-contact generation keys are not unique");
   expect(regenerationRequests.length === 1, "Regeneration exact retry duplicated or lost its request");
-  expect(events.filter((event) => event.event_type === "outreach_generated").length === 2, "Outreach events are not exactly initial plus regeneration");
+  expect(events.filter((event) => event.event_type === "outreach_generated").length === initialMessages.length + 1, "Outreach events are not one per initial contact plus regeneration");
   evidence.persisted = {
     pursuitCount: pursuits.length,
     contactCount: contacts.length,
@@ -438,19 +453,74 @@ try {
     usageRows: usage.length,
   };
 
+  const removedMessage = messages.find((message) => message.regeneration_count === 0 && message.generation_request_id);
+  expect(removedMessage, "No second contact draft was available for the partial-retry setup");
+  await rest(`outreach_messages?id=eq.${removedMessage.id}`, { method: "DELETE" }, "Partial-retry message removal");
+  await rest(`pursuit_outreach_generation_requests?id=eq.${removedMessage.generation_request_id}`, { method: "DELETE" }, "Partial-retry request removal");
+
   await page.goto(`${APP_URL}/saved-pursuits`, { waitUntil: "networkidle" });
   await page.getByRole("heading", { name: /Director, Product Operations/ }).waitFor({ state: "visible", timeout: 30000 });
   await page.getByRole("button", { name: "Resume", exact: true }).click();
   const resumedDialog = page.getByRole("dialog", { name: /Human Path:/ });
   await resumedDialog.waitFor({ state: "visible", timeout: 30000 });
-  await resumedDialog.locator('button[aria-current="step"]').filter({ hasText: "TRACK" }).waitFor({ timeout: 30000 });
-  await resumedDialog.locator("button").filter({ hasText: "OUTREACH" }).click();
   await resumedDialog.locator('button[aria-current="step"]').filter({ hasText: "OUTREACH" }).waitFor({ timeout: 10000 });
   await resumedDialog.locator("textarea").first().waitFor({ state: "visible", timeout: 30000 });
+  await resumedDialog.getByRole("button", { name: "Try again", exact: true }).waitFor({ state: "visible", timeout: 10000 });
+  const partialMessages = await resumedDialog.locator("textarea").evaluateAll((nodes) => nodes.map((node) => node.value));
+  expect(partialMessages.length === messages.length - 1, "Partial resume did not preserve only the successful contact drafts");
+  expect(partialMessages.includes(persistedRegeneratedMessage), "Partial resume lost the persisted regenerated successful draft");
+
+  for (const width of [320, 375, 390, 1280, 1440]) {
+    await page.setViewportSize({ width, height: width < 600 ? 900 : 1000 });
+    await page.waitForTimeout(150);
+    const geometry = await page.evaluate(() => {
+      const overlay = document.querySelector('[role="dialog"]');
+      const modal = overlay?.firstElementChild?.firstElementChild;
+      const box = modal?.getBoundingClientRect();
+      return {
+        viewportWidth: window.innerWidth,
+        documentScrollWidth: document.documentElement.scrollWidth,
+        paintedLeft: box?.left ?? null,
+        paintedRight: box ? box.right + 6 : null,
+      };
+    });
+    expect(geometry.documentScrollWidth <= geometry.viewportWidth, `Horizontal overflow at ${width}px`);
+    expect(geometry.paintedLeft !== null && geometry.paintedLeft >= 0, `Dialog paints left of the viewport at ${width}px`);
+    expect(geometry.paintedRight !== null && geometry.paintedRight <= geometry.viewportWidth, `Dialog paints right of the viewport at ${width}px`);
+    const screenshot = `/tmp/job-023-partial-${width}.png`;
+    await page.screenshot({ path: screenshot });
+    evidence.responsive.push({ width, screenshot, ...geometry });
+  }
+
+  const retryPromise = page.waitForResponse(
+    (response) => response.url().includes("/api/public-profile/pursuits/outreach")
+      && response.request().method() === "POST"
+      && response.request().postData()?.includes('"regenerate":true') !== true,
+    { timeout: 240000 },
+  );
+  await resumedDialog.getByRole("button", { name: "Try again", exact: true }).click();
+  evidence.requests.push(await assertApiResponse(await retryPromise, "POST /api/public-profile/pursuits/outreach missing contact retry"));
+  await page.waitForFunction(
+    (expectedCount) => document.querySelectorAll('[role="dialog"] textarea').length === expectedCount,
+    messages.length,
+    { timeout: 30000 },
+  );
+  await resumedDialog.getByRole("button", { name: "Continue", exact: true }).waitFor({ state: "visible", timeout: 30000 });
   const resumedMessages = await resumedDialog.locator("textarea").evaluateAll((nodes) => nodes.map((node) => node.value));
-  expect(resumedMessages.length === messages.length, "Reloaded wizard did not render every persisted message");
-  expect(resumedMessages.includes(regeneratedMessage), "Reloaded wizard did not render the regenerated message");
-  evidence.reload = { messageCount: resumedMessages.length, regeneratedMessagePresent: true };
+  expect(resumedMessages.length === messages.length, "Missing-contact retry did not restore every selected contact draft");
+  const messagesAfterRetry = await rest(
+    `outreach_messages?pursuit_id=eq.${pursuitId}&select=id,contact_suggestion_id,message,regeneration_count,status`,
+    {},
+    "Missing-contact retry persistence audit",
+  );
+  expect(messagesAfterRetry.length === messages.length, "Missing-contact retry persisted the wrong message count");
+  expect(new Set(messagesAfterRetry.map((message) => message.contact_suggestion_id)).size === messagesAfterRetry.length, "Missing-contact retry duplicated a completed contact");
+  evidence.reload = { messageCount: resumedMessages.length, regeneratedMessagePresent: resumedMessages.includes(persistedRegeneratedMessage) };
+  evidence.partialRetry = {
+    preservedMessageCount: partialMessages.length,
+    finalMessageCount: messagesAfterRetry.length,
+    uniqueContactCount: new Set(messagesAfterRetry.map((message) => message.contact_suggestion_id)).size,
+  };
 
   await resumedDialog.getByRole("button", { name: "Continue", exact: true }).click();
   await resumedDialog.getByText("Pursuit tracking", { exact: true }).waitFor({ timeout: 10000 });

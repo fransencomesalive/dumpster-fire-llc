@@ -2045,7 +2045,7 @@ async function main() {
     },
   });
   const pursuitOutreachReplay = await handlePublicProfilePursuitOutreachRequest(
-    postRequest("pursuits/outreach", { pursuitId: "pursuit-1" }),
+    postRequest("pursuits/outreach", { pursuitId: "pursuit-1", idempotencyKey: "lost-response-key" }),
     {
       getSession: async () => authed(),
       repositoryRequest,
@@ -2081,7 +2081,7 @@ async function main() {
   assert.deepEqual(replayLookupInput, {
     userId: "user-1",
     pursuitId: "pursuit-1",
-    idempotencyKey: undefined,
+    idempotencyKey: "lost-response-key",
   });
   const pursuitOutreachReplayJson = await body(pursuitOutreachReplay);
   assert.equal(pursuitOutreachReplayJson.replayed, true);
@@ -2174,7 +2174,7 @@ async function main() {
   assert.equal(pursuitOutreachUnavailableJson.retryable, true);
 
   let partialGenerationCalls = 0;
-  let partialGenerationPersisted = false;
+  const partialGenerationPersisted: string[] = [];
   const pursuitOutreachPartialFailure = await handlePublicProfilePursuitOutreachRequest(postRequest("pursuits/outreach", { pursuitId: "pursuit-1" }), {
     now: () => now,
     getSession: async () => authed(),
@@ -2196,17 +2196,102 @@ async function main() {
         ? { message: "First valid draft.", insertedExample: null }
         : { status: "quality_exhausted", violations: ["ungrounded_numbers(four)"] };
     },
-    persistOutreach: async () => {
-      partialGenerationPersisted = true;
+    persistOutreach: async (_request, result, drafts) => {
+      partialGenerationPersisted.push(...drafts.map((draft) => draft.contactSuggestionId));
+      return {
+        status: "committed",
+        pursuit: result.pursuit,
+        messages: drafts.map((draft) => ({
+          id: `message-${draft.contactSuggestionId}`,
+          pursuitId: result.pursuit.id,
+          contactSuggestionId: draft.contactSuggestionId,
+          recipientType: draft.recipientType,
+          channel: "other",
+          message: draft.message,
+          status: "draft",
+          createdAt: now,
+          updatedAt: now,
+        })),
+        pursuitDebited: false,
+        outreachDebited: 0,
+      };
     },
   });
-  assert.equal(pursuitOutreachPartialFailure.status, 503);
+  assert.equal(pursuitOutreachPartialFailure.status, 207);
   const pursuitOutreachPartialFailureJson = await body(pursuitOutreachPartialFailure);
-  assert.equal(pursuitOutreachPartialFailureJson.status, "quality_exhausted");
-  assert.equal(pursuitOutreachPartialFailureJson.error, "We couldn't generate these drafts. Try again.");
+  assert.equal(pursuitOutreachPartialFailureJson.status, "outreach_partial");
   assert.equal(pursuitOutreachPartialFailureJson.retryable, true);
+  assert.equal(pursuitOutreachPartialFailureJson.saved, true);
+  assert.deepEqual(pursuitOutreachPartialFailureJson.generatedContactIds, ["contact-1"]);
+  assert.deepEqual(pursuitOutreachPartialFailureJson.failedContactIds, ["contact-2"]);
   assert.equal(partialGenerationCalls, 2);
-  assert.equal(partialGenerationPersisted, false, "a partial in-memory generation must never persist an incomplete transition");
+  assert.deepEqual(partialGenerationPersisted, ["contact-1"], "each successful contact must persist before another contact can fail");
+
+  const alreadyPersistedDraft: OutreachMessageRecord = {
+    id: "message-contact-1",
+    pursuitId: "pursuit-1",
+    contactSuggestionId: "contact-1",
+    recipientType: "likely_hiring_manager",
+    channel: "other",
+    message: "The strongest same-job evidence belongs in both contact drafts.",
+    status: "draft",
+    selectedWorkExampleId: "example-1",
+    createdAt: now,
+    updatedAt: now,
+  };
+  const retryGeneratedContacts: string[] = [];
+  const retryInputs: Array<{ recentMessages: string[]; companionMessages: string[] }> = [];
+  const pursuitOutreachRetryMissingOnly = await handlePublicProfilePursuitOutreachRequest(
+    postRequest("pursuits/outreach", { pursuitId: "pursuit-1", idempotencyKey: "retry-missing-contact" }),
+    {
+      now: () => now,
+      getSession: async () => authed(),
+      repositoryRequest,
+      loadAggregate: async () => agg,
+      loadPursuit: async () => savedPursuit({ status: "outreach_ready", pursuitMeteredAt: now }),
+      loadInitialOutreachCommit: noInitialOutreachCommit,
+      loadJob: async () => publicJob(),
+      loadContactSuggestions: async () => [
+        contactSuggestion({ selectedForOutreach: true }),
+        contactSuggestion({ id: "contact-2", name: "Riley Chen", contactType: "recruiter", selectedForOutreach: true }),
+      ],
+      loadOutreachMessages: async () => [alreadyPersistedDraft],
+      loadRecentOutreachMessages: async () => [
+        alreadyPersistedDraft,
+        { ...alreadyPersistedDraft, id: "historical-message", pursuitId: "pursuit-history", message: "Historical wording stays a hard constraint." },
+      ],
+      loadSubscriptionContext: async () => activeBasicSubscription(),
+      loadUsageEntries: async () => [],
+      enforcePursuitSubscription: () => { throw new Error("metered pursuit must not be enforced again"); },
+      enforceSubscription: () => ({ status: "allowed", feature: "outreach_message", used: 0 }),
+      generateOutreachForContact: async (input) => {
+        retryGeneratedContacts.push(input.contactSuggestion.id);
+        retryInputs.push({ recentMessages: input.recentMessages, companionMessages: input.companionMessages });
+        return { message: "A durable retry draft for the remaining contact.", insertedExample: null };
+      },
+      persistOutreach: async (_request, result, drafts) => ({
+        status: "committed",
+        pursuit: result.pursuit,
+        messages: drafts.map((draft) => ({
+          id: "message-contact-2",
+          pursuitId: result.pursuit.id,
+          contactSuggestionId: draft.contactSuggestionId,
+          recipientType: draft.recipientType,
+          channel: "other",
+          message: draft.message,
+          status: "draft",
+          createdAt: now,
+          updatedAt: now,
+        })),
+        pursuitDebited: false,
+        outreachDebited: 0,
+      }),
+    },
+  );
+  assert.equal(pursuitOutreachRetryMissingOnly.status, 200);
+  assert.deepEqual(retryGeneratedContacts, ["contact-2"], "retry must skip contacts that already have persisted drafts");
+  assert.deepEqual(retryInputs[0].recentMessages, ["Historical wording stays a hard constraint."]);
+  assert.deepEqual(retryInputs[0].companionMessages, [alreadyPersistedDraft.message]);
 
   const pursuitOutreachMissingCommit = await handlePublicProfilePursuitOutreachRequest(postRequest("pursuits/outreach", { pursuitId: "pursuit-1" }), {
     now: () => now,
@@ -2229,8 +2314,8 @@ async function main() {
   assert.equal(pursuitOutreachMissingCommitJson.saved, false);
 
   let persistedOutreach: unknown;
-  let persistedDrafts: unknown;
-  let persistedGenerationKey = "";
+  const persistedDrafts: GeneratedOutreachDraft[] = [];
+  const persistedGenerationKeys: string[] = [];
   let outreachUsageOptions: unknown;
   let pursuitEnforcementCalls = 0;
   const generatedForContacts: unknown[] = [];
@@ -2288,8 +2373,8 @@ async function main() {
     },
     persistOutreach: async (_request, result, drafts, input) => {
       persistedOutreach = result;
-      persistedDrafts = drafts;
-      persistedGenerationKey = input.idempotencyKey;
+      persistedDrafts.push(...drafts);
+      persistedGenerationKeys.push(input.idempotencyKey);
       return {
         status: "committed",
         pursuit: { ...result.pursuit, pursuitMeteredAt: now },
@@ -2323,10 +2408,19 @@ async function main() {
     (generatedForContacts[0] as { recentMessages: string[] }).recentMessages,
     ["A previously saved outreach draft with different language."],
   );
+  assert.deepEqual(
+    (generatedForContacts[1] as { recentMessages: string[] }).recentMessages,
+    ["A previously saved outreach draft with different language."],
+    "same-job drafts must not become hard historical constraints",
+  );
+  assert.deepEqual(
+    (generatedForContacts[0] as { companionMessages: string[] }).companionMessages,
+    [],
+  );
   assert.match(
-    (generatedForContacts[1] as { recentMessages: string[] }).recentMessages[0],
+    (generatedForContacts[1] as { companionMessages: string[] }).companionMessages[0],
     /Hi Dana/,
-    "the second contact must see the first in-memory draft",
+    "the second contact must see the first persisted draft as soft companion context",
   );
   assert.equal(
     (generatedForContacts[0] as { evidenceDecision: { selected?: { id: string } } }).evidenceDecision.selected?.id,
@@ -2339,7 +2433,10 @@ async function main() {
     { name: "Program Director", targetTitles: ["Program Director"], otherTrackTitles: [] },
   );
   assert.equal(pursuitEnforcementCalls, 1);
-  assert.equal(persistedGenerationKey, "initial-outreach:pursuit-1:contact-1:contact-2");
+  assert.equal(persistedGenerationKeys.length, 2);
+  assert.ok(persistedGenerationKeys.every((key) => key.startsWith("initial-outreach:pursuit-1:")));
+  assert.equal(new Set(persistedGenerationKeys).size, 2);
+  assert.ok(persistedGenerationKeys.every((key) => key.length <= 220));
   const pursuitOutreachJson = await body(pursuitOutreachGenerated);
   assert.equal(pursuitOutreachJson.status, "outreach_generated");
   assert.equal((pursuitOutreachJson.event as Record<string, unknown>).usageType, "outreach_message");
@@ -2347,15 +2444,15 @@ async function main() {
   assert.deepEqual(pursuitOutreachJson.metering, { pursuitDebited: true, outreachDebited: 2 });
   assert.equal((pursuitOutreachJson.messages as Array<Record<string, unknown>>)[0].id, "message-1");
   assert.equal((persistedOutreach as { pursuit: Pursuit }).pursuit.status, "outreach_ready");
-  assert.equal((persistedDrafts as GeneratedOutreachDraft[]).length, 2);
-  assert.deepEqual((persistedDrafts as GeneratedOutreachDraft[]).map((draft) => draft.recipientType), ["likely_hiring_manager", "recruiter"]);
-  assert.equal((persistedDrafts as GeneratedOutreachDraft[])[0].selectedWorkExampleId, "example-1");
+  assert.equal(persistedDrafts.length, 2);
+  assert.deepEqual(persistedDrafts.map((draft) => draft.recipientType), ["likely_hiring_manager", "recruiter"]);
+  assert.equal(persistedDrafts[0].selectedWorkExampleId, "example-1");
   assert.equal(
-    (persistedDrafts as GeneratedOutreachDraft[])[0].generationContext.selection.workExample?.id,
+    persistedDrafts[0].generationContext.selection.workExample?.id,
     "example-1",
   );
   assert.equal(
-    (persistedDrafts as GeneratedOutreachDraft[])[0].generationContext.selection.workExampleDecision?.consideredCount,
+    persistedDrafts[0].generationContext.selection.workExampleDecision?.consideredCount,
     agg.workExamples.length,
   );
 

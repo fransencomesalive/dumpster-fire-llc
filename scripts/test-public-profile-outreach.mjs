@@ -97,11 +97,14 @@ const evidencePrompt = buildOutreachUserPrompt({
   contact,
   evidenceDecision,
   recentMessages: ["I previously described a different delivery system in this exact sentence."],
+  companionMessages: ["I used the strongest job evidence in a note to another contact."],
 });
 assert.match(evidencePrompt, /Job-specific Work Example decision/);
 assert.match(evidencePrompt, /Selected ID: example-phred/);
 assert.match(evidencePrompt, /Recent outreach language to avoid repeating/);
 assert.match(evidencePrompt, /different delivery system/);
+assert.match(evidencePrompt, /Other drafts for this same job/);
+assert.match(evidencePrompt, /Shared job facts and the strongest relevant evidence may repeat/);
 
 const requiredEvidenceDecision = {
   ...evidenceDecision,
@@ -360,6 +363,22 @@ const cleanJson = JSON.stringify({ message: "Hi Dana, direct note about the role
     },
   );
   assert.equal(singleRelevantCredential.includes("repeated_recent_evidence"), false);
+
+  const sameJobCompanion = outreachHardRuleViolations(
+    {
+      message: "Hi Dana, Swift taught me the operating cadence, and AKQA sharpened how I align senior teams.",
+      insertedExample: null,
+    },
+    "Swift and AKQA are verified resume employers.",
+    {
+      job,
+      contact,
+      companionMessages: [
+        "Hi Lee, I managed a major retainer at Swift and won new accounts while leading programs at AKQA.",
+      ],
+    },
+  );
+  assert.equal(sameJobCompanion.includes("repeated_recent_evidence"), false, "same-job evidence is soft context, not a hard rejection");
 }
 
 // 4ce. Distinctive recent language is rejected, while a fresh rewrite succeeds.
