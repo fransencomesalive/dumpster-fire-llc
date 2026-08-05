@@ -1,5 +1,44 @@
 # Current State
 
+## 2026-08-04 - JOB-023 durable multi-contact outreach: LIVE (Codex)
+
+Commit `e06f62de6b9b5a1ca364f022f84f994e5d6ff63f` is on `origin/main`, GitHub Actions
+run `30963015735` passed, and Vercel production deployment
+`dpl_4eGgfQbfyxSfGnbisLMMiWBk4e96` serves the canonical domain with HTTP 200.
+
+JOB-023 was caused by two coupled batch assumptions. A successful draft for the first selected
+contact was added to the same hard historical-diversity input used for the next contact, so the
+second contact could exhaust retries on `repeated_recent_language` and
+`repeated_recent_evidence` even when the shared evidence was the strongest fit for the same job.
+All drafts were then persisted in one final transaction, so one failed contact discarded every
+successful draft from that attempt.
+
+Initial outreach now treats messages from other pursuits as hard historical diversity context and
+same-job companion drafts as soft composition context. Shared job facts and the strongest relevant
+evidence may repeat across contacts, while the prompt still asks for natural variation in opening,
+sentence construction, and close. Each successful contact is persisted immediately with its own
+deterministic idempotency key. Partial responses retain completed drafts, and a retry generates only
+selected contacts that do not already have a persisted message. The Apply Wizard reuses its existing
+Step 3 error and affirmative button states: a partial pursuit shows the preserved drafts plus
+**Try again**, then returns to **Continue** when every selected contact has a draft. No layout or CSS
+changed.
+
+The complete release gate passed: all migration harnesses, 36 fixture suites, TypeScript, lint with
+zero errors and four pre-existing warnings, and the Turbopack production build. The authenticated
+production-browser journey used disposable account
+`apply-wizard-production-1785889344882-0b854e3c@example.invalid` on the exact deployment. It selected
+two contacts, persisted two distinct messages and two distinct generation requests, removed one
+disposable message/request to recreate the partial state, preserved the other message after reload,
+and restored exactly the missing contact through **Try again**. The final readback contained two
+messages for two unique contact IDs. Rendered checks passed at 320, 375, 390, 1280, and 1440 pixels
+with painted edges inside the viewport, no horizontal overflow, and zero console or page errors.
+Cleanup removed the Auth user, profile, pursuit, and dependent rows.
+
+Durable product rule: multi-contact outreach is per-contact durable. A same-job draft can guide
+stylistic variation but must never become a hard historical constraint that blocks the strongest
+shared evidence. A failed contact must never erase successful contact drafts, and retries must skip
+contacts that already have persisted messages.
+
 ## 2026-08-04 - Specialized role matching and active scan replacement: LIVE (Codex)
 
 Commit `39d5a08889a00f0f5da058e42a73635db483dc69` is on `origin/main`, GitHub Actions

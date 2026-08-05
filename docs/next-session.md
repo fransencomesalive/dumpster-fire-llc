@@ -1,9 +1,31 @@
-# Next Session: 2026-08-04 Specialized Role Scan Correction Live
+# Next Session: 2026-08-04 JOB-023 Multi-Contact Outreach Live
 
 _Updated 2026-08-04. Read `AGENTS.md` and follow the Session Start Protocol in
 `docs/project-operating-state.md` before editing._
 
 ## Current production release
+
+JOB-023 is fixed in commit `e06f62de6b9b5a1ca364f022f84f994e5d6ff63f`, on `origin/main`
+and live in Vercel production deployment `dpl_4eGgfQbfyxSfGnbisLMMiWBk4e96`. GitHub Actions run
+`30963015735` passed and the canonical domain returns HTTP 200 from that deployment.
+
+Multi-contact outreach now persists each successful contact before attempting the next. Drafts for
+the same job are soft variation context, not hard recent-history input, so shared job evidence can
+remain when it is the strongest fit. A failed contact leaves completed drafts intact. Resume shows
+those drafts and the existing **Try again** action, and retry generates only missing contacts.
+
+The exact production journey selected two contacts, persisted two unique messages and per-contact
+generation requests, recreated a partial state by removing one disposable draft/request, preserved
+the other draft after reload, and restored exactly the missing contact. All five required viewport
+checks passed with no horizontal overflow or painted-edge clipping, zero browser errors, and full
+disposable cleanup.
+
+Next immediate action: no JOB-023 implementation remains in flight. The affected real user can
+open the saved pursuit and choose **Try again**; the engine will generate only contacts that still
+lack drafts. Do not delete or manually replace the user's pursuit. Diagnose any new outreach failure
+from its exact per-contact validator and persistence evidence.
+
+## Prior specialized role scan release
 
 Commit `39d5a08889a00f0f5da058e42a73635db483dc69` is on `origin/main`, GitHub Actions
 run `30950560309` passed, and Vercel production deployment
