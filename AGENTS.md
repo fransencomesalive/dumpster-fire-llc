@@ -150,6 +150,25 @@ When user feedback implies a new standing workflow rule, Codex must:
 
 Chat acknowledgement is not durable memory. If a behavioral rule matters, it must be written to the repo.
 
+### QA Backlog Batch Review
+
+When Randall says `review backlog batch`, Codex must retrieve the current production QA backlog
+and ticket event histories before responding. The review batch contains tickets still in backlog
+that have a `backlog_deferred_for_batch` event, plus any ticket Randall explicitly names for the
+current review.
+
+- Present the batch as a numbered decision list in this conversation.
+- For each ticket, include the report, relevant current implementation or design authority, the
+  likely problem layer, a recommendation, meaningful alternatives, and the exact approval needed.
+- Do not automatically queue Codex or Claude work from the batch-review request. Discussion and
+  owner decisions come first; route each ticket only after Randall chooses its next action.
+- Separate genuine product decisions from resolved work, stale reports, and QA/test artifacts.
+- After decisions are applied, reconcile each ticket's production QA status so completed or test
+  items do not remain in backlog.
+
+Enforcement class: **advisory**. This instruction is persistent repository guidance that an agent
+can technically ignore; it is not a blocking hook.
+
 ### Public Product Copy Boundary
 
 Do not put internal implementation reasoning, roadmap sequencing, backend terminology, provider details, agent/tool notes, or recovery-session commentary into public-facing app copy. Translate internal product logic into user-facing language before editing UI text, metadata, onboarding text, dashboard text, or marketing sections.

@@ -1715,14 +1715,14 @@ export default function OnboardingClient({
     );
   }
 
-  // Card-interior intro stack: the "You're populating {track}" orientation line +
+  // Card-interior intro stack: the active Role Track orientation line +
   // the card's purpose line share one muted type style (kills the old mixed-font
   // populatingHelper + cardLede collision).
   function cardIntro(purpose: React.ReactNode) {
     return (
       <div className={styles.cardIntro}>
         {activeTrack ? (
-          <p>You&apos;re populating <b>{activeTrack.name}</b>. Switch lanes from Card 1&apos;s dropdown.</p>
+          <p>You&apos;re working on <b>{activeTrack.name}</b>. Choose another Role Track from the Role Track dropdown.</p>
         ) : null}
         <p>{purpose}</p>
       </div>
