@@ -1,5 +1,69 @@
 # Current State
 
+## 2026-08-05 - Durable hosted QA relay and signup email capacity: LIVE (Codex)
+
+Randall was correct that the active relay, ngrok tunnel, and Codex worker were running on the
+MacBook Air, not the Mac Studio. `scutil` and `hostname` identified the machine as `MacBook Air`
+and `MacBook-Air.local`. The hardcoded `studio-codex` worker id was a portable QA-AGENT defect and
+was the source of the misleading operating state.
+
+Signup email capacity is corrected in production. Supabase custom SMTP remains enabled, email
+confirmation remains required, and the production Auth setting `rate_limit_email_sent` is now
+30/hour instead of 2/hour. `supabase/config.toml` records the same value. The reported Charlie
+address did not exist in Auth after the failed attempt, so that user can retry signup normally.
+
+The QA relay is now hosted at `https://qa-relay-production.up.railway.app` in Railway project
+`d81db416-92b7-4ce3-b979-db4af471b348`. Service `qa-relay`
+(`80d029d6-fd5c-4767-ba90-0bcafb1d9b34`) uses dedicated Postgres service
+`e2be879e-2bf3-4836-99b2-400624e16b45`. The portable `railway.json` builds from the Dockerfile,
+runs `npm run db:prepare` before release, checks `/healthz`, and restarts failed processes. Final
+clean Railway deployment `9c636de3-ae4f-4523-bdb5-89521b95e3b6` succeeded after a second
+redeploy, proving database preparation is repeatable. Readiness reports Postgres ready, matching
+project/install identity, signed external reply delivery with two retries, and the Codex worker
+connected as `macbook-air-codex`.
+
+The previous JSON state was imported into Postgres with exact counts: 26 tickets, 62 ticket events,
+30 ticket messages, 279 approvals, six Codex tasks, 26 progress events, ten user replies, and 265
+audit rows. The imported counter initially held 26, which the store interprets as the next number;
+that caused a verified JOB-026 unique-key collision on the first production cutover check. It was
+corrected to 27. The portable seeder was also fixed to update the singleton row before attempting
+an insert, because PostgreSQL's singleton trigger fires before `ON CONFLICT` and previously made
+every redeploy fail after the first seed.
+
+Production Vercel variable `QA_AGENT_URL` now points to Railway. Preview was intentionally left
+unchanged. Vercel deployment `dpl_8TwLbPDPRWXDHuqGV2mFD2dDJ8hu` redeployed source commit
+`ae36e9384ce9a295b0cb949b16b74a6a2b13176f`; the canonical domain returns HTTP 200. Telegram's
+webhook now points exactly to Railway's project-scoped path, accepts `message` and
+`callback_query`, has zero pending updates, and reports no error.
+
+The live production journey created JOB-027 through
+`POST https://www.thejobmarketisadumpsterfire.com/api/qa-report`. It persisted in Railway Postgres,
+delivered its Telegram action card, accepted the real close callback, and recorded
+`telegram_callback_accepted`, `close`, and `telegram_callback_completed`. JOB-027 remains closed
+with `owner_closed`, providing durable cutover evidence. It survived the clean repeat Railway
+deployment, and the Air worker reconnected afterward.
+
+Portable QA-AGENT is version `0.3.2`. The local factory has no remote and is clean at
+`4bda8e9797185f9f85e297d69f399287ae4c5ef7`. The installed relay is pushed on `origin/main` at
+`d3b6694df29fb52befa9b97971bf01f7c6c9336d`; its existing unrelated `data/backups/` and
+`scripts/resend-notification.js` remain untouched. Full suites passed with 591 tests, 582 passed,
+zero failed, and nine intentional integration skips; generated-install verification also passed.
+The portable worker accepts plain HTTP only for loopback and requires HTTPS for hosted relays,
+while every request still requires the 32+ character bearer secret. New worker identities derive
+from the actual hostname and can be explicitly assigned.
+
+Production report intake, Postgres state, Telegram callbacks, and approved reply delivery no longer
+depend on the Air remaining open. Codex/Claude task execution still requires a connected worker;
+currently that worker is on the Air, so tasks wait safely when it is offline. The local relay and
+ngrok process may remain as rollback/Preview infrastructure but are no longer in the production
+path. The temporary Railway migration SSH key was revoked and its local files were deleted.
+
+Remaining setup: grant Railway's GitHub app access to the private
+`fransencomesalive/dumpster-fire-relay` repository, then connect service `qa-relay` to `main` for
+automatic deployments. Until that manual GitHub authorization is completed, deploys are explicit
+Railway CLI uploads from the clean relay checkout. A later approved step can move the worker from
+the Air to the Studio or another persistent executor; that is separate from the now-durable relay.
+
 ## 2026-08-04 - JOB-024 prompted Telegram reply editing: LIVE (Codex)
 
 JOB-024 exposed two separate problems. The reporter's production account existed but had no active

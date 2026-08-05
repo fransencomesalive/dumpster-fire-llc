@@ -1,9 +1,49 @@
-# Next Session: 2026-08-04 JOB-024 Prompted Reply Editing Live
+# Next Session: 2026-08-05 Durable Hosted QA Relay Live
 
-_Updated 2026-08-04. Read `AGENTS.md` and follow the Session Start Protocol in
+_Updated 2026-08-05. Read `AGENTS.md` and follow the Session Start Protocol in
 `docs/project-operating-state.md` before editing._
 
-## Current QA relay release
+## Current production QA infrastructure
+
+Production feedback and Telegram callbacks are live on Railway at
+`https://qa-relay-production.up.railway.app`; they no longer depend on ngrok or the MacBook Air
+remaining open. Railway project `d81db416-92b7-4ce3-b979-db4af471b348` contains `qa-relay` service
+`80d029d6-fd5c-4767-ba90-0bcafb1d9b34` and dedicated Postgres service
+`e2be879e-2bf3-4836-99b2-400624e16b45`. Final deployment
+`9c636de3-ae4f-4523-bdb5-89521b95e3b6` is successful with Dockerfile build, pre-deploy
+`npm run db:prepare`, `/healthz`, and restart policy active.
+
+The Vercel production variable `QA_AGENT_URL` points to Railway; Preview remains unchanged.
+Vercel deployment `dpl_8TwLbPDPRWXDHuqGV2mFD2dDJ8hu` serves app commit
+`ae36e9384ce9a295b0cb949b16b74a6a2b13176f`, and the canonical domain returns HTTP 200. Telegram
+webhook verification passes with the exact Railway URL, `message` plus `callback_query`, zero
+pending updates, and no last error.
+
+Live JOB-027 proves the full path: production widget to Vercel to Railway to Postgres to Telegram,
+then a real close callback back to Railway. It is durably closed with `owner_closed` and has audit
+events for callback acceptance, close, and callback completion. Railway readiness remained green
+and JOB-027 persisted after a second clean redeploy.
+
+The relay is QA-AGENT `0.3.2`. Factory commit
+`4bda8e9797185f9f85e297d69f399287ae4c5ef7` is local-only because the factory has no remote.
+Installed relay commit `d3b6694df29fb52befa9b97971bf01f7c6c9336d` is on `origin/main`. Full suites and
+generated-install verification pass. The worker now connects to Railway over HTTPS and accurately
+identifies this machine as `macbook-air-codex`; Railway reports it connected. The relay, database,
+Telegram, and reply loop remain available when the Air closes, but coding-agent execution waits
+until a worker reconnects.
+
+Supabase custom SMTP is configured with email confirmation required and production
+`rate_limit_email_sent=30`; `supabase/config.toml` matches. Charlie's failed signup did not leave an
+Auth user, so the address can retry.
+
+Next immediate action: Randall must grant Railway's GitHub app access to the private
+`fransencomesalive/dumpster-fire-relay` repository. Then connect `qa-relay` to repo `main` and
+verify an automatic deployment. After that, if desired, install the same portable worker on the
+Mac Studio or another persistent executor and retire the Air worker. Do not represent the worker
+as Studio until the destination machine proves its hostname and Railway readiness reports that
+worker id.
+
+## Prior QA relay release
 
 Portable QA-AGENT `0.3.1` makes reply revision discoverable from Telegram. A pending reply now shows
 **Send reply**, **Edit reply**, and **Discard draft**. **Edit reply** opens Telegram's native reply
