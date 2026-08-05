@@ -28,6 +28,7 @@ type JobRow = {
   id: string;
   source: string;
   source_url: string;
+  link_status?: "unknown" | "healthy" | "gone" | "uncertain";
   owner_user_id: string | null;
   company_name: string;
   title: string;
@@ -172,6 +173,26 @@ const jobs: JobRow[] = [
     remote_type: "remote",
     employment_type: "full_time",
     compensation_text: null,
+    description: "Lead AI workflow programs and stakeholder alignment.",
+    posted_at: "2026-06-20T00:00:00.000Z",
+    scraped_at: "2026-06-26T00:00:00.000Z",
+    created_at: now,
+    updated_at: now,
+  },
+  {
+    // A posting with a confirmed-gone link must never return to a user's active scan,
+    // even when its title and evidence would otherwise rank strongly.
+    id: "job-gone",
+    source: "himalayas",
+    source_url: "https://jobs.example/expired-program-director",
+    link_status: "gone",
+    owner_user_id: null,
+    company_name: "Expired Studio",
+    title: "Program Director",
+    location: "Remote",
+    remote_type: "remote",
+    employment_type: "full_time",
+    compensation_text: "$150k-$180k",
     description: "Lead AI workflow programs and stakeholder alignment.",
     posted_at: "2026-06-20T00:00:00.000Z",
     scraped_at: "2026-06-26T00:00:00.000Z",
@@ -642,6 +663,7 @@ async function main() {
   // job-foreign mirrors job-1's matching content but belongs to another user; the
   // owner-scoped candidate query must keep it out of this user's scan.
   assert.equal(scan.jobs.some((job) => job.id === "job-foreign"), false);
+  assert.equal(scan.jobs.some((job) => job.id === "job-gone"), false);
   // Scan results are annotated with a profile-driven match score + label for ranking.
   assert.equal(typeof scan.jobs[0].match?.score, "number");
   assert.equal(typeof scan.jobs[0].match?.label, "string");

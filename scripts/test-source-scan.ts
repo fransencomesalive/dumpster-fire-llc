@@ -1,5 +1,10 @@
 import assert from "node:assert/strict";
 import type { PublicProfileRepositoryRequest } from "../lib/public-profile/repository";
+import {
+  inspectPublicPostingLink,
+  isGenericJobLandingUrl,
+  reconcileSavedPursuitLinkHealth,
+} from "../lib/public-jobs/link-health";
 import { runSourceScan } from "../lib/scan/source-scan";
 import { loadActiveJobSources, type JobSourceRecord } from "../lib/scan/sources/registry";
 import type { JobSource, NormalizedConnectorJob } from "../lib/scan/sources/types";
@@ -78,7 +83,8 @@ async function main() {
     });
     assert.equal(result.totalSources, 0);
     assert.equal(result.totalUpserted, 0);
-    assert.equal(calls.length, 0);
+    assert.equal(result.linkHealth.checked, 0);
+    assert.deepEqual(calls.map((call) => call.table), ["pursuits"]);
   }
 
   // ---- Happy path: fetch + upsert + mark ingested ----
@@ -272,6 +278,125 @@ async function main() {
     assert.ok((withHeadings?.responsibilities as string[]).length > 0);
     assert.equal("responsibilities" in plain, false);
     assert.equal("required_experience" in plain, false);
+  }
+
+  // ---- Link-health classification is conservative and provider-neutral ----
+  {
+    const publicResolver = async () => [{ address: "93.184.216.34", family: 4 }];
+    const redirectingFetch: typeof fetch = async (input) => {
+      const url = String(input);
+      if (url === "https://jobs.example/posting/123") {
+        return new Response(null, { status: 302, headers: { location: "/jobs" } });
+      }
+      assert.equal(url, "https://jobs.example/jobs");
+      return new Response(null, { status: 200 });
+    };
+    const landing = await inspectPublicPostingLink("https://jobs.example/posting/123", {
+      now: () => now,
+      fetchImpl: redirectingFetch,
+      resolveHostname: publicResolver,
+    });
+    assert.equal(landing.status, "gone");
+    assert.equal(landing.reason, "generic_landing_redirect");
+    assert.equal(landing.resolvedUrl, "https://jobs.example/jobs");
+    assert.equal(isGenericJobLandingUrl("https://jobs.example/en/careers/"), true);
+    assert.equal(isGenericJobLandingUrl("https://jobs.example/en/jobs/123"), false);
+
+    const methods: string[] = [];
+    const gone = await inspectPublicPostingLink("https://jobs.example/posting/404", {
+      now: () => now,
+      resolveHostname: publicResolver,
+      fetchImpl: async (_input, init) => {
+        methods.push(init?.method ?? "GET");
+        return new Response(null, { status: 404 });
+      },
+    });
+    assert.equal(gone.status, "gone");
+    assert.equal(gone.reason, "http_gone");
+    assert.deepEqual(methods, ["HEAD", "GET"], "HEAD 404 must be confirmed by GET before retiring a link");
+
+    const blocked = await inspectPublicPostingLink("https://jobs.example/posting/blocked", {
+      now: () => now,
+      resolveHostname: publicResolver,
+      fetchImpl: async () => new Response(null, { status: 403 }),
+    });
+    assert.equal(blocked.status, "uncertain");
+    assert.equal(blocked.reason, "access_limited");
+
+    let unsafeFetched = false;
+    const unsafe = await inspectPublicPostingLink("http://127.0.0.1/admin", {
+      now: () => now,
+      fetchImpl: async () => {
+        unsafeFetched = true;
+        return new Response(null, { status: 200 });
+      },
+    });
+    assert.equal(unsafe.status, "gone");
+    assert.equal(unsafe.reason, "unsafe_url");
+    assert.equal(unsafeFetched, false, "unsafe destinations must be rejected before network access");
+
+    const dnsFailure = await inspectPublicPostingLink("https://missing.example/job/1", {
+      now: () => now,
+      resolveHostname: async () => { throw new Error("getaddrinfo ENOTFOUND missing.example"); },
+      fetchImpl: async () => { throw new Error("DNS failure must stop before fetch"); },
+    });
+    assert.equal(dnsFailure.status, "uncertain");
+    assert.equal(dnsFailure.reason, "network_error");
+  }
+
+  // ---- Reconciliation persists current health and expires only confirmed-gone scan rows ----
+  {
+    const calls: Call[] = [];
+    const request: PublicProfileRepositoryRequest = async <T>(
+      table: string,
+      options: Parameters<PublicProfileRepositoryRequest>[1],
+    ) => {
+      calls.push({ table, method: options.method ?? "GET", query: options.query, body: options.body });
+      if (table === "pursuits") return [
+        { job_id: "job-gone" },
+        { job_id: "job-uncertain" },
+        { job_id: "job-private" },
+        { job_id: "job-fresh" },
+      ] as T;
+      if (table === "jobs" && (options.method ?? "GET") === "GET") return [
+        { id: "job-gone", source_url: "https://jobs.example/gone", owner_user_id: null, link_status: "unknown", link_checked_at: null },
+        { id: "job-uncertain", source_url: "https://jobs.example/uncertain", owner_user_id: null, link_status: "gone", link_checked_at: null },
+        { id: "job-private", source_url: "https://private.example/job", owner_user_id: "user-1", link_status: "unknown", link_checked_at: null },
+        { id: "job-fresh", source_url: "https://jobs.example/fresh", owner_user_id: null, link_status: "healthy", link_checked_at: now },
+      ] as T;
+      return [] as T;
+    };
+    const result = await reconcileSavedPursuitLinkHealth(request, {
+      now: () => now,
+      concurrency: 2,
+      inspectLink: async (url) => url.endsWith("/gone")
+        ? { status: "gone", reason: "http_gone", checkedAt: now, httpStatus: 404 }
+        : { status: "uncertain", reason: "access_limited", checkedAt: now, httpStatus: 403 },
+    });
+    assert.deepEqual(result, {
+      candidates: 4,
+      checked: 2,
+      healthy: 0,
+      gone: 1,
+      uncertain: 1,
+      skippedPrivate: 1,
+      skippedFresh: 1,
+    });
+    const jobPatches = calls.filter((call) => call.table === "jobs" && call.method === "PATCH");
+    assert.equal(jobPatches.length, 2);
+    assert.ok(jobPatches.some((call) => (call.body as Record<string, unknown>).link_health_reason === "http_gone"));
+    const expirations = calls.filter((call) => call.table === "job_scan_results" && call.method === "PATCH");
+    assert.equal(expirations.length, 2);
+    assert.ok(expirations.some((call) => /job_id=eq\.job-gone/.test(decodeURIComponent(call.query ?? ""))));
+    assert.ok(expirations.some((call) => /job_id=eq\.job-uncertain/.test(decodeURIComponent(call.query ?? ""))));
+    assert.ok(jobPatches.some((call) => {
+      const query = decodeURIComponent(call.query ?? "");
+      const body = call.body as Record<string, unknown>;
+      return /id=eq\.job-uncertain/.test(query)
+        && body.link_status === "gone"
+        && body.link_health_reason === "gone_recheck_access_limited";
+    }));
+    assert.deepEqual(expirations[0].body, { status: "expired", updated_at: now });
   }
 
   console.log("public jobs source scan: all assertions passed");

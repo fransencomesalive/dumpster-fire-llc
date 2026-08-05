@@ -1,4 +1,9 @@
 import type { PublicProfileRepositoryRequest } from "../public-profile/repository";
+import {
+  reconcileSavedPursuitLinkHealth,
+  type ReconcileSavedPursuitLinkHealthOptions,
+  type SavedPursuitLinkHealthResult,
+} from "../public-jobs/link-health";
 import { fetchNormalizedConnectorJobs, type FetchConnectorJobsOptions } from "./sources/runner";
 import type { JobSource, NormalizedConnectorJob } from "./sources/types";
 import { loadActiveJobSources, markJobSourceScanned, type JobSourceRecord } from "./sources/registry";
@@ -20,6 +25,7 @@ export type SourceScanResult = {
   totalFetched: number;
   totalUpserted: number;
   sources: SourceScanSourceResult[];
+  linkHealth: SavedPursuitLinkHealthResult & { error?: string };
 };
 
 export type SourceScanOptions = {
@@ -34,6 +40,8 @@ export type SourceScanOptions = {
   env?: NodeJS.ProcessEnv;
   maxJobsPerSource?: number;
   hostConcurrency?: number;
+  reconcileSavedLinks?: typeof reconcileSavedPursuitLinkHealth;
+  linkHealthOptions?: ReconcileSavedPursuitLinkHealthOptions;
 };
 
 const DEFAULT_MAX_JOBS_PER_SOURCE = 200;
@@ -243,6 +251,25 @@ export async function runSourceScan(
 
   const totalFetched = results.reduce((total, result) => total + result.fetched, 0);
   const totalUpserted = results.reduce((total, result) => total + result.upserted, 0);
+  const reconcileSavedLinks = options.reconcileSavedLinks ?? reconcileSavedPursuitLinkHealth;
+  let linkHealth: SourceScanResult["linkHealth"];
+  try {
+    linkHealth = await reconcileSavedLinks(request, {
+      now: () => now,
+      ...options.linkHealthOptions,
+    });
+  } catch (error) {
+    linkHealth = {
+      candidates: 0,
+      checked: 0,
+      healthy: 0,
+      gone: 0,
+      uncertain: 0,
+      skippedPrivate: 0,
+      skippedFresh: 0,
+      error: error instanceof Error ? error.message : "Saved pursuit link-health reconciliation failed.",
+    };
+  }
 
   return {
     ranAt: now,
@@ -250,5 +277,6 @@ export async function runSourceScan(
     totalFetched,
     totalUpserted,
     sources: results,
+    linkHealth,
   };
 }

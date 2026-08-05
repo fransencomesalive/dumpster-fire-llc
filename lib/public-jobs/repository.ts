@@ -41,6 +41,10 @@ type JobRow = {
   id: string;
   source: string;
   source_url: string;
+  link_status?: "unknown" | "healthy" | "gone" | "uncertain" | null;
+  link_checked_at?: string | null;
+  link_http_status?: number | null;
+  link_health_reason?: string | null;
   owner_user_id: string | null;
   company_name: string;
   title: string;
@@ -155,6 +159,7 @@ function mapJob(job: JobRow, result: JobScanResultRow, savedJobIds: Set<string>)
     id: job.id,
     source: job.source,
     sourceUrl: job.source_url,
+    linkStatus: job.link_status ?? "unknown",
     companyName: job.company_name,
     title: job.title,
     location: defined(job.location),
@@ -177,6 +182,7 @@ function mapPublicJobRecord(job: JobRow, saved = false): PublicJobRecord {
     id: job.id,
     source: job.source,
     sourceUrl: job.source_url,
+    linkStatus: job.link_status ?? "unknown",
     ownerUserId: defined(job.owner_user_id),
     companyName: job.company_name,
     title: job.title,
@@ -267,7 +273,7 @@ async function jobsById(request: PublicProfileRepositoryRequest, jobIds: string[
   return request<JobRow[]>("jobs", {
     query: qs({
       id: `in.(${jobIds.join(",")})`,
-      select: "id,source,source_url,owner_user_id,company_name,title,location,remote_type,employment_type,compensation_text,department,description,posted_at,scraped_at,created_at,updated_at,responsibilities,required_experience",
+      select: "id,source,source_url,owner_user_id,company_name,title,location,remote_type,employment_type,compensation_text,department,description,posted_at,scraped_at,created_at,updated_at,responsibilities,required_experience,link_status,link_checked_at,link_http_status,link_health_reason",
     }),
   });
 }
@@ -282,7 +288,7 @@ async function jobsByIdForUser(
     query: qs({
       id: `in.(${jobIds.join(",")})`,
       or: `(owner_user_id.is.null,owner_user_id.eq.${userId})`,
-      select: "id,source,source_url,owner_user_id,company_name,title,location,remote_type,employment_type,compensation_text,department,description,posted_at,scraped_at,created_at,updated_at,responsibilities,required_experience",
+      select: "id,source,source_url,owner_user_id,company_name,title,location,remote_type,employment_type,compensation_text,department,description,posted_at,scraped_at,created_at,updated_at,responsibilities,required_experience,link_status,link_checked_at,link_http_status,link_health_reason",
     }),
   });
   return rows.filter((row) => !row.owner_user_id || row.owner_user_id === userId);
@@ -494,6 +500,7 @@ export async function readPublicJobsForUser(
       return job ? mapJob(job, result, savedJobIds) : undefined;
     })
     .filter((job): job is PublicJobRecord => Boolean(job))
+    .filter((job) => job.linkStatus !== "gone")
     .filter((job) => (
       !savedJobIds.has(job.id)
       && !savedPostingKeys.has(duplicatePostingKey(job))
@@ -650,7 +657,7 @@ export async function runPublicJobsScanForUser(
   for (let offset = 0; candidateRows.length < MAX_SCAN_POOL_ROWS; offset += SCAN_POOL_PAGE_SIZE) {
     const page = await request<JobRow[]>("jobs", {
       query: qs({
-        select: "id,source,source_url,owner_user_id,company_name,title,location,remote_type,employment_type,compensation_text,department,description,posted_at,scraped_at,created_at,updated_at,responsibilities,required_experience",
+        select: "id,source,source_url,owner_user_id,company_name,title,location,remote_type,employment_type,compensation_text,department,description,posted_at,scraped_at,created_at,updated_at,responsibilities,required_experience,link_status,link_checked_at,link_http_status,link_health_reason",
         or: `(owner_user_id.is.null,owner_user_id.eq.${userId})`,
         order: "scraped_at.desc,id.asc",
         limit: String(SCAN_POOL_PAGE_SIZE),
@@ -681,6 +688,7 @@ export async function runPublicJobsScanForUser(
   // role collapse to the best-scored copy before the cap.
   const profileSignals = matchingSignalsForAggregate(readiness.aggregate);
   const decided = candidates
+    .filter((job) => job.link_status !== "gone")
     .filter((job) => !dismissedIds.has(job.id))
     .map((job) => ({
       job,

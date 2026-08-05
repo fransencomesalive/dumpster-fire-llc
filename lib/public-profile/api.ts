@@ -733,6 +733,14 @@ function matchJobFromPublicJob(job: PublicJobRecord): MatchJob {
   };
 }
 
+function currentPostingAvailability(
+  job: PublicJobRecord | undefined,
+  snapshot: Pursuit["jobSnapshot"],
+): "available" | "snapshot_only" | "unavailable" {
+  if (!job) return snapshot ? "snapshot_only" : "unavailable";
+  return job.linkStatus === "gone" ? "unavailable" : "available";
+}
+
 function workExampleRecommendationIds(match: MatchResult) {
   return [
     match.recommendations.workExample?.workExample.id,
@@ -1273,7 +1281,7 @@ export async function handlePublicProfileSavedPursuitsListRequest(
         compensation: snapshot?.compensation ?? job?.compensationText ?? null,
         sourceUrl: snapshot?.sourceUrl ?? job?.sourceUrl ?? null,
         sourceState: snapshot?.sourceState ?? (job ? (job.ownerUserId ? "user_owned" : "shared") : null),
-        availability: job ? (snapshot?.availability ?? "available") : snapshot ? "snapshot_only" : "unavailable",
+        availability: currentPostingAvailability(job, snapshot),
       },
       savedContext: {
         selectedContactCount: contacts.filter((contact) => contact.selectedForOutreach).length,
@@ -1598,7 +1606,7 @@ export async function handlePublicProfilePursuitReadRequest(
       scrapedAt: snapshot?.scrapedAt ?? job?.scrapedAt ?? null,
       firstSeenAt: snapshot?.firstSeenAt ?? job?.firstSeenAt ?? null,
       lastSeenAt: snapshot?.lastSeenAt ?? job?.lastSeenAt ?? null,
-      availability: job ? (snapshot?.availability ?? "available") : snapshot ? "snapshot_only" : "unavailable",
+      availability: currentPostingAvailability(job, snapshot),
       capturedAt: snapshot?.capturedAt ?? null,
     },
     contacts: contacts.map((contact) => ({

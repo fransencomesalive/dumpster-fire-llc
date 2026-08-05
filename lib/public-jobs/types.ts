@@ -1,5 +1,6 @@
 import type { MatchLabel } from "../public-profile/matching/types";
 import type { PursuitJobSnapshot } from "../public-profile/pursuits/types";
+import type { PublicJobLinkStatus } from "./link-health";
 
 export const PUBLIC_JOB_MATCHER_VERSION = "public-job-matcher-v3" as const;
 
@@ -46,6 +47,7 @@ export type PublicJobRecord = {
   id: string;
   source: string;
   sourceUrl: string;
+  linkStatus?: PublicJobLinkStatus;
   // Non-null = pasted job private to that user; absent = shared pool row.
   ownerUserId?: string;
   companyName: string;

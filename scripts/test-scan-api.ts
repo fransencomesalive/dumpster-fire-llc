@@ -19,6 +19,15 @@ const scanResult: SourceScanResult = {
   totalFetched: 40,
   totalUpserted: 35,
   sources: [],
+  linkHealth: {
+    candidates: 4,
+    checked: 4,
+    healthy: 3,
+    gone: 1,
+    uncertain: 0,
+    skippedPrivate: 0,
+    skippedFresh: 0,
+  },
 };
 
 async function body(response: Response) {
@@ -83,6 +92,7 @@ async function main() {
     const payload = await body(response);
     assert.equal(payload.totalUpserted, 35);
     assert.equal(payload.totalSources, 2);
+    assert.deepEqual(payload.linkHealth, scanResult.linkHealth);
     assert.equal(typeof ranWith?.now, "function");
     assert.equal(ranWith?.env?.CRON_SECRET, "s3cret");
   }

@@ -680,7 +680,7 @@ async function main() {
       loadJobs: async () => new Map([
         ["job-1", publicJob({ id: "job-1", title: "Older saved" })],
         ["job-2", publicJob({ id: "job-2", title: "Applied" })],
-        ["job-3", publicJob({ id: "job-3", title: "Newer saved" })],
+        ["job-3", publicJob({ id: "job-3", title: "Newer saved", linkStatus: "gone" })],
       ]),
       loadPursuitTrackingEvents: async (_request, _userId, pursuitId) => (
         pursuitId === "applied-newer" ? [trackingEvent({ pursuitId })] : []
@@ -709,6 +709,8 @@ async function main() {
   const savedBucket = savedPursuitsJson.savedForLater as Array<Record<string, unknown>>;
   assert.equal(savedBucket[0].id, "saved-newer");
   assert.equal(savedBucket[1].id, "saved-older");
+  assert.equal((savedBucket[0].posting as Record<string, unknown>).availability, "unavailable");
+  assert.equal((savedBucket[1].posting as Record<string, unknown>).availability, "available");
   const serializedSavedList = JSON.stringify(savedPursuitsJson);
   for (const forbidden of ["Sensitive message body", "private@example.com", "linkedin.example", "idempotencyKey", "payload"]) {
     assert.equal(serializedSavedList.includes(forbidden), false);
@@ -807,6 +809,26 @@ async function main() {
   assert.equal((pursuitReadJson.history as Array<Record<string, unknown>>)[0].timestampAvailable, false);
   assert.equal("events" in pursuitReadJson, false);
   assert.equal(JSON.stringify(pursuitReadJson.history).includes("idempotencyKey"), false);
+
+  const pursuitReadGoneLink = await handlePublicProfilePursuitReadRequest(
+    getRequest("pursuits/pursuit-gone"),
+    "pursuit-gone",
+    {
+      getSession: async () => authed(),
+      repositoryRequest,
+      loadPursuit: async () => savedPursuit({
+        id: "pursuit-gone",
+        jobSnapshot: { availability: "active", sourceUrl: "https://jobs.example/gone" },
+      }),
+      loadJob: async () => publicJob({ linkStatus: "gone" }),
+      loadContactSuggestions: async () => [],
+      loadOutreachMessages: async () => [],
+      loadPursuitTrackingEvents: async () => [],
+    },
+  );
+  assert.equal(pursuitReadGoneLink.status, 200);
+  const pursuitReadGoneJson = await body(pursuitReadGoneLink);
+  assert.equal((pursuitReadGoneJson.posting as Record<string, unknown>).availability, "unavailable");
 
   const pursuitReadStaleHumanPath = await handlePublicProfilePursuitReadRequest(
     getRequest("pursuits/pursuit-1"),
