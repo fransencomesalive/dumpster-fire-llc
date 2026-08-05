@@ -6,6 +6,10 @@
       "schedule": "0 6 * * *"
     },
     {
+      "path": "/api/jobs/link-health",
+      "schedule": "30 6 * * *"
+    },
+    {
       "path": "/api/jobs/refine-postings",
       "schedule": "0 7 * * *"
     },

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import type { PublicProfileRepositoryRequest } from "../lib/public-profile/repository";
-import { handleSourceScanRequest } from "../lib/scan/api";
+import { handleLinkHealthRequest, handleSourceScanRequest } from "../lib/scan/api";
 import type { SourceScanResult } from "../lib/scan/source-scan";
 
 const now = "2026-06-29T12:00:00.000Z";
@@ -19,15 +19,6 @@ const scanResult: SourceScanResult = {
   totalFetched: 40,
   totalUpserted: 35,
   sources: [],
-  linkHealth: {
-    candidates: 4,
-    checked: 4,
-    healthy: 3,
-    gone: 1,
-    uncertain: 0,
-    skippedPrivate: 0,
-    skippedFresh: 0,
-  },
 };
 
 async function body(response: Response) {
@@ -92,9 +83,42 @@ async function main() {
     const payload = await body(response);
     assert.equal(payload.totalUpserted, 35);
     assert.equal(payload.totalSources, 2);
-    assert.deepEqual(payload.linkHealth, scanResult.linkHealth);
     assert.equal(typeof ranWith?.now, "function");
     assert.equal(ranWith?.env?.CRON_SECRET, "s3cret");
+  }
+
+  // ---- Authorized standalone link-health maintenance ----
+  {
+    let checkedAt = "";
+    const response = await handleLinkHealthRequest(request({ authorization: "Bearer s3cret" }), {
+      env: { CRON_SECRET: "s3cret" } as unknown as NodeJS.ProcessEnv,
+      now: () => now,
+      repositoryRequest,
+      runReconciliation: async (_request, options) => {
+        checkedAt = options.now?.() ?? "";
+        return {
+          candidates: 4,
+          checked: 4,
+          healthy: 3,
+          gone: 1,
+          uncertain: 0,
+          skippedPrivate: 0,
+          skippedFresh: 0,
+        };
+      },
+    });
+    assert.equal(response.status, 200);
+    assert.equal(checkedAt, now);
+    assert.deepEqual(await body(response), {
+      checkedAt: now,
+      candidates: 4,
+      checked: 4,
+      healthy: 3,
+      gone: 1,
+      uncertain: 0,
+      skippedPrivate: 0,
+      skippedFresh: 0,
+    });
   }
 
   console.log("scan api: all assertions passed");

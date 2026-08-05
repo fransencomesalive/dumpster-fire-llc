@@ -83,8 +83,7 @@ async function main() {
     });
     assert.equal(result.totalSources, 0);
     assert.equal(result.totalUpserted, 0);
-    assert.equal(result.linkHealth.checked, 0);
-    assert.deepEqual(calls.map((call) => call.table), ["pursuits"]);
+    assert.equal(calls.length, 0);
   }
 
   // ---- Happy path: fetch + upsert + mark ingested ----

@@ -3,6 +3,11 @@ import {
   getPublicProfileRepositoryConfig,
   type PublicProfileRepositoryRequest,
 } from "../public-profile/repository";
+import {
+  reconcileSavedPursuitLinkHealth,
+  type ReconcileSavedPursuitLinkHealthOptions,
+  type SavedPursuitLinkHealthResult,
+} from "../public-jobs/link-health";
 import { runSourceScan, type SourceScanOptions, type SourceScanResult } from "./source-scan";
 import { runPostingRefinement, type PostingRefinementOptions, type PostingRefinementResult } from "./refine-postings";
 
@@ -32,11 +37,48 @@ function bearerToken(request: Request) {
   return match?.[1]?.trim();
 }
 
-function repositoryRequestForOptions(options: SourceScanHandlerOptions) {
+function repositoryRequestForOptions(options: {
+  env?: NodeJS.ProcessEnv;
+  repositoryRequest?: PublicProfileRepositoryRequest;
+}) {
   if (options.repositoryRequest) return options.repositoryRequest;
   const config = getPublicProfileRepositoryConfig(options.env);
   if (!config) return undefined;
   return createPublicProfileRepositoryRequest(config);
+}
+
+export type LinkHealthHandlerOptions = {
+  env?: NodeJS.ProcessEnv;
+  now?: () => string;
+  repositoryRequest?: PublicProfileRepositoryRequest;
+  reconciliationOptions?: ReconcileSavedPursuitLinkHealthOptions;
+  runReconciliation?: (
+    request: PublicProfileRepositoryRequest,
+    options: ReconcileSavedPursuitLinkHealthOptions,
+  ) => Promise<SavedPursuitLinkHealthResult>;
+};
+
+export async function handleLinkHealthRequest(
+  request: Request,
+  options: LinkHealthHandlerOptions = {},
+) {
+  const env = options.env ?? process.env;
+  const secret = env.CRON_SECRET?.trim();
+  if (!secret) {
+    return json({ error: "Link-health trigger is not configured.", missing: ["CRON_SECRET"] }, { status: 503 });
+  }
+  if (bearerToken(request) !== secret) return json({ error: "Unauthorized." }, { status: 401 });
+
+  const repositoryRequest = repositoryRequestForOptions(options);
+  if (!repositoryRequest) return json({ error: "Public jobs storage is not configured." }, { status: 503 });
+
+  const checkedAt = options.now?.() ?? new Date().toISOString();
+  const runReconciliation = options.runReconciliation ?? reconcileSavedPursuitLinkHealth;
+  const result = await runReconciliation(repositoryRequest, {
+    now: () => checkedAt,
+    ...options.reconciliationOptions,
+  });
+  return json({ checkedAt, ...result });
 }
 
 // System-wide source scan trigger. Intended to be driven by a scheduler (Vercel Cron sends
