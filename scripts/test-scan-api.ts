@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import type { PublicProfileRepositoryRequest } from "../lib/public-profile/repository";
 import { handleLinkHealthRequest, handleSourceScanRequest } from "../lib/scan/api";
 import type { SourceScanResult } from "../lib/scan/source-scan";
@@ -26,6 +27,9 @@ async function body(response: Response) {
 }
 
 async function main() {
+  const sourceScanRoute = readFileSync("app/api/jobs/source-scan/route.ts", "utf8");
+  assert.match(sourceScanRoute, /export const maxDuration = 180;/);
+
   // ---- Not configured: no CRON_SECRET ----
   {
     const response = await handleSourceScanRequest(request({ authorization: "Bearer anything" }), {
