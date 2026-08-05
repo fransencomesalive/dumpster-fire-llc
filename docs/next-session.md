@@ -1,9 +1,33 @@
-# Next Session: 2026-08-05 JOB-031 Review Handoff Live; Link Lifecycle Pending
+# Next Session: 2026-08-05 JOB-031 Link Lifecycle Live
 
 _Updated 2026-08-05. Read `AGENTS.md` and follow the Session Start Protocol in
 `docs/project-operating-state.md` before editing._
 
 ## Immediate state
+
+JOB-031 is fixed in production. Migration `20260805000100_job_link_health.sql` is applied and
+recorded. App commits `7f77f3f` and `7cb5229` are on `origin/main`; Vercel production deployment
+`dpl_EAotUcz2ioGG5UG5HBx7dMVyA8Ux` is Ready and the canonical domain returns HTTP 200 from that
+deployment. The CRON_SECRET-guarded `/api/jobs/link-health` route is registered at `30 6 * * *`.
+
+The lifecycle classifies confirmed 404/410 responses and exact-posting redirects to generic
+jobs/careers pages as gone, preserves access-limited/transient responses as uncertain, excludes
+gone jobs from match/scan reads, expires their active scan rows, and maps the live job state into
+the existing Saved Pursuits unavailable-posting behavior. Private user-pasted jobs are not probed.
+No UI or public copy changed.
+
+Two official production cron invocations returned HTTP 200. All 33 shared public jobs among 43
+current pursuit jobs were checked; 10 private user-pasted jobs were intentionally skipped. Final
+public counts: 21 healthy, 8 gone, 4 uncertain, zero unchecked public jobs, and zero active scan
+results for gone jobs. All 37 fixtures, TypeScript, zero-error lint, Webpack build, focused
+regressions, migration harness, and production readbacks passed.
+
+Next immediate action: no JOB-031 work remains in flight. A manual production run showed the
+separate `/api/jobs/source-scan` cron still exceeds its 60-second function budget. Treat that as a
+new, independently scoped performance investigation; do not recouple link maintenance to source
+scanning and do not apply the archived JOB-031 snapshot patch.
+
+## JOB-031 review handoff history
 
 The remote review/retry path is fixed and live in portable QA-AGENT `0.3.4`. Factory commit
 `921529f1a627237da8f97408f05284ccd1b7ea20` is local-only. Installed relay commit
@@ -24,8 +48,7 @@ returned 404; all nine scan rows still said active. A safe universal solution mu
 confirmed gone links (404 or exact-posting redirect to a generic landing page) from uncertain
 responses (403, timeout, 5xx), persist link health outside the immutable pursuit snapshot, exclude
 confirmed-gone jobs from new scan results, and expose current availability to the existing Saved
-Pursuits behavior. Scope and verify that backend lifecycle design before editing. JOB-031 remains
-**NOT FIXED** at the application layer.
+Pursuits behavior. That universal lifecycle is now live as described above.
 
 The original JOB-031 review archive is preserved at
 `outbox/review-archives/JOB-031-32762b4f-5434-4cd3-b2c7-4f0c7a23002d/` in the installed relay.

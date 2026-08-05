@@ -59,6 +59,21 @@ re-run a psql-applied migration through the CLI — A4 in particular is non-idem
 Every migration through `20260721000100` is applied and recorded. The most recent production
 apply is the broad-source restoration migration documented below.
 
+## Applied 2026-08-05 (confirmed + recorded in schema_migrations)
+
+- `20260805000100_job_link_health.sql` adds `jobs.link_status`, `link_checked_at`,
+  `link_http_status`, and `link_health_reason`, plus status/HTTP constraints and a stale-check
+  index. The migration is additive and idempotent. Its isolated PostgreSQL harness passed clean
+  apply and reapply.
+- A linked Supabase CLI dry run identified this migration only. `supabase db push --linked`
+  applied it successfully, and local/remote migration-list readback matched afterward. PostgREST
+  returned HTTP 200 for all four columns before the application deployment.
+- App commits `7f77f3f` and `7cb5229` consume the columns. Vercel deployment
+  `dpl_EAotUcz2ioGG5UG5HBx7dMVyA8Ux` completed the initial production reconciliation: all 33
+  shared public pursuit jobs checked, with 21 healthy, 8 gone, and 4 uncertain. Ten private
+  user-pasted jobs were intentionally not probed. Confirmed-gone jobs had zero active scan rows
+  after reconciliation.
+
 ## Applied 2026-07-20 (confirmed + recorded in schema_migrations)
 
 - `20260720000100_human_path_contact_reachability.sql` adds the nullable

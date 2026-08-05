@@ -1,6 +1,46 @@
 # Current State
 
-## 2026-08-05 - JOB-031 remote review handoff fixed; application bug root-caused but not patched (Codex)
+## 2026-08-05 - JOB-031 universal posting-link lifecycle: LIVE (Codex)
+
+JOB-031 is fixed at both layers. Portable QA-AGENT `0.3.4` had already corrected the remote
+review-action handoff. The application now also maintains a universal current-link lifecycle for
+every shared public job attached to a saved pursuit. `jobs.link_status` records `unknown`,
+`healthy`, `gone`, or `uncertain` with check time, HTTP status, and a bounded reason. A confirmed
+404/410 or an exact-posting redirect to a generic jobs/careers landing page marks the link gone.
+403, 429, timeout, DNS/network failure, and 5xx responses remain uncertain and do not retire a
+job. An uncertain recheck cannot overturn a prior confirmed-gone result; only a positive exact
+posting response can restore it. Every redirect hop is revalidated against the existing public-URL
+safety checks.
+
+Confirmed-gone jobs are excluded from new match reads and scan candidates, their active
+`job_scan_results` rows are expired, and Saved Pursuits receives the existing unavailable-posting
+state through the current job record rather than the immutable pursuit snapshot. Private
+user-pasted jobs are intentionally not probed. No UI, layout, CSS, or public copy changed.
+
+Migration `20260805000100_job_link_health.sql` was applied through the linked Supabase CLI and
+confirmed in remote migration history. Application commits `7f77f3f` and `7cb5229` are on
+`origin/main`. The latter separates maintenance from the already-long source scan into the
+CRON_SECRET-guarded `/api/jobs/link-health` route, scheduled by Vercel at `30 6 * * *`. Production
+deployment `dpl_EAotUcz2ioGG5UG5HBx7dMVyA8Ux` is Ready and the canonical domain returns HTTP 200
+from that exact deployment.
+
+Two official Vercel cron invocations returned HTTP 200 and completed the production backfill. All
+33 shared public jobs attached to the 43 current non-deleted pursuit jobs were checked; the other
+10 are private user-pasted jobs and were correctly skipped. Final public results were 21 healthy,
+8 confirmed gone, and 4 uncertain. The eight gone reasons were five generic landing redirects and
+three HTTP-gone responses. Readback confirmed zero unchecked public pursuit jobs and zero active
+scan results for the eight gone jobs.
+
+Verification passed the isolated migration harness, link-health/classifier/SSRF regressions,
+repository and profile API regressions, all 37 fixture suites, TypeScript, lint with zero errors
+and four unrelated pre-existing warnings, `git diff --check`, a local Next.js Webpack production
+build, Vercel's production build, the registered four-cron schedule, both production cron HTTP
+200s, aggregate database readback, and canonical HTTP 200. A manual run of the separate legacy
+`/api/jobs/source-scan` cron still timed out at 60 seconds before this maintenance was separated;
+that pre-existing source-scan performance issue is not part of JOB-031 and remains a distinct
+future investigation.
+
+## 2026-08-05 - JOB-031 remote review handoff fixed; archived diagnosis rejected (Codex)
 
 JOB-031 exposed two separate problems. The repeated `action_unavailable` / patch-retry failure was
 an orchestration defect: the hosted Railway relay tried to execute approve, discard, and rerun
@@ -34,10 +74,10 @@ account with nine saved pursuits had five exact healthy links, three expired Him
 that redirected to the generic Himalayas jobs page, and one Workable listing that returned 404.
 All nine were still marked `active`. Across all 43 saved pursuits, external failures included
 landing-page redirects, 404s, provider bot blocks, and other transient responses. The correct
-application fix needs universal link-health and availability lifecycle handling, treating verified
-404/landing redirects as gone while preserving blocked, timed-out, and uncertain links. JOB-031's
-application behavior remains **NOT FIXED** pending that scoped backend design; no speculative app
-patch was applied.
+application fix needed universal link-health and availability lifecycle handling, treating verified
+404/landing redirects as gone while preserving blocked, timed-out, and uncertain links. That
+backend lifecycle is now live in the release documented above; the archived snapshot-precedence
+patch was never applied.
 
 Durable lesson: a review-action failure and a task diagnosis failure are different layers. First
 prove that the exact patch reached the checkout and that the review state transition completed.

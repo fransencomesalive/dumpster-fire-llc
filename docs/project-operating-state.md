@@ -89,17 +89,26 @@ Not yet built as public workflows:
 
 ## Canonical Next Product Task
 
-> **UPDATED 2026-08-05: JOB-031 REVIEW HANDOFF LIVE; APP FIX PENDING.** Portable QA-AGENT `0.3.4`
+> **UPDATED 2026-08-05: JOB-031 UNIVERSAL LINK LIFECYCLE LIVE.** Migration
+> `20260805000100_job_link_health.sql` is applied and recorded. App commits `7f77f3f` and
+> `7cb5229` are on `origin/main`; Vercel deployment `dpl_EAotUcz2ioGG5UG5HBx7dMVyA8Ux` is Ready
+> and serves the canonical HTTP 200 response. The dedicated CRON_SECRET-guarded
+> `/api/jobs/link-health` route runs at `30 6 * * *`. All 33 shared public jobs attached to current
+> pursuits were checked in production: 21 healthy, 8 confirmed gone, 4 uncertain; the 10 private
+> user-pasted jobs were intentionally skipped. Gone jobs are excluded from matching/scans and have
+> zero active scan rows. No JOB-031 work remains in flight. The separate source-scan cron's observed
+> 60-second timeout is a future performance investigation and must not be coupled back to this
+> maintenance path. Do not apply the archived snapshot-precedence patch.
+
+> **UPDATED 2026-08-05: JOB-031 REVIEW HANDOFF LIVE; ARCHIVED DIAGNOSIS REJECTED.** Portable QA-AGENT `0.3.4`
 > moves approve, discard, and rerun actions from the hosted relay to the connected worker that owns
 > the checkout and patch. Factory commit `921529f` is local-only; installed relay commit `b808b76`
 > is deployed successfully by Railway as `e2f3f12a-0b84-4508-a013-a482d4fc58a8`, with migration
 > 010 applied and production health/readiness green. JOB-031 crossed that path successfully; its
 > next execution blocked on missing runtime evidence rather than patch handling. Independent
 > production checks disproved the archived snapshot-precedence patch and found stale external-link
-> availability instead: confirmed-gone postings remain marked active. The application behavior is
-> **NOT FIXED**. Read `docs/next-session.md`; the next scoped product task is a universal backend
-> link-health lifecycle that distinguishes confirmed-gone postings from uncertain provider
-> responses. Do not apply the archived JOB-031 patch.
+> availability instead. The universal backend lifecycle is now live in the release above. Preserve
+> the archived patch only as audit history; do not apply it.
 
 > **UPDATED 2026-08-05: RECOVERABLE QA INVESTIGATIONS LIVE.** Portable QA-AGENT `0.3.3` is at
 > local factory commit `e49180b`; installed relay commit `b40a2a1` is deployed by Railway as
