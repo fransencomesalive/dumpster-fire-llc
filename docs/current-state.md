@@ -26,6 +26,11 @@ the `/healthz` release check. Readiness reports Postgres ready, matching
 project/install identity, signed external reply delivery with two retries, and the Codex worker
 connected as `macbook-air-codex`.
 
+The Railway workspace is now on an active paid Hobby subscription, not the trial. The authenticated
+billing readback reports `isTrialing=false`, subscription state `ACTIVE`, an active subscription,
+and a configured payment method. The billing period runs from 2026-08-05 14:46:36 UTC through
+2026-09-05 14:46:36 UTC, with the next invoice scheduled for the latter timestamp.
+
 The previous JSON state was imported into Postgres with exact counts: 26 tickets, 62 ticket events,
 30 ticket messages, 279 approvals, six Codex tasks, 26 progress events, ten user replies, and 265
 audit rows. The imported counter initially held 26, which the store interprets as the next number;

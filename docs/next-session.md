@@ -15,6 +15,10 @@ Automatic deployment `c3ccf7cd-7b66-4188-8d65-34ca5dbf85a6` successfully deploye
 `d3b6694` with the Dockerfile build, pre-deploy `npm run db:prepare`, `/healthz`, and restart policy
 active.
 
+The Railway workspace is on an active paid Hobby subscription with a payment method configured;
+it is no longer trialing. The current billing period ends and the next invoice is scheduled for
+2026-09-05 14:46:36 UTC.
+
 The Vercel production variable `QA_AGENT_URL` points to Railway; Preview remains unchanged.
 Vercel deployment `dpl_8no8zmng3N1WbKw5JKK7Ksqe8QoL` serves app commit
 `dc3479e897a48c957ced65519a58e54b0af2126f`, and the canonical domain returns HTTP 200. Telegram

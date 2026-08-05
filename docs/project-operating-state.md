@@ -99,7 +99,9 @@ Not yet built as public workflows:
 > JOB-027 persisted, delivered its Telegram card, accepted a real close callback, and remains
 > closed in Postgres. The connected executor is accurately identified as `macbook-air-codex`, not
 > Studio. Relay availability no longer depends on the Air, but coding-agent execution still does
-> until another worker is installed. Supabase signup email capacity is live at 30/hour. Read
+> until another worker is installed. The Railway workspace is on an active paid Hobby subscription,
+> no longer trialing, with its next invoice scheduled for 2026-09-05 14:46:36 UTC. Supabase signup
+> email capacity is live at 30/hour. Read
 > `docs/next-session.md`. The remaining optional infrastructure follow-up is worker installation
 > on Studio or another persistent host.
 
