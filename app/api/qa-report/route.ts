@@ -4,6 +4,7 @@ const MESSAGE_MAX = 5000;
 const CONTACT_MAX = 320;
 const URL_MAX = 2000;
 const BROWSER_MAX = 400;
+const FAILURE_MAX = 8;
 const DEVICES = new Set(["mobile", "tablet", "desktop"]);
 
 function json(status: number, body: Record<string, unknown>) {
@@ -47,6 +48,10 @@ export async function POST(request: Request) {
   if (typeof context.signed_in === "boolean") {
     systemContext.signed_in = context.signed_in;
   }
+  const recentFailures = sanitizeRecentFailures(context.recent_failures);
+  if (recentFailures.length > 0) {
+    systemContext.recent_failures = recentFailures;
+  }
 
   const report: Record<string, unknown> = {
     source: "qa-feedback-widget",
@@ -73,4 +78,46 @@ export async function POST(request: Request) {
   } catch {
     return json(502, { ok: false, error: "qa_agent_unavailable" });
   }
+}
+
+function sanitizeRecentFailures(value: unknown) {
+  if (!Array.isArray(value)) return [];
+  return value.slice(-FAILURE_MAX).flatMap((item) => {
+    if (!item || typeof item !== "object" || Array.isArray(item)) return [];
+    const source = item as Record<string, unknown>;
+    const route = safeString(source.route, 500);
+    const occurredAt = safeString(source.occurred_at, 40);
+    if (!route || !route.startsWith("/api/") || !occurredAt || !Number.isFinite(new Date(occurredAt).getTime())) return [];
+    const status = Number(source.status);
+    const duration = Number(source.duration_ms);
+    return [Object.fromEntries(Object.entries({
+      occurred_at: occurredAt,
+      route,
+      method: safeToken(source.method, 10),
+      status: Number.isInteger(status) && status >= 0 && status <= 599 ? status : 0,
+      error_code: safeToken(source.error_code, 100),
+      request_id: safeToken(source.request_id, 200),
+      duration_ms: Number.isFinite(duration) && duration >= 0 ? Math.min(Math.round(duration), 120_000) : undefined,
+      pursuit_id: safeToken(source.pursuit_id, 200),
+      job_id: safeToken(source.job_id, 200),
+      previous_message_id: safeToken(source.previous_message_id, 200),
+      contact_ids: safeIdentifierList(source.contact_ids, 500),
+    }).filter(([, field]) => field !== undefined))];
+  });
+}
+
+function safeString(value: unknown, max: number) {
+  if (typeof value !== "string") return undefined;
+  const text = value.replaceAll(/\s+/g, " ").trim();
+  return text ? text.slice(0, max) : undefined;
+}
+
+function safeToken(value: unknown, max: number) {
+  const text = safeString(value, max);
+  return text && /^[a-zA-Z0-9._:-]+$/.test(text) ? text : undefined;
+}
+
+function safeIdentifierList(value: unknown, max: number) {
+  const text = safeString(value, max);
+  return text && /^[a-zA-Z0-9._:,\-]+$/.test(text) ? text : undefined;
 }

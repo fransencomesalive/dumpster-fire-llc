@@ -1,3 +1,5 @@
+import { recordClientApiFailure } from "../qa/client-diagnostics";
+
 export class PublicProfileApiError extends Error {
   status: number;
   body: unknown;
@@ -34,6 +36,7 @@ export async function requestPublicProfileApi<T>(
   path: string,
   options: PublicProfileApiRequestOptions,
 ): Promise<T> {
+  const startedAt = Date.now();
   const attempt = async (token: string) => {
     const headers = new Headers(options.headers);
     headers.set("Authorization", `Bearer ${token}`);
@@ -47,19 +50,48 @@ export async function requestPublicProfileApi<T>(
       body: options.body === undefined ? undefined : JSON.stringify(options.body),
     });
     const body = await response.json().catch(() => null);
-    return { response, body };
+    return {
+      response,
+      body,
+      requestId: response.headers.get("x-request-id")
+        || response.headers.get("x-vercel-id")
+        || response.headers.get("traceparent")
+    };
   };
 
-  let { response, body } = await attempt(options.accessToken);
+  let response: Response;
+  let body: unknown;
+  let requestId: string | null;
+  try {
+    ({ response, body, requestId } = await attempt(options.accessToken));
 
-  if (response.status === 401) {
-    const freshToken = await refreshPublicProfileAccessToken();
-    if (freshToken) {
-      ({ response, body } = await attempt(freshToken));
+    if (response.status === 401) {
+      const freshToken = await refreshPublicProfileAccessToken();
+      if (freshToken) {
+        ({ response, body, requestId } = await attempt(freshToken));
+      }
     }
+  } catch (error) {
+    recordClientApiFailure({
+      path,
+      method: options.method,
+      status: 0,
+      durationMs: Date.now() - startedAt,
+      requestBody: options.body
+    });
+    throw error;
   }
 
   if (!response.ok) {
+    recordClientApiFailure({
+      path,
+      method: options.method,
+      status: response.status,
+      body,
+      requestId,
+      durationMs: Date.now() - startedAt,
+      requestBody: options.body
+    });
     // Include the HTTP status: when a route fails before it can answer with JSON
     // there is no body to read, and a bare "request failed" is undiagnosable.
     throw new PublicProfileApiError(

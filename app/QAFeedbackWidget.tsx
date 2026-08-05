@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { readPublicProfileAccessToken } from "@/lib/public-profile/browser-session";
+import { readRecentClientApiFailures } from "@/lib/qa/client-diagnostics";
 import styles from "./QAFeedbackWidget.module.css";
 
 const DRAFT_KEY = "dumpster-fire-qa-feedback-draft";
@@ -72,6 +73,7 @@ export default function QAFeedbackWidget() {
             browser: navigator.userAgent,
             device: detectDevice(),
             signed_in: Boolean(readPublicProfileAccessToken()),
+            recent_failures: readRecentClientApiFailures(),
           },
         }),
       });
