@@ -17,8 +17,12 @@ The QA relay is now hosted at `https://qa-relay-production.up.railway.app` in Ra
 (`80d029d6-fd5c-4767-ba90-0bcafb1d9b34`) uses dedicated Postgres service
 `e2be879e-2bf3-4836-99b2-400624e16b45`. The portable `railway.json` builds from the Dockerfile,
 runs `npm run db:prepare` before release, checks `/healthz`, and restarts failed processes. Final
-clean Railway deployment `9c636de3-ae4f-4523-bdb5-89521b95e3b6` succeeded after a second
-redeploy, proving database preparation is repeatable. Readiness reports Postgres ready, matching
+clean CLI deployment `9c636de3-ae4f-4523-bdb5-89521b95e3b6` succeeded after a second redeploy,
+proving database preparation is repeatable. Railway's GitHub app now has access to the private
+relay repository, and service `qa-relay` is connected explicitly to `main`. That connection
+triggered automatic deployment `c3ccf7cd-7b66-4188-8d65-34ca5dbf85a6` from commit `d3b6694`.
+The automatic release succeeded using `/railway.json`, the Dockerfile, `npm run db:prepare`, and
+the `/healthz` release check. Readiness reports Postgres ready, matching
 project/install identity, signed external reply delivery with two retries, and the Codex worker
 connected as `macbook-air-codex`.
 
@@ -31,8 +35,8 @@ an insert, because PostgreSQL's singleton trigger fires before `ON CONFLICT` and
 every redeploy fail after the first seed.
 
 Production Vercel variable `QA_AGENT_URL` now points to Railway. Preview was intentionally left
-unchanged. Vercel deployment `dpl_8TwLbPDPRWXDHuqGV2mFD2dDJ8hu` redeployed source commit
-`ae36e9384ce9a295b0cb949b16b74a6a2b13176f`; the canonical domain returns HTTP 200. Telegram's
+unchanged. Vercel deployment `dpl_8no8zmng3N1WbKw5JKK7Ksqe8QoL` serves app commit
+`dc3479e897a48c957ced65519a58e54b0af2126f`; the canonical domain returns HTTP 200. Telegram's
 webhook now points exactly to Railway's project-scoped path, accepts `message` and
 `callback_query`, has zero pending updates, and reports no error.
 
@@ -58,11 +62,10 @@ currently that worker is on the Air, so tasks wait safely when it is offline. Th
 ngrok process may remain as rollback/Preview infrastructure but are no longer in the production
 path. The temporary Railway migration SSH key was revoked and its local files were deleted.
 
-Remaining setup: grant Railway's GitHub app access to the private
-`fransencomesalive/dumpster-fire-relay` repository, then connect service `qa-relay` to `main` for
-automatic deployments. Until that manual GitHub authorization is completed, deploys are explicit
-Railway CLI uploads from the clean relay checkout. A later approved step can move the worker from
-the Air to the Studio or another persistent executor; that is separate from the now-durable relay.
+Railway source deployment is now automatic from private repository
+`fransencomesalive/dumpster-fire-relay` branch `main`; explicit CLI uploads are no longer required
+for ordinary releases. A later approved step can move the worker from the Air to the Studio or
+another persistent executor; that is separate from the now-durable relay.
 
 ## 2026-08-04 - JOB-024 prompted Telegram reply editing: LIVE (Codex)
 

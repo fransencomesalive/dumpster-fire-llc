@@ -91,15 +91,17 @@ Not yet built as public workflows:
 
 > **UPDATED 2026-08-05: DURABLE HOSTED QA RELAY LIVE.** Production feedback intake, Postgres state,
 > signed reply delivery, and Telegram callbacks now run on Railway at
-> `https://qa-relay-production.up.railway.app`. Final Railway deployment
-> `9c636de3-ae4f-4523-bdb5-89521b95e3b6` is healthy and survived repeat database preparation.
-> Vercel production deployment `dpl_8TwLbPDPRWXDHuqGV2mFD2dDJ8hu` uses the Railway URL; live
+> `https://qa-relay-production.up.railway.app`. Railway's GitHub app is authorized for private
+> repository `fransencomesalive/dumpster-fire-relay`, service `qa-relay` tracks `main`, and
+> automatic deployment `c3ccf7cd-7b66-4188-8d65-34ca5dbf85a6` successfully deployed `d3b6694`
+> with the checked-in Dockerfile, database preparation, and health check. Vercel production
+> deployment `dpl_8no8zmng3N1WbKw5JKK7Ksqe8QoL` uses the Railway URL; live
 > JOB-027 persisted, delivered its Telegram card, accepted a real close callback, and remains
 > closed in Postgres. The connected executor is accurately identified as `macbook-air-codex`, not
 > Studio. Relay availability no longer depends on the Air, but coding-agent execution still does
 > until another worker is installed. Supabase signup email capacity is live at 30/hour. Read
-> `docs/next-session.md`. The only infrastructure follow-up is manual Railway GitHub-app access for
-> the private relay repo, then optional worker installation on Studio or another persistent host.
+> `docs/next-session.md`. The remaining optional infrastructure follow-up is worker installation
+> on Studio or another persistent host.
 
 > **UPDATED 2026-08-04: JOB-024 PROMPTED REPLY EDITING LIVE.** Portable QA-AGENT `0.3.1` is
 > committed locally at `d0f4b09` and the installed relay is pushed on `origin/main` at `64f1b83`.

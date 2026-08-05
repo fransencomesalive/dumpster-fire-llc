@@ -9,13 +9,15 @@ Production feedback and Telegram callbacks are live on Railway at
 `https://qa-relay-production.up.railway.app`; they no longer depend on ngrok or the MacBook Air
 remaining open. Railway project `d81db416-92b7-4ce3-b979-db4af471b348` contains `qa-relay` service
 `80d029d6-fd5c-4767-ba90-0bcafb1d9b34` and dedicated Postgres service
-`e2be879e-2bf3-4836-99b2-400624e16b45`. Final deployment
-`9c636de3-ae4f-4523-bdb5-89521b95e3b6` is successful with Dockerfile build, pre-deploy
-`npm run db:prepare`, `/healthz`, and restart policy active.
+`e2be879e-2bf3-4836-99b2-400624e16b45`. Railway's GitHub app is authorized for the private relay
+repository, and `qa-relay` is connected to `fransencomesalive/dumpster-fire-relay` branch `main`.
+Automatic deployment `c3ccf7cd-7b66-4188-8d65-34ca5dbf85a6` successfully deployed commit
+`d3b6694` with the Dockerfile build, pre-deploy `npm run db:prepare`, `/healthz`, and restart policy
+active.
 
 The Vercel production variable `QA_AGENT_URL` points to Railway; Preview remains unchanged.
-Vercel deployment `dpl_8TwLbPDPRWXDHuqGV2mFD2dDJ8hu` serves app commit
-`ae36e9384ce9a295b0cb949b16b74a6a2b13176f`, and the canonical domain returns HTTP 200. Telegram
+Vercel deployment `dpl_8no8zmng3N1WbKw5JKK7Ksqe8QoL` serves app commit
+`dc3479e897a48c957ced65519a58e54b0af2126f`, and the canonical domain returns HTTP 200. Telegram
 webhook verification passes with the exact Railway URL, `message` plus `callback_query`, zero
 pending updates, and no last error.
 
@@ -36,12 +38,10 @@ Supabase custom SMTP is configured with email confirmation required and producti
 `rate_limit_email_sent=30`; `supabase/config.toml` matches. Charlie's failed signup did not leave an
 Auth user, so the address can retry.
 
-Next immediate action: Randall must grant Railway's GitHub app access to the private
-`fransencomesalive/dumpster-fire-relay` repository. Then connect `qa-relay` to repo `main` and
-verify an automatic deployment. After that, if desired, install the same portable worker on the
-Mac Studio or another persistent executor and retire the Air worker. Do not represent the worker
-as Studio until the destination machine proves its hostname and Railway readiness reports that
-worker id.
+Next optional infrastructure action: install the same portable worker on the Mac Studio or another
+persistent executor and retire the Air worker. Do not represent the worker as Studio until the
+destination machine proves its hostname and Railway readiness reports that worker id. Ordinary
+relay releases now deploy automatically from private repository `main`.
 
 ## Prior QA relay release
 
