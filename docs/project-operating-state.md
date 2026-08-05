@@ -89,6 +89,17 @@ Not yet built as public workflows:
 
 ## Canonical Next Product Task
 
+> **UPDATED 2026-08-05: RECOVERABLE QA INVESTIGATIONS LIVE.** Portable QA-AGENT `0.3.3` is at
+> local factory commit `e49180b`; installed relay commit `b40a2a1` is deployed by Railway as
+> `8d4f815c-6fde-4e16-9949-fa7eab1f3f26` with migration 009 applied. App commit `770a9e6` is
+> live in Vercel deployment `dpl_3ELBKTA7JDb2QGWUDg22o5V5UCNC`. Failed and blocked investigations
+> now retain structured evidence and any patch, executor crashes salvage partial changes, missing
+> worker dependencies self-provision from the lockfile, and future reports carry privacy-safe API
+> failure breadcrumbs. JOB-030 attempt 2 correctly ended blocked because its original report lacks
+> runtime request evidence; the outreach product failure remains NOT ROOT CAUSED. The Air worker is
+> clean, dependency-ready, current, and idle. Read `docs/next-session.md` and wait for a new real
+> occurrence carrying the added API evidence rather than approving the archived speculative patch.
+
 > **UPDATED 2026-08-05: DURABLE HOSTED QA RELAY LIVE.** Production feedback intake, Postgres state,
 > signed reply delivery, and Telegram callbacks now run on Railway at
 > `https://qa-relay-production.up.railway.app`. Railway's GitHub app is authorized for private

@@ -1,7 +1,39 @@
-# Next Session: 2026-08-05 Durable Hosted QA Relay Live
+# Next Session: 2026-08-05 Recoverable QA Investigations Live
 
 _Updated 2026-08-05. Read `AGENTS.md` and follow the Session Start Protocol in
 `docs/project-operating-state.md` before editing._
+
+## Current QA investigation release
+
+Portable QA-AGENT `0.3.3` is live. Factory commit `e49180b` is local-only because the factory has
+no remote. Installed relay commit `b40a2a1` is on `origin/main` and Railway deployment
+`8d4f815c-6fde-4e16-9949-fa7eab1f3f26` applied migration 009 successfully. App commit `770a9e6`
+is on `origin/main` and live in Vercel deployment `dpl_3ELBKTA7JDb2QGWUDg22o5V5UCNC`.
+
+The execution lifecycle now preserves structured findings for failed and blocked work, captures any
+changed files for review regardless of the model's terminal label, salvages patches after executor
+failure, provisions missing lockfile-pinned worker dependencies, and leaves the worker clean after a
+no-change investigation. Future QA reports attach a bounded allowlist of recent API failure
+breadcrumbs without query strings, tokens, request bodies, or user text.
+
+JOB-030's first abandoned patch is archived at
+`outbox/review-archives/JOB-030-91825ca4-eea6-430e-8c7f-4532df970f6a/changes.patch`, SHA-256
+`b974371442c2b3533d2a733059d42ecc2554c1fde68cc4680f7fc15f1eb85fcd`. It is only a hypothesis
+and must not be approved as the outreach fix without runtime evidence. Attempt 2 correctly ended as
+`blocked` because the original report predates the new API breadcrumbs. The Air worker is clean,
+dependency-ready, synchronized to app commit `770a9e6`, and idle.
+
+Next immediate action: wait for the next real outreach failure. Its QA report should identify the
+failed route, status, request reference, pursuit/job identifiers, and contact identifiers
+automatically. Use that evidence to diagnose the product bug at the exact failing layer. Do not
+ship the archived URL-precedence patch merely because it exists.
+
+Release evidence: 598 portable tests with zero failures and nine intentional skips, generated-install
+verification, 37 app fixture suites, TypeScript, lint with zero errors, local Webpack build, Vercel
+Turbopack build, Railway migration/database smoke, canonical app HTTP 200, relay HTTP 200, and full
+production metadata verification. Telegram has the exact Railway webhook and zero pending updates.
+Its retained last-error field is a historical 409 from `2026-08-05T15:06:31Z`; investigate only if
+that timestamp advances or pending updates appear.
 
 ## Current production QA infrastructure
 

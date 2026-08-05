@@ -1,5 +1,64 @@
 # Current State
 
+## 2026-08-05 - Recoverable QA investigations and API evidence: LIVE (Codex)
+
+JOB-030 exposed a failure in the QA execution system as well as an evidence gap in the report.
+The original report contained the page, browser, device, sign-in state, and app commit, but did not
+identify the failed API route, response status, request reference, pursuit, job, or selected
+contacts. The first Codex attempt still created a plausible two-file patch, then reported that it
+lacked enough evidence to verify the root cause. The worker discarded the structured result,
+left those files dirty in its dedicated checkout, and silently prevented every later task from
+being claimed.
+
+The abandoned patch was preserved before cleanup at
+`outbox/review-archives/JOB-030-91825ca4-eea6-430e-8c7f-4532df970f6a/changes.patch` in the installed
+relay. Its SHA-256 is `b974371442c2b3533d2a733059d42ecc2554c1fde68cc4680f7fc15f1eb85fcd`, which exactly
+matches the abandoned worker diff. It prefers a current job URL over an older pursuit snapshot and
+adds two assertions. It remains an unverified hypothesis and was not shipped as an app fix.
+
+Portable QA-AGENT `0.3.3` corrects the lifecycle universally. A task that cannot establish a root
+cause now becomes `blocked` and its summary, checks, risk, base evidence, and reason remain stored
+and visible. Any changed files are captured as a reviewable patch even when the model reports
+blocked or failed. Executor crashes also salvage uncommitted task changes as a high-risk review
+item. Failed and blocked tasks require an explicit retry. A completed investigation without a diff
+is reported as an investigation, not as a patch awaiting review. The dedicated worker now runs
+lockfile-pinned `npm ci` provisioning when dependencies are missing or stale, and a clean no-change
+result no longer creates a fake diff fingerprint.
+
+Future feedback reports now include up to eight recent, privacy-safe client API failure breadcrumbs.
+The app records only route pathname, method, status, bounded error code, request reference, duration,
+and relevant pursuit, job, message, and contact identifiers. Query strings, access tokens, request
+bodies, user-authored text, and arbitrary server fields are excluded. The Vercel route validates the
+same allowlist again before forwarding anything to the relay. Task packets surface those bounded
+breadcrumbs as investigation evidence.
+
+The portable factory is committed locally at
+`e49180b` and has no remote. The installed relay is pushed to `origin/main` at `b40a2a1`; Railway
+deployment `8d4f815c-6fde-4e16-9949-fa7eab1f3f26` succeeded and applied migration
+`009_blocked_task_evidence.sql`. The app is pushed at `770a9e6` and is live in Vercel production
+deployment `dpl_3ELBKTA7JDb2QGWUDg22o5V5UCNC`. Both canonical production endpoints return HTTP 200.
+
+Verification passed with 598 portable tests, 589 passed, zero failed, and nine intentional skips,
+plus generated-install verification. The app passed all 37 fixture suites, the diagnostic-specific
+test, TypeScript, lint with zero errors and four pre-existing warnings, a local Webpack production
+build, and Vercel's production Turbopack build. The local default Turbopack build stalled and was
+stopped; it is not counted as passing. Railway database preparation applied migration 009 and its
+full database smoke check passed. Production readiness reports Postgres ready and the Air worker
+connected.
+
+After the archived files were restored, the Air worker installed dependencies, synchronized its
+clean checkout to app commit `770a9e6`, and retried JOB-030 as attempt 2. It correctly ended
+`blocked` with the reason that required runtime evidence is absent and speculative implementation
+would violate bug-fix scope. It returned to idle with a clean checkout and ready dependencies.
+This verifies the lifecycle correction, but the reported outreach failure itself remains
+**NOT ROOT CAUSED** because the original report predates API breadcrumbs. A new occurrence after
+this release should carry the missing route and request evidence automatically.
+
+Telegram is registered at the exact Railway webhook with `message` and `callback_query`, zero
+pending updates, and an idempotent setWebhook response of `Webhook is already set`. Telegram still
+reports a historical `409 Conflict` timestamped `2026-08-05T15:06:31Z`; it predates this deployment
+and no updates are pending. Treat a new timestamp or pending updates as a fresh incident.
+
 ## 2026-08-05 - Durable hosted QA relay and signup email capacity: LIVE (Codex)
 
 Randall was correct that the active relay, ngrok tunnel, and Codex worker were running on the
