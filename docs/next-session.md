@@ -3,6 +3,34 @@
 _Updated 2026-08-05. Read `AGENTS.md` and follow the Session Start Protocol in
 `docs/project-operating-state.md` before editing._
 
+## First action in the next Claude session: design parity pass
+
+Randall explicitly approved this as the first task in any next session. Before starting other
+product work, Claude must finish the design parity follow-through for the onboarding guidance
+updated on 2026-08-05 in app commit `e305367`.
+
+Approved source and scope:
+
+- Treat the live shared `cardIntro()` implementation in `app/onboarding/OnboardingClient.tsx` and
+  the approved sentence below as the production authority:
+  `You're working on [Role Track]. Choose another Role Track from the Role Track dropdown.`
+- Compare that implementation against every affected local design-system card:
+  `design-system/components/onboarding-card-interior.html`,
+  `design-system/components/onboarding-resume-upload.html`,
+  `design-system/components/onboarding-skills.html`, and
+  `design-system/components/onboarding-work-examples.html`.
+- Confirm all four cards still have entries in `design-system/_ds_manifest.json` and retain their
+  `@dsCard` markers.
+- Run `register_assets` for all four affected cards in the Claude Design project, with subtitles
+  identifying the Role Track guidance update and the correct card viewport, then read the remote
+  cards back to confirm Claude Design matches the repository and production.
+- If the pass finds any difference beyond restoring this exact approved sentence and existing
+  component parity, stop and request new design approval before changing presentation.
+
+Local production and repository parity are already verified. The incomplete item carried into the
+next session is remote Claude Design registration and readback, which was **NOT VERIFIED** because
+the `register_assets` integration was unavailable in the Codex session that shipped `e305367`.
+
 ## Immediate state
 
 The system-wide source scan now completes all 85 active global sources. Commit `d8802f5` is on
