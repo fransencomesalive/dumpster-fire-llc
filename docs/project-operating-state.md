@@ -89,6 +89,15 @@ Not yet built as public workflows:
 
 ## Canonical Next Product Task
 
+> **UPDATED 2026-08-04: JOB-024 PROMPTED REPLY EDITING LIVE.** Portable QA-AGENT `0.3.1` is
+> committed locally at `d0f4b09` and the installed relay is pushed on `origin/main` at `64f1b83`.
+> Pending reply previews now expose **Edit reply**, which opens Telegram's native reply prompt and
+> returns the revised draft with Send/Edit/Discard actions. Both full suites and generated-install
+> verification passed; the relay was restarted; local/public health and production verification
+> passed; and disposable live JOB-025 verified the complete edit path without sending email. The
+> running JSON relay is the sole state authority: never mutate its backing file from another
+> process. Read `docs/next-session.md` and wait for Randall's next explicit scope.
+
 > **UPDATED 2026-08-04: JOB-023 DURABLE MULTI-CONTACT OUTREACH LIVE.** Commit `e06f62d`
 > is on `origin/main`, GitHub Actions run `30963015735` passed, and Vercel deployment
 > `dpl_4eGgfQbfyxSfGnbisLMMiWBk4e96` serves the canonical domain with HTTP 200. Same-job drafts are

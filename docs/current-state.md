@@ -1,5 +1,49 @@
 # Current State
 
+## 2026-08-04 - JOB-024 prompted Telegram reply editing: LIVE (Codex)
+
+JOB-024 exposed two separate problems. The reporter's production account existed but had no active
+subscription and no access-code grant; `DUMPSTERFRIENDS` had not been redeemed, and the account had
+not consumed any pursuits. The reply workflow also made draft revision discoverable only through
+the undocumented `/reply JOB-### revised message` command.
+
+The first JOB-024 send revealed an operational error in the attempted workaround. The installed
+relay uses the JSON store and keeps that state in memory. Editing `data/relay-store.json` from a
+second process appeared to succeed on disk, but the running relay still held the canned draft and
+wrote it back when delivery was approved. The canned acknowledgement was sent first. The exact
+account-specific reply Randall approved was then sent as a corrective follow-up through the signed
+production reply endpoint and accepted on the first attempt. A file-level edit is never a valid way
+to change live JSON-backed relay state.
+
+Randall corrected the product interaction: owners should not need to know a slash command to edit a
+draft. Portable QA-AGENT version `0.3.1` now exposes **Edit reply** beside **Send reply**, with
+**Discard draft** on its own row. **Edit reply** opens Telegram's native reply prompt. The owner's
+complete response replaces the pending draft through the running relay, then a new preview shows
+**Send reply**, **Edit reply**, and **Discard draft** again. Telegram's native cancel control or
+`/cancel` leaves the current draft unchanged. `/reply` remains only as backwards-compatible access.
+
+The portable factory at `/Users/randallfransen/Sites/QA-AGENT` is committed locally at
+`d0f4b09ab4696001e3fc17e01a2b2566f2ffea9a`; it has no Git remote. The installed relay was
+provisioned from that exact clean source, committed and pushed to `origin/main` at `64f1b83`. No
+database migration was needed. The existing relay install identity, project configuration,
+secrets, runtime data, `data/backups/`, and `scripts/resend-notification.js` were preserved.
+
+Verification passed in both the factory and installed relay: 588 tests, 579 passed, zero failed,
+and nine intentional integration skips. Generated-install verification passed. The restarted local
+and public health endpoints returned HTTP 200, the full production verifier passed, and the worker
+reconnected. Disposable live JOB-025 exercised compose, the `e:` edit callback, native ForceReply
+prompt, revised-text persistence through the running process, discard, and close. It sent no email
+and ended closed with the draft discarded. Synthetic callback IDs produced the expected Telegram
+toast and nonexistent-message refresh warnings; the actual edit prompt produced no delivery
+failure. Telegram still reports one historical webhook 404 timestamped
+`2026-08-05T00:43:59Z`, before this release; pending updates are zero and the exact current webhook
+was re-registered without dropping updates.
+
+Durable rule from the correction: user-visible reply editing must be available through the action
+buttons. Do not rely on operators knowing hidden commands. For a running JSON-backed relay, mutate
+ticket and draft state only through the live process, never by editing its backing file from another
+process.
+
 ## 2026-08-04 - JOB-023 durable multi-contact outreach: LIVE (Codex)
 
 Commit `e06f62de6b9b5a1ca364f022f84f994e5d6ff63f` is on `origin/main`, GitHub Actions

@@ -1,7 +1,37 @@
-# Next Session: 2026-08-04 JOB-023 Multi-Contact Outreach Live
+# Next Session: 2026-08-04 JOB-024 Prompted Reply Editing Live
 
 _Updated 2026-08-04. Read `AGENTS.md` and follow the Session Start Protocol in
 `docs/project-operating-state.md` before editing._
+
+## Current QA relay release
+
+Portable QA-AGENT `0.3.1` makes reply revision discoverable from Telegram. A pending reply now shows
+**Send reply**, **Edit reply**, and **Discard draft**. **Edit reply** opens Telegram's native reply
+prompt; the complete response replaces the draft through the running relay and returns a fresh
+preview with the same actions. `/reply` remains backwards-compatible but is no longer required.
+
+The factory is committed locally at `d0f4b09ab4696001e3fc17e01a2b2566f2ffea9a` and has no Git
+remote. The installed relay is committed and pushed to `origin/main` at `64f1b83`. Both full suites
+passed with 588 tests, 579 passed, zero failed, and nine intentional skips. Generated-install
+verification passed. The relay was restarted; local/public health returned HTTP 200; production
+verification passed; and the Codex worker reconnected.
+
+Disposable live JOB-025 exercised compose, button callback, native prompt, revised preview,
+discard, and close without sending email. It ended closed with the draft discarded. Synthetic
+callback IDs generated expected Telegram callback-toast and nonexistent-message refresh warnings,
+but the real edit prompt itself had no delivery failure. Telegram retains a historical webhook 404
+from `2026-08-05T00:43:59Z`, before this release; the current webhook is exact, pending updates are
+zero, and it was re-registered without dropping updates.
+
+JOB-024 also established a hard operating lesson: the live relay is JSON-backed and authoritative
+state lives in the running process. Never edit `data/relay-store.json` behind it. The first attempted
+file-level revision was overwritten by stale in-memory state, causing the canned acknowledgement to
+send before the approved account-specific corrective follow-up. Use the live Telegram flow for all
+draft mutations.
+
+Next immediate action: no reply-editor implementation remains in flight. The next real report with
+an email can provide the human-tap confirmation for **Edit reply**. Do not create another synthetic
+ticket solely for that check.
 
 ## Current production release
 
