@@ -89,6 +89,13 @@ Not yet built as public workflows:
 
 ## Canonical Next Product Task
 
+> **UPDATED 2026-08-05: FULL SOURCE-SCAN CRON LIVE.** Commit `d8802f5` is on `origin/main` and
+> Vercel deployment `dpl_52HgwEpJbgSzwhazreuBtqQnoRNG` is Ready. The source-scan route's explicit
+> budget is now 180 seconds instead of 60; provider concurrency and scan semantics are unchanged.
+> The official production cron returned HTTP 200 and all 85 active global sources share the new
+> `2026-08-05T17:33:13.131Z` run timestamp with zero source errors. No source-scan runtime work
+> remains in flight.
+
 > **UPDATED 2026-08-05: JOB-031 UNIVERSAL LINK LIFECYCLE LIVE.** Migration
 > `20260805000100_job_link_health.sql` is applied and recorded. App commits `7f77f3f` and
 > `7cb5229` are on `origin/main`; Vercel deployment `dpl_EAotUcz2ioGG5UG5HBx7dMVyA8Ux` is Ready
@@ -96,9 +103,9 @@ Not yet built as public workflows:
 > `/api/jobs/link-health` route runs at `30 6 * * *`. All 33 shared public jobs attached to current
 > pursuits were checked in production: 21 healthy, 8 confirmed gone, 4 uncertain; the 10 private
 > user-pasted jobs were intentionally skipped. Gone jobs are excluded from matching/scans and have
-> zero active scan rows. No JOB-031 work remains in flight. The separate source-scan cron's observed
-> 60-second timeout is a future performance investigation and must not be coupled back to this
-> maintenance path. Do not apply the archived snapshot-precedence patch.
+> zero active scan rows. No JOB-031 work remains in flight. The separate source-scan runtime issue
+> is fixed in the release above and remains decoupled from link maintenance. Do not apply the
+> archived snapshot-precedence patch.
 
 > **UPDATED 2026-08-05: JOB-031 REVIEW HANDOFF LIVE; ARCHIVED DIAGNOSIS REJECTED.** Portable QA-AGENT `0.3.4`
 > moves approve, discard, and rerun actions from the hosted relay to the connected worker that owns

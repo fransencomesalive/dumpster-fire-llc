@@ -1,5 +1,30 @@
 # Current State
 
+## 2026-08-05 - Full source-scan cron completes within corrected runtime: LIVE (Codex)
+
+The system-wide source scan no longer fails at an artificial one-minute boundary. Production
+evidence showed the prior cron returning 504 exactly at 60 seconds after completing 75 of 85
+global sources. The only unfinished cohort was 10 of 20 sequential Himalayas broad-query
+variants. Each variant can fetch three pages. A read-only timing probe of those ten unfinished
+variants made 30 page requests in 37.2 seconds, with one page taking 7.3 seconds, before any
+application parsing or database writes. The workload was healthy but could not reliably fit under
+the route's explicit `maxDuration = 60` override.
+
+Vercel project metadata confirmed Fluid Compute is enabled, so the route-level override rather
+than the plan limit was the controlling ceiling. Commit `d8802f5` changes only
+`app/api/jobs/source-scan/route.ts` from 60 to 180 seconds and adds a regression assertion in
+`scripts/test-scan-api.ts`. Provider sequencing, host concurrency, per-request 12-second limits,
+authentication, ingestion, and database behavior are unchanged. The local Next.js functions
+manifest records `maxDuration: 180` for `/api/jobs/source-scan`.
+
+Commit `d8802f5` is on `origin/main` and Vercel production deployment
+`dpl_52HgwEpJbgSzwhazreuBtqQnoRNG` is Ready. An official Vercel cron invocation returned HTTP 200
+from that deployment. Production readback confirmed all 85 active global sources share the new
+`2026-08-05T17:33:13.131Z` scan timestamp, no host remained pending, and zero sources recorded an
+error. Verification also passed the focused route test, all 37 fixture suites, TypeScript, lint
+with zero errors and four unrelated pre-existing warnings, `git diff --check`, a local Next.js
+Webpack production build, and canonical HTTP 200.
+
 ## 2026-08-05 - JOB-031 universal posting-link lifecycle: LIVE (Codex)
 
 JOB-031 is fixed at both layers. Portable QA-AGENT `0.3.4` had already corrected the remote
@@ -35,10 +60,9 @@ Verification passed the isolated migration harness, link-health/classifier/SSRF 
 repository and profile API regressions, all 37 fixture suites, TypeScript, lint with zero errors
 and four unrelated pre-existing warnings, `git diff --check`, a local Next.js Webpack production
 build, Vercel's production build, the registered four-cron schedule, both production cron HTTP
-200s, aggregate database readback, and canonical HTTP 200. A manual run of the separate legacy
-`/api/jobs/source-scan` cron still timed out at 60 seconds before this maintenance was separated;
-that pre-existing source-scan performance issue is not part of JOB-031 and remains a distinct
-future investigation.
+200s, aggregate database readback, and canonical HTTP 200. A manual run of the separate
+`/api/jobs/source-scan` cron exposed its independent 60-second route limit; that issue was
+subsequently fixed and production-verified in the release documented above.
 
 ## 2026-08-05 - JOB-031 remote review handoff fixed; archived diagnosis rejected (Codex)
 

@@ -1,9 +1,24 @@
-# Next Session: 2026-08-05 JOB-031 Link Lifecycle Live
+# Next Session: 2026-08-05 JOB-031 and Full Source Scan Live
 
 _Updated 2026-08-05. Read `AGENTS.md` and follow the Session Start Protocol in
 `docs/project-operating-state.md` before editing._
 
 ## Immediate state
+
+The system-wide source scan now completes all 85 active global sources. Commit `d8802f5` is on
+`origin/main` and Vercel deployment `dpl_52HgwEpJbgSzwhazreuBtqQnoRNG` is Ready. The route's
+explicit runtime was corrected from 60 to 180 seconds after production evidence showed the prior
+run completing 75 sources and timing out during the sequential paginated Himalayas cohort. No
+provider concurrency or ingestion behavior changed.
+
+The official production cron returned HTTP 200. All 85 global sources share the new
+`2026-08-05T17:33:13.131Z` run timestamp, no host is pending, and zero source errors were recorded.
+All 37 fixtures, the focused duration regression, TypeScript, zero-error lint, Webpack production
+build, built functions-manifest check, and canonical HTTP 200 passed.
+
+Next immediate action: no source-scan runtime work remains in flight. Diagnose any future source
+failure from its exact provider error and persisted `last_error`; do not increase concurrency or
+change provider coverage without new evidence.
 
 JOB-031 is fixed in production. Migration `20260805000100_job_link_health.sql` is applied and
 recorded. App commits `7f77f3f` and `7cb5229` are on `origin/main`; Vercel production deployment
@@ -22,9 +37,8 @@ public counts: 21 healthy, 8 gone, 4 uncertain, zero unchecked public jobs, and 
 results for gone jobs. All 37 fixtures, TypeScript, zero-error lint, Webpack build, focused
 regressions, migration harness, and production readbacks passed.
 
-Next immediate action: no JOB-031 work remains in flight. A manual production run showed the
-separate `/api/jobs/source-scan` cron still exceeds its 60-second function budget. Treat that as a
-new, independently scoped performance investigation; do not recouple link maintenance to source
+Next immediate action: no JOB-031 work remains in flight. Its separately discovered source-scan
+runtime issue is also fixed and verified above. Do not recouple link maintenance to source
 scanning and do not apply the archived JOB-031 snapshot patch.
 
 ## JOB-031 review handoff history
