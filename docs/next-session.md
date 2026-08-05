@@ -1,7 +1,36 @@
-# Next Session: 2026-08-05 Recoverable QA Investigations Live
+# Next Session: 2026-08-05 JOB-031 Review Handoff Live; Link Lifecycle Pending
 
 _Updated 2026-08-05. Read `AGENTS.md` and follow the Session Start Protocol in
 `docs/project-operating-state.md` before editing._
+
+## Immediate state
+
+The remote review/retry path is fixed and live in portable QA-AGENT `0.3.4`. Factory commit
+`921529f1a627237da8f97408f05284ccd1b7ea20` is local-only. Installed relay commit
+`b808b763f5a256864b75ce5a05e39ce1761be896` is on `origin/main` and Railway deployment
+`e2f3f12a-0b84-4508-a013-a482d4fc58a8` is successful with migration 010 applied. The full portable
+suite and generated-install verifier pass, Railway health is HTTP 200, readiness is green, and the
+Air worker is connected and clean.
+
+JOB-031's approved rerun successfully executed on the worker. Its fresh task ended `blocked` for
+missing runtime evidence, not because patching or review failed. Do not retry the same archived
+patch again. Production has zero cases where the saved snapshot URL differs from the current job
+URL, so the patch's snapshot-precedence theory is disproven.
+
+Read-only production link checks found the actual behavior: external postings can disappear while
+their per-user scan rows remain active. In the nine-pursuit creative-role account, five links were
+healthy, three Himalayas links redirected to the generic jobs landing page, and one Workable link
+returned 404; all nine scan rows still said active. A safe universal solution must distinguish
+confirmed gone links (404 or exact-posting redirect to a generic landing page) from uncertain
+responses (403, timeout, 5xx), persist link health outside the immutable pursuit snapshot, exclude
+confirmed-gone jobs from new scan results, and expose current availability to the existing Saved
+Pursuits behavior. Scope and verify that backend lifecycle design before editing. JOB-031 remains
+**NOT FIXED** at the application layer.
+
+The original JOB-031 review archive is preserved at
+`outbox/review-archives/JOB-031-32762b4f-5434-4cd3-b2c7-4f0c7a23002d/` in the installed relay.
+Its diff fingerprint is `9c691f8b2dd9963044392dd99cc0368832029065d576c7a65d0cc548fcfc8692`.
+Preserve it as audit history; do not apply it.
 
 ## Current QA investigation release
 

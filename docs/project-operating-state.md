@@ -89,6 +89,18 @@ Not yet built as public workflows:
 
 ## Canonical Next Product Task
 
+> **UPDATED 2026-08-05: JOB-031 REVIEW HANDOFF LIVE; APP FIX PENDING.** Portable QA-AGENT `0.3.4`
+> moves approve, discard, and rerun actions from the hosted relay to the connected worker that owns
+> the checkout and patch. Factory commit `921529f` is local-only; installed relay commit `b808b76`
+> is deployed successfully by Railway as `e2f3f12a-0b84-4508-a013-a482d4fc58a8`, with migration
+> 010 applied and production health/readiness green. JOB-031 crossed that path successfully; its
+> next execution blocked on missing runtime evidence rather than patch handling. Independent
+> production checks disproved the archived snapshot-precedence patch and found stale external-link
+> availability instead: confirmed-gone postings remain marked active. The application behavior is
+> **NOT FIXED**. Read `docs/next-session.md`; the next scoped product task is a universal backend
+> link-health lifecycle that distinguishes confirmed-gone postings from uncertain provider
+> responses. Do not apply the archived JOB-031 patch.
+
 > **UPDATED 2026-08-05: RECOVERABLE QA INVESTIGATIONS LIVE.** Portable QA-AGENT `0.3.3` is at
 > local factory commit `e49180b`; installed relay commit `b40a2a1` is deployed by Railway as
 > `8d4f815c-6fde-4e16-9949-fa7eab1f3f26` with migration 009 applied. App commit `770a9e6` is

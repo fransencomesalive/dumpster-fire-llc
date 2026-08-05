@@ -1,5 +1,49 @@
 # Current State
 
+## 2026-08-05 - JOB-031 remote review handoff fixed; application bug root-caused but not patched (Codex)
+
+JOB-031 exposed two separate problems. The repeated `action_unavailable` / patch-retry failure was
+an orchestration defect: the hosted Railway relay tried to execute approve, discard, and rerun
+actions even though the affected checkout and preserved patch exist only on the connected worker.
+Portable QA-AGENT `0.3.4` now persists those actions as leased review tasks. A connected worker
+claims the action, verifies the exact patch fingerprint, performs the local workspace mutation, and
+atomically records the result. Review tasks are claimed before the normal clean-workspace gate,
+failed reviews restore fresh action buttons, expired leases recover safely, and an idempotent local
+receipt protects a completed workspace mutation from a later network uncertainty.
+
+The portable factory is committed locally at
+`921529f1a627237da8f97408f05284ccd1b7ea20` and has no remote. The installed relay is pushed on
+`origin/main` at `b808b763f5a256864b75ce5a05e39ce1761be896`. Railway deployment
+`e2f3f12a-0b84-4508-a013-a482d4fc58a8` succeeded and migration
+`010_remote_review_tasks.sql` passed database smoke. The portable suite passed 603 tests: 594
+passed, zero failed, and nine intentional skips. Generated-install verification passed. Railway
+`/healthz` returned HTTP 200, `/readyz` reported matching migrations and the
+`macbook-air-codex` worker connected, and the worker checkout returned clean at current app main.
+
+The already-approved JOB-031 rerun then crossed the formerly broken handoff successfully. Review
+task `0c6355cd-9900-463d-a62c-7b16183efc48` completed and created fresh execution task
+`b994dbfa-dc50-4a44-b4e8-5ba1f2cfd508`. That task ended `blocked` because the original report did
+not identify a specific pursuit or failed destination and the worker was not authorized to inspect
+production runtime data. This is no longer a patch transport or retry failure.
+
+Independent read-only production diagnosis rejected the archived patch's claimed root cause. All
+43 active saved pursuits had an identical `job_snapshot.sourceUrl` and current `jobs.source_url`;
+there were zero stale-snapshot/current-link mismatches. The archived patch must not be approved or
+applied. Runtime HEAD checks instead found external-listing lifecycle drift. The creative-role
+account with nine saved pursuits had five exact healthy links, three expired Himalayas listings
+that redirected to the generic Himalayas jobs page, and one Workable listing that returned 404.
+All nine were still marked `active`. Across all 43 saved pursuits, external failures included
+landing-page redirects, 404s, provider bot blocks, and other transient responses. The correct
+application fix needs universal link-health and availability lifecycle handling, treating verified
+404/landing redirects as gone while preserving blocked, timed-out, and uncertain links. JOB-031's
+application behavior remains **NOT FIXED** pending that scoped backend design; no speculative app
+patch was applied.
+
+Durable lesson: a review-action failure and a task diagnosis failure are different layers. First
+prove that the exact patch reached the checkout and that the review state transition completed.
+Then independently validate the patch's root-cause claim against runtime evidence before approval.
+Never ship an archived patch merely because retry transport is now healthy.
+
 ## 2026-08-05 - Recoverable QA investigations and API evidence: LIVE (Codex)
 
 JOB-030 exposed a failure in the QA execution system as well as an evidence gap in the report.
