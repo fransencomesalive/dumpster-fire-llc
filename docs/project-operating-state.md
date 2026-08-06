@@ -89,6 +89,16 @@ Not yet built as public workflows:
 
 ## Canonical Next Product Task
 
+> **UPDATED 2026-08-06: NIGHTLY TESTER ACCOUNT-USAGE SHEET SYNC LIVE.** Implementation commits
+> `4f7a67f` and `751e6ee` are on `origin/main`; Vercel deployment
+> `dpl_4LggZ2UWAEWnED2rRciBPxFcVFiW` is Ready. Production now uses keyless Vercel OIDC and Google
+> Workload Identity Federation to refresh the `Dumpster Fire Test Account Usage` Sheet nightly at
+> 9 PM Mountain Time, with separate DST-safe summer and winter cron entries. An authenticated
+> production cron invocation returned HTTP 200 and refreshed all 30 accounts at Aug 6, 2026,
+> 1:20 PM MT. The Definitions tab, formatting, and `Tester Conversion Funnel` chart were preserved;
+> Accounts and Summary contain no raw ISO timestamps. The first autonomous scheduled invocation is
+> still future-time evidence and should be confirmed after the next 9 PM Mountain run.
+
 > **UPDATED 2026-08-05: FULL SOURCE-SCAN CRON LIVE.** Commit `d8802f5` is on `origin/main` and
 > Vercel deployment `dpl_52HgwEpJbgSzwhazreuBtqQnoRNG` is Ready. The source-scan route's explicit
 > budget is now 180 seconds instead of 60; provider concurrency and scan semantics are unchanged.

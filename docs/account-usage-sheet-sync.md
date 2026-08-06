@@ -57,8 +57,8 @@ writer access only to the account-usage spreadsheet.
    - `GOOGLE_WORKLOAD_IDENTITY_POOL_ID=vercel`
    - `GOOGLE_WORKLOAD_IDENTITY_PROVIDER_ID=vercel`
    - `GOOGLE_REPORTING_SERVICE_ACCOUNT_EMAIL`
-10. Redeploy and run an authenticated POST to `/api/internal/account-usage-sheet-sync` for the
-    first manual verification.
+10. Redeploy and run the currently active seasonal path with Vercel's authenticated `crons run`
+    command for the first manual verification.
 
 ## Schedule behavior
 
@@ -79,3 +79,17 @@ all five Google environment variables are present. A complete verification recor
 - the Sheet's readable `Last refreshed` value;
 - unchanged Definitions content and spreadsheet formatting;
 - no raw database/ISO timestamps in Accounts or Summary.
+
+## Production verification
+
+Verified Aug 6, 2026 against commit `751e6ee` and production deployment
+`dpl_4LggZ2UWAEWnED2rRciBPxFcVFiW`:
+
+- Vercel lists both seasonal schedules: 3 AM UTC for summer and 4 AM UTC for winter.
+- The authenticated summer cron invocation returned HTTP 200 in production.
+- The production write refreshed 30 account rows at Aug 6, 2026, 1:20 PM MT.
+- The Summary conversion funnel reports 15 code redemptions, 8 completed profiles among those
+  redemptions, and 3 completed users with a recorded message Copy.
+- The Accounts header and all 30 account rows contain no raw ISO timestamps.
+- The Definitions tab remained unchanged, existing header and currency formatting remained in
+  place, and the `Tester Conversion Funnel` chart remained present.
