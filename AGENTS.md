@@ -331,6 +331,16 @@ cannot edit a design file without Randall answering a prompt first.
   `app/globals.css`. That surfaces a confirm prompt to Randall BEFORE the edit runs:
   Allow = design already approved in Claude Design, implement it locally; Deny = take it to
   Claude Design first.
+- **ONCE PER SESSION (Randall 2026-08-05).** The gate used to fire on every design file, so
+  one approved bulk pass (the 17-card em dash sweep) cost ~40 identical confirmations and
+  pushed Claude into scripting around the gate. Now only the FIRST design edit of a session
+  asks; once one is actually approved, the rest of that session passes silently. The marker
+  is written by a PostToolUse hook running the same script, which only fires when the tool
+  actually executed, i.e. only after Randall ALLOWED it. A denial writes no marker, so the
+  next attempt asks again. The marker is keyed to the session id and lives in the temp dir,
+  so every new session starts gated. Verified 2026-08-05 across six cases: first-edit ask,
+  logic-file silence, marker creation on PostToolUse, no re-prompt after approval, a fresh
+  session asking again, and `.module.css` covered by the same session grant.
 - **Scope is design files ONLY.** Logic files, the dev server, and everything else are never
   touched. It is an ask, not a hard deny — Randall decides each time.
 - **Known ceilings (stated honestly):** only as strong as the path matcher. `.tsx` design
