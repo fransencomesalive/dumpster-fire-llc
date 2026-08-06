@@ -150,6 +150,21 @@ When user feedback implies a new standing workflow rule, Codex must:
 
 Chat acknowledgement is not durable memory. If a behavioral rule matters, it must be written to the repo.
 
+### User-Facing Date and Time Formatting (Randall, 2026-08-06)
+
+Never display raw ISO 8601 or database timestamp strings in user-facing reports, spreadsheets,
+dashboards, summaries, or conversational status updates. Convert stored timestamps before display:
+
+- When only the date matters, use a readable date such as `Sep 4, 2026`.
+- When time matters, use a readable date and 12-hour time such as
+  `Aug 6, 2026, 8:44 AM MT`.
+- Use the `America/Denver` time zone unless Randall explicitly requests another zone.
+- Internal database fields, logs, APIs, and machine-readable files may retain ISO timestamps; the
+  rule applies when information is presented for a person to read.
+
+Enforcement class: **advisory**. This instruction is persistent repository guidance that an agent
+can technically ignore; it is not a blocking hook.
+
 ### QA Backlog Batch Review
 
 When Randall says `review backlog batch`, Codex must retrieve the current production QA backlog

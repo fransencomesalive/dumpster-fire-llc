@@ -35,6 +35,7 @@
     "test:outreach-evidence": "node scripts/test-outreach-evidence-selection.mjs",
     "test:provider-usage": "node scripts/test-provider-usage.mjs",
     "test:unit-economics": "node scripts/test-subscription-unit-economics.mjs",
+    "test:account-usage-sheet": "node scripts/test-account-usage-sheet.mjs",
     "test:stripe-billing": "node scripts/test-stripe-billing.mjs",
     "qa:production-apply-wizard": "node --env-file=.env.local scripts/qa/production-apply-wizard-browser.mjs",
     "qa:production-job-link": "node --env-file=.env.local scripts/qa/production-job-link.mjs",
