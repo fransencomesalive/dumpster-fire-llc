@@ -104,9 +104,20 @@ Validation after the change: `npx tsc --noEmit --incremental false` clean, `npm 
 (4 pre-existing unused-var warnings), `npm run build` compiled successfully,
 `npm run test:public-jobs` passed, `git diff --check` clean.
 
-Remaining verification after deploy: an authenticated look at the onboarding surface to confirm the
-revised copy renders as intended. Nothing about the change is layout-affecting, but it has not been
-seen in a browser.
+Shipped in three commits on `origin/main`: `da2adf6` (the sweep), `0977fb0` (design-sync checklist
+reconciliation plus the first `permissions.allow` block in `.claude/settings.json`), and `cb6d156`
+(design-edit gate now fires once per session instead of once per file).
+
+Production evidence: Vercel deployments for these pushes are **Ready**; the canonical domain and
+`/onboarding` both return **HTTP 200**.
+
+**NOT VERIFIED, and here is exactly why.** The revised onboarding copy has not been confirmed
+rendering in production. Signed out, `/onboarding` serves only the login card, so the onboarding
+client chunk is never referenced in that HTML. All 12 chunks the page does reference were fetched
+and grepped; none contains the copy. Confirming it requires an authenticated session, which the
+agent cannot drive. What IS proven: the source is on `origin/main`, the production build compiled
+it, and the deployment is Ready. The missing evidence is a signed-in look at Card 1 and the Skills
+card. Randall is the only one who can produce it.
 
 ## Immediate state
 
