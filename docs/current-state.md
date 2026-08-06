@@ -1,5 +1,38 @@
 # Current State
 
+## 2026-08-05 - JOB-038 reply delivered; product review backlogged; Telegram edit queue blocked (Codex)
+
+JOB-038 reported that Saved Pursuits showed **Sent Message** with a checkmark after the user copied
+an outreach message and closed the generation modal without intentionally marking the outreach as
+sent. The reporter reasonably interpreted that state as Dumpster Fire having transmitted the
+message. Randall approved a direct support explanation. The final reply was stored and delivered
+to `pritchardj176@yahoo.com` through the signed production webhook in one attempt: HTTP 202,
+`sent_at = 2026-08-06T02:53:18.555Z`, message ID
+`<5558a3d9-cafa-3a00-3fed-6999823b7687@mail.thejobmarketisadumpsterfire.com>`. Production readback
+confirmed reply status `sent` and event `initial_user_reply_sent`.
+
+JOB-038 is now `backlog` with a `backlog_deferred_for_batch` event and no development task started.
+Its recorded review scope is to trace when **Sent Message** becomes selected, confirm whether the
+product ever transmits outreach on the user's behalf, compare the tracker state with the action the
+user actually completed, and decide whether logic, labeling, explanatory copy, or user education
+must change to prevent a false delivery assumption.
+
+The support-reply interaction exposed a separate production QA-relay defect that is **NOT FIXED**.
+Randall's first Telegram edit message was attached to an old `Edit reply for JOB-025` prompt. The
+JOB-025 draft was already closed, so the owner-command handler threw `No pending user reply found
+for JOB-025`. The webhook returned an error instead of acknowledging the owner-input failure.
+Telegram therefore kept retrying the same update (`message_id = 165`) from 2026-08-05T23:54:29Z
+through at least 2026-08-06T00:23:56Z, blocking the later correctly addressed JOB-038 edit from
+advancing. JOB-038 had to be updated and sent through a scoped production operator action.
+
+The next QA-relay implementation must be made in portable QA-AGENT first and provisioned into the
+installed relay. A stale, mismatched, or no-longer-editable reply prompt must leave all drafts
+unchanged, send Randall an actionable receipt naming the affected ticket, audit the rejection, and
+return HTTP 200 to Telegram so one bad owner message cannot block later updates. Regression coverage
+must prove that a rejected stale edit is acknowledged once and that the next valid ticket edit is
+processed. After deployment, verify Railway health/readiness, confirm Telegram's retry queue drains,
+and perform a real edit-and-send rehearsal before calling the workflow fixed.
+
 ## 2026-08-05 - Full source-scan cron completes within corrected runtime: LIVE (Codex)
 
 The system-wide source scan no longer fails at an artificial one-minute boundary. Production
