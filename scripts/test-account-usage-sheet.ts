@@ -4,8 +4,8 @@ import {
   ACCOUNT_HEADERS,
   buildAccountUsageReport,
   handleAccountUsageSheetSync,
-  isNinePmMountain,
   loadAccountUsageSource,
+  mountainScheduleWindow,
   writeAccountUsageSheet,
   type AccountUsageSource,
 } from "../lib/reporting/account-usage-sheet";
@@ -58,10 +58,9 @@ async function body(response: Response) {
 }
 
 async function main() {
-  assert.equal(isNinePmMountain("2026-08-06T03:00:00.000Z"), true);
-  assert.equal(isNinePmMountain("2026-08-06T04:00:00.000Z"), false);
-  assert.equal(isNinePmMountain("2026-12-06T04:00:00.000Z"), true);
-  assert.equal(isNinePmMountain("2026-12-06T03:00:00.000Z"), false);
+  assert.equal(mountainScheduleWindow("2026-08-06T03:00:00.000Z"), "summer");
+  assert.equal(mountainScheduleWindow("2026-12-06T04:00:00.000Z"), "winter");
+  assert.equal(mountainScheduleWindow("not-a-date"), null);
 
   const report = buildAccountUsageReport(source, now);
   assert.equal(report.accounts.length, 3);
@@ -95,11 +94,11 @@ async function main() {
   assert.equal(unauthorized.status, 401);
 
   let loaded = false;
-  const skipped = await handleAccountUsageSheetSync(new Request("https://example.test", {
+  const skipped = await handleAccountUsageSheetSync(new Request("https://example.test?window=winter", {
     method: "GET", headers: { Authorization: "Bearer right" },
   }), {
     env: { NODE_ENV: "test", CRON_SECRET: "right" } as NodeJS.ProcessEnv,
-    now: () => "2026-08-06T04:00:00.000Z",
+    now: () => "2026-08-06T03:00:00.000Z",
     loadSource: async () => { loaded = true; return source; },
   });
   assert.equal(skipped.status, 200);
@@ -108,7 +107,7 @@ async function main() {
 
   let writtenAccounts = 0;
   let receivedToken = "";
-  const updated = await handleAccountUsageSheetSync(new Request("https://example.test", {
+  const updated = await handleAccountUsageSheetSync(new Request("https://example.test?window=summer", {
     method: "GET",
     headers: { Authorization: "Bearer right", "x-vercel-oidc-token": "oidc-token" },
   }), {

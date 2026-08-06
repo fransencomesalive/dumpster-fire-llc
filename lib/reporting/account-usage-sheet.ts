@@ -558,15 +558,18 @@ export async function writeAccountUsageSheet(
   }
 }
 
-export function isNinePmMountain(value: string | Date) {
+export type MountainScheduleWindow = "summer" | "winter";
+
+export function mountainScheduleWindow(value: string | Date): MountainScheduleWindow | null {
   const date = typeof value === "string" ? new Date(value) : value;
-  if (!Number.isFinite(date.getTime())) return false;
-  const hour = new Intl.DateTimeFormat("en-US", {
+  if (!Number.isFinite(date.getTime())) return null;
+  const offset = new Intl.DateTimeFormat("en-US", {
     timeZone: REPORT_TIME_ZONE,
-    hour: "2-digit",
-    hourCycle: "h23",
-  }).format(date);
-  return hour === "21";
+    timeZoneName: "shortOffset",
+  }).formatToParts(date).find((part) => part.type === "timeZoneName")?.value;
+  if (offset === "GMT-6") return "summer";
+  if (offset === "GMT-7") return "winter";
+  return null;
 }
 
 export type AccountUsageSyncHandlerOptions = {
@@ -595,8 +598,12 @@ export async function handleAccountUsageSheetSync(
   if (bearerToken(request) !== secret) return json({ error: "Unauthorized." }, { status: 401 });
 
   const now = options.now?.() ?? new Date().toISOString();
-  if (request.method === "GET" && !isNinePmMountain(now)) {
-    return json({ status: "skipped", reason: "Not the 9 PM Mountain execution window." });
+  if (request.method === "GET") {
+    const requestedWindow = new URL(request.url).searchParams.get("window");
+    const activeWindow = mountainScheduleWindow(now);
+    if (requestedWindow !== activeWindow) {
+      return json({ status: "skipped", reason: "Inactive Mountain Time schedule window." });
+    }
   }
   try {
     const source = await (options.loadSource ? options.loadSource() : loadAccountUsageSource(env));

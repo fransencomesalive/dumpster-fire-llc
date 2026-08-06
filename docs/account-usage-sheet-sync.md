@@ -63,15 +63,18 @@ writer access only to the account-usage spreadsheet.
 ## Schedule behavior
 
 Vercel Cron schedules use UTC. Two distinct invocations run at 3 AM and 4 AM UTC. The handler
-checks `America/Denver` and writes only when the local hour is 9 PM. This produces one refresh per
-evening across daylight-saving changes; the other invocation returns a successful skipped result.
+checks the current `America/Denver` UTC offset and accepts only the matching `summer` or `winter`
+invocation. This produces one refresh per evening across daylight-saving changes; the inactive
+seasonal invocation returns a successful skipped result. Vercel's authenticated manual cron runner
+can execute the currently active seasonal path for production verification without weakening the
+route's `CRON_SECRET` requirement.
 
 ## Verification requirement
 
 Do not call the production sync live until the spreadsheet is shared with the service account and
 all five Google environment variables are present. A complete verification records:
 
-- an authenticated production POST returning `status: updated`;
+- an authenticated production cron invocation returning `status: updated`;
 - the number of accounts returned by the route;
 - the Sheet's readable `Last refreshed` value;
 - unchanged Definitions content and spreadsheet formatting;
