@@ -1,5 +1,29 @@
 # Current State
 
+## 2026-08-06 - Nightly tester account-usage spreadsheet sync: LIVE (Codex)
+
+The `Dumpster Fire Test Account Usage` Google Sheet is connected to production and scheduled to
+refresh every evening at 9 PM Mountain Time. The implementation uses two UTC cron entries plus an
+active summer/winter offset check so exactly one invocation writes across daylight-saving changes.
+The route remains protected by `CRON_SECRET`.
+
+Google access is keyless. Vercel OIDC is exchanged through Google Workload Identity Federation for
+a short-lived token that impersonates the restricted reporting service account. No Google private
+key is stored. The service account can edit only the account-usage spreadsheet.
+
+Implementation commits `4f7a67f` and `751e6ee`, plus verification-memory commit `dd97970`, are on
+`origin/main`. Production deployment `dpl_2sMpSAaoGEkjWvLSof2e4AQZsXgK` is Ready. The authenticated
+production verification returned HTTP 200 and refreshed all 30 accounts at Aug 6, 2026, 1:20 PM
+MT. The live Summary reported 15 code redemptions, 8 completed profiles among code redeemers, and
+3 completed code redeemers with a recorded message Copy. Accounts and Summary contained no raw
+ISO timestamps; the Definitions tab, formatting, and `Tester Conversion Funnel` chart remained
+intact. The canonical homepage returned HTTP 200 and the unauthenticated sync route correctly
+returned HTTP 401.
+
+No implementation remains in flight. The only future-time evidence is the first autonomous timer
+invocation. After the next 9 PM Mountain run, confirm the Sheet's readable `Last refreshed` value
+advanced and the matching production route log returned HTTP 200.
+
 ## 2026-08-05 - JOB-038 reply delivered; product review backlogged; Telegram edit queue blocked (Codex)
 
 JOB-038 reported that Saved Pursuits showed **Sent Message** with a checkmark after the user copied

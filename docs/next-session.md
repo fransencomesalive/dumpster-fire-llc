@@ -1,7 +1,29 @@
-# Next Session: 2026-08-05 JOB-031 and Full Source Scan Live
+# Next Session: 2026-08-06 Tester Account Usage Sync Live
 
-_Updated 2026-08-05. Read `AGENTS.md` and follow the Session Start Protocol in
+_Updated 2026-08-06. Read `AGENTS.md` and follow the Session Start Protocol in
 `docs/project-operating-state.md` before editing._
+
+## Tester account-usage spreadsheet sync: LIVE and production-verified
+
+The production app now refreshes the `Dumpster Fire Test Account Usage` Google Sheet every evening
+at 9 PM Mountain Time. Two Vercel UTC schedules cover daylight-saving changes, and the handler
+accepts only the active summer or winter window. The route is protected by `CRON_SECRET` and uses
+keyless Vercel OIDC plus Google Workload Identity Federation to impersonate a restricted reporting
+service account with access only to this Sheet.
+
+Implementation commits `4f7a67f` and `751e6ee` and verification commit `dd97970` are on
+`origin/main`. Final production deployment `dpl_2sMpSAaoGEkjWvLSof2e4AQZsXgK` is Ready. A manual
+authenticated production cron invocation returned HTTP 200 and refreshed 30 accounts at Aug 6,
+2026, 1:20 PM MT. Direct Sheet readback confirmed readable dates, 15 code redemptions, 8 completed
+code-redeemer profiles, 3 completed code redeemers with a message Copy, preserved Definitions and
+formatting, and the existing `Tester Conversion Funnel` chart. No raw ISO timestamps appeared in
+Accounts or Summary. The canonical homepage returned HTTP 200; the sync route returned HTTP 401
+without authorization.
+
+Next immediate action: no implementation remains in flight. After the next 9 PM Mountain run,
+confirm that `Last refreshed` advanced and that the corresponding production log returned HTTP
+200. Do not change the schedule or authentication unless a real timer-run failure provides new
+evidence.
 
 ## Design parity pass: COMPLETE and VERIFIED (2026-08-05, Claude session)
 
