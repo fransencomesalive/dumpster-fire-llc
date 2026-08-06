@@ -190,8 +190,9 @@ These are standing copy rules for all user-facing surfaces (Randall, 2026-06-26)
   harness `emDash` meter. For static copy and design cards there is no mechanical check,
   so it is on the agent: sweep before shipping any copy change with
   `grep -rn "—" app lib` and treat every hit outside a code comment as a defect.
-  Out of scope, deliberately: code comments, functional regex/parsing literals, and model
-  prompt text (including the outreach generator's own no-em-dash instruction and detector).
+  Out of scope, deliberately: code comments, functional regex/parsing literals, model prompt
+  text (including the outreach generator's own no-em-dash instruction and detector), and
+  internal repo docs and instruction files such as this one and `docs/**`.
   Enforcement class for the static-copy half: **advisory**. No hook blocks it.
 
 - **No logistics talk in generated outreach (Randall, 2026-07-14).** Outreach messages never discuss, volunteer, or make claims about location, remote, hybrid, in-office, relocation, time zones, or availability — regardless of the user's remote-preference setting or the job's stated location. Outreach sells the fit; logistics belong to later conversations. Hard generation rule (prompt-enforced + `logisticsMention` detector).
@@ -389,8 +390,14 @@ edits to existing cards — must run ALL of these steps before it can be called 
 1. Update the card HTML; the first line keeps its `<!-- @dsCard group="…" -->` marker.
 2. Ensure the card has an entry in `_ds_manifest.json`'s cards array; push the manifest
    together with the card.
-3. `register_assets` for every touched card (name + subtitle noting what changed +
-   viewport) so the Design System pane actually refreshes and the update shows up.
+3. `register_assets` is **legacy and is no longer required for an upload to show up**
+   (reconciled 2026-08-05 against the DesignSync tool contract, which supersedes the
+   2026-07-09 wording of this step). The Design System pane now builds its card index from
+   each preview HTML's first-line `<!-- @dsCard group="…" -->` marker, compiled into
+   `_ds_manifest.json`, so a card that has its marker and its manifest entry refreshes from
+   `write_files` alone. Run `register_assets` only when a card has no `@dsCard` marker, or
+   when you deliberately want to set its displayed name, subtitle, or viewport. Steps 1, 2,
+   4, and 5 are unchanged and still mandatory.
 4. Mirror the same files into the repo's `design-system/` and commit, so repo ↔ Claude
    Design project stay in parity (remote-only cards are how stale drift happens).
 5. When a product change ships (fields removed, copy changed, limits changed), sweep ALL
