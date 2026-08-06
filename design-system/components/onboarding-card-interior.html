@@ -4,7 +4,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Onboarding · Card interior — hierarchy, [+] add, saved states</title>
+<title>Onboarding · Card interior: hierarchy, [+] add, saved states</title>
 <link rel="stylesheet" href="../tokens/tokens.css" />
 <link rel="stylesheet" href="../lib/base.css" />
 <style>
@@ -92,17 +92,17 @@
     <p class="lede">The interior spec every onboarding section card follows (Randall, 2026-07-10).
     Three rules. <b>One head row:</b> title + teal <b>[+]</b> beside it (the oversized "Add ____"
     buttons are retired), active-track chip on the right. <b>One intro style:</b> the "You're
-    populating…" line and the card's purpose line share a single font, size, and leading — no more
+    populating…" line and the card's purpose line share a single font, size, and leading. No more
     mixed families. <b>Two field states:</b> saved copy renders as plain text with a pencil edit
     button; the pencil flips it back to the prefilled input with a small Save. Entry-style sections
-    (Work Examples, Skills) collapse each saved entry to a title-only row — see their own cards.</p>
+    (Work Examples, Skills) collapse each saved entry to a title-only row; see their own cards.</p>
   </div>
 
   <div class="scroller"><div class="frame">
 
     <!-- STATE 1 — head + intro anatomy -->
     <div class="state">
-      <div class="stateCap"><b>1 · Head + intro</b> — title + [+] + chip on one row; two intro lines, one type style.</div>
+      <div class="stateCap"><b>1 · Head + intro</b>: title + [+] + chip on one row; two intro lines, one type style.</div>
       <div class="section">
         <div class="cardHead">
           <span class="titleGroup">
@@ -120,7 +120,7 @@
 
     <!-- STATE 2 — prose field, SAVED -->
     <div class="state">
-      <div class="stateCap"><b>2 · Prose field, saved</b> — copy reads as text; the pencil is the only control.</div>
+      <div class="stateCap"><b>2 · Prose field, saved</b>: copy reads as text; the pencil is the only control.</div>
       <div class="section">
         <div class="field">
           <div class="fieldHead">
@@ -138,7 +138,7 @@ Teams that treat production as a service desk</p>
 
     <!-- STATE 3 — same field, EDITING -->
     <div class="state">
-      <div class="stateCap"><b>3 · Same field, editing</b> — pencil clicked: the prefilled input is back, with a small Save.</div>
+      <div class="stateCap"><b>3 · Same field, editing</b>. Pencil clicked: the prefilled input is back, with a small Save.</div>
       <div class="section">
         <div class="field">
           <div class="fieldHead">
@@ -155,17 +155,17 @@ Teams that treat production as a service desk</textarea>
 
     <!-- STATE 4 — control specs -->
     <div class="state">
-      <div class="stateCap"><b>4 · Controls</b> — the [+] add (34px, teal, bold ink ring) and the pencil (32px, paper, thick 2.6 stroke).</div>
+      <div class="stateCap"><b>4 · Controls</b>: the [+] add (34px, teal, bold ink ring) and the pencil (32px, paper, thick 2.6 stroke).</div>
       <div class="section">
         <div class="swatchRow">
           <button type="button" class="addBtn" aria-label="Add">+</button>
-          <span class="swatchCap">[+] add — 34px circle, teal fill, --line-bold ink border, 2px ink shadow, display-font plus. Sits beside the section title: &ldquo;Skills [+]&rdquo;.</span>
+          <span class="swatchCap">[+] add: 34px circle, teal fill, --line-bold ink border, 2px ink shadow, display-font plus. Sits beside the section title: &ldquo;Skills [+]&rdquo;.</span>
         </div>
         <div class="swatchRow">
           <button type="button" class="editPencil" aria-label="Edit">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
           </button>
-          <span class="swatchCap">Edit pencil — 32px square, MUSTARD fill (Randall 2026-07-10), ink 2.6-stroke pencil, --line-reg ink border, 2px ink shadow; lightened-mustard hover. Right-aligned on the field&rsquo;s label row.</span>
+          <span class="swatchCap">Edit pencil: 32px square, MUSTARD fill (Randall 2026-07-10), ink 2.6-stroke pencil, --line-reg ink border, 2px ink shadow; lightened-mustard hover. Right-aligned on the field&rsquo;s label row.</span>
         </div>
       </div>
     </div>

@@ -113,33 +113,33 @@
 <div class="wrap">
   <div>
     <h1 class="page">Onboarding · Role Track + Resume <span class="step">Card 1</span></h1>
-    <p class="lede">Onboarding now opens here. You <b>name (or pick) a Role Track</b> — the lane you're
-    pursuing — add the <b>job titles</b> the scan should search for that lane, and add its resume, right
-    on this first card. Every section is editable from the start — nothing is locked (no gates,
+    <p class="lede">Onboarding now opens here. You <b>name (or pick) a Role Track</b>, the lane you're
+    pursuing, add the <b>job titles</b> the scan should search for that lane, and add its resume, right
+    on this first card. Every section is editable from the start; nothing is locked (no gates,
     Randall 2026-07-16). While the save button is disabled, a helper line under it says exactly
     what's still needed. From then on, every
     per-track card (Work Examples, Skills, Outreach) carries a <b>chip</b> of the active
-    track. Titles are chips: Enter or comma lands each one above the field — paste a
+    track. Titles are chips: Enter or comma lands each one above the field; paste a
     comma-separated list and every title becomes its own chip. Resume is <b>PDF only</b>, read
-    once to pull quotable highlights, never stored — and the text box is always a fallback.</p>
+    once to pull quotable highlights, never stored, and the text box is always a fallback.</p>
   </div>
 
   <div class="scroller"><div class="frame">
 
     <!-- STATE 1 — First run: no tracks yet. Name field is italic placeholder. -->
     <div class="state">
-      <div class="stateCap"><b>1 · First run</b> — no Role Track yet. The name field is a text input; the disabled save button says what's still needed.</div>
+      <div class="stateCap"><b>1 · First run</b>: no Role Track yet. The name field is a text input; the disabled save button says what's still needed.</div>
       <div class="card">
         <div class="cardHead"><h3>Start a Role Track</h3><span class="step">Step 1 of onboarding</span></div>
         <div class="field">
           <label>Role Track name</label>
           <input class="trackInput placeholder" value="Create a new role track" />
-          <span class="subhint">Name the lane you're pursuing — e.g. Program Director, Producer. Want one resume to cover everything? Make a general track.</span>
+          <span class="subhint">Name the lane you're pursuing, e.g. Program Director, Producer. Want one resume to cover everything? Make a general track.</span>
         </div>
         <div class="field">
           <label>Job titles</label>
-          <input class="trackInput placeholder" value="Type a title — Enter or comma adds it" />
-          <span class="subhint">Add every title this track should scan for — each one becomes a search the scan runs.</span>
+          <input class="trackInput placeholder" value="Type a title (Enter or comma adds it)" />
+          <span class="subhint">Add every title this track should scan for. Each one becomes a search the scan runs.</span>
         </div>
         <div class="field">
           <label>Resume</label>
@@ -153,7 +153,7 @@
             <button type="button" class="chooseBtn">Choose PDF</button>
           </div>
           <textarea class="ta" placeholder="Or paste your resume text here…"></textarea>
-          <p class="helper">No file, or a resume that won't upload? <b>Paste the text</b> — it feeds highlights exactly the same way.</p>
+          <p class="helper">No file, or a resume that won't upload? <b>Paste the text</b>. It feeds highlights exactly the same way.</p>
         </div>
         <button type="button" class="primary" disabled style="opacity: 0.55; cursor: default;">Save Role Track &amp; Resume</button>
         <p class="helper">To save: give the Role Track a name and add your resume (PDF or pasted text).</p>
@@ -162,7 +162,7 @@
 
     <!-- STATE 2 — Saved: chip appears, name field is now a dropdown, resume parsed. -->
     <div class="state">
-      <div class="stateCap"><b>2 · Saved</b> — track named + resume read. Chip appears; the name field is now a dropdown.</div>
+      <div class="stateCap"><b>2 · Saved</b>: track named + resume read. Chip appears; the name field is now a dropdown.</div>
       <div class="card">
         <div class="cardHead"><h3>Role Track</h3><span class="trackChip"><span class="dot"></span>Program Director</span></div>
         <div class="field">
@@ -176,7 +176,7 @@
             <span class="titleToken">Senior Program Manager<span class="x">&times;</span></span>
             <span class="titleToken">Program Lead<span class="x">&times;</span></span>
           </div>
-          <input class="trackInput placeholder" value="Type a title — Enter or comma adds it" />
+          <input class="trackInput placeholder" value="Type a title (Enter or comma adds it)" />
           <span class="subhint">The scan searches each of these titles for this track.</span>
         </div>
         <div class="field">
@@ -186,14 +186,14 @@
             <div class="fileChip"><span>program-director.pdf</span><span class="meta">0.9 MB</span></div>
             <button type="button" class="chooseBtn">Replace</button>
           </div>
-          <p class="okNote"><b>Read — pulled 5 highlights.</b> Titles, metrics, and companies routed to the Program Director lane.</p>
+          <p class="okNote"><b>Read: pulled 5 highlights.</b> Titles, metrics, and companies routed to the Program Director lane.</p>
         </div>
       </div>
     </div>
 
     <!-- STATE 3 — Dropdown open: existing tracks + "Create a new role track". -->
     <div class="state">
-      <div class="stateCap"><b>3 · Choosing a track</b> — dropdown lists saved tracks, with "Create a new role track" at the bottom.</div>
+      <div class="stateCap"><b>3 · Choosing a track</b>: dropdown lists saved tracks, with "Create a new role track" at the bottom.</div>
       <div class="card">
         <div class="cardHead"><h3>Role Track</h3><span class="trackChip"><span class="dot"></span>Producer</span></div>
         <div class="field">
@@ -206,14 +206,14 @@
               <div class="opt new">＋ Create a new role track</div>
             </div>
           </div>
-          <span class="subhint">A new track starts from the details of your current one — adjust what's different for this lane.</span>
+          <span class="subhint">A new track starts from the details of your current one. Adjust what's different for this lane.</span>
         </div>
       </div>
     </div>
 
     <!-- STATE 4 — Downstream per-track card shows the chip; plus a resume error example. -->
     <div class="state">
-      <div class="stateCap"><b>4 · Everywhere after</b> — each per-track card echoes the active-track chip. (Resume error states shown below.)</div>
+      <div class="stateCap"><b>4 · Everywhere after</b>: each per-track card echoes the active-track chip. (Resume error states shown below.)</div>
       <div class="card">
         <div class="cardHead"><h3>Work Examples</h3><span class="trackChip"><span class="dot"></span>Program Director</span></div>
         <div class="field">
@@ -223,14 +223,14 @@
         </div>
       </div>
       <div class="card">
-        <div class="cardHead"><h3>Resume — problem states</h3></div>
+        <div class="cardHead"><h3>Resume: problem states</h3></div>
         <div class="field">
           <div class="drop err">
             <span class="pdfTag">PDF</span>
             <div class="dropMain"><span class="title">Drop a PDF here, or choose a file</span><span class="hint">PDF only</span></div>
             <button type="button" class="chooseBtn">Choose PDF</button>
           </div>
-          <p class="errNote"><b>That's a Word file (resume.docx).</b> We only read PDFs — export or "Save as" PDF, or paste your text.</p>
+          <p class="errNote"><b>That's a Word file (resume.docx).</b> We only read PDFs. Export or "Save as" PDF, or paste your text.</p>
           <p class="errNote"><b>We couldn't pull any text from this PDF.</b> Looks like scanned images. Paste your resume text so nothing gets missed.</p>
         </div>
       </div>

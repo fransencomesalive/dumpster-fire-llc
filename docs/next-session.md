@@ -3,33 +3,110 @@
 _Updated 2026-08-05. Read `AGENTS.md` and follow the Session Start Protocol in
 `docs/project-operating-state.md` before editing._
 
-## First action in the next Claude session: design parity pass
+## Design parity pass: COMPLETE and VERIFIED (2026-08-05, Claude session)
 
-Randall explicitly approved this as the first task in any next session. Before starting other
-product work, Claude must finish the design parity follow-through for the onboarding guidance
-updated on 2026-08-05 in app commit `e305367`.
+The Role Track guidance parity follow-through carried from app commit `e305367` is finished. The
+previously **NOT VERIFIED** item — remote Claude Design registration and readback — is now verified.
 
-Approved source and scope:
+Production authority (unchanged, nothing edited):
 
-- Treat the live shared `cardIntro()` implementation in `app/onboarding/OnboardingClient.tsx` and
-  the approved sentence below as the production authority:
+- `cardIntro()` in `app/onboarding/OnboardingClient.tsx:1721-1730` renders the approved sentence
   `You're working on [Role Track]. Choose another Role Track from the Role Track dropdown.`
-- Compare that implementation against every affected local design-system card:
-  `design-system/components/onboarding-card-interior.html`,
-  `design-system/components/onboarding-resume-upload.html`,
-  `design-system/components/onboarding-skills.html`, and
-  `design-system/components/onboarding-work-examples.html`.
-- Confirm all four cards still have entries in `design-system/_ds_manifest.json` and retain their
-  `@dsCard` markers.
-- Run `register_assets` for all four affected cards in the Claude Design project, with subtitles
-  identifying the Role Track guidance update and the correct card viewport, then read the remote
-  cards back to confirm Claude Design matches the repository and production.
-- If the pass finds any difference beyond restoring this exact approved sentence and existing
-  component parity, stop and request new design approval before changing presentation.
+  whenever `activeTrack` is set. Only two call sites exist — Work Examples (`:2286`) and Skills
+  (`:2353`) — so the four cards below cover the entire affected surface.
 
-Local production and repository parity are already verified. The incomplete item carried into the
-next session is remote Claude Design registration and readback, which was **NOT VERIFIED** because
-the `register_assets` integration was unavailable in the Codex session that shipped `e305367`.
+Repository parity (verified, no local file changed):
+
+- All four cards carry the approved sentence verbatim: `onboarding-card-interior.html:115`,
+  `onboarding-skills.html:142`, `onboarding-work-examples.html:132` and `:245`, and
+  `onboarding-resume-upload.html:222` (downstream per-track example state).
+- The second intro paragraph on each card matches its production `cardIntro()` argument verbatim.
+- All four retain their first-line `<!-- @dsCard group="Onboarding" -->` marker and all four have
+  entries in `design-system/_ds_manifest.json` (48 cards total).
+
+Remote Claude Design parity (verified this session):
+
+- Project `Dumpster Fire Design System` (`3af2f1ea-428c-49b3-8b02-c066ec0c7452`), plan
+  `plan_3af2f1ea428c49b3_e3b2afdd49e1`.
+- `write_files` uploaded the four cards plus `_ds_manifest.json` from disk (`written: 5`).
+- `register_assets` registered all four cards (`registered: 4`) in group `Onboarding` at viewport
+  width 1080 (matching each card's own `.wrap` max-width), with subtitles naming the Role Track
+  guidance update.
+- `get_file` readback of all four remote cards confirmed the `@dsCard` marker and the approved
+  sentence in every occurrence. Claude Design, the repository, and production now agree.
+
+Observation recorded, NOT changed (changing it would be a presentation change needing approval):
+
+- Apostrophe encoding differs by medium and always has: production uses `&apos;` (straight) in all
+  10 of its instances; the DS cards use `&rsquo;` (curly). Each medium is internally consistent;
+  this predates the Role Track change and is not a regression from it.
+
+## Em dash removal from user-facing copy (2026-08-05, approved in session)
+
+Randall's instruction, verbatim: **"remove em dash always."** Given in direct response to the em
+dash found in the Skills intro copy during the parity pass. Treated as approval to change that
+copy and every other em dash in user-facing product copy.
+
+Scope taken, and where the line was drawn:
+
+- **Changed: user-facing product copy only.** All 19 user-facing em dashes lived in
+  `app/onboarding/OnboardingClient.tsx` (helper lines, subhints, placeholders, ok/error notes, and
+  the section-rail blocker label). Every other surface (homepage, dashboard, saved pursuits, signup,
+  layout, API routes) was swept and already had none in shipped copy.
+- **Not changed: code comments** (34 remain in that file, all `//`, `/*`, or `{/* */}`), functional
+  regex/parsing literals (`ApplyWizardModal.tsx:127`, `lib/scan/sources/connectors.ts`), and model
+  prompt text in `lib/public-profile/*` — including `outreach-generator.ts:157`, which instructs the
+  model never to emit an em dash, and `:367`, which detects one. The production outreach prompt is
+  v4 verbatim and is iterated in the harness only, so it was left alone.
+- **Changed: DS card documentation prose too.** Randall's follow-up: *"swap, the rule is never use
+  em dashes."* The sweep was widened to every card's visible text (`<title>`, `.lede`, `.stateCap`,
+  `.swatchCap`, `.dsLabel`, spec headings, and the sample writing snippet). 17 cards, 65
+  occurrences, now zero visible-text em dashes across all 48 cards.
+
+Replacements are punctuation-only; no wording, layout, or structure changed. Em dashes became
+periods (new sentence), colons, commas, or parentheses:
+
+- `We only read PDFs. Export or "Save as" PDF...`
+- `Refresh the page and try again. Your typed work is saved on this device.`
+- `Anthropic (the AI that reads your PDF) is having trouble right now.`
+- `Paste the text. It feeds highlights exactly the same way.` (both occurrences)
+- `${section.label}: ${firstBlocker}` (sections-rail blocker label)
+- `Name the lane you're pursuing, e.g. Program Director, Producer.`
+- `A new track starts from the details of your current one. Adjust what's different for this lane.`
+- `Type a title (Enter or comma adds it)` / `Type a company (Enter or comma adds it)`
+- `Add every title this track should scan for. Each one becomes a search the scan runs.`
+- `Read: pulled N highlights.`
+- `It's on their end, not yours. Check Anthropic's status page...`
+- `Type it how you'd say it: "150,000", "$150k"...`
+- `Back each skill with metrics or results. Those lines are what outreach can actually quote.`
+- `One metric or result per line (numbers beat adjectives)` (both occurrences)
+
+Design parity held in the same pass. Two syncs to Claude Design:
+
+1. `plan_3af2f1ea428c49b3_b554871eaa57` — `onboarding-resume-upload.html` (8 strings) and
+   `onboarding-skills.html` (2 strings), the cards mirroring production copy. `written: 2`,
+   `registered: 2` at viewport 1080, then read back to confirm every changed string.
+2. `plan_3af2f1ea428c49b3_ce85d1e19de7` — the widened documentation sweep, `written: 17`.
+   `register_assets` was **not** re-run for this batch: the DesignSync contract now states the pane
+   builds its card index from each preview's first-line `@dsCard` marker compiled into
+   `_ds_manifest.json`, so explicit registration is legacy and not required for uploads. All 17
+   cards retain their markers and manifest entries. The `AGENTS.md` Full Design-Sync Checklist
+   still says register_assets is mandatory; that step predates the contract change and is worth
+   revisiting.
+
+Also changed: the `AGENTS.md` em dash rule was widened from "no em dashes in generated messages" to
+**"No em dashes, ever, anywhere"**, covering generated messages, user-facing product copy, and the
+design-system cards, with the out-of-scope carve-outs named explicitly. Randall's instruction was
+that this should already have been durable. Enforcement class for the static-copy half is
+**advisory**: no hook blocks it, the sweep is on the agent.
+
+Validation after the change: `npx tsc --noEmit --incremental false` clean, `npm run lint` 0 errors
+(4 pre-existing unused-var warnings), `npm run build` compiled successfully,
+`npm run test:public-jobs` passed, `git diff --check` clean.
+
+Remaining verification after deploy: an authenticated look at the onboarding surface to confirm the
+revised copy renders as intended. Nothing about the change is layout-affecting, but it has not been
+seen in a browser.
 
 ## Immediate state
 

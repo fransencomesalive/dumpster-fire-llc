@@ -181,7 +181,19 @@ These are standing copy rules for all user-facing surfaces (Randall, 2026-06-26)
 - **No "proof" vocabulary.** Never use the word "proof" (proof, Proof Library, proof object, proof selection, "what this proves", etc.) in user-facing copy. The user-facing concept is **work examples / portfolio** — text-only examples used as context for outreach-message generation.
 - **No "improve the profile / improve matching" framing.** Matches are rated by the system to provide better matching; the user maintains/keeps their profile current, they do not "improve matching."
 - **Brand voice: anti-corporate-speak.** Dumpster Fire is not a tool for corporate-speak lovers. The positioning is about bringing the user's personality to the table when pursuing a job. Copy should sound human and specific, never generic corporate boilerplate.
-- **No em dashes in generated messages (Randall, 2026-07-14).** No message generated on Dumpster Fire's platform may ever contain an em dash. Use alternate punctuation or sentence structure instead: commas, parentheses, semicolons, colons, or a new sentence. This is a hard generation rule (prompt-enforced, measured by the outreach-quality harness `emDash` meter), extending the no-em-dash rule already applied to static product copy.
+- **No em dashes, ever, anywhere (Randall, 2026-07-14; widened 2026-08-05).** The rule is
+  absolute: **never use an em dash.** It covers every message generated on Dumpster Fire's
+  platform AND every piece of user-facing product copy AND the design-system cards. Use
+  alternate punctuation or sentence structure instead: commas, parentheses, semicolons,
+  colons, or a new sentence. Change punctuation only; never reword to dodge the rule.
+  For generated messages this is prompt-enforced and measured by the outreach-quality
+  harness `emDash` meter. For static copy and design cards there is no mechanical check,
+  so it is on the agent: sweep before shipping any copy change with
+  `grep -rn "—" app lib` and treat every hit outside a code comment as a defect.
+  Out of scope, deliberately: code comments, functional regex/parsing literals, and model
+  prompt text (including the outreach generator's own no-em-dash instruction and detector).
+  Enforcement class for the static-copy half: **advisory**. No hook blocks it.
+
 - **No logistics talk in generated outreach (Randall, 2026-07-14).** Outreach messages never discuss, volunteer, or make claims about location, remote, hybrid, in-office, relocation, time zones, or availability — regardless of the user's remote-preference setting or the job's stated location. Outreach sells the fit; logistics belong to later conversations. Hard generation rule (prompt-enforced + `logisticsMention` detector).
 
 ### Human Path Result Mix (Randall, 2026-07-22)

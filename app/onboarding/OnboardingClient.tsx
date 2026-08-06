@@ -1171,7 +1171,7 @@ export default function OnboardingClient({
       setResumeScan({
         status: "error",
         lead: `That's a ${fileKindLabel(file.name)} file (${file.name}).`,
-        tail: "We only read PDFs — export or “Save as” PDF, or paste your text.",
+        tail: "We only read PDFs. Export or “Save as” PDF, or paste your text.",
       });
       return;
     }
@@ -1200,7 +1200,7 @@ export default function OnboardingClient({
         setResumeScan({
           status: "error",
           lead: "Your session timed out.",
-          tail: "Refresh the page and try again — your typed work is saved on this device.",
+          tail: "Refresh the page and try again. Your typed work is saved on this device.",
         });
         setMessage("Resume scan failed.");
         return;
@@ -1223,7 +1223,7 @@ export default function OnboardingClient({
         setResumeScan({
           status: "error",
           modelDown: true,
-          lead: "Anthropic — the AI that reads your PDF — is having trouble right now.",
+          lead: "Anthropic (the AI that reads your PDF) is having trouble right now.",
           tail: "",
         });
         setMessage("Resume scan unavailable.");
@@ -1256,7 +1256,7 @@ export default function OnboardingClient({
       setResumeScan({
         status: "error",
         lead: "We couldn't read this PDF right now.",
-        tail: "Paste the text — it feeds highlights exactly the same way.",
+        tail: "Paste the text. It feeds highlights exactly the same way.",
       });
       setMessage("Resume scan failed.");
     }
@@ -1795,7 +1795,7 @@ export default function OnboardingClient({
             <li key={section.key}>
               <span className={styles.reviewDot} />
               <a className={styles.reviewLink} href={`#career-profile-${section.key}`}>
-                {firstBlocker ? `${section.label} — ${firstBlocker}` : section.label}
+                {firstBlocker ? `${section.label}: ${firstBlocker}` : section.label}
               </a>
             </li>
           );
@@ -1947,9 +1947,9 @@ export default function OnboardingClient({
                     onChange={(event) => setNewTrackName(event.target.value)}
                   />
                   {firstRun ? (
-                    <span className={styles.subhint}>Name the lane you&apos;re pursuing — e.g. Program Director, Producer. Want one resume to cover everything? Make a general track.</span>
+                    <span className={styles.subhint}>Name the lane you&apos;re pursuing, e.g. Program Director, Producer. Want one resume to cover everything? Make a general track.</span>
                   ) : (
-                    <span className={styles.subhint}>A new track starts from the details of your current one — adjust what&apos;s different for this lane.</span>
+                    <span className={styles.subhint}>A new track starts from the details of your current one. Adjust what&apos;s different for this lane.</span>
                   )}
                 </>
               ) : (
@@ -1988,7 +1988,7 @@ export default function OnboardingClient({
                           ＋ Create a new role track
                         </button>
                       </div>
-                      <span className={styles.subhint}>A new track starts from the details of your current one — adjust what&apos;s different for this lane.</span>
+                      <span className={styles.subhint}>A new track starts from the details of your current one. Adjust what&apos;s different for this lane.</span>
                     </>
                   ) : null}
                 </div>
@@ -2001,14 +2001,14 @@ export default function OnboardingClient({
                 key={`${creatingTrack ? "new" : activeTrackId || "first"}`}
                 inputId="card1-title-input"
                 values={titleChips}
-                placeholder="Type a title — Enter or comma adds it"
+                placeholder="Type a title (Enter or comma adds it)"
                 disabled={!accessToken || busy}
                 classes={{ chips: styles.titleTokens, chip: styles.titleToken, remove: styles.x, input: styles.trackInput }}
                 onChange={handleTitleChipsChange}
               />
               <span className={styles.subhint}>
                 {firstRun || creatingTrack
-                  ? "Add every title this track should scan for — each one becomes a search the scan runs."
+                  ? "Add every title this track should scan for. Each one becomes a search the scan runs."
                   : "The scan searches each of these titles for this track."}
               </span>
             </div>
@@ -2059,7 +2059,7 @@ export default function OnboardingClient({
                   {card1Note ? (
                     <p className={styles.okNote}>
                       <b>{typeof card1Note.count === "number" && card1Note.count > 0
-                        ? `Read — pulled ${card1Note.count} highlight${card1Note.count === 1 ? "" : "s"}.`
+                        ? `Read: pulled ${card1Note.count} highlight${card1Note.count === 1 ? "" : "s"}.`
                         : "Read."}</b>
                       {` Titles, metrics, and companies routed to the ${card1Note.trackName} lane.`}
                     </p>
@@ -2111,7 +2111,7 @@ export default function OnboardingClient({
                     <p className={styles.errNote}>
                       <b>{resumeScan.lead}</b>
                       {resumeScan.modelDown ? (
-                        <> It&apos;s on their end, not yours — check <a href="https://status.claude.com" target="_blank" rel="noreferrer">Anthropic&apos;s status page</a>, try again in a minute, or paste your text below.</>
+                        <> It&apos;s on their end, not yours. Check <a href="https://status.claude.com" target="_blank" rel="noreferrer">Anthropic&apos;s status page</a>, try again in a minute, or paste your text below.</>
                       ) : resumeScan.tail ? ` ${resumeScan.tail}` : null}
                     </p>
                   ) : null}
@@ -2124,7 +2124,7 @@ export default function OnboardingClient({
                         disabled={!accessToken || busy || resumeScan.status === "reading"}
                         onChange={(event) => setPastedResumeText(event.target.value)}
                       />
-                      <p className={styles.card1Helper}>No file, or a resume that won&apos;t upload? <b>Paste the text</b> — it feeds highlights exactly the same way.</p>
+                      <p className={styles.card1Helper}>No file, or a resume that won&apos;t upload? <b>Paste the text</b>. It feeds highlights exactly the same way.</p>
                     </>
                   ) : null}
                 </>
@@ -2199,7 +2199,7 @@ export default function OnboardingClient({
                   <label><span className={styles.compCap}>Hourly · preferred</span>
                     <input inputMode="decimal" placeholder="$85" {...moneyField("identity.compHourlyPreferred", identity.targetCompensationHourlyPreferred, (value) => setIdentity((current) => ({ ...current, targetCompensationHourlyPreferred: value })), { decimals: true })} /></label>
                 </div>
-                <p className={styles.card1Helper}>Type it how you&apos;d say it — <b>&quot;150,000&quot;</b>, <b>&quot;$150k&quot;</b>, and <b>&quot;72.50&quot;</b> all read correctly. Jobs that post either form get matched against both.</p>
+                <p className={styles.card1Helper}>Type it how you&apos;d say it: <b>&quot;150,000&quot;</b>, <b>&quot;$150k&quot;</b>, and <b>&quot;72.50&quot;</b> all read correctly. Jobs that post either form get matched against both.</p>
               </div>
               {/* Employment types — tap chips (approved card, decision #4). */}
               <div className={`${styles.fullWidth} ${styles.compGroup}`}>
@@ -2260,7 +2260,7 @@ export default function OnboardingClient({
                   </div>
                   <TokenListInput
                     values={identity.avoidCompanies ?? []}
-                    placeholder="Type a company — Enter or comma adds it"
+                    placeholder="Type a company (Enter or comma adds it)"
                     disabled={!accessToken || busy}
                     removeGlyph="✕"
                     classes={{
@@ -2350,7 +2350,7 @@ export default function OnboardingClient({
           {/* --- Skills --- */}
           <article className={styles.formCard} id="career-profile-skills">
             {perTrackHeader("Skills", () => { setDraftSkill(emptySkill()); setOpenSkillId(null); }, "Add skill")}
-            {cardIntro("Back each skill with metrics or results — those lines are what outreach can actually quote.")}
+            {cardIntro("Back each skill with metrics or results. Those lines are what outreach can actually quote.")}
             {skills.length === 0 && !draftSkill ? (
               <p className={styles.emptyState}>No skills yet. Hit + to add one, then back it with metrics or results and link the work behind it.</p>
             ) : (
@@ -2370,7 +2370,7 @@ export default function OnboardingClient({
                         readNode: skill.evidence.length > 0
                           ? <p className={styles.savedText}>{linesToText(skill.evidence)}</p>
                           : <p className={`${styles.savedText} ${styles.faint}`}>No metrics or results yet</p>,
-                        editNode: <textarea className={styles.entryTa} placeholder="One metric or result per line — numbers beat adjectives" {...lineListField(`skills.${skill.id}.evidence`, skill.evidence, (values) => updateSkill(skill.id, { evidence: values }))} />,
+                        editNode: <textarea className={styles.entryTa} placeholder="One metric or result per line (numbers beat adjectives)" {...lineListField(`skills.${skill.id}.evidence`, skill.evidence, (values) => updateSkill(skill.id, { evidence: values }))} />,
                       })}
                       {savedEntryField({
                         fieldKey: `sk.${skill.id}.related`,
@@ -2429,7 +2429,7 @@ export default function OnboardingClient({
                         <option value="strong">Strong</option>
                         <option value="expert">Expert</option>
                       </select></label>
-                      <label className={styles.fullWidth}>Metrics / Results<textarea placeholder="One metric or result per line — numbers beat adjectives" {...lineListField(`skills.${draftSkill.id}.evidence`, draftSkill.evidence, (values) => setDraftSkill((current) => (current ? { ...current, evidence: values } : current)))} /></label>
+                      <label className={styles.fullWidth}>Metrics / Results<textarea placeholder="One metric or result per line (numbers beat adjectives)" {...lineListField(`skills.${draftSkill.id}.evidence`, draftSkill.evidence, (values) => setDraftSkill((current) => (current ? { ...current, evidence: values } : current)))} /></label>
                     </div>
                     <div className={styles.attachmentBlock}>
                       <p className={styles.statusLabel}>Related Work Examples</p>
