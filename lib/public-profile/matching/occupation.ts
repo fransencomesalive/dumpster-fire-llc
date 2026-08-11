@@ -218,8 +218,8 @@ const laneRules: LaneRule[] = [
     ],
     task: [/\b(operating rhythm|business planning|business operations|executive planning|go to market|gtm|strategic initiatives|cross functional|stakeholder alignment)\b/],
     disqualifiers: [
-      /\b(revenue strategy|b2b marketing|growth markets|user safety|risk operations|brokerage|sanctions|business transformation)\b/,
-      /\b(finance|financial|fp&a|fp a|accountant|accounting|controller|investor relations|procurement|sourcing|supply chain)\b/,
+      /\b(revenue strategy|b2b marketing|growth markets|user safety|risk operations|fraud|brokerage|sanctions|business transformation)\b/,
+      /\b(finance|financial|fp&a|fp a|accountant|accounting|accounts? receivable|accounts? payable|billing|controller|investor relations|procurement|sourcing|supply chain)\b/,
       /\b(marketing|product|people|sales|revenue|safety|technical|engineering|creative|content|legal|compliance) operations\b/,
     ],
     adjacent: ["program-project-management", "creative-strategy", "product-operations"],
@@ -267,7 +267,7 @@ const laneRules: LaneRule[] = [
   },
   {
     lane: "risk-safety-operations",
-    title: [/\b(safety response|sanctions|issuing bank programs|risk operations)\b/],
+    title: [/\b(safety response|sanctions|issuing bank programs|risk operations|fraud)\b/],
     task: [/\b(safety response|risk operations|trust and safety|fraud|sanctions|compliance|bank program|regulatory)\b/],
   },
   {
@@ -303,8 +303,8 @@ const laneRules: LaneRule[] = [
   },
   {
     lane: "finance-accounting",
-    title: [/\b(finance|fp&a|fp a|accountant|accounting|controller|investor relations)\b/],
-    task: [/\b(financial planning|financial reporting|forecast|budget model|accounting|audit|controllership|investor relations)\b/],
+    title: [/\b(finance|fp&a|fp a|accountant|accounting|accounts? receivable|accounts? payable|billing|controller|investor relations)\b/],
+    task: [/\b(financial planning|financial reporting|forecast|budget model|accounting|accounts? receivable|accounts? payable|billing|audit|controllership|investor relations)\b/],
   },
   {
     lane: "procurement-supply-chain-operations",

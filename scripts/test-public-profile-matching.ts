@@ -549,6 +549,18 @@ const unrelatedFinanceJobs: MatchJob[] = [
     companyName: "Sourcing Company",
     description: "Own strategic sourcing, supplier negotiations, procurement, and category strategy.",
   },
+  {
+    id: "job-037-accounts-receivable",
+    title: "Accounts Receivable and Billing Operations Manager",
+    companyName: "Billing Company",
+    description: "Own accounts receivable, billing operations, collections, and financial reporting.",
+  },
+  {
+    id: "job-037-fraud-strategy",
+    title: "Fraud Strategy Manager",
+    companyName: "Financial Services Company",
+    description: "Own fraud controls, fraud investigations, risk policy, and loss prevention.",
+  },
 ];
 
 for (const unrelatedJob of unrelatedFinanceJobs) {
@@ -582,7 +594,7 @@ financeProfile.roleTracks[0] = {
 };
 const financeSignals = matchingSignalsForAggregate(financeProfile);
 assert.ok(financeSignals.lanes.coreLanes.has("finance-accounting"));
-for (const title of ["Finance Operations Manager", "Corporate Controller"]) {
+for (const title of ["Finance Operations Manager", "Corporate Controller", "Accounts Receivable Manager"]) {
   const decision = evaluatePublicJobDecision({
     id: `job-finance-supported-${title}`,
     title,
@@ -591,6 +603,27 @@ for (const title of ["Finance Operations Manager", "Corporate Controller"]) {
   }, financeSignals, now);
   assert.equal(decision.included, true, `${title} should remain eligible for a finance profile`);
 }
+
+const fraudRiskProfile = profile();
+fraudRiskProfile.roleTracks[0] = {
+  ...fraudRiskProfile.roleTracks[0],
+  name: "Fraud Risk Leadership",
+  targetTitles: ["Fraud Strategy Manager", "Fraud Operations Manager"],
+  keyResponsibilities: ["Lead fraud controls, investigations, risk policy, and loss prevention"],
+  requiredExperiencePatterns: ["Fraud prevention and risk operations leadership"],
+  strongJobSignals: ["Fraud strategy", "Risk controls"],
+  weakJobSignals: [],
+  mismatchSignals: [],
+};
+const fraudRiskSignals = matchingSignalsForAggregate(fraudRiskProfile);
+assert.ok(fraudRiskSignals.lanes.coreLanes.has("risk-safety-operations"));
+const fraudRiskDecision = evaluatePublicJobDecision({
+  id: "job-fraud-risk-supported",
+  title: "Fraud Strategy Manager",
+  companyName: "Financial Services Company",
+  description: "Own fraud controls, investigations, risk policy, and loss prevention.",
+}, fraudRiskSignals, now);
+assert.equal(fraudRiskDecision.included, true, "Fraud roles should remain eligible for a fraud-risk profile");
 
 const procurementProfile = profile();
 procurementProfile.roleTracks[0] = {
