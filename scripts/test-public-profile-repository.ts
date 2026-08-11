@@ -257,7 +257,7 @@ async function main() {
 
   const identityCalls: Call[] = [];
   const identityUpdate = applyIdentitySearchSectionPatch(mapped, {
-    fullName: "Avery Updated",
+    fullName: "Avery Smith-Jones",
     preferredName: undefined,
     employmentTypes: ["full_time", "contract"],
     avoidCompanies: ["Bad Co"],
@@ -271,7 +271,7 @@ async function main() {
     ["candidate_profile_preferences", "POST"],
     ["profile_quality", "POST"],
   ]);
-  assert.equal((identityCalls[0].body as { full_name: string }).full_name, "Avery Updated");
+  assert.equal((identityCalls[0].body as { full_name: string }).full_name, "Avery Smith-Jones");
   assert.equal((identityCalls[0].body as { preferred_name: string | null }).preferred_name, null);
   assert.deepEqual((identityCalls[1].body as { employment_types: string[] }).employment_types, ["full_time", "contract"]);
   assert.deepEqual((identityCalls[1].body as { avoid_companies: string[] }).avoid_companies, ["Bad Co"]);

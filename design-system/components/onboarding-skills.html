@@ -122,14 +122,14 @@
     skills <b>collapse to name + proficiency rows</b>. <b>Evidence is renamed Metrics / Results</b>
     (#15), one per line. The proficiency dropdown gets <b>normal input proportions</b> (#14). Each
     entry saves itself; the card-bottom Save is retired. Completion gate stays name + proficiency +
-    metrics.</p>
+    metrics. Saved proficiency uses the same pencil, Save, and Discard pattern as the other fields.</p>
   </div>
 
   <div class="scroller"><div class="frame">
 
     <!-- STATE 1 — collapsed rows, one expanded read mode -->
     <div class="state">
-      <div class="stateCap"><b>1 · Saved</b>: name + proficiency rows; expanded skill reads as text, pencil per field.</div>
+      <div class="stateCap"><b>1 · Saved</b>: name + proficiency rows; expanded skill shows proficiency editing with Save and Discard.</div>
       <div class="section">
         <div class="cardHead">
           <span class="titleGroup">
@@ -155,6 +155,16 @@
               <span class="entryTitle">Cross-functional Program Management</span>
               <span class="profPill">Strong</span>
               <span class="entryCaret">▾</span>
+            </div>
+            <div class="field">
+              <div class="fieldHead">
+                <span class="fieldLabel">Proficiency</span>
+              </div>
+              <div class="selectFace"><span>Expert</span><span class="car">▾</span></div>
+              <div class="entryActions">
+                <button type="button" class="saveSmall">Save</button>
+                <button type="button" class="removeGhost">Discard</button>
+              </div>
             </div>
             <div class="field">
               <div class="fieldHead">

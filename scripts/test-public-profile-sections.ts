@@ -13,6 +13,7 @@ import {
 } from "../lib/public-profile/section-service";
 import {
   applyRoleTracksSectionPatch,
+  applySkillsInventorySectionPatch,
   applyWorkExamplesSectionPatch,
   applyWritingSamplesSectionPatch,
   parseFitSignalsSectionPatch,
@@ -83,7 +84,7 @@ async function main() {
   if (noPreference.ok) assert.equal(noPreference.patch.remotePreference, "no_preference");
 
   const parsedIdentity = parseIdentitySearchSectionPatch({
-    fullName: "  Avery Candidate  ",
+    fullName: "  Avery Smith-Jones  ",
     email: "",
     remotePreference: "hybrid_ok",
     targetCompensationMin: "140000.4",
@@ -93,7 +94,7 @@ async function main() {
   assert.equal(parsedIdentity.ok, true);
   if (parsedIdentity.ok) {
     assert.deepEqual(parsedIdentity.patch, {
-      fullName: "Avery Candidate",
+      fullName: "Avery Smith-Jones",
       email: undefined,
       remotePreference: "hybrid_ok",
       targetCompensationMin: 140000,
@@ -132,10 +133,11 @@ async function main() {
   const identityUpdate = await updateLoadedIdentitySearchSectionForUser({
     loadAggregate: async () => aggregate(),
     persistIdentitySearchSection: async (result) => { identityPersisted.push(result); },
-  }, "user-1", { location: "Boulder, CO", avoidCompanies: ["Bad Co", "Bad Co", "  "] }, { updatedAt: now });
+  }, "user-1", { fullName: "Avery Smith-Jones", location: "Boulder, CO", avoidCompanies: ["Bad Co", "Bad Co", "  "] }, { updatedAt: now });
   assert.equal(identityUpdate.status, "updated");
   if (identityUpdate.status === "updated") {
     assert.equal(identityUpdate.section.location, "Boulder, CO");
+    assert.equal(identityUpdate.section.fullName, "Avery Smith-Jones");
     assert.deepEqual(identityUpdate.section.avoidCompanies, ["Bad Co"]);
   }
   assert.equal(identityPersisted.length, 1);
@@ -305,6 +307,17 @@ async function main() {
   if (invalidSkillRelationship.status === "validation_error") {
     assert.ok(invalidSkillRelationship.issues.some((issue) => issue.message.includes("Unknown Work Example id")));
   }
+
+  const originalSkill = completeAggregate.skills[0];
+  const proficiencyUpdate = applySkillsInventorySectionPatch(completeAggregate, {
+    skills: [{ ...originalSkill, proficiency: "expert" }],
+  }, now);
+  const updatedSkill = proficiencyUpdate.section.skills[0];
+  assert.equal(updatedSkill.proficiency, "expert");
+  assert.equal(updatedSkill.id, originalSkill.id);
+  assert.deepEqual(updatedSkill.evidence, originalSkill.evidence);
+  assert.deepEqual(updatedSkill.relatedWorkExampleIds, originalSkill.relatedWorkExampleIds);
+  assert.equal(proficiencyUpdate.aggregate.skills[0].createdAt, originalSkill.createdAt);
 
   // Voice & Personality
   const voiceInvalid = parseVoicePersonalitySectionPatch({ toneTags: "nope" });

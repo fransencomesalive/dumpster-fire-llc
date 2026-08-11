@@ -852,6 +852,7 @@ export default function OnboardingClient({
   const [draftWorkExample, setDraftWorkExample] = useState<WorkExampleSectionItem | null>(null);
   const [openSkillId, setOpenSkillId] = useState<string | null>(null);
   const [draftSkill, setDraftSkill] = useState<SkillsInventorySectionItem | null>(null);
+  const [skillProficiencyDrafts, setSkillProficiencyDrafts] = useState<Record<string, SkillProficiency>>({});
   // Per-field edit toggles, namespaced: `we.<id>.<field>`, `sk.<id>.<field>`,
   // `voice.q1|q4|avoidNote`, `ws.<id>`, `fit.good|poor`. A key present = that field
   // is showing its input; absent = its saved text + pencil (or the input if empty).
@@ -1468,6 +1469,7 @@ export default function OnboardingClient({
     void commitSkills(skills.filter((item) => item.id !== id), () => {
       if (openSkillId === id) setOpenSkillId(null);
       closeFields(`sk.${id}.`);
+      clearSkillProficiencyDraft(id);
     });
   }
 
@@ -1484,6 +1486,7 @@ export default function OnboardingClient({
     multiline?: boolean;
     readNode?: React.ReactNode;
     editNode?: React.ReactNode;
+    onDiscard?: () => void;
   }) {
     const editing = isEditing(opts.fieldKey);
     const trimmed = (opts.value ?? "").trim();
@@ -1512,7 +1515,14 @@ export default function OnboardingClient({
                 <input className={styles.entryInput} value={opts.value ?? ""} onChange={(event) => opts.onChange?.(event.target.value)} />
               )
             )}
-            <button type="button" className={styles.saveSmall} disabled={busy} onClick={opts.onSave}>Save</button>
+            {opts.onDiscard ? (
+              <div className={styles.entryActions}>
+                <button type="button" className={styles.saveSmall} disabled={busy} onClick={opts.onSave}>Save</button>
+                <button type="button" className={styles.removeGhost} disabled={busy} onClick={opts.onDiscard}>Discard</button>
+              </div>
+            ) : (
+              <button type="button" className={styles.saveSmall} disabled={busy} onClick={opts.onSave}>Save</button>
+            )}
           </>
         ) : (
           read
@@ -1619,6 +1629,27 @@ export default function OnboardingClient({
     const ids = new Set(skill.relatedWorkExampleIds);
     if (ids.has(workExampleId)) ids.delete(workExampleId); else ids.add(workExampleId);
     updateSkill(skill.id, { relatedWorkExampleIds: Array.from(ids) });
+  }
+
+  function clearSkillProficiencyDraft(id: string) {
+    setSkillProficiencyDrafts((drafts) => {
+      const next = { ...drafts };
+      delete next[id];
+      return next;
+    });
+  }
+
+  function discardSkillProficiency(id: string) {
+    clearSkillProficiencyDraft(id);
+    closeField(`sk.${id}.proficiency`);
+  }
+
+  function saveSkillProficiency(skill: SkillsInventorySectionItem) {
+    const proficiency = skillProficiencyDrafts[skill.id] ?? skill.proficiency;
+    const nextSkills = skills.map((item) => (
+      item.id === skill.id ? { ...item, proficiency } : item
+    ));
+    void commitSkills(nextSkills, () => discardSkillProficiency(skill.id));
   }
 
   function toggleTone(value: string) {
@@ -2358,11 +2389,36 @@ export default function OnboardingClient({
                 {skills.map((skill) => (
                   openSkillId === skill.id ? (
                     <div className={styles.entryOpen} key={skill.id}>
-                      <button type="button" className={styles.entryOpenHead} onClick={() => setOpenSkillId(null)}>
+                      <button type="button" className={styles.entryOpenHead} onClick={() => {
+                        setOpenSkillId(null);
+                        discardSkillProficiency(skill.id);
+                      }}>
                         <span className={styles.entryTitle}>{skill.skillName || "Untitled skill"}</span>
                         <span className={styles.profPill}>{proficiencyLabel(skill.proficiency)}</span>
                         <span className={styles.entryCaret}>▾</span>
                       </button>
+                      {savedEntryField({
+                        fieldKey: `sk.${skill.id}.proficiency`,
+                        label: "Proficiency",
+                        onSave: () => saveSkillProficiency(skill),
+                        onDiscard: () => discardSkillProficiency(skill.id),
+                        readNode: <span className={styles.profPill}>{proficiencyLabel(skill.proficiency)}</span>,
+                        editNode: (
+                          <select
+                            className={styles.entryInput}
+                            aria-label="Proficiency"
+                            value={skillProficiencyDrafts[skill.id] ?? skill.proficiency}
+                            onChange={(event) => setSkillProficiencyDrafts((drafts) => ({
+                              ...drafts,
+                              [skill.id]: event.target.value as SkillProficiency,
+                            }))}
+                          >
+                            <option value="working">Working</option>
+                            <option value="strong">Strong</option>
+                            <option value="expert">Expert</option>
+                          </select>
+                        ),
+                      })}
                       {savedEntryField({
                         fieldKey: `sk.${skill.id}.evidence`,
                         label: "Metrics / Results",

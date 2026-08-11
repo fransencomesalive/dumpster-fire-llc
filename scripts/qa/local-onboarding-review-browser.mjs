@@ -49,6 +49,26 @@ const identity = {
   avoidCompanies: [],
 };
 
+const savedWorkExample = {
+  id: "example-1",
+  title: "Launch operating system",
+  oneHitter: "Built the operating system behind a complex launch.",
+  context: "Coordinated teams, timelines, and production risk.",
+  link: "https://example.com/launch",
+  createdAt: "2026-08-01T12:00:00.000Z",
+  updatedAt: "2026-08-01T12:00:00.000Z",
+};
+
+const savedSkill = {
+  id: "skill-1",
+  skillName: "Program Management",
+  proficiency: "strong",
+  evidence: ["Led 14 workstreams without a missed launch"],
+  relatedWorkExampleIds: [savedWorkExample.id],
+  createdAt: "2026-08-01T12:00:00.000Z",
+  updatedAt: "2026-08-01T12:00:00.000Z",
+};
+
 const emptyVoice = {
   q1Value: "",
   q4Opinion: "",
@@ -71,6 +91,9 @@ function sectionResponse(section, profileQuality = incompleteQuality, extras = {
 async function installApiMocks(page) {
   let savedTracks = [];
   let savedResumes = [];
+  let savedWorkExamples = [savedWorkExample];
+  let savedSkills = [savedSkill];
+  const skillPatchBodies = [];
 
   await page.route("**/api/**", async (route) => {
     const request = route.request();
@@ -105,9 +128,14 @@ async function installApiMocks(page) {
         { resumeHighlightCounts: Object.fromEntries(savedResumes.map((resume) => [resume.id, 3])) },
       );
     } else if (path === "/api/public-profile/work-examples") {
-      payload = sectionResponse({ workExamples: method === "PATCH" ? body.workExamples : [] });
+      if (method === "PATCH") savedWorkExamples = body.workExamples;
+      payload = sectionResponse({ workExamples: savedWorkExamples });
     } else if (path === "/api/public-profile/skills") {
-      payload = sectionResponse({ skills: method === "PATCH" ? body.skills : [] });
+      if (method === "PATCH") {
+        skillPatchBodies.push(body);
+        savedSkills = body.skills;
+      }
+      payload = sectionResponse({ skills: savedSkills });
     } else if (path === "/api/public-profile/voice-personality") {
       payload = sectionResponse(method === "PATCH" ? body : emptyVoice, afterResumeQuality);
     } else if (path === "/api/public-profile/writing-samples") {
@@ -127,15 +155,63 @@ async function installApiMocks(page) {
       body: JSON.stringify(payload),
     });
   });
+
+  return {
+    skillPatchBodies,
+    get savedSkills() { return savedSkills; },
+  };
 }
 
 async function pageGeometry(page) {
-  return page.evaluate(() => ({
-    viewportWidth: window.innerWidth,
-    documentWidth: document.documentElement.scrollWidth,
-    bodyWidth: document.body.scrollWidth,
-    reviewVisible: Boolean(document.querySelector("#profile-review")),
-  }));
+  return page.evaluate(() => {
+    function paintedHorizontalEdges(element) {
+      const rect = element.getBoundingClientRect();
+      const style = getComputedStyle(element);
+      let paintedLeft = rect.left;
+      let paintedRight = rect.right;
+
+      for (const shadow of style.boxShadow.matchAll(/(-?\d+(?:\.\d+)?)px\s+(-?\d+(?:\.\d+)?)px(?:\s+(\d+(?:\.\d+)?)px)?(?:\s+(-?\d+(?:\.\d+)?)px)?/g)) {
+        const offsetX = Number(shadow[1]);
+        const blur = Number(shadow[3] || 0);
+        const spread = Number(shadow[4] || 0);
+        paintedLeft = Math.min(paintedLeft, rect.left + offsetX - blur - spread);
+        paintedRight = Math.max(paintedRight, rect.right + offsetX + blur + spread);
+      }
+
+      const outlineWidth = Number.parseFloat(style.outlineWidth) || 0;
+      const outlineOffset = Number.parseFloat(style.outlineOffset) || 0;
+      const outlineExtent = Math.max(0, outlineWidth + outlineOffset);
+
+      return {
+        paintedLeft: paintedLeft - outlineExtent,
+        paintedRight: paintedRight + outlineExtent,
+      };
+    }
+
+    return {
+      viewportWidth: window.innerWidth,
+      documentWidth: document.documentElement.scrollWidth,
+      bodyWidth: document.body.scrollWidth,
+      reviewVisible: Boolean(document.querySelector("#profile-review")),
+      skillControlPaintedEdges: [...document.querySelectorAll("#career-profile-skills select, #career-profile-skills button")]
+        .filter((element) => element instanceof HTMLElement && element.offsetParent !== null)
+        .map((element) => {
+          const rect = element.getBoundingClientRect();
+          const style = getComputedStyle(element);
+          return {
+            label: element.getAttribute("aria-label") || element.textContent?.trim() || element.tagName,
+            left: rect.left,
+            right: rect.right,
+            ...paintedHorizontalEdges(element),
+            boxShadow: style.boxShadow,
+            outlineWidth: style.outlineWidth,
+            outlineOffset: style.outlineOffset,
+            borderLeftWidth: style.borderLeftWidth,
+            borderRightWidth: style.borderRightWidth,
+          };
+        }),
+    };
+  });
 }
 
 await mkdir(ARTIFACT_DIR, { recursive: true });
@@ -151,7 +227,7 @@ page.on("console", (message) => {
   if (message.type() === "error") consoleErrors.push(message.text());
 });
 page.on("pageerror", (error) => pageErrors.push(error.message));
-await installApiMocks(page);
+const apiState = await installApiMocks(page);
 
 try {
   await page.goto(`${APP_URL}/onboarding`, { waitUntil: "networkidle" });
@@ -163,6 +239,37 @@ try {
   const initialBadges = await page.locator("aside[aria-label='Profile sections'] [class*='readinessBadge']").allTextContents();
   assert(initialBadges.every((label) => label.trim() === "In progress"), `Expected quiet initial badges, received ${initialBadges}`);
   assert.equal(await page.locator("#profile-review").count(), 0, "Review panel appeared before any completion attempt");
+
+  const skillsCard = page.locator("#career-profile-skills");
+  await skillsCard.getByRole("button").filter({ hasText: "Program Management" }).click();
+  await skillsCard.getByRole("button", { name: "Edit proficiency" }).click();
+  let proficiencyField = skillsCard.locator("[class*='entryField']").filter({ hasText: "Proficiency" }).first();
+  await proficiencyField.getByRole("combobox", { name: "Proficiency" }).selectOption("expert");
+  await proficiencyField.getByRole("button", { name: "Discard", exact: true }).click();
+  assert.equal(apiState.skillPatchBodies.length, 0, "Discard persisted a proficiency change");
+  assert.match(await proficiencyField.innerText(), /Strong/i, "Discard changed the saved proficiency");
+
+  await skillsCard.getByRole("button", { name: "Edit proficiency" }).click();
+  proficiencyField = skillsCard.locator("[class*='entryField']").filter({ hasText: "Proficiency" }).first();
+  await proficiencyField.getByRole("combobox", { name: "Proficiency" }).selectOption("expert");
+  const skillSaveRequest = page.waitForRequest((request) => (
+    request.url().endsWith("/api/public-profile/skills") && request.method() === "PATCH"
+  ));
+  await proficiencyField.getByRole("button", { name: "Save", exact: true }).click();
+  await skillSaveRequest;
+  await page.getByText("Skills saved.", { exact: true }).waitFor();
+  assert.equal(apiState.skillPatchBodies.length, 1);
+  const persistedSkill = apiState.skillPatchBodies[0].skills.find((skill) => skill.id === savedSkill.id);
+  assert.equal(persistedSkill.proficiency, "expert");
+  assert.deepEqual(persistedSkill.evidence, savedSkill.evidence);
+  assert.deepEqual(persistedSkill.relatedWorkExampleIds, savedSkill.relatedWorkExampleIds);
+  assert.equal(persistedSkill.createdAt, savedSkill.createdAt);
+  assert.equal(apiState.savedSkills.find((skill) => skill.id === savedSkill.id).proficiency, "expert");
+
+  await page.waitForTimeout(600);
+  await page.reload({ waitUntil: "networkidle" });
+  const reloadedSkillRow = page.locator("#career-profile-skills").getByRole("button").filter({ hasText: "Program Management" });
+  assert.match(await reloadedSkillRow.innerText(), /Expert/i, "Reload did not preserve the edited proficiency");
 
   await page.locator("#card1-track-name").fill("Program Management");
   await page.locator("textarea[placeholder='Or paste your resume text here…']").fill(
@@ -183,6 +290,8 @@ try {
 
   const viewports = [320, 375, 390, 1280, 1440];
   const geometry = [];
+  await reloadedSkillRow.click();
+  await page.locator("#career-profile-skills").getByRole("button", { name: "Edit proficiency" }).click();
   for (const width of viewports) {
     await page.setViewportSize({ width, height: width < 600 ? 900 : 1000 });
     await page.waitForTimeout(100);
@@ -190,6 +299,10 @@ try {
     assert(
       measured.documentWidth <= width && measured.bodyWidth <= width,
       `Horizontal overflow at ${width}px: ${JSON.stringify(measured)}`,
+    );
+    assert(
+      measured.skillControlPaintedEdges.every((control) => control.paintedLeft >= 0 && control.paintedRight <= width),
+      `A painted skill control crossed the viewport at ${width}px: ${JSON.stringify(measured.skillControlPaintedEdges)}`,
     );
     await page.screenshot({
       path: `${ARTIFACT_DIR}/onboarding-${width}.png`,

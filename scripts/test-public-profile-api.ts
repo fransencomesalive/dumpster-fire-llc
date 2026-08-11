@@ -3589,7 +3589,7 @@ async function main() {
   assert.equal((await body(identityPatchValidation)).status, "validation_error");
 
   let identityPatchInput: unknown;
-  const identityPatch = await handleIdentitySearchSectionPatchRequest(patchRequest("identity-search", { location: "Boulder, CO" }), {
+  const identityPatch = await handleIdentitySearchSectionPatchRequest(patchRequest("identity-search", { fullName: "Avery Smith-Jones" }), {
     now: () => now,
     getSession: async () => authed(),
     repositoryRequest,
@@ -3599,7 +3599,7 @@ async function main() {
     },
   });
   assert.equal(identityPatch.status, 200);
-  assert.deepEqual(identityPatchInput, { location: "Boulder, CO" });
+  assert.deepEqual(identityPatchInput, { fullName: "Avery Smith-Jones" });
   assert.equal((await body(identityPatch)).profileStatus, "complete");
 
   const identityPatchMissing = await handleIdentitySearchSectionPatchRequest(patchRequest("identity-search", { location: "Boulder, CO" }), {
