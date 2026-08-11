@@ -5,6 +5,7 @@ import {
   evaluatePublicJobDecision,
   matchingSignalsForAggregate,
 } from "../lib/public-profile/matching/decision";
+import { classifyOccupation } from "../lib/public-profile/matching/occupation";
 import type { MatchJob } from "../lib/public-profile/matching/types";
 import { completeCandidateProfileAggregate } from "./fixtures/public-profile";
 
@@ -495,5 +496,129 @@ for (const title of ["Marketing Project Manager", "Creative Project Manager", "C
     ? "profile-target"
     : "marketing-creative-project-management");
 }
+
+// General operations, finance/accounting, and procurement are separate occupation
+// families. A Chief of Staff target must not make Accounting or Controller jobs a
+// core match, while profiles that explicitly target those specialties keep them.
+const generalOperationsProfile = profile();
+generalOperationsProfile.roleTracks[0] = {
+  ...generalOperationsProfile.roleTracks[0],
+  name: "General",
+  targetTitles: ["Chief of Staff", "Operations Manager", "Director of Operations"],
+  keyResponsibilities: ["Lead cross-functional business operations and executive planning"],
+  requiredExperiencePatterns: ["Operating rhythm and stakeholder alignment"],
+  strongJobSignals: ["Strategic initiatives", "Business planning"],
+  weakJobSignals: [],
+  mismatchSignals: [],
+};
+const generalOperationsSignals = matchingSignalsForAggregate(generalOperationsProfile);
+assert.ok(generalOperationsSignals.lanes.coreLanes.has("strategy-operations"));
+assert.equal(generalOperationsSignals.lanes.coreLanes.has("finance-accounting"), false);
+assert.equal(generalOperationsSignals.lanes.stretchLanes.has("finance-accounting"), false);
+assert.equal(generalOperationsSignals.lanes.coreLanes.has("procurement-supply-chain-operations"), false);
+assert.equal(generalOperationsSignals.lanes.stretchLanes.has("procurement-supply-chain-operations"), false);
+
+const unrelatedFinanceJobs: MatchJob[] = [
+  {
+    id: "job-037-finance-operations",
+    title: "Manager, Finance Operations",
+    companyName: "Finance Company",
+    description: "Own financial planning, forecasting, budget models, and month-end reporting.",
+  },
+  {
+    id: "job-037-accounting-manager",
+    title: "Senior Manager, Accounting",
+    companyName: "Accounting Company",
+    description: "Lead accounting policy, audits, reconciliations, and financial reporting.",
+  },
+  {
+    id: "job-037-controller",
+    title: "Senior Manager, Assistant Controller",
+    companyName: "Controller Company",
+    description: "Own controllership, accounting close, audit readiness, and financial controls.",
+  },
+  {
+    id: "job-037-procurement",
+    title: "Procurement Manager",
+    companyName: "Procurement Company",
+    description: "Lead procurement, supplier management, sourcing, and vendor contracts.",
+  },
+  {
+    id: "job-037-sourcing",
+    title: "Strategic Sourcing Manager",
+    companyName: "Sourcing Company",
+    description: "Own strategic sourcing, supplier negotiations, procurement, and category strategy.",
+  },
+];
+
+for (const unrelatedJob of unrelatedFinanceJobs) {
+  const decision = evaluatePublicJobDecision(unrelatedJob, generalOperationsSignals, now);
+  assert.equal(decision.included, false, `${unrelatedJob.title} must not inherit a general-operations target`);
+  assert.equal(decision.label, "Probably Not Worth Your Time");
+  assert.ok(decision.score <= 37, `${unrelatedJob.title} must stay under the excluded-score cap`);
+  assert.ok(decision.risks.some((risk) => risk.includes("different lane")));
+}
+
+for (const title of ["Chief of Staff", "Business Operations Manager", "Director of Operations"]) {
+  const decision = evaluatePublicJobDecision({
+    id: `job-general-operations-${title}`,
+    title,
+    companyName: "Operations Company",
+    description: "Lead business operations, executive planning, operating rhythms, and cross-functional strategic initiatives.",
+  }, generalOperationsSignals, now);
+  assert.equal(decision.included, true, `${title} should remain eligible for a general-operations profile`);
+}
+
+const financeProfile = profile();
+financeProfile.roleTracks[0] = {
+  ...financeProfile.roleTracks[0],
+  name: "Finance Leadership",
+  targetTitles: ["Director of Finance", "Corporate Controller"],
+  keyResponsibilities: ["Lead financial planning, accounting, forecasting, and reporting"],
+  requiredExperiencePatterns: ["Controllership and audit leadership"],
+  strongJobSignals: ["Budget ownership", "Financial controls"],
+  weakJobSignals: [],
+  mismatchSignals: [],
+};
+const financeSignals = matchingSignalsForAggregate(financeProfile);
+assert.ok(financeSignals.lanes.coreLanes.has("finance-accounting"));
+for (const title of ["Finance Operations Manager", "Corporate Controller"]) {
+  const decision = evaluatePublicJobDecision({
+    id: `job-finance-supported-${title}`,
+    title,
+    companyName: "Finance Company",
+    description: "Own financial planning, accounting, forecasting, reporting, and audit readiness.",
+  }, financeSignals, now);
+  assert.equal(decision.included, true, `${title} should remain eligible for a finance profile`);
+}
+
+const procurementProfile = profile();
+procurementProfile.roleTracks[0] = {
+  ...procurementProfile.roleTracks[0],
+  name: "Procurement Leadership",
+  targetTitles: ["Procurement Manager", "Strategic Sourcing Manager"],
+  keyResponsibilities: ["Lead procurement, strategic sourcing, and supplier management"],
+  requiredExperiencePatterns: ["Vendor contracts and supply chain operations"],
+  strongJobSignals: ["Supplier negotiations", "Category strategy"],
+  weakJobSignals: [],
+  mismatchSignals: [],
+};
+const procurementSignals = matchingSignalsForAggregate(procurementProfile);
+assert.ok(procurementSignals.lanes.coreLanes.has("procurement-supply-chain-operations"));
+for (const title of ["Procurement Operations Manager", "Strategic Sourcing Manager"]) {
+  const decision = evaluatePublicJobDecision({
+    id: `job-procurement-supported-${title}`,
+    title,
+    companyName: "Procurement Company",
+    description: "Lead procurement, strategic sourcing, supplier management, and vendor contracts.",
+  }, procurementSignals, now);
+  assert.equal(decision.included, true, `${title} should remain eligible for a procurement profile`);
+}
+
+assert.equal(classifyOccupation({
+  title: "Finance Strategy Manager",
+  companyName: "Finance Company",
+  description: "Own financial planning, forecasting, and executive finance strategy.",
+}).lane, "finance-accounting");
 
 console.log("public profile matching: all assertions passed");

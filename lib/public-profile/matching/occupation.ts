@@ -39,8 +39,8 @@ export type OccupationLane =
   | "people-hr"
   | "people-operations-program"
   | "legal-compliance"
-  | "finance-business-operations"
-  | "finance-procurement-operations"
+  | "finance-accounting"
+  | "procurement-supply-chain-operations"
   | "business-transformation"
   | "customer-support-success"
   | "administrative-operations"
@@ -212,9 +212,16 @@ const laneRules: LaneRule[] = [
   },
   {
     lane: "strategy-operations",
-    title: [/\b(strategy operations|strategy & operations|strategic operations|supervisor strategy|gtm operations)\b/],
-    task: [/\b(operating rhythm|business planning|go to market|gtm|strategic initiatives|cross functional|stakeholder alignment)\b/],
-    disqualifiers: [/\b(revenue strategy|b2b marketing|growth markets|user safety|risk operations|brokerage|sanctions|business transformation)\b/],
+    title: [
+      /\b(strategy operations|strategy & operations|strategic operations|supervisor strategy|gtm operations)\b/,
+      /\b(chief of staff|business operations|business strategy|strategy manager|operations manager|director of operations|head of operations)\b/,
+    ],
+    task: [/\b(operating rhythm|business planning|business operations|executive planning|go to market|gtm|strategic initiatives|cross functional|stakeholder alignment)\b/],
+    disqualifiers: [
+      /\b(revenue strategy|b2b marketing|growth markets|user safety|risk operations|brokerage|sanctions|business transformation)\b/,
+      /\b(finance|financial|fp&a|fp a|accountant|accounting|controller|investor relations|procurement|sourcing|supply chain)\b/,
+      /\b(marketing|product|people|sales|revenue|safety|technical|engineering|creative|content|legal|compliance) operations\b/,
+    ],
     adjacent: ["program-project-management", "creative-strategy", "product-operations"],
   },
   {
@@ -295,15 +302,14 @@ const laneRules: LaneRule[] = [
     task: [/\b(legal|regulatory|compliance|policy|risk governance|contract|privacy)\b/],
   },
   {
-    lane: "finance-business-operations",
-    title: [/\b(finance|fp&a|fp a|business operations|business strategy|strategy manager|chief of staff|sourcing|procurement|business transformation|accountant|accounting|controller|investor relations)\b/],
-    task: [/\b(financial|forecast|budget model|business operations|sourcing|procurement|vendor contracts)\b/],
-    disqualifiers: [/\b(procurement operations|supply chain|brokerage operations|business transformation)\b/],
+    lane: "finance-accounting",
+    title: [/\b(finance|fp&a|fp a|accountant|accounting|controller|investor relations)\b/],
+    task: [/\b(financial planning|financial reporting|forecast|budget model|accounting|audit|controllership|investor relations)\b/],
   },
   {
-    lane: "finance-procurement-operations",
-    title: [/\b(procurement operations|supply chain|brokerage operations)\b/],
-    task: [/\b(financial planning|fp&a|procurement|supply chain|brokerage|vendor contracts|forecast)\b/],
+    lane: "procurement-supply-chain-operations",
+    title: [/\b(procurement operations|procurement|strategic sourcing|sourcing|supply chain|brokerage operations)\b/],
+    task: [/\b(procurement|strategic sourcing|supply chain|brokerage|vendor contracts|supplier management)\b/],
   },
   {
     lane: "business-transformation",
