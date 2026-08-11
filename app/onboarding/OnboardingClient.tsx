@@ -1537,6 +1537,7 @@ export default function OnboardingClient({
     setBusy(true);
     setMessage("Saving Voice & Personality…");
     try {
+      const writingSamplesToSave = writingSamples.filter((sample) => sample.text.trim().length > 0);
       await requestPublicProfileApi<SectionResponse<VoicePersonalitySection>>("/api/public-profile/voice-personality", {
         method: "PATCH",
         accessToken,
@@ -1545,7 +1546,7 @@ export default function OnboardingClient({
       const writingResponse = await requestPublicProfileApi<SectionResponse<WritingSamplesSection>>("/api/public-profile/writing-samples", {
         method: "PATCH",
         accessToken,
-        body: { writingSamples },
+        body: { writingSamples: writingSamplesToSave },
       });
       setWritingSamples(writingResponse.section.writingSamples);
       applyProfileQuality(writingResponse.profileQuality);

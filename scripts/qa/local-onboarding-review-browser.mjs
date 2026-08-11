@@ -94,6 +94,7 @@ async function installApiMocks(page) {
   let savedWorkExamples = [savedWorkExample];
   let savedSkills = [savedSkill];
   const skillPatchBodies = [];
+  const writingSamplePatchBodies = [];
 
   await page.route("**/api/**", async (route) => {
     const request = route.request();
@@ -139,6 +140,7 @@ async function installApiMocks(page) {
     } else if (path === "/api/public-profile/voice-personality") {
       payload = sectionResponse(method === "PATCH" ? body : emptyVoice, afterResumeQuality);
     } else if (path === "/api/public-profile/writing-samples") {
+      if (method === "PATCH") writingSamplePatchBodies.push(body);
       payload = sectionResponse(
         { writingSamples: method === "PATCH" ? body.writingSamples : [] },
         afterResumeQuality,
@@ -158,6 +160,7 @@ async function installApiMocks(page) {
 
   return {
     skillPatchBodies,
+    writingSamplePatchBodies,
     get savedSkills() { return savedSkills; },
   };
 }
@@ -283,8 +286,14 @@ try {
   assert.equal(afterResumeBadges[0]?.trim(), "Complete", `Role Track badge did not complete: ${afterResumeBadges}`);
   assert(afterResumeBadges.slice(1).every((label) => label.trim() === "In progress"), `Later sections were flagged too early: ${afterResumeBadges}`);
 
+  const optionalWritingBucket = page.locator("[class*='bucketField']").filter({ hasText: "Want to sound like" });
+  await optionalWritingBucket.getByRole("button", { name: "Add a snippet", exact: true }).click();
+  assert.equal(await optionalWritingBucket.getByRole("textbox").count(), 1, "Optional blank writing-sample draft was not added");
   await page.getByRole("button", { name: "Save Voice & Personality" }).click();
   await page.locator("#profile-review").waitFor();
+  assert.equal(apiState.writingSamplePatchBodies.length, 1);
+  assert.deepEqual(apiState.writingSamplePatchBodies[0], { writingSamples: [] }, "Blank optional writing-sample draft reached the API");
+  assert.equal(await optionalWritingBucket.getByRole("textbox").count(), 0, "Saved blank writing-sample draft remained visible");
   const finalBadges = await page.locator("aside[aria-label='Profile sections'] [class*='readinessBadge']").allTextContents();
   assert(finalBadges.slice(1).every((label) => label.trim() === "Needs work"), `Final completion attempt did not reveal missing fields: ${finalBadges}`);
 
