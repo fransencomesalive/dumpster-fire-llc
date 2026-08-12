@@ -166,15 +166,20 @@ const systemPrompt = [
   "insertedExample is the exact Work Example used, or null if none was used.",
 ].join("\n");
 
-// ---- Hard-rule contract (message-gen-refinement, 2026-07-14). Prompt-only enforcement
-// measurably leaked in the harness (750-cap and invented-count violations recurred across
-// rounds), so every generated message is validated and regenerated when it breaks a hard
-// rule. The structural checks hold for every profile; role-title isolation is derived from
-// the current user's selected and alternate tracks rather than hard-coded career vocabulary.
-// A message still violating after MAX_GENERATION_ATTEMPTS is not returned, and the violations
-// are logged.
+// ---- Generation-quality contract (message-gen-refinement, 2026-07-14). Prompt-only
+// enforcement measurably leaked in the harness (750-cap and invented-count violations
+// recurred across rounds), so every generated message is validated and corrected when it
+// breaks a rule. Safety, grounding, selected-example integrity, and the character cap remain
+// blocking. Lexical requirement and diversity heuristics guide retries but cannot discard an
+// otherwise safe draft after every provider call succeeds.
 const MAX_GENERATION_ATTEMPTS = 3;
 const MESSAGE_HARD_CAP = 750;
+const ADVISORY_QUALITY_VIOLATIONS = new Set([
+  "matched_requirement_missing",
+  "repeated_recent_language",
+  "repeated_recent_evidence",
+  "repeated_recent_structure",
+]);
 const NUMBER_WORDS = [
   "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve",
   "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen",
@@ -612,7 +617,7 @@ function parseOutreachModelResponse(raw: string): OutreachMessage | undefined {
 
 function correctiveRetryTail(
   tail: string,
-  failure: { kind: "invalid_output" } | { kind: "hard_rules"; violations: string[]; rejectedMessage: string },
+  failure: { kind: "invalid_output" } | { kind: "quality_checks"; violations: string[]; rejectedMessage: string },
 ) {
   if (failure.kind === "invalid_output") {
     return [
@@ -626,10 +631,14 @@ function correctiveRetryTail(
     tail,
     "",
     "## Required correction",
-    `The previous draft failed these hard rules: ${failure.violations.join(", ")}.`,
+    `The previous draft failed these quality checks: ${failure.violations.join(", ")}.`,
     `Rejected draft:\n${failure.rejectedMessage}`,
     "Rewrite the draft so every listed violation is removed. Do not repeat the rejected wording.",
   ].join("\n");
+}
+
+function hasBlockingViolation(violations: string[]) {
+  return violations.some((violation) => !ADVISORY_QUALITY_VIOLATIONS.has(violation));
 }
 
 export async function generateOutreachMessageOutcome(
@@ -644,7 +653,8 @@ export async function generateOutreachMessageOutcome(
   // prior failure back to the model so bounded retries are corrective rather than
   // repeating the same prompt and hoping for a different result.
   let lastViolations: string[] | undefined;
-  let lastFailure: { kind: "invalid_output" } | { kind: "hard_rules"; violations: string[]; rejectedMessage: string } | undefined;
+  let lastFailure: { kind: "invalid_output" } | { kind: "quality_checks"; violations: string[]; rejectedMessage: string } | undefined;
+  let bestSafeDraft: { outreach: OutreachMessage; violations: string[] } | undefined;
   for (let attempt = 1; attempt <= MAX_GENERATION_ATTEMPTS; attempt += 1) {
     const user = lastFailure ? correctiveRetryTail(tail, lastFailure) : tail;
     const raw = await callModel({ system: systemPrompt, user, cachePrefix });
@@ -656,8 +666,20 @@ export async function generateOutreachMessageOutcome(
     }
     const violations = outreachHardRuleViolations(outreach, input.profileMarkdown, input);
     if (violations.length === 0) return { status: "generated", outreach };
+    if (!hasBlockingViolation(violations) && (
+      !bestSafeDraft
+      || violations.length <= bestSafeDraft.violations.length
+    )) {
+      bestSafeDraft = { outreach, violations };
+    }
     lastViolations = violations;
-    lastFailure = { kind: "hard_rules", violations, rejectedMessage: outreach.message };
+    lastFailure = { kind: "quality_checks", violations, rejectedMessage: outreach.message };
+  }
+  if (bestSafeDraft) {
+    console.warn("[llm:outreach] quality guidance unresolved after retries; returning safe draft", {
+      violations: bestSafeDraft.violations,
+    });
+    return { status: "generated", outreach: bestSafeDraft.outreach };
   }
   if (lastViolations) {
     console.warn("[llm:outreach] hard-rule violations unresolved after retries", { violations: lastViolations });

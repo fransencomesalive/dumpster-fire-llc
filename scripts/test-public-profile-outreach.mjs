@@ -422,6 +422,63 @@ const cleanJson = JSON.stringify({ message: "Hi Dana, direct note about the role
   }
 }
 
+// 4da. Content and diversity heuristics guide corrective retries, but they do not
+// discard an otherwise safe draft after every model call succeeds. This protects
+// exact-job evidence that is also relevant to an earlier pursuit and long evidence
+// blocks that cannot satisfy a literal overlap threshold.
+{
+  const productionLikeDecision = {
+    ...evidenceDecision,
+    matchedSignals: ["Project Hub for Retrieval, Execution, & Delivery"],
+    requiredExperienceMatchedSignals: [
+      "A complex project that needed an operating system, workflow patterns, and orchestration to keep AI-assisted work connected instead of scattered.",
+    ],
+  };
+  const safeNearMiss = JSON.stringify({
+    message: "Hi Dana, I built P.H.R.E.D. to keep complex work connected and make delivery decisions visible: https://example.com/phred",
+    insertedExample: {
+      id: selectedEvidence.id,
+      oneHitter: selectedEvidence.oneHitter,
+      link: selectedEvidence.link,
+    },
+  });
+  let calls = 0;
+  const result = await generateOutreachMessageOutcome(
+    {
+      profileMarkdown,
+      job: structuredJob,
+      contact,
+      evidenceDecision: productionLikeDecision,
+      recentMessages: ["I built P.H.R.E.D. to keep AI work connected and delivery decisions visible."],
+    },
+    { callModel: async () => { calls += 1; return safeNearMiss; } },
+  );
+  assert.equal(calls, 3, "advisory quality misses still receive bounded corrective retries");
+  assert.equal(result.status, "generated", "safe drafts must survive advisory-only exhaustion");
+}
+
+// 4db. A safe earlier draft is retained when later correction attempts introduce
+// a genuine hard violation such as exceeding the character cap.
+{
+  const advisoryOnly = JSON.stringify({
+    message: "Hi Dana, Swift and AKQA taught me how to keep complex delivery moving.",
+    insertedExample: null,
+  });
+  const tooLong = JSON.stringify({ message: "x".repeat(751), insertedExample: null });
+  const responses = [advisoryOnly, tooLong, tooLong];
+  const result = await generateOutreachMessageOutcome(
+    {
+      profileMarkdown: "Swift and AKQA are verified employers.",
+      job,
+      contact,
+      recentMessages: ["Swift and AKQA taught me how to align senior teams."],
+    },
+    { callModel: async () => responses.shift() },
+  );
+  assert.equal(result.status, "generated");
+  if (result.status === "generated") assert.equal(result.outreach.message, JSON.parse(advisoryOnly).message);
+}
+
 // 4e. Violation detection: cap, em dash, missing example link, ungrounded numbers.
 const profileWithNumbers = "## Resume\n- Cut workflow turnaround 40% in two quarters (15+ years).\n- x\n- https://x.co/a";
 assert.deepEqual(outreachHardRuleViolations({ message: "Hi Dana, I cut turnaround 40% and the write-up is at https://x.co/a. Worth a chat?", insertedExample: { oneHitter: "x", link: "https://x.co/a" } }, profileWithNumbers), []);
