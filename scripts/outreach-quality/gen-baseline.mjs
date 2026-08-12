@@ -1,7 +1,7 @@
-// Outreach corpus generator. `baseline` reproduces the ORIGINAL production prompt
-// (pre-refinement); production ported `v4` + the hard-rule contract on 2026-07-14, so
-// prod now matches the v4 entry here (data/prompts/v4.txt is the frozen source of
-// truth — keep outreach-generator.ts identical to it). Self-contained: reads
+// Historical outreach corpus generator. `baseline` reproduces the ORIGINAL production
+// prompt (pre-refinement), and later variants preserve the contracts used for their
+// respective judged corpora. This file is research history, not the live production
+// source of truth. Current limits and rules live in outreach-generator.ts. Self-contained: reads
 // profile.md + scan-jobs.json from this dir, calls Anthropic directly.
 //
 // A `PROMPT_VARIANT` env selects which system prompt to use ("baseline" | "v2" | "v3"
@@ -42,7 +42,7 @@ const structuredWorkExamples = JSON.parse(evidenceContents["work-examples.json"]
 const compiledWorkExamples = verifyFrozenWorkExampleAudit(workExampleAudit, structuredWorkExamples, profileMarkdown);
 const allJobs = JSON.parse(evidenceContents["scan-jobs.json"]);
 
-// ---- EXACT copy of production systemPrompt (outreach-generator.ts) ----
+// ---- Historical baseline system prompt ----
 const baselineSystem = [
   "You write outreach messages AS the person described in the profile below.",
   "The profile is a markdown document that begins with a Voice Profile — a",
@@ -605,7 +605,7 @@ const variant = process.env.PROMPT_VARIANT || "baseline";
 const system = systemByVariant[variant];
 if (!system) { console.error(`unknown PROMPT_VARIANT ${variant}`); process.exit(1); }
 
-// ---- EXACT copy of buildOutreachPromptParts (outreach-generator.ts) ----
+// ---- Historical corpus prompt assembly ----
 function buildParts({ job, contact }) {
   const contactLine = [
     contact.name ? `Name: ${contact.name}` : undefined,

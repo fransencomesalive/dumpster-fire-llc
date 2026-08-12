@@ -4,6 +4,7 @@ import {
   generateOutreachMessage,
   generateOutreachMessageOutcome,
   generateOutreachMessageForUser,
+  OUTREACH_MESSAGE_CHARACTER_LIMITS,
   outreachHardRuleViolations,
   parseOutreachRequest,
 } from "../lib/public-profile/outreach-generator.ts";
@@ -30,11 +31,13 @@ const modelJson = JSON.stringify({
 });
 
 // 1. Parses a well-formed model response.
+let liveSystemPrompt = "";
 const generated = await generateOutreachMessage(
   { profileMarkdown, job, contact },
-  { callModel: async () => modelJson },
+  { callModel: async ({ system }) => { liveSystemPrompt = system; return modelJson; } },
 );
 assert.ok(generated);
+assert.match(liveSystemPrompt, /Aim for 500–650 characters\. 700 characters is a HARD cap/);
 assert.match(generated.message, /Program Director role/);
 assert.ok(generated.insertedExample);
 assert.equal(generated.insertedExample.oneHitter, "Cut workflow turnaround 40% in two quarters.");
@@ -58,6 +61,11 @@ assert.match(prompt, /Program Operations Lead/);
 assert.match(prompt, /Do not describe the candidate using titles from any other Role Track/);
 assert.match(prompt, /Hiring Manager/);
 assert.match(prompt, /Dana/);
+assert.deepEqual(OUTREACH_MESSAGE_CHARACTER_LIMITS, {
+  targetMin: 500,
+  targetMax: 650,
+  hardMax: 700,
+});
 
 const regenerationPrompt = buildOutreachUserPrompt({
   profileMarkdown: "PROFILE_MD",
@@ -464,7 +472,7 @@ const cleanJson = JSON.stringify({ message: "Hi Dana, direct note about the role
     message: "Hi Dana, Swift and AKQA taught me how to keep complex delivery moving.",
     insertedExample: null,
   });
-  const tooLong = JSON.stringify({ message: "x".repeat(751), insertedExample: null });
+  const tooLong = JSON.stringify({ message: "x".repeat(701), insertedExample: null });
   const responses = [advisoryOnly, tooLong, tooLong];
   const result = await generateOutreachMessageOutcome(
     {
@@ -479,10 +487,47 @@ const cleanJson = JSON.stringify({ message: "Hi Dana, direct note about the role
   if (result.status === "generated") assert.equal(result.outreach.message, JSON.parse(advisoryOnly).message);
 }
 
+// 4dc. When advisory-only retries produce multiple safe drafts, an in-target draft
+// wins over an otherwise equivalent draft above the target range.
+{
+  const padToLength = (prefix, minimum) => {
+    let message = prefix;
+    while (message.length < minimum) message += " Clear ownership kept delivery moving.";
+    return message;
+  };
+  const aboveTargetMessage = padToLength(
+    "Hi Dana, Swift and AKQA taught me how to keep complex delivery moving.",
+    660,
+  );
+  const inTargetMessage = padToLength(
+    "Hi Dana, Swift and AKQA taught me how to keep complex work moving.",
+    560,
+  );
+  assert.ok(aboveTargetMessage.length > OUTREACH_MESSAGE_CHARACTER_LIMITS.targetMax);
+  assert.ok(aboveTargetMessage.length <= OUTREACH_MESSAGE_CHARACTER_LIMITS.hardMax);
+  assert.ok(inTargetMessage.length >= OUTREACH_MESSAGE_CHARACTER_LIMITS.targetMin);
+  assert.ok(inTargetMessage.length <= OUTREACH_MESSAGE_CHARACTER_LIMITS.targetMax);
+
+  const responses = [aboveTargetMessage, inTargetMessage, aboveTargetMessage]
+    .map((message) => JSON.stringify({ message, insertedExample: null }));
+  const result = await generateOutreachMessageOutcome(
+    {
+      profileMarkdown: "Swift and AKQA are verified employers.",
+      job,
+      contact,
+      recentMessages: ["Swift and AKQA taught me how to align senior teams."],
+    },
+    { callModel: async () => responses.shift() },
+  );
+  assert.equal(result.status, "generated");
+  if (result.status === "generated") assert.equal(result.outreach.message, inTargetMessage);
+}
+
 // 4e. Violation detection: cap, em dash, missing example link, ungrounded numbers.
 const profileWithNumbers = "## Resume\n- Cut workflow turnaround 40% in two quarters (15+ years).\n- x\n- https://x.co/a";
 assert.deepEqual(outreachHardRuleViolations({ message: "Hi Dana, I cut turnaround 40% and the write-up is at https://x.co/a. Worth a chat?", insertedExample: { oneHitter: "x", link: "https://x.co/a" } }, profileWithNumbers), []);
-assert.ok(outreachHardRuleViolations({ message: "x".repeat(751), insertedExample: null }, profileWithNumbers)[0].startsWith("over_750_characters"));
+assert.deepEqual(outreachHardRuleViolations({ message: "x".repeat(700), insertedExample: null }, profileWithNumbers), []);
+assert.ok(outreachHardRuleViolations({ message: "x".repeat(701), insertedExample: null }, profileWithNumbers)[0].startsWith("over_700_characters"));
 assert.deepEqual(outreachHardRuleViolations({ message: "Hi — there.", insertedExample: null }, profileWithNumbers), ["em_dash_present"]);
 assert.deepEqual(outreachHardRuleViolations({ message: "No link here.", insertedExample: { oneHitter: "x", link: "https://x.co/a" } }, profileWithNumbers), ["example_link_missing_from_body"]);
 assert.deepEqual(outreachHardRuleViolations({ message: "I can be in-office as needed.", insertedExample: null }, profileWithNumbers), ["logistics_mentioned(in-office)"]);

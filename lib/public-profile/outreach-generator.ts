@@ -73,6 +73,14 @@ export type OutreachGeneratorDependencies = {
   operation?: "outreach_generation" | "outreach_regeneration";
 };
 
+// Live outreach length contract. Keep prompt guidance, validation, and retry selection
+// derived from this one value so the target and hard cap cannot drift independently.
+export const OUTREACH_MESSAGE_CHARACTER_LIMITS = Object.freeze({
+  targetMin: 500,
+  targetMax: 650,
+  hardMax: 700,
+} as const);
+
 // v4 prompt, ported 2026-07-14 from the message-gen-refinement harness after Randall's
 // approval, with universal job-aware evidence and recent-language constraints added
 // 2026-08-04. Platform-wide hard rules approved after v4 (no logistics talk, no em dashes)
@@ -147,7 +155,7 @@ const systemPrompt = [
   "number.",
   "",
   "FORM",
-  "- Aim for 550–700 characters. 750 characters is a HARD cap: if a draft runs long, cut evidence",
+  `- Aim for ${OUTREACH_MESSAGE_CHARACTER_LIMITS.targetMin}–${OUTREACH_MESSAGE_CHARACTER_LIMITS.targetMax} characters. ${OUTREACH_MESSAGE_CHARACTER_LIMITS.hardMax} characters is a HARD cap: if a draft runs long, cut evidence`,
   "  or trim sentences. Never exceed it.",
   "- The opening line must be a complete, standalone sentence — never a fragment, never a",
   "  dropped-subject construction. Fragments may appear later in the message, never first.",
@@ -173,7 +181,6 @@ const systemPrompt = [
 // blocking. Lexical requirement and diversity heuristics guide retries but cannot discard an
 // otherwise safe draft after every provider call succeeds.
 const MAX_GENERATION_ATTEMPTS = 3;
-const MESSAGE_HARD_CAP = 750;
 const ADVISORY_QUALITY_VIOLATIONS = new Set([
   "matched_requirement_missing",
   "repeated_recent_language",
@@ -368,7 +375,9 @@ export function outreachHardRuleViolations(
 ): string[] {
   const violations: string[] = [];
   const body = outreach.message;
-  if (body.length > MESSAGE_HARD_CAP) violations.push(`over_${MESSAGE_HARD_CAP}_characters(${body.length})`);
+  if (body.length > OUTREACH_MESSAGE_CHARACTER_LIMITS.hardMax) {
+    violations.push(`over_${OUTREACH_MESSAGE_CHARACTER_LIMITS.hardMax}_characters(${body.length})`);
+  }
   if (body.includes("—")) violations.push("em_dash_present");
   const logistics = body.match(LOGISTICS_PATTERN);
   if (logistics) violations.push(`logistics_mentioned(${logistics[0].trim()})`);
@@ -641,6 +650,22 @@ function hasBlockingViolation(violations: string[]) {
   return violations.some((violation) => !ADVISORY_QUALITY_VIOLATIONS.has(violation));
 }
 
+function isWithinOutreachTarget(message: string) {
+  return message.length >= OUTREACH_MESSAGE_CHARACTER_LIMITS.targetMin
+    && message.length <= OUTREACH_MESSAGE_CHARACTER_LIMITS.targetMax;
+}
+
+function shouldPreferSafeDraft(
+  candidate: { outreach: OutreachMessage; violations: string[] },
+  current: { outreach: OutreachMessage; violations: string[] } | undefined,
+) {
+  if (!current) return true;
+  const candidateIsInTarget = isWithinOutreachTarget(candidate.outreach.message);
+  const currentIsInTarget = isWithinOutreachTarget(current.outreach.message);
+  if (candidateIsInTarget !== currentIsInTarget) return candidateIsInTarget;
+  return candidate.violations.length <= current.violations.length;
+}
+
 export async function generateOutreachMessageOutcome(
   input: OutreachGeneratorInput,
   dependencies: OutreachGeneratorDependencies = {},
@@ -649,7 +674,7 @@ export async function generateOutreachMessageOutcome(
     ?? defaultCallModel(dependencies.providerUsage, dependencies.operation);
   const { cachePrefix, tail } = buildOutreachPromptParts(input);
 
-  // Validate-and-retry loop over the hard-rule contract. Every retry carries the
+  // Validate-and-retry loop over the generation-quality contract. Every retry carries the
   // prior failure back to the model so bounded retries are corrective rather than
   // repeating the same prompt and hoping for a different result.
   let lastViolations: string[] | undefined;
@@ -666,11 +691,9 @@ export async function generateOutreachMessageOutcome(
     }
     const violations = outreachHardRuleViolations(outreach, input.profileMarkdown, input);
     if (violations.length === 0) return { status: "generated", outreach };
-    if (!hasBlockingViolation(violations) && (
-      !bestSafeDraft
-      || violations.length <= bestSafeDraft.violations.length
-    )) {
-      bestSafeDraft = { outreach, violations };
+    const safeDraft = { outreach, violations };
+    if (!hasBlockingViolation(violations) && shouldPreferSafeDraft(safeDraft, bestSafeDraft)) {
+      bestSafeDraft = safeDraft;
     }
     lastViolations = violations;
     lastFailure = { kind: "quality_checks", violations, rejectedMessage: outreach.message };
