@@ -451,6 +451,27 @@ export function outreachHardRuleViolations(
   return violations;
 }
 
+function compactOverlongOutreach(outreach: OutreachMessage) {
+  if (outreach.message.length <= OUTREACH_MESSAGE_CHARACTER_LIMITS.hardMax) return outreach;
+
+  // Remove only complete sentences, working backward from the close. Never remove the
+  // opening or a sentence containing the selected Work Example link. The normal validator
+  // runs again afterward, so compaction cannot bypass grounding or integrity checks.
+  const sentences = outreach.message.split(/(?<=[.!?])\s+(?=[A-Z])/);
+  if (sentences.length < 2) return outreach;
+  const protectedLink = outreach.insertedExample?.link;
+  const compacted = [...sentences];
+  for (let index = compacted.length - 1; index >= 1; index -= 1) {
+    if (protectedLink && compacted[index].includes(protectedLink)) continue;
+    compacted.splice(index, 1);
+    const message = compacted.join(" ").trim();
+    if (message.length <= OUTREACH_MESSAGE_CHARACTER_LIMITS.hardMax) {
+      return { ...outreach, message };
+    }
+  }
+  return outreach;
+}
+
 // Split the outreach prompt into the per-user-stable profile.md (cacheable across every
 // message the user generates) and the per-message job + contact tail. Keeping them apart
 // lets the model call cache the profile prefix so a burst of outreach pays cache-read
@@ -684,10 +705,17 @@ export async function generateOutreachMessageOutcome(
     const user = lastFailure ? correctiveRetryTail(tail, lastFailure) : tail;
     const raw = await callModel({ system: systemPrompt, user, cachePrefix });
     if (!raw) return { status: "model_unavailable" };
-    const outreach = parseOutreachModelResponse(raw);
-    if (!outreach) {
+    const parsedOutreach = parseOutreachModelResponse(raw);
+    if (!parsedOutreach) {
       lastFailure = { kind: "invalid_output" };
       continue;
+    }
+    const outreach = compactOverlongOutreach(parsedOutreach);
+    if (outreach.message.length !== parsedOutreach.message.length) {
+      console.info("[llm:outreach] compacted overlong draft at sentence boundary", {
+        originalCharacters: parsedOutreach.message.length,
+        compactedCharacters: outreach.message.length,
+      });
     }
     const violations = outreachHardRuleViolations(outreach, input.profileMarkdown, input);
     if (violations.length === 0) return { status: "generated", outreach };

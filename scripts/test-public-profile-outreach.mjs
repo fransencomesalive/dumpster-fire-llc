@@ -523,6 +523,58 @@ const cleanJson = JSON.stringify({ message: "Hi Dana, direct note about the role
   if (result.status === "generated") assert.equal(result.outreach.message, inTargetMessage);
 }
 
+// 4dd. A model draft above the hard cap is compacted only at a complete sentence
+// boundary, then passes through the normal validator.
+{
+  const opening = "Hi Dana, I build practical delivery systems that give teams clear ownership and keep decisions moving.";
+  const evidence = "My work has connected strategy, planning, and execution across complex programs while keeping the operating rhythm useful for the people doing the work.";
+  const removableClose = "I would welcome a conversation about how that approach could support this team and the Program Director role.";
+  let middle = "I focus on making priorities visible, resolving ambiguity early, and creating a shared path from an idea to shipped work.";
+  while (`${opening} ${evidence} ${middle} ${removableClose}`.length <= OUTREACH_MESSAGE_CHARACTER_LIMITS.hardMax) {
+    middle += " That includes clear handoffs and honest tradeoffs.";
+  }
+  const overlong = `${opening} ${evidence} ${middle} ${removableClose}`;
+  let calls = 0;
+  const result = await generateOutreachMessageOutcome(
+    { profileMarkdown: overlong, job, contact },
+    { callModel: async () => { calls += 1; return JSON.stringify({ message: overlong, insertedExample: null }); } },
+  );
+  assert.equal(calls, 1, "safe deterministic compaction should not spend a corrective retry");
+  assert.equal(result.status, "generated");
+  if (result.status === "generated") {
+    assert.ok(result.outreach.message.length <= OUTREACH_MESSAGE_CHARACTER_LIMITS.hardMax);
+    assert.match(result.outreach.message, /[.!?]$/, "compaction preserves a complete sentence ending");
+    assert.equal(result.outreach.message.includes(removableClose), false);
+  }
+}
+
+// 4de. Compaction never removes the sentence carrying a selected Work Example link.
+{
+  const link = "https://example.com/phred";
+  const opening = "Hi Dana, I build practical delivery systems that keep ownership clear and decisions moving.";
+  const linkedEvidence = `The clearest example is here: ${link}.`;
+  const removable = "I have also led complex programs across strategy, planning, and execution while keeping operating rhythms useful for the people doing the work.";
+  const removableSentences = [removable];
+  let paddedMessage = `${opening} ${removableSentences.join(" ")} ${linkedEvidence} I would welcome a conversation about this role and the team.`;
+  while (paddedMessage.length <= OUTREACH_MESSAGE_CHARACTER_LIMITS.hardMax) {
+    removableSentences.push(removable);
+    paddedMessage = `${opening} ${removableSentences.join(" ")} ${linkedEvidence} I would welcome a conversation about this role and the team.`;
+  }
+  assert.ok(paddedMessage.length > OUTREACH_MESSAGE_CHARACTER_LIMITS.hardMax);
+  const result = await generateOutreachMessageOutcome(
+    { profileMarkdown: `${paddedMessage}\n${link}\nLinked example`, job, contact },
+    { callModel: async () => JSON.stringify({
+      message: paddedMessage,
+      insertedExample: { oneHitter: "Linked example", link },
+    }) },
+  );
+  assert.equal(result.status, "generated");
+  if (result.status === "generated") {
+    assert.ok(result.outreach.message.length <= OUTREACH_MESSAGE_CHARACTER_LIMITS.hardMax);
+    assert.ok(result.outreach.message.includes(link));
+  }
+}
+
 // 4e. Violation detection: cap, em dash, missing example link, ungrounded numbers.
 const profileWithNumbers = "## Resume\n- Cut workflow turnaround 40% in two quarters (15+ years).\n- x\n- https://x.co/a";
 assert.deepEqual(outreachHardRuleViolations({ message: "Hi Dana, I cut turnaround 40% and the write-up is at https://x.co/a. Worth a chat?", insertedExample: { oneHitter: "x", link: "https://x.co/a" } }, profileWithNumbers), []);
