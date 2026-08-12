@@ -280,9 +280,8 @@ const tpm = evaluateMatch({
 assert.equal(tpm.label, "Probably Not Worth Your Time", "technical program manager must not outrank the lane block");
 assert.ok(tpm.internalScore <= 37);
 
-// --- Executive Producer scan titles (Randall 2026-07-16): the scan matches the
-// sidebar title list (track names + target titles), and producer-family roles
-// must rate on those titles alone.
+// --- Executive Producer scan titles (Randall 2026-07-16): explicit target
+// titles drive the scan, and producer-family roles must rate on those titles alone.
 const epProfile = profile();
 epProfile.roleTracks[0].name = "Executive Producer";
 epProfile.roleTracks[0].targetTitles = ["Executive Producer", "creative producer", "production lead"];
@@ -411,8 +410,8 @@ const enterpriseTechnology = evaluateMatch({
 assert.equal(enterpriseTechnology.label, "Probably Not Worth Your Time");
 assert.ok(enterpriseTechnology.whyNotMatched.some((reason) => reason.includes("different lane")));
 
-// Stretch titles with thin résumé and Work Example support stay Weak even when generic strategy,
-// authority, industry, and remote signals would otherwise inflate the result.
+// With explicit target titles, résumé and Work Example coverage cannot cap a
+// related discovery result. Posting and search settings own the match score.
 const thinStretch = evaluateMatch({
   profile: profile(),
   job: {
@@ -426,9 +425,9 @@ const thinStretch = evaluateMatch({
   },
   evaluatedAt: now,
 });
-assert.equal(thinStretch.label, "Weak Match");
-assert.ok(thinStretch.internalScore <= 59);
-assert.ok(thinStretch.whyNotMatched.some((reason) => reason.includes("too thin")));
+assert.equal(thinStretch.label, "Potential Match");
+assert.ok(thinStretch.internalScore >= 60);
+assert.equal(thinStretch.whyNotMatched.some((reason) => reason.includes("too thin")), false);
 
 // Compound functional titles stay in their specific occupation family. A profile
 // targeting Marketing Project Manager must not inherit the entire generic program
@@ -461,6 +460,241 @@ assert.ok(marketingCreativeSignals.lanes.coreLanes.has("marketing-management"));
 assert.ok(marketingCreativeSignals.lanes.coreLanes.has("creative-leadership"));
 assert.ok(marketingCreativeSignals.lanes.coreLanes.has("social-creative"));
 assert.equal(marketingCreativeSignals.lanes.coreLanes.has("program-project-management"), false);
+
+// Explicit target titles and declared search preferences are authoritative for
+// discovery. Experience evidence can explain a result later, but it must not
+// redirect the search, suppress an eligible title-family match, or reorder the
+// pool. Ambiguous account titles use declared industry and posting context.
+const marketingAccountProfile = profile();
+marketingAccountProfile.preferences = {
+  ...marketingAccountProfile.preferences!,
+  targetIndustries: ["Advertising Services", "Marketing Services", "Retail Media", "Paid Media"],
+};
+marketingAccountProfile.roleTracks[0] = {
+  ...marketingAccountProfile.roleTracks[0],
+  name: "Revenue Leadership",
+  targetTitles: ["Account Director", "Sales Director"],
+  keyResponsibilities: ["Enterprise sales", "Quota ownership"],
+  requiredExperiencePatterns: ["Pipeline generation"],
+  strongJobSignals: ["Revenue growth"],
+  weakJobSignals: ["Integrated marketing"],
+  mismatchSignals: ["Advertising campaigns"],
+};
+marketingAccountProfile.skills[0] = {
+  ...marketingAccountProfile.skills[0],
+  skillName: "Enterprise sales",
+  evidence: ["Owned a sales pipeline"],
+};
+if (marketingAccountProfile.fitSignals) {
+  marketingAccountProfile.fitSignals.goodSignals = ["Quota attainment"];
+  marketingAccountProfile.fitSignals.poorFitSignals = ["Agency account services"];
+}
+
+const oppositeExperienceProfile = clone(marketingAccountProfile);
+oppositeExperienceProfile.roleTracks[0] = {
+  ...oppositeExperienceProfile.roleTracks[0],
+  name: "Agency Leadership",
+  keyResponsibilities: ["Integrated marketing", "Client services"],
+  requiredExperiencePatterns: ["Advertising campaigns"],
+  strongJobSignals: ["Retail media"],
+  weakJobSignals: ["Enterprise sales"],
+  mismatchSignals: ["Quota ownership"],
+};
+oppositeExperienceProfile.skills[0] = {
+  ...oppositeExperienceProfile.skills[0],
+  skillName: "Integrated marketing",
+  evidence: ["Led agency accounts"],
+};
+if (oppositeExperienceProfile.fitSignals) {
+  oppositeExperienceProfile.fitSignals.goodSignals = ["Agency account services"];
+  oppositeExperienceProfile.fitSignals.poorFitSignals = ["Pipeline generation"];
+}
+
+const marketingAccountSignals = matchingSignalsForAggregate(marketingAccountProfile);
+const oppositeExperienceSignals = matchingSignalsForAggregate(oppositeExperienceProfile);
+assert.deepEqual(marketingAccountSignals.titleTerms, ["Account Director", "Sales Director"]);
+assert.deepEqual(marketingAccountSignals.positiveKeywords, []);
+assert.deepEqual(marketingAccountSignals.negativeKeywords, []);
+assert.deepEqual(oppositeExperienceSignals.titleTerms, marketingAccountSignals.titleTerms);
+assert.deepEqual(oppositeExperienceSignals.positiveKeywords, []);
+assert.deepEqual(oppositeExperienceSignals.negativeKeywords, []);
+
+const agencyAccountJob: MatchJob = {
+  id: "job-040-agency-account-director",
+  title: "Senior Account Director",
+  companyName: "Independent Agency",
+  description: "Lead integrated marketing and advertising campaigns, own client services, oversee retail media strategy, and guide cross-functional delivery.",
+  remoteType: "remote",
+  postedAt: "2026-06-27T12:00:00.000Z",
+};
+const enterpriseSalesAccountJob: MatchJob = {
+  id: "job-040-enterprise-sales-account-director",
+  title: "Senior Account Director",
+  companyName: "Enterprise Software Company",
+  description: "Own an enterprise sales quota, build pipeline, close software deals, forecast revenue, and lead account planning for strategic customers.",
+  remoteType: "remote",
+  postedAt: "2026-06-27T12:00:00.000Z",
+};
+
+const agencyAccountDecision = evaluatePublicJobDecision(agencyAccountJob, marketingAccountSignals, now);
+const agencyAccountOppositeDecision = evaluatePublicJobDecision(agencyAccountJob, oppositeExperienceSignals, now);
+assert.equal(agencyAccountDecision.included, true, "marketing Account Director roles should follow declared search context");
+assert.equal(agencyAccountOppositeDecision.included, agencyAccountDecision.included);
+assert.equal(agencyAccountOppositeDecision.score, agencyAccountDecision.score);
+
+const agencyAccountRendered = evaluateMatch({ profile: marketingAccountProfile, job: agencyAccountJob, evaluatedAt: now });
+const agencyAccountOppositeRendered = evaluateMatch({ profile: oppositeExperienceProfile, job: agencyAccountJob, evaluatedAt: now });
+assert.equal(agencyAccountOppositeRendered.internalScore, agencyAccountRendered.internalScore);
+assert.equal(agencyAccountOppositeRendered.label, agencyAccountRendered.label);
+
+const thinMarketingAccountProfile = clone(marketingAccountProfile);
+thinMarketingAccountProfile.resumes[0].parsedText = "Account Director";
+thinMarketingAccountProfile.resumes[0].highlights = [];
+thinMarketingAccountProfile.resumes[0].strengths = [];
+thinMarketingAccountProfile.workExamples = [];
+thinMarketingAccountProfile.skills = [];
+const agencyAccountThinRendered = evaluateMatch({ profile: thinMarketingAccountProfile, job: agencyAccountJob, evaluatedAt: now });
+assert.equal(agencyAccountThinRendered.internalScore, agencyAccountRendered.internalScore);
+assert.equal(agencyAccountThinRendered.label, agencyAccountRendered.label);
+
+const sparseAccountJob: MatchJob = {
+  ...agencyAccountJob,
+  id: "job-040-sparse-account-context",
+  companyName: "Context-Light Company",
+  description: "Lead the account team and own cross-functional stakeholder delivery.",
+};
+const sparseAccountDecision = evaluatePublicJobDecision(sparseAccountJob, marketingAccountSignals, now);
+assert.equal(sparseAccountDecision.included, true, "an exact title with unknown context stays eligible instead of being guessed into a function");
+
+const richOrdering = [agencyAccountJob, sparseAccountJob]
+  .map((job) => ({ id: job.id, score: evaluateMatch({ profile: marketingAccountProfile, job, evaluatedAt: now }).internalScore }))
+  .sort((first, second) => second.score - first.score);
+const oppositeOrdering = [agencyAccountJob, sparseAccountJob]
+  .map((job) => ({ id: job.id, score: evaluateMatch({ profile: oppositeExperienceProfile, job, evaluatedAt: now }).internalScore }))
+  .sort((first, second) => second.score - first.score);
+assert.deepEqual(oppositeOrdering, richOrdering);
+
+const enterpriseSalesAccountDecision = evaluatePublicJobDecision(enterpriseSalesAccountJob, marketingAccountSignals, now);
+const enterpriseSalesAccountOppositeDecision = evaluatePublicJobDecision(enterpriseSalesAccountJob, oppositeExperienceSignals, now);
+assert.equal(enterpriseSalesAccountDecision.included, false, "an ambiguous Account Director title must not become enterprise sales from experience overlap");
+assert.ok(enterpriseSalesAccountDecision.risks.some((risk) => risk.includes("declared search context")));
+assert.equal(enterpriseSalesAccountOppositeDecision.included, enterpriseSalesAccountDecision.included);
+assert.equal(enterpriseSalesAccountOppositeDecision.score, enterpriseSalesAccountDecision.score);
+
+for (const [id, description] of [
+  [
+    "job-040-sales-growth-word",
+    "Drive revenue growth across enterprise accounts. Own quota, close new business, and lead customer relationships.",
+  ],
+  [
+    "job-040-sales-client-services-word",
+    "Own sales quota and grow client services revenue through pipeline generation, forecasting, and new business.",
+  ],
+  [
+    "job-040-sales-business-development",
+    "Own business development across an assigned territory. Lead prospecting, negotiate deals, and manage CRM activity with executive buyers.",
+  ],
+  [
+    "job-040-sales-quota-territory",
+    "Own a quota-carrying territory and lead customer acquisition across enterprise accounts.",
+  ],
+  [
+    "job-040-advertising-sales",
+    "Lead sales of advertising campaigns for brands and media agencies. Own quota and pipeline for new business.",
+  ],
+  [
+    "job-040-advertising-sales-quota",
+    "Sell advertising campaigns to brands and own a sales quota.",
+  ],
+  [
+    "job-040-brand-advertising-sales-quota",
+    "Lead advertising sales for brand campaigns and own quota attainment.",
+  ],
+  [
+    "job-040-advertising-quota",
+    "Own quota for advertising campaigns and brand media solutions.",
+  ],
+] as const) {
+  const salesContextDecision = evaluatePublicJobDecision({
+    ...enterpriseSalesAccountJob,
+    id,
+    description,
+  }, marketingAccountSignals, now);
+  assert.equal(salesContextDecision.included, false, `${id} must resolve from the full sales context, not one marketing word`);
+  assert.ok(salesContextDecision.risks.some((risk) => risk.includes("declared search context")));
+}
+
+for (const title of [
+  "Advertising Sales Account Director",
+  "Media Sales Account Director",
+  "Account Director, Advertising Sales",
+]) {
+  const explicitSalesTitleDecision = evaluatePublicJobDecision({
+    ...enterpriseSalesAccountJob,
+    id: `job-040-${title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
+    title,
+    description: "Lead the account team, own stakeholder relationships, and guide cross-functional delivery.",
+  }, marketingAccountSignals, now);
+  assert.equal(explicitSalesTitleDecision.included, false, `${title} states its sales function in the title`);
+  assert.ok(explicitSalesTitleDecision.risks.some((risk) => risk.includes("declared search context")));
+}
+
+
+for (const [id, description] of [
+  [
+    "job-040-agency-account-economics",
+    "Lead brand campaigns and client relationships. Own account revenue, forecast growth, identify new business, and manage account planning.",
+  ],
+  [
+    "job-040-advertising-account-economics",
+    "Lead advertising campaigns and brand strategy while owning account revenue, new business, forecasting, and account planning.",
+  ],
+] as const) {
+  const marketingEconomicsDecision = evaluatePublicJobDecision({
+    ...agencyAccountJob,
+    id,
+    description,
+  }, marketingAccountSignals, now);
+  assert.equal(marketingEconomicsDecision.included, true, `${id} must stay marketing when ordinary account economics are present`);
+}
+
+const explicitSalesDirectorDecision = evaluatePublicJobDecision({
+  ...enterpriseSalesAccountJob,
+  id: "job-040-explicit-sales-director",
+  title: "Sales Director",
+}, marketingAccountSignals, now);
+assert.equal(explicitSalesDirectorDecision.included, true, "an explicitly saved Sales Director title remains authoritative");
+
+// Declared industries disambiguate unknown titles only. They must not become
+// occupation lanes of their own when the explicit title already has a stable
+// function. "Legal Services" cannot expand a Software Engineer search into law.
+const knownTitleIndustryProfile = profile();
+knownTitleIndustryProfile.preferences = {
+  ...knownTitleIndustryProfile.preferences!,
+  targetIndustries: ["Legal Services"],
+};
+knownTitleIndustryProfile.roleTracks[0] = {
+  ...knownTitleIndustryProfile.roleTracks[0],
+  name: "Technology",
+  targetTitles: ["Software Engineer"],
+  keyResponsibilities: ["Legal compliance"],
+  requiredExperiencePatterns: ["Contract review"],
+  strongJobSignals: ["Regulatory policy"],
+};
+const knownTitleIndustrySignals = matchingSignalsForAggregate(knownTitleIndustryProfile);
+assert.ok(knownTitleIndustrySignals.lanes.coreLanes.has("technical-engineering"));
+assert.equal(knownTitleIndustrySignals.lanes.coreLanes.has("legal-compliance"), false);
+assert.equal(knownTitleIndustrySignals.lanes.stretchLanes.has("legal-compliance"), false);
+const legalIndustryExpansionDecision = evaluatePublicJobDecision({
+  id: "job-explicit-title-industry-expansion",
+  title: "Senior Legal Counsel",
+  companyName: "Legal Services Company",
+  description: "Lead contract review, legal compliance, regulatory policy, stakeholder strategy, and cross-functional operations.",
+  remoteType: "remote",
+  postedAt: "2026-06-27T12:00:00.000Z",
+}, knownTitleIndustrySignals, now);
+assert.equal(legalIndustryExpansionDecision.included, false);
+assert.ok(legalIndustryExpansionDecision.risks.some((risk) => risk.includes("different lane")));
 
 for (const title of [
   "Senior Program Manager",

@@ -121,18 +121,24 @@ function unique(values: string[]) {
 }
 
 function scanParametersForAggregate(aggregate: CandidateProfileAggregate) {
+  const explicitTitles = unique(aggregate.roleTracks.flatMap((track) => track.targetTitles));
+  const titleParameters = explicitTitles.length > 0
+    ? explicitTitles
+    : unique(aggregate.roleTracks.map((track) => track.name));
   return unique([
-    ...aggregate.roleTracks.flatMap((track) => [track.name, ...track.targetTitles]),
+    ...titleParameters,
     ...(aggregate.preferences?.targetIndustries ?? []),
   ]).slice(0, 30);
 }
 
-// The job-title subset of the scan parameters (track names + target titles, no
-// industries) — surfaced read-only on the dashboard's "Job titles in this scan" card.
+// The job-title subset of the scan parameters. Explicit target titles take
+// precedence; Role Track names remain a fallback for older profiles.
 function titleParametersForAggregate(aggregate: CandidateProfileAggregate) {
-  return unique(
-    aggregate.roleTracks.flatMap((track) => [track.name, ...track.targetTitles]),
-  ).slice(0, 30);
+  const explicitTitles = unique(aggregate.roleTracks.flatMap((track) => track.targetTitles));
+  return (explicitTitles.length > 0
+    ? explicitTitles
+    : unique(aggregate.roleTracks.map((track) => track.name)))
+    .slice(0, 30);
 }
 
 function matchJobFromRow(job: JobRow): MatchJob {

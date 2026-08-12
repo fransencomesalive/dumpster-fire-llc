@@ -1,5 +1,8 @@
 import assert from "node:assert/strict";
-import { evaluateCandidateProfileQuality } from "../lib/public-profile/profile-quality.ts";
+import {
+  assessCandidateProfileStrength,
+  evaluateCandidateProfileQuality,
+} from "../lib/public-profile/profile-quality.ts";
 import { completeCandidateProfileAggregate } from "./fixtures/public-profile.ts";
 
 const now = "2026-06-23T00:00:00.000Z";
@@ -9,6 +12,10 @@ assert.equal(complete.status, "complete");
 assert.equal(complete.weakResponseCount, 0);
 assert.deepEqual(complete.incompleteReasons, []);
 assert.ok(complete.completeFields.includes("roleTracks.track-1.resumeIds"));
+assert.deepEqual(assessCandidateProfileStrength(completeCandidateProfileAggregate(now)), {
+  status: "strong",
+  needs: [],
+});
 
 // Outreach Rules no longer gate completion (section retired from onboarding;
 // the outreach generator carries default house rules instead).
@@ -39,6 +46,7 @@ assert.ok(missingRelationshipResult.incompleteReasons.some((reason) => reason.in
 const derivedFieldsBlank = completeCandidateProfileAggregate(now);
 derivedFieldsBlank.resumes[0].parsingQuality = "weak";
 derivedFieldsBlank.resumes[0].fileUrl = "";
+derivedFieldsBlank.resumes[0].highlights = [];
 derivedFieldsBlank.resumes[0].strengths = [];
 derivedFieldsBlank.resumes[0].gaps = [];
 derivedFieldsBlank.resumes[0].useWhen = [];
@@ -54,6 +62,12 @@ derivedFieldsBlank.roleTracks[0].mismatchSignals = [];
 derivedFieldsBlank.roleTracks[0].outreachAngle = "";
 const derivedFieldsBlankResult = evaluateCandidateProfileQuality(derivedFieldsBlank, now);
 assert.equal(derivedFieldsBlankResult.status, "complete");
+const derivedFieldsBlankStrength = assessCandidateProfileStrength(derivedFieldsBlank);
+assert.equal(derivedFieldsBlankStrength.status, "needs_context");
+assert.ok(derivedFieldsBlankStrength.needs.includes("search.explicitTargetTitles"));
+assert.ok(derivedFieldsBlankStrength.needs.includes("roleTracks.track-1.positioningContext"));
+assert.ok(derivedFieldsBlankStrength.needs.includes("roleTracks.track-1.roleContext"));
+assert.ok(derivedFieldsBlankStrength.needs.includes("resumes.resume-1.evidenceContext"));
 
 // …but the resume text itself still gates: scan-and-discard keeps only the text.
 const missingText = completeCandidateProfileAggregate(now);

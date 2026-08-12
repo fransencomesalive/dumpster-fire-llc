@@ -2,7 +2,7 @@ import type { MatchLabel } from "../public-profile/matching/types";
 import type { PursuitJobSnapshot } from "../public-profile/pursuits/types";
 import type { PublicJobLinkStatus } from "./link-health";
 
-export const PUBLIC_JOB_MATCHER_VERSION = "public-job-matcher-v3" as const;
+export const PUBLIC_JOB_MATCHER_VERSION = "public-job-matcher-v4" as const;
 
 export const PUBLIC_JOB_FEEDBACK_REASON_CODES = [
   "wrong_role_title",
@@ -104,8 +104,8 @@ export type PublicJobsSummary = {
   savedJobs: number;
   lastScanAt?: string;
   scanParameters: string[];
-  // The job-title subset of scanParameters (track names + target titles, no industries) —
-  // shown read-only on the dashboard's "Job titles in this scan" card.
+  // The job-title subset of scanParameters: explicit targets when present,
+  // otherwise Role Track names. Industries are excluded.
   titleParameters: string[];
 };
 

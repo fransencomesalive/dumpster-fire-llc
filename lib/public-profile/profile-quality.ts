@@ -57,6 +57,52 @@ type CompletionAccumulator = {
   completeFields: string[];
 };
 
+export type CandidateProfileStrength = {
+  status: "strong" | "needs_context";
+  needs: string[];
+};
+
+// Strength is intentionally separate from completion. It is a pure, internal
+// assessment of optional context and is not consumed by scan readiness, match
+// inclusion, or ordering.
+export function assessCandidateProfileStrength(
+  aggregate: CandidateProfileAggregate,
+): CandidateProfileStrength {
+  const needs: string[] = [];
+
+  if (!aggregate.roleTracks.some((track) => hasItems(track.targetTitles))) {
+    needs.push("search.explicitTargetTitles");
+  }
+  if (!hasItems(aggregate.preferences?.targetIndustries)) {
+    needs.push("search.targetIndustries");
+  }
+
+  for (const track of aggregate.roleTracks) {
+    const prefix = `roleTracks.${track.id}`;
+    if (!hasText(track.description) && !hasText(track.corePositioning)) {
+      needs.push(`${prefix}.positioningContext`);
+    }
+    if (!hasItems([
+      ...track.keyResponsibilities,
+      ...track.requiredExperiencePatterns,
+      ...track.strongJobSignals,
+    ])) {
+      needs.push(`${prefix}.roleContext`);
+    }
+  }
+
+  for (const resume of aggregate.resumes) {
+    if (!hasItems([...resume.highlights, ...resume.strengths])) {
+      needs.push(`resumes.${resume.id}.evidenceContext`);
+    }
+  }
+
+  return {
+    status: needs.length === 0 ? "strong" : "needs_context",
+    needs,
+  };
+}
+
 function requireCondition(
   accumulator: CompletionAccumulator,
   field: string,

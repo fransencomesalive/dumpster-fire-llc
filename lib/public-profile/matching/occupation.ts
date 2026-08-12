@@ -81,6 +81,91 @@ function matchesAny(value: string, patterns: RegExp[] = []) {
   return patterns.filter((pattern) => pattern.test(value)).map((pattern) => pattern.source);
 }
 
+const ambiguousAccountTitlePattern = /\b(account director|account supervisor)\b/;
+const ambiguousAccountMarketingEvidence = [
+  { pattern: /\b(marketing|advertising|agency|brand|creative)\b/, weight: 3 },
+  { pattern: /\b(campaigns?|media)\b/, weight: 2 },
+  { pattern: /\b(client services|account services)\b/, weight: 3 },
+];
+const ambiguousAccountSalesEvidence = [
+  { pattern: /\b(sales|business development)\b/, weight: 3 },
+  { pattern: /\bquota(?: carrying)?\b/, weight: 4, decisive: true },
+  { pattern: /\bpipeline\b/, weight: 4, decisive: true },
+  { pattern: /\bprospecting\b/, weight: 4, decisive: true },
+  { pattern: /\bcrm\b/, weight: 4, decisive: true },
+  { pattern: /\bterritory\b/, weight: 4, decisive: true },
+  { pattern: /\b(close deals?|closing deals?|close new business|negotiate deals?)\b/, weight: 3 },
+];
+
+function weightedEvidence(
+  value: string,
+  evidence: Array<{ pattern: RegExp; weight: number; decisive?: boolean }>,
+) {
+  return evidence.reduce((result, item) => {
+    if (!item.pattern.test(value)) return result;
+    return {
+      score: result.score + item.weight,
+      decisiveCount: result.decisiveCount + (item.decisive ? 1 : 0),
+    };
+  }, { score: 0, decisiveCount: 0 });
+}
+
+function classifyAmbiguousAccountTitle(
+  title: string,
+  department: string,
+  description: string,
+): OccupationClassification | undefined {
+  if (!ambiguousAccountTitlePattern.test(title)) return undefined;
+
+  const context = `${title} ${department} ${description}`;
+  const marketingEvidence = weightedEvidence(context, ambiguousAccountMarketingEvidence);
+  const salesEvidence = weightedEvidence(context, ambiguousAccountSalesEvidence);
+  const strongestEvidence = Math.max(marketingEvidence.score, salesEvidence.score);
+  const evidenceGap = Math.abs(marketingEvidence.score - salesEvidence.score);
+  const hasQuota = /\bquota(?: carrying)?\b/.test(context);
+  const hasExplicitSalesFunction = /\b(sales|business development|close deals?|closing deals?|close new business|negotiate deals?)\b/.test(context);
+  const titleHasExplicitSalesFunction = /\b(sales|business development)\b/.test(title);
+  const decisiveSalesContext = titleHasExplicitSalesFunction
+    || hasQuota
+    || salesEvidence.decisiveCount >= 2
+    || (salesEvidence.decisiveCount >= 1 && hasExplicitSalesFunction);
+
+  if (strongestEvidence < 3) return undefined;
+
+  if (
+    !decisiveSalesContext &&
+    marketingEvidence.score > 0 &&
+    salesEvidence.score > 0 &&
+    evidenceGap < 3
+  ) {
+    return {
+      lane: "unknown",
+      confidence: "low",
+      source: "unknown",
+      evidence: [],
+      disqualifiers: [],
+      adjacentLanes: [],
+    };
+  }
+
+  const lane: OccupationLane = decisiveSalesContext || salesEvidence.score > marketingEvidence.score
+    ? "sales-account-management"
+    : marketingEvidence.score > salesEvidence.score
+    ? "marketing-management"
+    : "unknown";
+  if (lane === "unknown") return undefined;
+  return {
+    lane,
+    confidence: strongestEvidence >= 6 ? "high" : "medium",
+    source: "title_and_tasks",
+    evidence: [`ambiguous account context: ${lane}`],
+    disqualifiers: [],
+    adjacentLanes: lane === "marketing-management"
+      ? ["creative-strategy", "social-creative"]
+      : [],
+  };
+}
+
 const laneRules: LaneRule[] = [
   {
     lane: "creative-writing",
@@ -235,7 +320,7 @@ const laneRules: LaneRule[] = [
       /\b(marketing manager|partner marketing|product marketing|customer marketing|consumer marketing|field marketing|growth marketing|marketing lead|marketer)\b/,
       /\b(director of marketing|brand marketing director|digital marketing director|marketing director)\b/,
     ],
-    task: [/\b(marketing strategy|co marketing|demand generation|growth|customer acquisition|media buying|paid social|marketing campaign)\b/],
+    task: [/\b(marketing strategy|marketing services|advertising services|integrated marketing|co marketing|demand generation|growth|customer acquisition|media buying|paid media|retail media|paid social|marketing campaign|advertising campaign|account services|client services)\b/],
     adjacent: ["creative-strategy", "social-creative"],
   },
   {
@@ -245,7 +330,7 @@ const laneRules: LaneRule[] = [
   },
   {
     lane: "sales-account-management",
-    title: [/\b(account manager|account management|account executive|business development|partnership manager|client solutions|strategic account)\b/],
+    title: [/\b(account manager|account management|account executive|business development|partnership manager|client solutions|strategic account|sales director|director of sales)\b/],
     task: [/\b(sales|revenue|quota|pipeline|account planning|customer relationship|client relationship|partnerships)\b/],
   },
   {
@@ -342,6 +427,8 @@ export function classifyOccupation(input: OccupationClassifierInput): Occupation
   const title = normalize(input.title);
   const department = normalize(input.department ?? "");
   const description = normalize(input.description);
+  const ambiguousAccountClassification = classifyAmbiguousAccountTitle(title, department, description);
+  if (ambiguousAccountClassification) return ambiguousAccountClassification;
   const scored = laneRules.map((rule) => {
     const titleMatches = matchesAny(title, rule.title);
     const taskMatches = matchesAny(description, rule.task);
@@ -394,26 +481,36 @@ export type ProfileLanes = {
   stretchLanes: Set<OccupationLane>;
 };
 
-// Derive the user's relevant lanes by classifying each Role Track (name + target
-// titles + responsibility text) as if it were a posting. This replaces the legacy
-// engine's hardcoded polarity list with a per-user derivation.
+// Explicit target titles define discovery lanes when they exist. Declared target
+// industries provide context for ambiguous titles; résumé-derived responsibilities
+// are a fallback only for older profiles that do not yet have explicit titles.
 export function profileLanesForAggregate(aggregate: CandidateProfileAggregate): ProfileLanes {
   const coreLanes = new Set<OccupationLane>();
   const stretchLanes = new Set<OccupationLane>();
+  const explicitTitles = aggregate.roleTracks.flatMap((track) => track.targetTitles.filter((title) => title.trim()));
+  const hasExplicitTitles = explicitTitles.length > 0;
+  const declaredSearchContext = (aggregate.preferences?.targetIndustries ?? []).join(". ");
 
   for (const track of aggregate.roleTracks) {
-    const titles = [track.name, ...track.targetTitles];
+    const titles = hasExplicitTitles ? track.targetTitles : [track.name];
     const responsibilityText = [
       ...track.keyResponsibilities,
       ...track.requiredExperiencePatterns,
       ...track.strongJobSignals,
     ].join(". ");
     for (const title of titles) {
-      const classification = classifyOccupation({
+      const titleClassification = classifyOccupation({
         title,
-        description: responsibilityText,
+        description: "",
         companyName: "",
       });
+      const classification = hasExplicitTitles && titleClassification.lane === "unknown"
+        ? classifyOccupation({ title, description: declaredSearchContext, companyName: "" })
+        : hasExplicitTitles ? titleClassification : classifyOccupation({
+            title,
+            description: responsibilityText,
+            companyName: "",
+          });
       if (classification.lane === "unknown") continue;
       coreLanes.add(classification.lane);
       for (const adjacent of classification.adjacentLanes) stretchLanes.add(adjacent);

@@ -255,6 +255,34 @@ current surfaces and anything built later (onboarding, dashboard, scan page):
 New list inputs map to the shared token-input primitive in the design system; do not
 invent a fourth interaction pattern.
 
+### Explicit Job-Search Intent & Profile Strength (Randall, 2026-08-11)
+
+When a user has saved explicit target job titles, those titles are authoritative for job
+discovery. Résumé history, skills, work examples, prior employers, and other experience
+evidence must not reclassify the user's target function, expand discovery into another job
+family, exclude an otherwise eligible title-family match, or change search-result ordering.
+
+- Derive discovery eligibility and ordering from the user's explicit search configuration:
+  target titles, declared target and avoided industries, avoided companies, employment type,
+  location or remote preference, compensation constraints, and the current posting itself.
+- Resolve ambiguous titles with the user's declared search preferences and the posting's
+  current function or industry context. Never resolve ambiguity from one user's résumé or turn
+  one account's history into a global title mapping.
+- Experience evidence may support post-discovery match explanations and outreach generation,
+  but it must not redefine or narrow the search when explicit target titles exist.
+- Profile completion and profile strength are separate concepts. `complete` means the required
+  setup exists and scanning is available. A separate strength assessment may identify missing
+  context even for a complete profile, but it is non-blocking and must never gate scanning,
+  hide results, reduce the result pool, or alter search ordering.
+- A profile-strength assessment does not authorize new UI, copy, guidance, or gating behavior.
+  Any user-facing presentation still requires explicit design approval under Design Authority.
+- Production implementation must encode universal regression tests proving that explicit target
+  titles control discovery and that experience evidence cannot silently redirect the target
+  function.
+
+Enforcement class: **advisory**. This instruction can be ignored by an agent; matching regression
+tests provide stronger mechanical protection only after the behavior is implemented in code.
+
 ### Universal Contact Discovery & Relevance (Randall, 2026-07-22)
 
 Contact discovery and ranking must work for every user's experience, industry, job,

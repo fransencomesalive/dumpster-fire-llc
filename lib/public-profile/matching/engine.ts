@@ -91,7 +91,8 @@ export function evaluateMatch(input: MatchInput): MatchResult {
   });
   const resumeFit = categoryFits.find((fit) => fit.category === "resume")?.score ?? 0;
   const workExampleFit = categoryFits.find((fit) => fit.category === "work_example")?.score ?? 0;
-  const thinStretchEvidence = decision.risks.some((risk) => risk.startsWith("Stretch title:"))
+  const thinStretchEvidence = !signals.hasExplicitTargetTitles
+    && decision.risks.some((risk) => risk.startsWith("Stretch title:"))
     && Math.max(resumeFit, workExampleFit) < 0.6;
   const calibratedDecision = thinStretchEvidence
     ? {

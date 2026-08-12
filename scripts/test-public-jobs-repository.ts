@@ -299,7 +299,7 @@ const request: PublicProfileRepositoryRequest = async <T>(
     return [{
       id: "track-1",
       profile_id: profileId,
-      name: "Program Director",
+      name: "Program Leadership",
       description: "Leads ambiguous delivery.",
       core_positioning: "Turns messy work into shipped systems.",
       outreach_angle: "Workflow alignment.",
@@ -872,8 +872,7 @@ async function main() {
   const missing = await setPublicJobSavedForUser(request, userId, "job-missing", true, now);
   assert.deepEqual(missing, { status: "not_in_results" });
 
-  // titleParameters = track names + target titles (deduped — the track name matches its
-  // single target title here), no industries.
+  // titleParameters use explicit target titles when present, with no industries.
   assert.deepEqual(scan.summary.titleParameters, ["Program Director"]);
   assert.deepEqual(scan.scan.userBoards, { scanned: 0, errors: 0 });
 

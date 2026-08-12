@@ -2,18 +2,19 @@
 // (app/scans/matching.ts `evaluateJobMatch`, rules lineage
 // "randall-private-2026-06-12-offshore-hubs"). The legacy engine's hand-tuned
 // config is derived here from the user's Candidate Profile instead:
-//   - title families   <- Role Track names + target titles (+ occupation lanes)
-//   - positive/negative keywords <- track signals, skills, Fit Signals
+//   - title families <- explicit target titles, with Role Track names as fallback
+//   - positive/negative keywords <- track evidence only when explicit titles are absent
 //   - wrong-lane block  <- occupation classifier vs the user's derived lanes
 // Fit Signals stay soft score contributors (matching is a spectrum); the only
-// hard risks are the ported ones: avoid-list companies, confidently wrong-lane
-// occupations, remote/compensation hard constraints.
+// hard risks include avoid-list companies, confidently wrong-lane occupations,
+// declared-context conflicts for ambiguous titles, and location constraints.
 import type { CandidateProfileAggregate } from "../types";
 import {
   classifyOccupation,
   isWrongLaneForProfile,
   lanePolarityForProfile,
   profileLanesForAggregate,
+  type OccupationLane,
   type ProfileLanes,
 } from "./occupation";
 import { parseSalaryAmounts } from "./scorers";
@@ -79,6 +80,12 @@ function matchingTerms(content: string, terms: string[]) {
 
 export type ProfileMatchingSignals = {
   lanes: ProfileLanes;
+  hasExplicitTargetTitles: boolean;
+  explicitTitleIntents: Array<{
+    term: string;
+    titleLane: OccupationLane;
+    contextLanes: OccupationLane[];
+  }>;
   titleTerms: string[];
   positiveKeywords: string[];
   negativeKeywords: string[];
@@ -105,12 +112,39 @@ function unique(values: string[]) {
   return output;
 }
 
+function declaredContextLanes(targetIndustries: string[]) {
+  const lanes = new Set<OccupationLane>();
+  for (const industry of targetIndustries) {
+    const classification = classifyOccupation({
+      title: "",
+      description: industry,
+      companyName: "",
+    });
+    if (classification.lane === "unknown") continue;
+    lanes.add(classification.lane);
+    for (const adjacent of classification.adjacentLanes) lanes.add(adjacent);
+  }
+  return [...lanes];
+}
+
 export function matchingSignalsForAggregate(aggregate: CandidateProfileAggregate): ProfileMatchingSignals {
   const hourlyFloor = aggregate.profile.targetCompensationHourlyMin;
+  const explicitTitles = unique(aggregate.roleTracks.flatMap((track) => track.targetTitles));
+  const hasExplicitTargetTitles = explicitTitles.length > 0;
+  const targetIndustries = aggregate.preferences?.targetIndustries ?? [];
+  const contextLanes = declaredContextLanes(targetIndustries);
   return {
     lanes: profileLanesForAggregate(aggregate),
-    titleTerms: unique(aggregate.roleTracks.flatMap((track) => [track.name, ...track.targetTitles])),
-    positiveKeywords: unique([
+    hasExplicitTargetTitles,
+    explicitTitleIntents: explicitTitles.map((term) => ({
+      term,
+      titleLane: classifyOccupation({ title: term, description: "", companyName: "" }).lane,
+      contextLanes,
+    })),
+    titleTerms: hasExplicitTargetTitles
+      ? explicitTitles
+      : unique(aggregate.roleTracks.map((track) => track.name)),
+    positiveKeywords: hasExplicitTargetTitles ? [] : unique([
       ...aggregate.roleTracks.flatMap((track) => [
         ...track.keyResponsibilities,
         ...track.requiredExperiencePatterns,
@@ -119,11 +153,11 @@ export function matchingSignalsForAggregate(aggregate: CandidateProfileAggregate
       ...aggregate.skills.map((skill) => skill.skillName),
       ...(aggregate.fitSignals?.goodSignals ?? []),
     ]),
-    negativeKeywords: unique([
+    negativeKeywords: hasExplicitTargetTitles ? [] : unique([
       ...aggregate.roleTracks.flatMap((track) => [...track.weakJobSignals, ...track.mismatchSignals]),
       ...(aggregate.fitSignals?.poorFitSignals ?? []),
     ]),
-    targetIndustries: aggregate.preferences?.targetIndustries ?? [],
+    targetIndustries,
     avoidIndustries: aggregate.preferences?.avoidIndustries ?? [],
     avoidCompanies: aggregate.preferences?.avoidCompanies ?? [],
     watchlistCompanies: aggregate.companyWatchlist.map((item) => item.companyName),
@@ -151,6 +185,7 @@ export function evaluatePublicJobDecision(
   const content = normalize([
     job.title,
     job.department ?? "",
+    job.industry ?? "",
     job.description,
     ...(job.responsibilities ?? []),
     ...(job.requiredExperience ?? []),
@@ -174,6 +209,7 @@ export function evaluatePublicJobDecision(
     title: job.title,
     department: job.department,
     description: [
+      job.industry ?? "",
       job.description,
       ...(job.responsibilities ?? []),
       ...(job.requiredExperience ?? []),
@@ -182,6 +218,7 @@ export function evaluatePublicJobDecision(
   });
   const lanePolarity = lanePolarityForProfile(classification.lane, signals.lanes);
   const laneTitleEvidence = classification.source === "title" || classification.source === "title_and_tasks";
+  const matchedTitleIntents = signals.explicitTitleIntents.filter((intent) => includesTerm(title, intent.term));
 
   let roleFamily = "unclassified";
   let titleStrength: "strong" | "stretch" | "none" = "none";
@@ -219,6 +256,23 @@ export function evaluatePublicJobDecision(
     (titleTermMatches.length === 0 || laneTitleEvidence)
   ) {
     risks.push(`hard exclude: role is in a different lane (${classification.lane.replace(/-/g, " ")})`);
+  }
+
+  // A bare title such as "Account Director" can describe unrelated functions.
+  // When the saved title itself has no stable lane, resolve it from declared
+  // search context and the current posting, never from résumé evidence.
+  const ambiguousTitleIntents = matchedTitleIntents.filter((intent) => intent.titleLane === "unknown");
+  const knownIntentSupportsPosting = matchedTitleIntents.some((intent) => intent.titleLane === classification.lane);
+  const ambiguousContextSupportsPosting = ambiguousTitleIntents.some((intent) => intent.contextLanes.includes(classification.lane));
+  const hasDeclaredAmbiguousContext = ambiguousTitleIntents.some((intent) => intent.contextLanes.length > 0);
+  if (
+    classification.lane !== "unknown" &&
+    classification.confidence !== "low" &&
+    hasDeclaredAmbiguousContext &&
+    !knownIntentSupportsPosting &&
+    !ambiguousContextSupportsPosting
+  ) {
+    risks.push(`hard exclude: ambiguous title conflicts with declared search context (${classification.lane.replace(/-/g, " ")})`);
   }
 
   const positiveMatches = matchingTerms(content, signals.positiveKeywords);
