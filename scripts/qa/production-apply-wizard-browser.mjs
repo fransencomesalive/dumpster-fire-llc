@@ -47,6 +47,10 @@ function expect(condition, message) {
   if (!condition) throw new Error(message);
 }
 
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 async function responseJson(response, label) {
   const text = await response.text();
   let body = null;
@@ -246,6 +250,7 @@ async function assertApiResponse(response, label) {
     pursuitId: body?.pursuit?.id ?? null,
     contactCount: Array.isArray(body?.contacts) ? body.contacts.length : null,
     messageCount: Array.isArray(body?.messages) ? body.messages.length : body?.message ? 1 : null,
+    jobTitle: body?.job?.title ?? body?.title ?? null,
   };
 }
 
@@ -287,6 +292,7 @@ const evidence = {
   appUrl: APP_URL,
   requests: [],
   persisted: null,
+  messageLengths: null,
   reload: null,
   partialRetry: null,
   responsive: [],
@@ -337,7 +343,9 @@ try {
     { timeout: 120000 },
   );
   await postingInput.press("Enter");
-  evidence.requests.push(await assertApiResponse(await fromLinkPromise, "POST /api/jobs/from-link"));
+  const fromLinkEvidence = await assertApiResponse(await fromLinkPromise, "POST /api/jobs/from-link");
+  evidence.requests.push(fromLinkEvidence);
+  expect(typeof fromLinkEvidence.jobTitle === "string", "Job ingest returned no title for Saved Pursuits verification");
 
   const dialog = page.getByRole("dialog", { name: /Human Path:/ });
   await dialog.waitFor({ state: "visible", timeout: 90000 });
@@ -390,7 +398,9 @@ try {
   await messageTextareas.first().waitFor({ state: "visible", timeout: 30000 });
   const initialMessages = await messageTextareas.evaluateAll((nodes) => nodes.map((node) => node.value));
   expect(initialMessages.length > 0, "Outreach rendered no draft messages");
+  expect(initialMessages.every((message) => message.length <= 700), "An initial outreach message exceeds 700 characters");
   expect(!initialMessages.some((message) => message.includes("—")), "A generated message contains an em dash");
+  evidence.messageLengths = { initial: initialMessages.map((message) => message.length), regenerated: null };
   expect(!/Outreach generation not configured|No drafts yet/i.test(await dialog.innerText()), "Outreach showed the old false-empty state");
 
   const regenerateButton = dialog.getByRole("button", { name: "Regenerate", exact: true }).first();
@@ -413,7 +423,9 @@ try {
     { timeout: 30000 },
   );
   const regeneratedMessage = await messageTextareas.first().inputValue();
+  expect(regeneratedMessage.length <= 700, "The regenerated outreach message exceeds 700 characters");
   expect(!regeneratedMessage.includes("—"), "The regenerated message contains an em dash");
+  evidence.messageLengths.regenerated = regeneratedMessage.length;
 
   const regenerationReplay = await replayBrowserRequest(
     page,
@@ -459,7 +471,9 @@ try {
   await rest(`pursuit_outreach_generation_requests?id=eq.${removedMessage.generation_request_id}`, { method: "DELETE" }, "Partial-retry request removal");
 
   await page.goto(`${APP_URL}/saved-pursuits`, { waitUntil: "networkidle" });
-  await page.getByRole("heading", { name: /Director, Product Operations/ }).waitFor({ state: "visible", timeout: 30000 });
+  await page.getByRole("heading", {
+    name: new RegExp(escapeRegExp(fromLinkEvidence.jobTitle)),
+  }).waitFor({ state: "visible", timeout: 30000 });
   await page.getByRole("button", { name: "Resume", exact: true }).click();
   const resumedDialog = page.getByRole("dialog", { name: /Human Path:/ });
   await resumedDialog.waitFor({ state: "visible", timeout: 30000 });
