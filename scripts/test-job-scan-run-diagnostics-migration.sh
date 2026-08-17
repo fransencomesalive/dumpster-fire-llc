@@ -171,8 +171,8 @@ PSQL=("$PG_BIN/psql" -X -q -v ON_ERROR_STOP=1 -h "$PG_SOCKET" -p "$PG_PORT" -U p
     120,
     90,
     1,
-    '{"production":{"candidate":60,"eligible":45,"selected":1,"cutoff":44}}',
-    '{"executive producer":{"candidate":10,"eligible":8,"selected":1,"cutoff":7}}'
+    '{\"production\":{\"candidate\":60,\"eligible\":45,\"selected\":1,\"cutoff\":44}}',
+    '{\"executive producer\":{\"candidate\":10,\"eligible\":8,\"selected\":1,\"cutoff\":7}}'
   );
 
   insert into public.job_scan_run_results (
