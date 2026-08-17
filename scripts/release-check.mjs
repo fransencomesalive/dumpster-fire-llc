@@ -2,6 +2,7 @@ import { spawnSync } from "node:child_process";
 
 const checks = [
   ["npm", ["run", "test:migrations:saved-pursuits"]],
+  ["node", ["scripts/test-scan-shadow-gate.mjs"]],
   ["npm", ["run", "test:fixtures"]],
   ["npm", ["run", "typecheck"]],
   ["npm", ["run", "lint"]],

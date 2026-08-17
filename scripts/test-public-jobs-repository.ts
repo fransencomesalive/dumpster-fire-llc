@@ -6,14 +6,17 @@ import {
   removePublicJobBoardForUser,
   runPublicJobsScanForUser,
   savePublicJobMatchFeedbackForUser,
+  selectTargetAwareScanJobs,
   setPublicJobDismissedForUser,
   setPublicJobSavedForUser,
+  type TargetAwareScanCandidate,
 } from "../lib/public-jobs/repository";
 import {
   handlePublicJobMatchFeedbackRequest,
   handlePublicJobsScanRequest,
 } from "../lib/public-jobs/api";
 import { PUBLIC_JOB_MATCHER_VERSION } from "../lib/public-jobs/types";
+import type { ProfileMatchingSignals } from "../lib/public-profile/matching/decision";
 import type { PublicProfileRepositoryRequest } from "../lib/public-profile/repository";
 import type { NormalizedConnectorJob } from "../lib/scan/sources/types";
 import { parseHtmlJobs } from "../lib/scan/sources/connectors";
@@ -217,6 +220,26 @@ const unrecognizedBoardSubmissions: Array<{ user_id: string; url: string; reason
 let failSubmissionLogging = false;
 let profileRemotePreference = "remote_preferred";
 const scanCandidateSelects: string[] = [];
+type ScanFinalizationWrite = {
+  p_run: {
+    user_id: string;
+    profile_id: string;
+    started_at: string;
+    completed_at: string;
+    matcher_version: string;
+    profile_context_hash: string;
+    candidate_count: number;
+    eligible_count: number;
+    selected_count: number;
+    scan_context: Record<string, unknown>;
+    lane_counts: Record<string, unknown>;
+    target_counts: Record<string, unknown>;
+    exclusion_counts: Record<string, number>;
+  };
+  p_results: Array<Record<string, unknown>>;
+  p_selected: Array<{ job_id: string }>;
+};
+const scanFinalizationWrites: ScanFinalizationWrite[] = [];
 
 const request: PublicProfileRepositoryRequest = async <T>(
   table: string,
@@ -256,6 +279,43 @@ const request: PublicProfileRepositoryRequest = async <T>(
       pursuit: { id: "pursuit-canonical" },
       created: saved && existingIndex < 0,
     } as T;
+  }
+
+  if (table === "rpc/finalize_public_job_scan" && options.method === "POST") {
+    const body = options.body as ScanFinalizationWrite;
+    scanFinalizationWrites.push(body);
+    const selectedIds = new Set(body.p_selected.map((row) => row.job_id));
+    for (const row of scanResults) {
+      if (row.user_id === body.p_run.user_id && row.status === "active" && !selectedIds.has(row.job_id)) {
+        row.status = "expired";
+        row.updated_at = body.p_run.started_at;
+      }
+    }
+    for (const jobId of selectedIds) {
+      const existing = scanResults.find((row) => (
+        row.user_id === body.p_run.user_id && row.job_id === jobId
+      ));
+      if (existing) {
+        existing.profile_id = body.p_run.profile_id;
+        existing.status = "active";
+        existing.scan_context = body.p_run.scan_context;
+        existing.last_seen_at = body.p_run.started_at;
+        existing.updated_at = body.p_run.started_at;
+      } else {
+        scanResults.push({
+          user_id: body.p_run.user_id,
+          profile_id: body.p_run.profile_id,
+          job_id: jobId,
+          status: "active",
+          scan_context: body.p_run.scan_context,
+          first_seen_at: body.p_run.started_at,
+          last_seen_at: body.p_run.started_at,
+          created_at: body.p_run.started_at,
+          updated_at: body.p_run.started_at,
+        });
+      }
+    }
+    return `20000000-0000-0000-0000-${String(scanFinalizationWrites.length).padStart(12, "0")}` as T;
   }
 
   if (table === "candidate_profiles") {
@@ -569,6 +629,203 @@ const request: PublicProfileRepositoryRequest = async <T>(
 };
 
 async function main() {
+  type SelectorJob = { id: string; title: string; companyName: string };
+  const selectorCandidate = (
+    id: string,
+    title: string,
+    companyName: string,
+    score: number,
+    roleFamily: string,
+  ): TargetAwareScanCandidate<SelectorJob> => ({
+    job: { id, title, companyName },
+    id,
+    title,
+    companyName,
+    score,
+    roleFamily,
+  });
+  const selectorIntents: ProfileMatchingSignals["explicitTitleIntents"] = [
+    { term: "Marketing Manager", titleLane: "marketing-management", contextLanes: [] },
+    { term: "Program Manager", titleLane: "program-project-management", contextLanes: [] },
+    { term: "Executive Producer", titleLane: "content-video-production", contextLanes: [] },
+  ];
+  const mixedSelectorCandidates = [
+    ...Array.from({ length: 80 }, (_, index) => selectorCandidate(
+      `marketing-${String(index).padStart(3, "0")}`,
+      "Marketing Manager",
+      `Marketing Company ${String(index).padStart(3, "0")}`,
+      100,
+      "profile-target",
+    )),
+    ...Array.from({ length: 20 }, (_, index) => selectorCandidate(
+      `program-${String(index).padStart(3, "0")}`,
+      "Program Manager",
+      `Program Company ${String(index).padStart(3, "0")}`,
+      70,
+      "profile-target",
+    )),
+    ...Array.from({ length: 20 }, (_, index) => selectorCandidate(
+      `producer-${String(index).padStart(3, "0")}`,
+      "Executive Producer",
+      `Producer Company ${String(index).padStart(3, "0")}`,
+      60,
+      "profile-target",
+    )),
+  ];
+
+  // More than 75 included candidates cannot let the abundant, higher-scoring
+  // Marketing family erase eligible Program or Producer target families.
+  const mixedSelection = selectTargetAwareScanJobs(
+    mixedSelectorCandidates,
+    selectorIntents,
+    75,
+  );
+  assert.equal(mixedSelection.length, 75);
+  assert.ok(mixedSelection.some((job) => job.id.startsWith("marketing-")));
+  assert.ok(mixedSelection.some((job) => job.id.startsWith("program-")));
+  assert.ok(mixedSelection.some((job) => job.id.startsWith("producer-")));
+
+  const takeoverCandidates = [
+    ...Array.from({ length: 100 }, (_, index) => selectorCandidate(
+      `takeover-program-${String(index).padStart(3, "0")}`,
+      "Program Manager",
+      `Takeover Program Company ${String(index).padStart(3, "0")}`,
+      100,
+      "profile-target",
+    )),
+    ...Array.from({ length: 30 }, (_, index) => selectorCandidate(
+      `takeover-producer-${String(index).padStart(3, "0")}`,
+      "Executive Producer",
+      `Takeover Producer Company ${String(index).padStart(3, "0")}`,
+      60,
+      "profile-target",
+    )),
+  ];
+  const takeoverSelection = selectTargetAwareScanJobs(
+    takeoverCandidates,
+    selectorIntents.slice(1),
+    75,
+  );
+  const takeoverProgramCount = takeoverSelection.filter((job) => job.id.startsWith("takeover-program-")).length;
+  const takeoverProducerCount = takeoverSelection.filter((job) => job.id.startsWith("takeover-producer-")).length;
+  assert.equal(takeoverSelection.length, 75);
+  assert.equal(takeoverProducerCount, 30);
+  assert.equal(takeoverProgramCount, 45);
+  assert.ok(takeoverProgramCount / takeoverSelection.length < 0.75);
+
+  const accountDirectorIntents: ProfileMatchingSignals["explicitTitleIntents"] = [
+    {
+      term: "Account Director",
+      titleLane: "unknown",
+      contextLanes: ["marketing-management"],
+    },
+    {
+      term: "Sales Director",
+      titleLane: "sales-account-management",
+      contextLanes: [],
+    },
+  ];
+  const accountDirectorCandidates = [
+    ...Array.from({ length: 100 }, (_, index) => selectorCandidate(
+      `account-sales-${String(index).padStart(3, "0")}`,
+      "Sales Director",
+      `Account Sales Company ${String(index).padStart(3, "0")}`,
+      100,
+      "profile-target",
+    )),
+    selectorCandidate(
+      "account-marketing-exact",
+      "Account Director",
+      "Account Marketing Exact Company",
+      60,
+      "profile-target",
+    ),
+    ...Array.from({ length: 29 }, (_, index) => selectorCandidate(
+      `account-marketing-${String(index).padStart(3, "0")}`,
+      "Marketing Director",
+      `Account Marketing Company ${String(index).padStart(3, "0")}`,
+      60,
+      "marketing-management",
+    )),
+  ];
+  const accountDirectorSelection = selectTargetAwareScanJobs(
+    accountDirectorCandidates,
+    accountDirectorIntents,
+    75,
+  );
+  const accountMarketingCount = accountDirectorSelection.filter((job) => (
+    job.id.startsWith("account-marketing")
+  )).length;
+  const accountSalesCount = accountDirectorSelection.filter((job) => (
+    job.id.startsWith("account-sales")
+  )).length;
+  assert.equal(accountDirectorSelection.length, 75);
+  assert.equal(accountMarketingCount, 30);
+  assert.equal(accountSalesCount, 45);
+  assert.ok(accountDirectorSelection.some((job) => job.id === "account-marketing-exact"));
+
+  // Adding another explicit target family changes the score-fill competition,
+  // but cannot eliminate the representatives of existing eligible families.
+  const withoutMarketing = selectTargetAwareScanJobs(
+    mixedSelectorCandidates,
+    selectorIntents.slice(1),
+    75,
+  );
+  assert.ok(withoutMarketing.some((job) => job.id.startsWith("program-")));
+  assert.ok(withoutMarketing.some((job) => job.id.startsWith("producer-")));
+  assert.ok(mixedSelection.some((job) => job.id.startsWith("program-")));
+  assert.ok(mixedSelection.some((job) => job.id.startsWith("producer-")));
+
+  // An exact saved title is the family representative even when a broader
+  // same-family result has a much higher raw score.
+  const exactTitleSelection = selectTargetAwareScanJobs([
+    selectorCandidate("broad-producer", "Content Producer", "Broad Co", 99, "content-video-production"),
+    selectorCandidate("exact-producer", "Executive Producer", "Exact Co", 20, "profile-target"),
+  ], [selectorIntents[2]], 1);
+  assert.deepEqual(exactTitleSelection.map((job) => job.id), ["exact-producer"]);
+
+  const sameFamilyIntents: ProfileMatchingSignals["explicitTitleIntents"] = [
+    selectorIntents[2],
+    { term: "Video Producer", titleLane: "content-video-production", contextLanes: [] },
+  ];
+  const sameFamilySelection = selectTargetAwareScanJobs([
+    selectorCandidate("executive-producer", "Executive Producer", "Executive Co", 90, "profile-target"),
+    selectorCandidate("video-producer", "Video Producer", "Video Co", 40, "profile-target"),
+    selectorCandidate("content-producer", "Content Producer", "Content Co", 99, "content-video-production"),
+  ], sameFamilyIntents, 2);
+  assert.deepEqual(
+    new Set(sameFamilySelection.map((job) => job.id)),
+    new Set(["executive-producer", "video-producer"]),
+  );
+
+  // Input order and score ties cannot change selection or which duplicate copy
+  // survives. An unrelated family is not borrowed as a target representative.
+  const deterministicCandidates = [
+    selectorCandidate("producer-z", "Executive Producer", "Duplicate Co", 80, "profile-target"),
+    selectorCandidate("producer-a", "Executive Producer", "Duplicate Co", 80, "profile-target"),
+    selectorCandidate("program-b", "Program Manager", "Beta Co", 80, "profile-target"),
+    selectorCandidate("program-a", "Program Manager", "Alpha Co", 80, "profile-target"),
+    selectorCandidate("legal-a", "Legal Counsel", "Legal Co", 100, "legal-compliance"),
+  ];
+  const deterministicForward = selectTargetAwareScanJobs(
+    deterministicCandidates,
+    selectorIntents.slice(1),
+    3,
+  );
+  const deterministicReverse = selectTargetAwareScanJobs(
+    [...deterministicCandidates].reverse(),
+    selectorIntents.slice(1),
+    3,
+  );
+  assert.deepEqual(
+    deterministicForward.map((job) => job.id),
+    deterministicReverse.map((job) => job.id),
+  );
+  assert.ok(deterministicForward.some((job) => job.id.startsWith("producer-")));
+  assert.ok(deterministicForward.some((job) => job.id.startsWith("program-")));
+  assert.equal(deterministicForward.filter((job) => job.companyName === "Duplicate Co").length, 1);
+  assert.equal(deterministicForward.find((job) => job.companyName === "Duplicate Co")?.id, "producer-a");
+
   assert.equal(isPublicIpAddress("8.8.8.8"), true);
   assert.equal(isPublicIpAddress("127.0.0.1"), false);
   assert.equal(isPublicIpAddress("169.254.169.254"), false);
@@ -653,10 +910,11 @@ async function main() {
     updated_at: now,
   });
 
-  const scan = await runPublicJobsScanForUser(request, userId, now);
+  const scan = await runPublicJobsScanForUser(request, userId, now, { diagnosticsNow: () => now });
   assert.equal("status" in scan, false);
   if ("status" in scan) throw new Error("Expected scan response");
   assert.equal(scan.scan.matchedJobs, 1);
+  assert.equal(scan.scan.scanRunId, "20000000-0000-0000-0000-000000000001");
   assert.equal(scan.jobs.length, 1);
   assert.equal(scan.jobs[0].id, "job-1");
   assert.equal(scan.jobs[0].saved, false);
@@ -676,6 +934,17 @@ async function main() {
     scanResults.filter((row) => row.status === "active").map((row) => row.job_id),
     ["job-1"],
   );
+  assert.equal(scanFinalizationWrites.length, 1);
+  assert.equal(scanFinalizationWrites[0].p_run.matcher_version, PUBLIC_JOB_MATCHER_VERSION);
+  assert.equal(scanFinalizationWrites[0].p_run.candidate_count, 2);
+  assert.equal(scanFinalizationWrites[0].p_run.eligible_count, 2);
+  assert.equal(scanFinalizationWrites[0].p_run.selected_count, 1);
+  assert.match(scanFinalizationWrites[0].p_run.profile_context_hash, /^[a-f0-9]{64}$/);
+  assert.equal(scanFinalizationWrites[0].p_results.length, 2);
+  assert.deepEqual(scanFinalizationWrites[0].p_selected, [{ job_id: "job-1" }]);
+  assert.equal(scanFinalizationWrites[0].p_results.filter((row) => row.disposition === "selected").length, 1);
+  assert.equal(scanFinalizationWrites[0].p_results.filter((row) => row.disposition === "cutoff").length, 1);
+  assert.equal(typeof scanFinalizationWrites[0].p_run.exclusion_counts, "object");
 
   const feedback = await savePublicJobMatchFeedbackForUser(request, userId, {
     jobId: "job-1",

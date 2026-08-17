@@ -3,9 +3,16 @@ import { evaluateCandidateProfileQuality } from "../public-profile/profile-quali
 import {
   evaluatePublicJobDecision,
   matchingSignalsForAggregate,
+  type PublicMatchDecision,
+  type ProfileMatchingSignals,
 } from "../public-profile/matching/decision";
 import { duplicatePostingKey } from "../public-profile/matching/dedupe";
 import { evaluateMatch } from "../public-profile/matching/engine";
+import {
+  classifyOccupation,
+  lanePolarityForProfile,
+  type OccupationLane,
+} from "../public-profile/matching/occupation";
 import type { MatchJob } from "../public-profile/matching/types";
 import {
   loadCandidateProfileAggregate,
@@ -107,6 +114,12 @@ function normalize(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, " ").replace(/\s+/g, " ").trim();
 }
 
+function titleIncludesIntent(title: string, intent: string) {
+  const normalizedIntent = normalize(intent);
+  if (!normalizedIntent) return false;
+  return ` ${normalize(title)} `.includes(` ${normalizedIntent} `);
+}
+
 function unique(values: string[]) {
   const seen = new Set<string>();
   const output: string[] = [];
@@ -121,10 +134,9 @@ function unique(values: string[]) {
 }
 
 function scanParametersForAggregate(aggregate: CandidateProfileAggregate) {
-  const explicitTitles = unique(aggregate.roleTracks.flatMap((track) => track.targetTitles));
-  const titleParameters = explicitTitles.length > 0
-    ? explicitTitles
-    : unique(aggregate.roleTracks.map((track) => track.name));
+  const titleParameters = unique(aggregate.roleTracks.flatMap((track) => (
+    track.targetTitles.length > 0 ? track.targetTitles : [track.name]
+  )));
   return unique([
     ...titleParameters,
     ...(aggregate.preferences?.targetIndustries ?? []),
@@ -134,10 +146,9 @@ function scanParametersForAggregate(aggregate: CandidateProfileAggregate) {
 // The job-title subset of the scan parameters. Explicit target titles take
 // precedence; Role Track names remain a fallback for older profiles.
 function titleParametersForAggregate(aggregate: CandidateProfileAggregate) {
-  const explicitTitles = unique(aggregate.roleTracks.flatMap((track) => track.targetTitles));
-  return (explicitTitles.length > 0
-    ? explicitTitles
-    : unique(aggregate.roleTracks.map((track) => track.name)))
+  return unique(aggregate.roleTracks.flatMap((track) => (
+    track.targetTitles.length > 0 ? track.targetTitles : [track.name]
+  )))
     .slice(0, 30);
 }
 
@@ -536,6 +547,8 @@ export type PublicJobsScanOptions = {
   // Boards fetched live per scan; least-recently-scanned first so every board rotates
   // through even when a user owns more than the budget.
   maxUserBoards?: number;
+  // Injectable completion clock for immutable scan-run diagnostics.
+  diagnosticsNow?: () => string;
 };
 
 const DEFAULT_MAX_USER_BOARDS = 6;
@@ -543,40 +556,367 @@ const USER_BOARD_FETCH_CONCURRENCY = 3;
 const MAX_JOBS_PER_USER_BOARD = 100;
 const SCAN_POOL_PAGE_SIZE = 1000;
 const MAX_SCAN_POOL_ROWS = 10000;
-const ACTIVE_RESULT_EXPIRATION_BATCH_SIZE = 100;
 
-async function reconcileActiveScanResults(
-  request: PublicProfileRepositoryRequest,
-  userId: string,
-  matchedJobIds: Set<string>,
-  scannedAt: string,
-) {
-  const activeRows = await request<{ job_id: string }[]>("job_scan_results", {
-    query: qs({
-      user_id: `eq.${userId}`,
-      status: "eq.active",
-      select: "job_id",
-    }),
-  });
-  const staleJobIds = activeRows
-    .map((row) => row.job_id)
-    .filter((jobId) => !matchedJobIds.has(jobId));
+export type TargetAwareScanCandidate<TJob> = {
+  job: TJob;
+  id: string;
+  title: string;
+  companyName: string;
+  score: number;
+  roleFamily: string;
+};
 
-  for (let offset = 0; offset < staleJobIds.length; offset += ACTIVE_RESULT_EXPIRATION_BATCH_SIZE) {
-    const batch = staleJobIds.slice(offset, offset + ACTIVE_RESULT_EXPIRATION_BATCH_SIZE);
-    await request("job_scan_results", {
-      method: "PATCH",
-      query: qs({
-        user_id: `eq.${userId}`,
-        status: "eq.active",
-        job_id: `in.(${batch.join(",")})`,
-      }),
-      body: {
-        status: "expired",
-        updated_at: scannedAt,
-      },
-    });
+type TargetIntent = ProfileMatchingSignals["explicitTitleIntents"][number];
+
+type TargetGroup = {
+  key: string;
+  lane?: string;
+  terms: string[];
+};
+
+function targetGroupsForIntents(intents: TargetIntent[]): TargetGroup[] {
+  const groups = new Map<string, TargetGroup>();
+  for (const intent of intents) {
+    const normalizedTerm = normalize(intent.term);
+    if (!normalizedTerm) continue;
+    // Known titles use their occupation lane. Explicitly modeled ambiguous
+    // titles use only their declared context lanes. A truly unknown title with
+    // no context remains exact-only and cannot borrow an unrelated family.
+    const lanes = intent.titleLane !== "unknown"
+      ? [intent.titleLane]
+      : [...new Set(intent.contextLanes.filter((lane) => lane !== "unknown"))];
+    const groupKeys = lanes.length > 0
+      ? lanes.map((lane) => ({ key: `lane:${lane}`, lane }))
+      : [{ key: `title:${normalizedTerm}`, lane: undefined }];
+    for (const { key, lane } of groupKeys) {
+      const group = groups.get(key) ?? {
+        key,
+        ...(lane ? { lane } : {}),
+        terms: [],
+      };
+      if (!group.terms.includes(intent.term)) group.terms.push(intent.term);
+      groups.set(key, group);
+    }
   }
+  return [...groups.values()]
+    .map((group) => ({
+      ...group,
+      terms: [...group.terms].sort((a, b) => normalize(a).localeCompare(normalize(b))),
+    }))
+    .sort((a, b) => a.key.localeCompare(b.key));
+}
+
+function exactIntentMatches<TJob>(
+  candidate: TargetAwareScanCandidate<TJob>,
+  intents: TargetIntent[],
+) {
+  return intents.filter((intent) => titleIncludesIntent(candidate.title, intent.term));
+}
+
+function compareSelectionCandidates<TJob>(
+  a: TargetAwareScanCandidate<TJob>,
+  b: TargetAwareScanCandidate<TJob>,
+  intents: TargetIntent[],
+) {
+  const exactDifference = exactIntentMatches(b, intents).length - exactIntentMatches(a, intents).length;
+  if (exactDifference !== 0) return exactDifference;
+  if (a.score !== b.score) return b.score - a.score;
+  return normalize(a.companyName).localeCompare(normalize(b.companyName))
+    || normalize(a.title).localeCompare(normalize(b.title))
+    || a.id.localeCompare(b.id);
+}
+
+function candidateSupportsTargetGroup<TJob>(
+  candidate: TargetAwareScanCandidate<TJob>,
+  group: TargetGroup,
+) {
+  return group.terms.some((term) => titleIncludesIntent(candidate.title, term))
+    || (Boolean(group.lane) && candidate.roleFamily === group.lane);
+}
+
+/**
+ * Selects a capped scan set without allowing one abundant target family to erase
+ * every result from another explicit target family. The decision gate remains
+ * authoritative for inclusion; this function only deduplicates and orders jobs
+ * that already passed it.
+ */
+export function selectTargetAwareScanJobs<TJob>(
+  candidates: TargetAwareScanCandidate<TJob>[],
+  explicitTitleIntents: TargetIntent[],
+  limit = 75,
+): TJob[] {
+  const cappedLimit = Math.max(0, Math.floor(limit));
+  if (cappedLimit === 0 || candidates.length === 0) return [];
+
+  const ranked = [...candidates].sort((a, b) => (
+    compareSelectionCandidates(a, b, explicitTitleIntents)
+  ));
+
+  // Dedupe after deterministic ranking so shuffled database/input order cannot
+  // change which source copy survives a tie.
+  const byPostingKey = new Map<string, TargetAwareScanCandidate<TJob>>();
+  for (const candidate of ranked) {
+    const key = duplicatePostingKey({
+      companyName: candidate.companyName,
+      title: candidate.title,
+    });
+    if (!byPostingKey.has(key)) byPostingKey.set(key, candidate);
+  }
+  const deduplicated = [...byPostingKey.values()];
+
+  const selected = new Map<string, TargetAwareScanCandidate<TJob>>();
+  const sortedIntents = [...explicitTitleIntents]
+    .filter((intent) => normalize(intent.term))
+    .sort((a, b) => normalize(a.term).localeCompare(normalize(b.term)));
+
+  // Reserve one exact posting for every explicit title that has one. This is
+  // intentionally separate from family balancing so multiple title intents in
+  // the same occupation lane remain visible when the pool supports them.
+  for (const intent of sortedIntents) {
+    if (selected.size >= cappedLimit) break;
+    const representative = deduplicated
+      .filter((candidate) => !selected.has(candidate.id))
+      .filter((candidate) => titleIncludesIntent(candidate.title, intent.term))
+      .sort((a, b) => compareSelectionCandidates(a, b, explicitTitleIntents))[0];
+    if (representative) selected.set(representative.id, representative);
+  }
+
+  // Interleave the explicit occupation-family pools before global score-fill.
+  // This lets a smaller eligible family contribute its whole useful pool rather
+  // than being reduced to one token result by an abundant higher-scoring lane.
+  const familyPools = targetGroupsForIntents(explicitTitleIntents).map((group) => ({
+    candidates: deduplicated.filter((candidate) => candidateSupportsTargetGroup(candidate, group)),
+    cursor: 0,
+  }));
+  while (selected.size < cappedLimit) {
+    let selectedInRound = false;
+    for (const pool of familyPools) {
+      while (
+        pool.cursor < pool.candidates.length
+        && selected.has(pool.candidates[pool.cursor].id)
+      ) {
+        pool.cursor += 1;
+      }
+      const candidate = pool.candidates[pool.cursor];
+      if (!candidate) continue;
+      selected.set(candidate.id, candidate);
+      pool.cursor += 1;
+      selectedInRound = true;
+      if (selected.size >= cappedLimit) break;
+    }
+    if (!selectedInRound) break;
+  }
+
+  // Only candidates that passed the decision gate reach this fallback. It fills
+  // unused capacity after all explicit family pools have been exhausted.
+  for (const candidate of deduplicated) {
+    if (selected.size >= cappedLimit) break;
+    if (!selected.has(candidate.id)) selected.set(candidate.id, candidate);
+  }
+
+  return [...selected.values()]
+    .sort((a, b) => compareSelectionCandidates(a, b, explicitTitleIntents))
+    .map((candidate) => candidate.job);
+}
+
+type EvaluatedScanCandidate = {
+  job: JobRow;
+  decision: PublicMatchDecision;
+  lane: OccupationLane;
+  targetTitle: string;
+  matchTier: "exact" | "core" | "stretch";
+};
+
+type DiagnosticCountBucket = {
+  candidate: number;
+  eligible: number;
+  selected: number;
+  cutoff: number;
+};
+
+function serializableMatchingSignals(signals: ProfileMatchingSignals) {
+  return {
+    ...signals,
+    lanes: {
+      coreLanes: [...signals.lanes.coreLanes].sort(),
+      stretchLanes: [...signals.lanes.stretchLanes].sort(),
+    },
+  };
+}
+
+function scanCandidateLane(job: JobRow) {
+  return classifyOccupation({
+    title: job.title,
+    department: defined(job.department),
+    description: [
+      job.description,
+      ...(job.responsibilities ?? []),
+      ...(job.required_experience ?? []),
+    ].join(" "),
+    companyName: job.company_name,
+  }).lane;
+}
+
+function targetTitleForCandidate(
+  title: string,
+  lane: OccupationLane,
+  intents: TargetIntent[],
+) {
+  const exact = intents
+    .filter((intent) => titleIncludesIntent(title, intent.term))
+    .sort((a, b) => normalize(a.term).localeCompare(normalize(b.term)))[0];
+  if (exact) return exact.term;
+
+  const family = intents
+    .filter((intent) => intent.titleLane === lane || intent.contextLanes.includes(lane))
+    .sort((a, b) => normalize(a.term).localeCompare(normalize(b.term)))[0];
+  return family?.term ?? `unassigned:${lane}`;
+}
+
+function matchTierForCandidate(
+  title: string,
+  lane: OccupationLane,
+  signals: ProfileMatchingSignals,
+): EvaluatedScanCandidate["matchTier"] {
+  if (signals.explicitTitleIntents.some((intent) => titleIncludesIntent(title, intent.term))) {
+    return "exact";
+  }
+  return lanePolarityForProfile(lane, signals.lanes) === "stretch" ? "stretch" : "core";
+}
+
+function incrementDiagnosticCount(
+  counts: Record<string, DiagnosticCountBucket>,
+  key: string,
+  field: keyof DiagnosticCountBucket,
+) {
+  const bucket = counts[key] ?? { candidate: 0, eligible: 0, selected: 0, cutoff: 0 };
+  bucket[field] += 1;
+  counts[key] = bucket;
+}
+
+function compareEvaluatedScanCandidates(first: EvaluatedScanCandidate, second: EvaluatedScanCandidate) {
+  const firstExact = first.matchTier === "exact" ? 1 : 0;
+  const secondExact = second.matchTier === "exact" ? 1 : 0;
+  return secondExact - firstExact
+    || second.decision.score - first.decision.score
+    || normalize(first.job.company_name).localeCompare(normalize(second.job.company_name))
+    || normalize(first.job.title).localeCompare(normalize(second.job.title))
+    || first.job.id.localeCompare(second.job.id);
+}
+
+async function finalizeCompletedScan(
+  request: PublicProfileRepositoryRequest,
+  input: {
+    userId: string;
+    profile: CandidateProfileAggregate;
+    startedAt: string;
+    completedAt: string;
+    signals: ProfileMatchingSignals;
+    evaluated: EvaluatedScanCandidate[];
+    selectedJobs: JobRow[];
+    env?: NodeJS.ProcessEnv;
+  },
+) {
+  const selectedRankById = new Map(input.selectedJobs.map((job, index) => [job.id, index + 1]));
+  const selectedIds = new Set(selectedRankById.keys());
+  const selectedPostingKeys = new Set(input.selectedJobs.map((job) => duplicatePostingKey({
+    companyName: job.company_name,
+    title: job.title,
+  })));
+  const eligible = input.evaluated
+    .filter((candidate) => candidate.decision.included)
+    .sort(compareEvaluatedScanCandidates);
+  const laneCounts: Record<string, DiagnosticCountBucket> = {};
+  const targetCounts: Record<string, DiagnosticCountBucket> = {};
+  const exclusionCounts: Record<string, number> = {};
+
+  for (const candidate of input.evaluated) {
+    incrementDiagnosticCount(laneCounts, candidate.lane, "candidate");
+    incrementDiagnosticCount(targetCounts, candidate.targetTitle, "candidate");
+    if (!candidate.decision.included) {
+      const hardRisks = [...new Set(candidate.decision.risks.filter((risk) => risk.startsWith("hard ")))];
+      const reasons = hardRisks.length > 0
+        ? hardRisks
+        : candidate.decision.roleFamily === "unclassified"
+        ? ["decision gate: no confirmed role family"]
+        : ["decision gate: insufficient supporting evidence"];
+      for (const reason of reasons) exclusionCounts[reason] = (exclusionCounts[reason] ?? 0) + 1;
+      continue;
+    }
+    incrementDiagnosticCount(laneCounts, candidate.lane, "eligible");
+    incrementDiagnosticCount(targetCounts, candidate.targetTitle, "eligible");
+    const outcome = selectedIds.has(candidate.job.id) ? "selected" : "cutoff";
+    incrementDiagnosticCount(laneCounts, candidate.lane, outcome);
+    incrementDiagnosticCount(targetCounts, candidate.targetTitle, outcome);
+  }
+
+  const contextHash = createHash("sha256")
+    .update(JSON.stringify({
+      matcherVersion: PUBLIC_JOB_MATCHER_VERSION,
+      profileId: input.profile.profile.id,
+      profileVersion: input.profile.profile.version,
+      profileUpdatedAt: input.profile.profile.updatedAt,
+      matchingSignals: serializableMatchingSignals(input.signals),
+    }))
+    .digest("hex");
+  const runtimeEnv = input.env ?? process.env;
+  const results = eligible.map((candidate, index) => {
+    const selectedRank = selectedRankById.get(candidate.job.id);
+    const duplicateKey = duplicatePostingKey({
+      companyName: candidate.job.company_name,
+      title: candidate.job.title,
+    });
+    return {
+      job_id: candidate.job.id,
+      disposition: selectedRank ? "selected" : "cutoff",
+      candidate_rank: index + 1,
+      selected_rank: selectedRank ?? null,
+      score: candidate.decision.score,
+      lane: candidate.lane,
+      target_title: candidate.targetTitle,
+      match_tier: candidate.matchTier,
+      cutoff_reason: selectedRank
+        ? null
+        : selectedPostingKeys.has(duplicateKey)
+        ? "duplicate_posting"
+        : "family_balanced_result_limit",
+    };
+  });
+
+  const response = await request<unknown>("rpc/finalize_public_job_scan", {
+    method: "POST",
+    body: {
+      p_run: {
+        user_id: input.userId,
+        profile_id: input.profile.profile.id,
+        started_at: input.startedAt,
+        completed_at: input.completedAt,
+        matcher_version: PUBLIC_JOB_MATCHER_VERSION,
+        source_commit_sha: runtimeEnv.VERCEL_GIT_COMMIT_SHA || runtimeEnv.GITHUB_SHA || null,
+        deployment_id: runtimeEnv.VERCEL_DEPLOYMENT_ID || null,
+        profile_context_hash: contextHash,
+        candidate_count: input.evaluated.length,
+        eligible_count: eligible.length,
+        selected_count: input.selectedJobs.length,
+        scan_context: {
+          providerMode: "normalized_public_jobs",
+          parameters: scanParametersForAggregate(input.profile),
+        },
+        lane_counts: laneCounts,
+        target_counts: targetCounts,
+        exclusion_counts: exclusionCounts,
+      },
+      p_results: results,
+      p_selected: input.selectedJobs.map((job) => ({ job_id: job.id })),
+    },
+  });
+  const scanRunId = typeof response === "string"
+    ? response
+    : Array.isArray(response) && typeof response[0] === "string"
+    ? response[0]
+    : undefined;
+  if (!scanRunId) throw new Error("Job scan diagnostics did not return a scan run id.");
+  return scanRunId;
 }
 
 async function mapWithConcurrency<T>(items: T[], limit: number, task: (item: T) => Promise<void>) {
@@ -693,56 +1033,48 @@ export async function runPublicJobsScanForUser(
   // hard constraints clear the decision gate. Duplicate postings of the same
   // role collapse to the best-scored copy before the cap.
   const profileSignals = matchingSignalsForAggregate(readiness.aggregate);
-  const decided = candidates
+  const evaluatedCandidates: EvaluatedScanCandidate[] = candidates
     .filter((job) => job.link_status !== "gone")
     .filter((job) => !dismissedIds.has(job.id))
-    .map((job) => ({
-      job,
-      decision: evaluatePublicJobDecision(matchJobFromRow(job), profileSignals, scannedAt),
-    }))
-    .filter((item) => item.decision.included)
-    .sort((a, b) => b.decision.score - a.decision.score);
-
-  const seenPostingKeys = new Set<string>();
-  const matchedJobs = decided
-    .filter(({ job }) => {
-      const key = duplicatePostingKey({ companyName: job.company_name, title: job.title });
-      if (seenPostingKeys.has(key)) return false;
-      seenPostingKeys.add(key);
-      return true;
-    })
-    .map(({ job }) => job)
-    .slice(0, 75);
-
-  if (matchedJobs.length > 0) {
-    await request("job_scan_results", {
-      method: "POST",
-      query: "?on_conflict=user_id,job_id",
-      headers: { Prefer: "resolution=merge-duplicates" },
-      body: matchedJobs.map((job) => ({
-        user_id: userId,
-        profile_id: readiness.aggregate.profile.id,
-        job_id: job.id,
-        status: "active",
-        scan_context: {
-          providerMode: "normalized_public_jobs",
-          parameters: readiness.scanParameters,
-        },
-        last_seen_at: scannedAt,
-        updated_at: scannedAt,
-      })),
+    .map((job) => {
+      const decision = evaluatePublicJobDecision(matchJobFromRow(job), profileSignals, scannedAt);
+      const lane = scanCandidateLane(job);
+      return {
+        job,
+        decision,
+        lane,
+        targetTitle: targetTitleForCandidate(job.title, lane, profileSignals.explicitTitleIntents),
+        matchTier: matchTierForCandidate(job.title, lane, profileSignals),
+      };
     });
-  }
+  const decided = evaluatedCandidates.filter((item) => item.decision.included);
 
-  // A successful scan replaces the active recommendation set. Preserve saved,
-  // pursued, and dismissed lifecycle states, while expiring active rows that no
-  // longer survive the current profile, pool, ranking, dedupe, or result cap.
-  await reconcileActiveScanResults(
-    request,
-    userId,
-    new Set(matchedJobs.map((job) => job.id)),
-    scannedAt,
+  const matchedJobs = selectTargetAwareScanJobs(
+    decided.map(({ job, decision }) => ({
+      job,
+      id: job.id,
+      title: job.title,
+      companyName: job.company_name,
+      score: decision.score,
+      roleFamily: decision.roleFamily,
+    })),
+    profileSignals.explicitTitleIntents,
+    75,
   );
+
+  // Recommendation replacement and immutable decision diagnostics finalize in
+  // one database transaction. A failed diagnostics write cannot leave active
+  // results mutated without a corresponding scan-run record.
+  const scanRunId = await finalizeCompletedScan(request, {
+    userId,
+    profile: readiness.aggregate,
+    startedAt: scannedAt,
+    completedAt: options.diagnosticsNow?.() ?? new Date().toISOString(),
+    signals: profileSignals,
+    evaluated: evaluatedCandidates,
+    selectedJobs: matchedJobs,
+    env: options.env,
+  });
 
   const response = await readPublicJobsForUser(request, userId, scannedAt);
   if ("status" in response) return response;
@@ -754,6 +1086,7 @@ export async function runPublicJobsScanForUser(
       matchedJobs: matchedJobs.length,
       mergedResults: response.jobs.length,
       providerMode: "normalized_public_jobs",
+      scanRunId,
       ...(boards.userBoards ? { userBoards: boards.userBoards } : {}),
     },
   };

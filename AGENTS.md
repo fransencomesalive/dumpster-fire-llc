@@ -316,6 +316,33 @@ or job family into a global matching rule or default mapping.
 This rule is advisory: agents are required to follow it, but no mechanical hook blocks
 an agent from ignoring it.
 
+### Matching Change Safety (Randall, 2026-08-17)
+
+Every job-matching change must improve the system without silently degrading another account,
+saved target title, or role family.
+
+- Reproduce the reported failure before implementation and preserve it as a regression test.
+- Evaluate matching changes against mixed-role pools large enough to cross the production result
+  cap. Single-profile and single-job fixtures are insufficient release evidence.
+- Replay every complete production profile read-only before deployment. Compare the proposed
+  matcher with the currently deployed behavior using the same profile and candidate pool.
+- An eligible saved target family must not lose all representation because another family expands.
+  Adding or correcting one target must not erase every useful result for an existing target.
+- Exact saved-title matches must rank ahead of broad same-family and adjacent-family matches under
+  otherwise equivalent conditions.
+- Fail the matching release check on unexplained occupation-lane expansion, lost eligible target
+  coverage, nondeterministic tie ordering, or destructive result churn beyond the approved bound.
+- Persist immutable scan-run diagnostics with matcher/deployment identity, profile-context hash,
+  candidate and selected counts, per-target and per-lane composition, scores, ranks, and cutoff
+  reasons. Do not present mutable read-time rescoring as historical scan evidence.
+- Never trigger production rescans or apply a diagnostics migration without separate explicit
+  approval after the read-only replay is reviewed.
+
+Enforcement class: **advisory** for this instruction text, which an agent can technically ignore.
+The matching fixture gate is **blocking within `npm run release:check`** when that command is run;
+the production shadow replay remains an explicit pre-deployment operation because CI does not hold
+production credentials.
+
 ### Action Color Roles (Randall 2026-07-23)
 
 Standing color semantics for every action control, app-wide. `--role-action` is **teal**.

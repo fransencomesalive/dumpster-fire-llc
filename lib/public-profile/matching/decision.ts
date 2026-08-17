@@ -14,6 +14,7 @@ import {
   isWrongLaneForProfile,
   lanePolarityForProfile,
   profileLanesForAggregate,
+  supportsDeclaredIndustryDisambiguation,
   type OccupationLane,
   type ProfileLanes,
 } from "./occupation";
@@ -131,19 +132,22 @@ export function matchingSignalsForAggregate(aggregate: CandidateProfileAggregate
   const hourlyFloor = aggregate.profile.targetCompensationHourlyMin;
   const explicitTitles = unique(aggregate.roleTracks.flatMap((track) => track.targetTitles));
   const hasExplicitTargetTitles = explicitTitles.length > 0;
+  const declaredTitles = unique(aggregate.roleTracks.flatMap((track) => (
+    track.targetTitles.some((title) => title.trim())
+      ? track.targetTitles
+      : [track.name]
+  )));
   const targetIndustries = aggregate.preferences?.targetIndustries ?? [];
   const contextLanes = declaredContextLanes(targetIndustries);
   return {
     lanes: profileLanesForAggregate(aggregate),
     hasExplicitTargetTitles,
-    explicitTitleIntents: explicitTitles.map((term) => ({
+    explicitTitleIntents: declaredTitles.map((term) => ({
       term,
       titleLane: classifyOccupation({ title: term, description: "", companyName: "" }).lane,
-      contextLanes,
+      contextLanes: supportsDeclaredIndustryDisambiguation(term) ? contextLanes : [],
     })),
-    titleTerms: hasExplicitTargetTitles
-      ? explicitTitles
-      : unique(aggregate.roleTracks.map((track) => track.name)),
+    titleTerms: declaredTitles,
     positiveKeywords: hasExplicitTargetTitles ? [] : unique([
       ...aggregate.roleTracks.flatMap((track) => [
         ...track.keyResponsibilities,
@@ -225,7 +229,10 @@ export function evaluatePublicJobDecision(
   if (titleTermMatches.length > 0) {
     titleStrength = "strong";
     roleFamily = "profile-target";
-    score += 34;
+    // Exact saved-title intent must outrank a broad same-lane match under
+    // otherwise equivalent conditions. Equal weighting allowed abundant broad
+    // lanes to crowd explicit Producer targets out of the global result cap.
+    score += 42;
     positives.push(`Title matches your target: ${titleTermMatches.slice(0, 2).join(", ")}.`);
     evidence.push(`title evidence: ${titleTermMatches.slice(0, 2).join(", ")}`);
   } else if (lanePolarity === "core" && laneTitleEvidence) {

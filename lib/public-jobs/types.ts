@@ -2,7 +2,7 @@ import type { MatchLabel } from "../public-profile/matching/types";
 import type { PursuitJobSnapshot } from "../public-profile/pursuits/types";
 import type { PublicJobLinkStatus } from "./link-health";
 
-export const PUBLIC_JOB_MATCHER_VERSION = "public-job-matcher-v4" as const;
+export const PUBLIC_JOB_MATCHER_VERSION = "public-job-matcher-v5" as const;
 
 export const PUBLIC_JOB_FEEDBACK_REASON_CODES = [
   "wrong_role_title",
@@ -132,6 +132,8 @@ export type PublicJobsScanResponse = PublicJobsResponse & {
     matchedJobs: number;
     mergedResults: number;
     providerMode: "normalized_public_jobs";
+    // Immutable diagnostics record for the exact matcher/profile/pool decision.
+    scanRunId: string;
     // Correlates the browser response with the production function log.
     reference?: string;
     // Private company boards fetched live during this scan (absent when the user has none).

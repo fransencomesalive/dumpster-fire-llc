@@ -888,4 +888,167 @@ assert.equal(classifyOccupation({
   description: "Own financial planning, forecasting, and executive finance strategy.",
 }).lane, "finance-accounting");
 
+// Regression 2026-08-17: unknown AI targets must never inherit a marketing
+// occupation lane merely because the account also targets Advertising Services.
+const producerAiProgramProfile = profile();
+producerAiProgramProfile.preferences = {
+  ...producerAiProgramProfile.preferences!,
+  targetIndustries: [
+    "AI",
+    "web3",
+    "crypto",
+    "Advertising Services",
+    "outdoor",
+    "AI Enablement",
+    "AI deployment",
+    "AI operations",
+    "AI solutions",
+  ],
+};
+producerAiProgramProfile.roleTracks[0] = {
+  ...producerAiProgramProfile.roleTracks[0],
+  name: "Producer, AI Enablement, and Program Leadership",
+  targetTitles: [
+    "Executive Producer",
+    "creative producer",
+    "production lead",
+    "AI Enablement Specialist",
+    "AI Solution Strategist",
+    "Enterprise AI Operations Lead",
+    "AI Operations Specialist",
+    "Program director",
+    "program manager",
+  ],
+};
+const producerAiProgramSignals = matchingSignalsForAggregate(producerAiProgramProfile);
+assert.deepEqual([...producerAiProgramSignals.lanes.coreLanes].sort(), [
+  "ai-enablement-operations",
+  "content-video-production",
+  "digital-production",
+  "program-project-management",
+]);
+assert.equal(producerAiProgramSignals.lanes.coreLanes.has("marketing-management"), false);
+assert.equal(producerAiProgramSignals.lanes.coreLanes.has("creative-strategy"), false);
+for (const title of [
+  "AI Enablement Specialist",
+  "AI Solution Strategist",
+  "Enterprise AI Operations Lead",
+  "AI Operations Specialist",
+]) {
+  assert.equal(classifyOccupation({ title, description: "", companyName: "" }).lane, "ai-enablement-operations");
+}
+
+const unrelatedMarketingDecision = evaluatePublicJobDecision({
+  id: "job-ai-profile-marketing-regression",
+  title: "Director of Product Marketing",
+  companyName: "AI Company",
+  description: "Lead product marketing strategy, campaigns, stakeholder alignment, operations, and cross-functional delivery for an AI platform.",
+  remoteType: "remote",
+  postedAt: "2026-06-27T12:00:00.000Z",
+}, producerAiProgramSignals, now);
+assert.equal(unrelatedMarketingDecision.included, false);
+assert.ok(unrelatedMarketingDecision.risks.some((risk) => risk.includes("different lane")));
+
+const aiEnablementDecision = evaluatePublicJobDecision({
+  id: "job-ai-enablement-supported",
+  title: "Enterprise AI Enablement Lead",
+  companyName: "AI Company",
+  description: "Own enterprise AI adoption, AI deployment, stakeholder enablement, workflow delivery, and cross-functional planning.",
+  remoteType: "remote",
+  postedAt: "2026-06-27T12:00:00.000Z",
+}, producerAiProgramSignals, now);
+assert.equal(aiEnablementDecision.included, true);
+assert.equal(aiEnablementDecision.roleFamily, "ai-enablement-operations");
+
+// Unknown title families do not receive a lane from target industries. Industry
+// disambiguation remains limited to the explicitly modeled Account Director case.
+const communicationsProfile = profile();
+communicationsProfile.preferences = {
+  ...communicationsProfile.preferences!,
+  targetIndustries: ["Information Technology", "Cloud Infrastructure"],
+};
+communicationsProfile.roleTracks[0] = {
+  ...communicationsProfile.roleTracks[0],
+  name: "Communications Leadership",
+  targetTitles: [
+    "Communications Director",
+    "Strategic Communications Director",
+    "Vice President of Communications",
+    "Executive Communications Director",
+  ],
+};
+const communicationsSignals = matchingSignalsForAggregate(communicationsProfile);
+assert.equal(communicationsSignals.lanes.coreLanes.has("data-it-infrastructure"), false);
+assert.deepEqual(
+  communicationsSignals.lanes.coreLanes,
+  new Set(["communications-leadership"]),
+);
+for (const title of communicationsProfile.roleTracks[0].targetTitles) {
+  assert.equal(
+    classifyOccupation({ title, description: "", companyName: "" }).lane,
+    "communications-leadership",
+  );
+}
+const communicationsDecision = evaluatePublicJobDecision({
+  id: "job-communications-leadership",
+  title: "Director of Executive Communications",
+  companyName: "Cloud Company",
+  description: "Own executive messaging, media relations, strategic communications, stakeholder alignment, and cross-functional delivery.",
+  remoteType: "remote",
+  postedAt: "2026-06-27T12:00:00.000Z",
+}, communicationsSignals, now);
+assert.equal(communicationsDecision.included, true);
+assert.equal(communicationsDecision.roleFamily, "communications-leadership");
+
+// Exact saved targets rank ahead of broad same-lane matches when all other
+// posting evidence is equivalent.
+const exactProducerProfile = profile();
+exactProducerProfile.roleTracks[0] = {
+  ...exactProducerProfile.roleTracks[0],
+  name: "Executive Producer",
+  targetTitles: ["Executive Producer"],
+};
+const exactProducerSignals = matchingSignalsForAggregate(exactProducerProfile);
+const equivalentProducerJob = {
+  companyName: "Production Company",
+  description: "Lead content production, own budgets, vendors, stakeholders, strategy, and cross-functional delivery.",
+  remoteType: "remote",
+  postedAt: "2026-06-27T12:00:00.000Z",
+};
+const exactProducerDecision = evaluatePublicJobDecision({
+  ...equivalentProducerJob,
+  id: "job-exact-executive-producer",
+  title: "Executive Producer",
+}, exactProducerSignals, now);
+const broadProducerDecision = evaluatePublicJobDecision({
+  ...equivalentProducerJob,
+  id: "job-broad-video-producer",
+  title: "Video Producer",
+}, exactProducerSignals, now);
+assert.equal(exactProducerDecision.included, true);
+assert.equal(broadProducerDecision.included, true);
+assert.ok(exactProducerDecision.score > broadProducerDecision.score);
+
+// Explicit titles on one track must not deactivate another valid track whose
+// maintained name is its only declared title-family signal.
+const partiallyTitledProfile = profile();
+partiallyTitledProfile.roleTracks = [
+  {
+    ...partiallyTitledProfile.roleTracks[0],
+    id: "track-explicit-program",
+    name: "Program Leadership",
+    targetTitles: ["Program Director"],
+  },
+  {
+    ...partiallyTitledProfile.roleTracks[0],
+    id: "track-name-only-producer",
+    name: "Executive Producer",
+    targetTitles: [],
+  },
+];
+const partiallyTitledSignals = matchingSignalsForAggregate(partiallyTitledProfile);
+assert.ok(partiallyTitledSignals.lanes.coreLanes.has("program-project-management"));
+assert.ok(partiallyTitledSignals.lanes.coreLanes.has("content-video-production"));
+assert.deepEqual(partiallyTitledSignals.titleTerms, ["Program Director", "Executive Producer"]);
+
 console.log("public profile matching: all assertions passed");

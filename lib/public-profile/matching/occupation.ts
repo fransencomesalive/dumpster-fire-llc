@@ -19,6 +19,8 @@ export type OccupationLane =
   | "social-creative"
   | "creative-operations"
   | "marketing-creative-project-management"
+  | "ai-enablement-operations"
+  | "communications-leadership"
   | "program-project-management"
   | "product-operations"
   | "product-owner-sales-ops"
@@ -82,6 +84,14 @@ function matchesAny(value: string, patterns: RegExp[] = []) {
 }
 
 const ambiguousAccountTitlePattern = /\b(account director|account supervisor)\b/;
+
+// Declared industries may disambiguate only title families whose ambiguity is
+// explicitly modeled here. Applying industry context to every unknown title
+// caused AI Enablement / AI Operations targets to inherit marketing merely
+// because a profile also targeted Advertising Services (2026-08-17 regression).
+export function supportsDeclaredIndustryDisambiguation(title: string) {
+  return ambiguousAccountTitlePattern.test(normalize(title));
+}
 const ambiguousAccountMarketingEvidence = [
   { pattern: /\b(marketing|advertising|agency|brand|creative)\b/, weight: 3 },
   { pattern: /\b(campaigns?|media)\b/, weight: 2 },
@@ -167,6 +177,29 @@ function classifyAmbiguousAccountTitle(
 }
 
 const laneRules: LaneRule[] = [
+  {
+    lane: "ai-enablement-operations",
+    title: [
+      /\b(ai|artificial intelligence) (enablement|adoption|operations?|solutions?) (specialist|strategist|consultant|manager|lead|director)\b/,
+      /\benterprise (ai|artificial intelligence) (enablement|adoption|operations?|solutions?) (specialist|strategist|consultant|manager|lead|director)\b/,
+    ],
+    task: [
+      /\b(ai enablement|ai adoption|ai deployment|ai operations|enterprise ai|generative ai strategy|ai workflow|ai transformation)\b/,
+    ],
+  },
+  {
+    lane: "communications-leadership",
+    title: [
+      /\b(communications? director|director of (strategic |executive |corporate )?communications?|strategic communications? director|executive communications? director)\b/,
+      /\b(vice president|vp|svp|head) of (strategic |executive |corporate )?communications?\b/,
+      /\b(corporate communications? lead|communications? lead)\b/,
+    ],
+    task: [
+      /\b(strategic communications?|executive communications?|corporate communications?|internal communications?)\b/,
+      /\b(media relations|public relations|crisis communications?|executive messaging|press strategy)\b/,
+    ],
+    adjacent: ["global-affairs-policy", "creative-writing"],
+  },
   {
     lane: "creative-writing",
     title: [/\b(copywriter|copy writer|content writer|ux writer|brand writer|editorial)\b/],
@@ -487,12 +520,12 @@ export type ProfileLanes = {
 export function profileLanesForAggregate(aggregate: CandidateProfileAggregate): ProfileLanes {
   const coreLanes = new Set<OccupationLane>();
   const stretchLanes = new Set<OccupationLane>();
-  const explicitTitles = aggregate.roleTracks.flatMap((track) => track.targetTitles.filter((title) => title.trim()));
-  const hasExplicitTitles = explicitTitles.length > 0;
   const declaredSearchContext = (aggregate.preferences?.targetIndustries ?? []).join(". ");
 
   for (const track of aggregate.roleTracks) {
-    const titles = hasExplicitTitles ? track.targetTitles : [track.name];
+    const explicitTrackTitles = track.targetTitles.filter((title) => title.trim());
+    const usesExplicitTrackTitles = explicitTrackTitles.length > 0;
+    const titles = usesExplicitTrackTitles ? explicitTrackTitles : [track.name];
     const responsibilityText = [
       ...track.keyResponsibilities,
       ...track.requiredExperiencePatterns,
@@ -504,9 +537,11 @@ export function profileLanesForAggregate(aggregate: CandidateProfileAggregate): 
         description: "",
         companyName: "",
       });
-      const classification = hasExplicitTitles && titleClassification.lane === "unknown"
+      const classification = usesExplicitTrackTitles
+        && titleClassification.lane === "unknown"
+        && supportsDeclaredIndustryDisambiguation(title)
         ? classifyOccupation({ title, description: declaredSearchContext, companyName: "" })
-        : hasExplicitTitles ? titleClassification : classifyOccupation({
+        : usesExplicitTrackTitles ? titleClassification : classifyOccupation({
             title,
             description: responsibilityText,
             companyName: "",
