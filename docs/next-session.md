@@ -3,49 +3,31 @@
 _Updated 2026-08-17. Read `AGENTS.md` and follow the Session Start Protocol in
 `docs/project-operating-state.md` before taking any action._
 
-## Active handoff: resume on MacBook Air with its local Supabase credential
+## Active handoff: matcher v5 is live; real-account rescan requires fresh approval
 
-Randall approved the production sequence for the audited job-scan correction: apply the diagnostics
-migration first, deploy matcher v5 on `main`, verify production, then rescan only the reported
-AI/Producer/Program profile and inspect its persisted results. A mass rescan is not authorized.
+The diagnostics migration is applied and recorded, matcher v5 is deployed, and the production scan
+journey is verified on commit `d6a3ae4`, deployment `dpl_FrrKwKNqUWfuhbDNbPiJgAzge7Sm`. GitHub
+Actions run `32079981873`, the complete local release check, the migration execution harness, the
+production database postflight, and the canonical HTTP 200 check all passed.
 
-Implementation is committed locally on the Mac Studio as `9cff774` (`Fix and harden public job scan
-matching`). It is not on `origin/main`. Do not push that commit before the migration is applied:
-the application now finalizes scans through the new migration RPC, so deploying code first would
-break production scans. Production is unchanged and no account has been rescanned.
+The fresh authenticated production-browser journey used a disposable complete profile with no
+existing results. The live dashboard Run scan control sent exactly one POST, received HTTP 200,
+persisted 75 rows for that user, displayed the same count after reload, and produced no browser or
+console errors. Cleanup removed the disposable Auth user, profile, and scan rows.
 
-The Mac Studio deployment attempt stopped safely because both its Supabase CLI login and the
-gitignored `SUPABASE_ACCESS_TOKEN` returned HTTP 401, and `.env.local` has no
-`SUPABASE_DB_PASSWORD`. The credential needed for the migration is hosted locally on the MacBook
-Air. No credential was printed or committed.
+No real account has been rescanned. The attempted next action was deliberately blocked by the
+production safety review because replacing Randall Fransen's existing 75-result snapshot would be
+a real-user mutation performed with a minted administrative session. Do not work around that
+block. Obtain a fresh, explicit owner approval naming that single profile before proceeding. If
+approved, rescan only `fransencomesalive@gmail.com`, then verify the immutable run, active rows,
+dashboard reload, source commit, deployment ID, and profile hash. The expected lane composition is
+0 marketing, 35 program/project, 28 content/video production, 5 digital production, and 7 AI
+enablement results. A mass rescan is not authorized.
 
-Next immediate action on the MacBook Air:
-
-1. Run `session check`, then `git status --short --branch`; remain on `main`.
-2. Confirm the Air's gitignored `.env.local` has a valid `SUPABASE_ACCESS_TOKEN` or
-   `SUPABASE_DB_PASSWORD` without printing it.
-3. Make local commit `9cff774` available on the Air without pushing `main` or triggering Vercel
-   ahead of the migration. The commit currently exists only in the Studio checkout, so do not
-   assume `git pull` contains it.
-4. Run a read-only production migration-history query and prove
-   `20260817000100_job_scan_run_diagnostics.sql` is the only pending migration.
-5. Validate the migration against PostgreSQL if the Air has PostgreSQL binaries, then apply only
-   `20260817000100`, record/read back its migration-history row, and verify the two diagnostics
-   tables, `finalize_public_job_scan` RPC, RLS, and grants.
-6. Only after that postflight succeeds, push `main`, wait for the exact Vercel deployment, confirm
-   the canonical site returns HTTP 200, and run the approved authenticated production verification.
-7. Rescan only the reported profile. Expected fixed composition from the final GET-only shadow:
-   0 marketing, 35 program/project, 28 content/video production, 5 digital production, and 7 AI
-   enablement results. Review persisted rows after response and reload before considering any other
-   account refresh.
-
-Verification already completed: all 37 fixture suites, matching/repository/shadow fixtures,
-typecheck, production build, focused lint, and two GET-only production replays. All 11 complete
-profiles passed target coverage, core-lane coverage, unexplained-lane, and lane-takeover checks.
-Six existing snapshots exceeded the 35% churn bound, so the production shadow intentionally exits
-nonzero and no mass rescan may be inferred. The diagnostic migration's static contract passed on
-the Studio; disposable-PostgreSQL execution remains NOT VERIFIED there because `pg_config` is not
-installed.
+The final GET-only production replay covered all 11 complete profiles with no lost target, lost
+core lane, unexplained lane, or multi-target takeover. Six existing snapshots exceeded the 35%
+churn bound, so the read-only shadow intentionally exits nonzero and must not be treated as
+authorization to refresh those accounts.
 
 ---
 

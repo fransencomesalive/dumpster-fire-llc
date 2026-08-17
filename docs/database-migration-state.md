@@ -5,20 +5,23 @@ database (`job-search`, ref `ngftlvlslhjsyjcbuuwv`), and where the migration-his
 bookkeeping diverges from the `supabase/migrations/` folder. Read this before running
 any `supabase db push` / `supabase migration` command against this project.
 
-## Pending 2026-08-17: job scan run diagnostics, approved but NOT APPLIED
+## Applied 2026-08-17: job scan run diagnostics
 
-`20260817000100_job_scan_run_diagnostics.sql` is committed locally in matcher-v5 commit `9cff774`
-on the Mac Studio. It has not been applied or recorded in production migration history. It creates
-append-only `job_scan_runs` and `job_scan_run_results` diagnostics and the service-role-only
-`finalize_public_job_scan` RPC, which atomically replaces active scan results and records the exact
-selection run. Matcher v5 application code depends on this RPC, so the migration must be applied
-and verified before `main` is pushed and Vercel deploys the code.
+`20260817000100_job_scan_run_diagnostics.sql` is applied to production and recorded exactly once
+in `supabase_migrations.schema_migrations` as version `20260817000100`, name
+`job_scan_run_diagnostics`. A read-only preflight confirmed it was the only local migration newer
+than the previously recorded production version. The first transaction attempt failed while
+inserting the history row because of shell quoting; PostgreSQL rolled back the migration completely.
+The corrected transaction then applied the exact migration file and recorded its SQL in the
+history row.
 
-The next attempt is explicitly assigned to the MacBook Air, whose gitignored local environment
-contains the Supabase credential. First prove this is the only pending migration. Then validate,
-apply only this file, record/read back version `20260817000100`, and verify tables, constraints,
-RLS, grants, RPC execution, and authenticated denial before allowing the code deployment. The Mac
-Studio attempt made no production write; its CLI and access token returned HTTP 401.
+Postflight confirmed `job_scan_runs`, `job_scan_run_results`, and
+`finalize_public_job_scan(jsonb,jsonb,jsonb)` exist; row-level security is enabled on both tables;
+both owner-read policies exist; authenticated users can select their own diagnostics but cannot
+insert or update them or execute the RPC; and the service role has the intended insert and execute
+access without update or delete access. The local disposable-PostgreSQL harness subsequently
+passed two consecutive applications and every migration assertion. Matcher v5 is live on
+production deployment `dpl_FrrKwKNqUWfuhbDNbPiJgAzge7Sm`.
 
 ## Migration-history divergence — RESOLVED 2026-06-28
 

@@ -1,6 +1,6 @@
 # Current State
 
-## 2026-08-17 - Job scan matcher v5 audited and committed; production deployment pending (Codex)
+## 2026-08-17 - Job scan matcher v5 deployed and production-verified (Codex)
 
 The reported Producer scan regression was reproduced and causally isolated. The August 11 matcher
 generalized declared-industry disambiguation from modeled ambiguous Account Director titles to all
@@ -10,7 +10,7 @@ abundant marketing jobs crowd out Producer results, while snapshot replacement e
 active rows. A same-pool replay proved the change added 25 marketing-management jobs and removed 25
 others, including four Producer titles.
 
-Local commit `9cff774` implements matcher v5: scoped title disambiguation, explicit AI and
+Commit `9cff774` implements matcher v5: scoped title disambiguation, explicit AI and
 Communications families, exact-title precedence, deterministic target-family interleaving,
 cross-account shadow checks, a 35% churn stop, and atomic scan-result finalization with immutable
 run diagnostics. The final GET-only production replay covered all 11 complete profiles with no
@@ -19,14 +19,25 @@ selected 0 marketing, 35 program/project, 28 content/video production, 5 digital
 AI enablement results. The previously misclassified Communications profile selected 11 relevant
 communications/adjacent roles instead of IT infrastructure.
 
-Production remains unchanged. Migration `20260817000100_job_scan_run_diagnostics.sql` is not
-applied, `9cff774` is not pushed, Vercel has not deployed matcher v5, and no profile has been
-rescanned. Six active snapshots exceed the 35% churn bound; mass rescan is not authorized.
+Migration `20260817000100_job_scan_run_diagnostics.sql` is applied and recorded in production.
+Postflight verified both append-only tables, the atomic finalization RPC, row-level security,
+owner-read policies, authenticated write denial, and the intended service-role grants. The local
+PostgreSQL harness passed two consecutive applications and all database assertions. A quoting bug
+in the CI fixture was fixed in `d6a3ae4`; the complete release check and GitHub Actions run
+`32079981873` passed.
 
-Deployment resumes on the MacBook Air because its local environment owns the required Supabase
-credential. Follow the active handoff at the top of `docs/next-session.md`. Apply and verify the
-migration before pushing application code. The Mac Studio's Supabase CLI and gitignored access
-token returned HTTP 401, and no database password exists in its `.env.local`.
+Production deployment `dpl_FrrKwKNqUWfuhbDNbPiJgAzge7Sm` serves commit `d6a3ae4` and the canonical
+site returns HTTP 200. A fresh disposable authenticated browser account started with zero scan
+results, clicked the live Run scan control, dispatched exactly one `POST /api/jobs/scan`, received
+HTTP 200, persisted 75 active results, rendered the same 75 after reload, recorded no browser
+errors, and cleaned the Auth user, profile, and scan rows back to zero. This is production scan
+verification for the deployed matcher and finalization path.
+
+No existing account was rescanned. A follow-up attempt to rescan only the reported Randall Fransen
+profile was blocked by the production safety review because it would replace that real account's
+current snapshot while using a minted administrative session. Do not bypass that block. A fresh,
+explicit owner approval is required before that single-account mutation. Six active snapshots
+exceed the 35% churn bound, and a mass rescan remains unauthorized.
 
 ## 2026-08-06 - Nightly tester account-usage spreadsheet sync: LIVE (Codex)
 
