@@ -1,4 +1,55 @@
-# Next Session: 2026-08-06 Tester Account Usage Sync Live
+# Next Session: 2026-08-17 Job Scan Matcher v5 Deployment
+
+_Updated 2026-08-17. Read `AGENTS.md` and follow the Session Start Protocol in
+`docs/project-operating-state.md` before taking any action._
+
+## Active handoff: resume on MacBook Air with its local Supabase credential
+
+Randall approved the production sequence for the audited job-scan correction: apply the diagnostics
+migration first, deploy matcher v5 on `main`, verify production, then rescan only the reported
+AI/Producer/Program profile and inspect its persisted results. A mass rescan is not authorized.
+
+Implementation is committed locally on the Mac Studio as `9cff774` (`Fix and harden public job scan
+matching`). It is not on `origin/main`. Do not push that commit before the migration is applied:
+the application now finalizes scans through the new migration RPC, so deploying code first would
+break production scans. Production is unchanged and no account has been rescanned.
+
+The Mac Studio deployment attempt stopped safely because both its Supabase CLI login and the
+gitignored `SUPABASE_ACCESS_TOKEN` returned HTTP 401, and `.env.local` has no
+`SUPABASE_DB_PASSWORD`. The credential needed for the migration is hosted locally on the MacBook
+Air. No credential was printed or committed.
+
+Next immediate action on the MacBook Air:
+
+1. Run `session check`, then `git status --short --branch`; remain on `main`.
+2. Confirm the Air's gitignored `.env.local` has a valid `SUPABASE_ACCESS_TOKEN` or
+   `SUPABASE_DB_PASSWORD` without printing it.
+3. Make local commit `9cff774` available on the Air without pushing `main` or triggering Vercel
+   ahead of the migration. The commit currently exists only in the Studio checkout, so do not
+   assume `git pull` contains it.
+4. Run a read-only production migration-history query and prove
+   `20260817000100_job_scan_run_diagnostics.sql` is the only pending migration.
+5. Validate the migration against PostgreSQL if the Air has PostgreSQL binaries, then apply only
+   `20260817000100`, record/read back its migration-history row, and verify the two diagnostics
+   tables, `finalize_public_job_scan` RPC, RLS, and grants.
+6. Only after that postflight succeeds, push `main`, wait for the exact Vercel deployment, confirm
+   the canonical site returns HTTP 200, and run the approved authenticated production verification.
+7. Rescan only the reported profile. Expected fixed composition from the final GET-only shadow:
+   0 marketing, 35 program/project, 28 content/video production, 5 digital production, and 7 AI
+   enablement results. Review persisted rows after response and reload before considering any other
+   account refresh.
+
+Verification already completed: all 37 fixture suites, matching/repository/shadow fixtures,
+typecheck, production build, focused lint, and two GET-only production replays. All 11 complete
+profiles passed target coverage, core-lane coverage, unexplained-lane, and lane-takeover checks.
+Six existing snapshots exceeded the 35% churn bound, so the production shadow intentionally exits
+nonzero and no mass rescan may be inferred. The diagnostic migration's static contract passed on
+the Studio; disposable-PostgreSQL execution remains NOT VERIFIED there because `pg_config` is not
+installed.
+
+---
+
+# Prior Next Session: 2026-08-06 Tester Account Usage Sync Live
 
 _Updated 2026-08-06. Read `AGENTS.md` and follow the Session Start Protocol in
 `docs/project-operating-state.md` before editing._

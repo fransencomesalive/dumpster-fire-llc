@@ -1,5 +1,33 @@
 # Current State
 
+## 2026-08-17 - Job scan matcher v5 audited and committed; production deployment pending (Codex)
+
+The reported Producer scan regression was reproduced and causally isolated. The August 11 matcher
+generalized declared-industry disambiguation from modeled ambiguous Account Director titles to all
+unknown titles. AI Enablement and AI Operations targets therefore inherited
+`marketing-management` from Advertising Services. A global score sort and 75-result cap then let
+abundant marketing jobs crowd out Producer results, while snapshot replacement expired 118 prior
+active rows. A same-pool replay proved the change added 25 marketing-management jobs and removed 25
+others, including four Producer titles.
+
+Local commit `9cff774` implements matcher v5: scoped title disambiguation, explicit AI and
+Communications families, exact-title precedence, deterministic target-family interleaving,
+cross-account shadow checks, a 35% churn stop, and atomic scan-result finalization with immutable
+run diagnostics. The final GET-only production replay covered all 11 complete profiles with no
+lost target, lost core lane, unexplained lane, or multi-target takeover. The reported profile
+selected 0 marketing, 35 program/project, 28 content/video production, 5 digital production, and 7
+AI enablement results. The previously misclassified Communications profile selected 11 relevant
+communications/adjacent roles instead of IT infrastructure.
+
+Production remains unchanged. Migration `20260817000100_job_scan_run_diagnostics.sql` is not
+applied, `9cff774` is not pushed, Vercel has not deployed matcher v5, and no profile has been
+rescanned. Six active snapshots exceed the 35% churn bound; mass rescan is not authorized.
+
+Deployment resumes on the MacBook Air because its local environment owns the required Supabase
+credential. Follow the active handoff at the top of `docs/next-session.md`. Apply and verify the
+migration before pushing application code. The Mac Studio's Supabase CLI and gitignored access
+token returned HTTP 401, and no database password exists in its `.env.local`.
+
 ## 2026-08-06 - Nightly tester account-usage spreadsheet sync: LIVE (Codex)
 
 The `Dumpster Fire Test Account Usage` Google Sheet is connected to production and scheduled to

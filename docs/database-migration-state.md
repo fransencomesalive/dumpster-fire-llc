@@ -5,6 +5,21 @@ database (`job-search`, ref `ngftlvlslhjsyjcbuuwv`), and where the migration-his
 bookkeeping diverges from the `supabase/migrations/` folder. Read this before running
 any `supabase db push` / `supabase migration` command against this project.
 
+## Pending 2026-08-17: job scan run diagnostics, approved but NOT APPLIED
+
+`20260817000100_job_scan_run_diagnostics.sql` is committed locally in matcher-v5 commit `9cff774`
+on the Mac Studio. It has not been applied or recorded in production migration history. It creates
+append-only `job_scan_runs` and `job_scan_run_results` diagnostics and the service-role-only
+`finalize_public_job_scan` RPC, which atomically replaces active scan results and records the exact
+selection run. Matcher v5 application code depends on this RPC, so the migration must be applied
+and verified before `main` is pushed and Vercel deploys the code.
+
+The next attempt is explicitly assigned to the MacBook Air, whose gitignored local environment
+contains the Supabase credential. First prove this is the only pending migration. Then validate,
+apply only this file, record/read back version `20260817000100`, and verify tables, constraints,
+RLS, grants, RPC execution, and authenticated denial before allowing the code deployment. The Mac
+Studio attempt made no production write; its CLI and access token returned HTTP 401.
+
 ## Migration-history divergence — RESOLVED 2026-06-28
 
 `20260627000100_generator_redesign_profile_schema.sql` (Phase A4) and
