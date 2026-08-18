@@ -3,7 +3,7 @@ import type {
   OutreachMessageRecord,
   Pursuit,
 } from "./types";
-import type { PursuitBucket } from "./tracking";
+import type { PursuitBucket, PursuitTrackingState } from "./tracking";
 
 export type ApplyWizardResumeStep = 1 | 2 | 3 | 4;
 
@@ -21,6 +21,15 @@ type ResumeInput = {
   contacts: Array<Pick<HumanPathContactSuggestion, "id" | "selectedForOutreach">>;
   outreachMessages: Array<Pick<OutreachMessageRecord, "contactSuggestionId">>;
 };
+
+export function prepareNoContactTrackingDraft(
+  current: PursuitTrackingState,
+): PursuitTrackingState {
+  return {
+    ...current,
+    applied_online: true,
+  };
+}
 
 export function deriveApplyWizardResumeState(input: ResumeInput): ApplyWizardResumeState {
   const selectedContactIds = input.contacts

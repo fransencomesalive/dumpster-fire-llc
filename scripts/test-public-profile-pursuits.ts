@@ -15,7 +15,10 @@ import {
   pursuitBucket,
   pursuitHistory,
 } from "../lib/public-profile/pursuits/tracking";
-import { deriveApplyWizardResumeState } from "../lib/public-profile/pursuits/wizard-state";
+import {
+  deriveApplyWizardResumeState,
+  prepareNoContactTrackingDraft,
+} from "../lib/public-profile/pursuits/wizard-state";
 import {
   createPursuitForJob,
   loadContactSuggestionsForPursuit,
@@ -121,6 +124,23 @@ for (const resumeCase of resumeCases) {
     resumeCase.name,
   );
 }
+
+const noContactTrackingDraft = prepareNoContactTrackingDraft({
+  outreach_sent: false,
+  applied_online: false,
+  response_received: true,
+  interviewing: false,
+  not_moving_forward: false,
+  never_heard_back: false,
+});
+assert.deepEqual(noContactTrackingDraft, {
+  outreach_sent: false,
+  applied_online: true,
+  response_received: true,
+  interviewing: false,
+  not_moving_forward: false,
+  never_heard_back: false,
+});
 
 const created = createPursuit({
   id: "pursuit-1",

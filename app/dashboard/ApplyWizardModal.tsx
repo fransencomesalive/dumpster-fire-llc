@@ -28,7 +28,10 @@ import {
   type PursuitBucket,
   type PursuitTrackingState,
 } from "@/lib/public-profile/pursuits/tracking";
-import { deriveApplyWizardResumeState } from "@/lib/public-profile/pursuits/wizard-state";
+import {
+  deriveApplyWizardResumeState,
+  prepareNoContactTrackingDraft,
+} from "@/lib/public-profile/pursuits/wizard-state";
 import styles from "./apply-wizard.module.css";
 import { accountPopupHandoffKey } from "../components/useAccountSession";
 
@@ -747,9 +750,19 @@ export default function ApplyWizardModal({
     });
   }
 
+  function advanceToTrackingWithoutContacts() {
+    trackingDirtyRef.current = true;
+    setDraft((current) => prepareNoContactTrackingDraft(current));
+    setStep(4);
+    setReached(4);
+  }
+
   function submitContacts() {
     if (!pursuitId) return;
-    if (noContactsFound) return;
+    if (noContactsFound) {
+      advanceToTrackingWithoutContacts();
+      return;
+    }
     const contactIds = [...selectedContactIds];
     if (contactIds.length === 0) {
       setError("Select at least one contact to continue.");
@@ -906,7 +919,12 @@ export default function ApplyWizardModal({
   // missing prerequisite. The message renders in the canon tomato ds-callout beneath the stepper.
   const goToStep = (target: WizardStep) => {
     if (!ready || busy || actionInFlightRef.current.active || target === step) return;
-    if (noContactsFound && target >= 3) return;
+    if (noContactsFound && target === 3) return;
+    if (noContactsFound && target === 4) {
+      setError(null);
+      advanceToTrackingWithoutContacts();
+      return;
+    }
     setError(null);
     if (target <= reached) { setStep(target); return; }
     if (target === 4 && reached >= 3) { setStep(4); setReached(4); return; }
@@ -927,7 +945,7 @@ export default function ApplyWizardModal({
           key={n}
           className={`${styles.wizardStep} ${n === step ? styles.wizardStepActive : ""}`}
           onClick={() => goToStep(n)}
-          disabled={!ready || busy || (noContactsFound && n >= 3)}
+          disabled={!ready || busy || (noContactsFound && n === 3)}
           aria-current={n === step ? "step" : undefined}
         >
           <span>{n}</span>{STEP_LABELS[n]}
@@ -961,12 +979,12 @@ export default function ApplyWizardModal({
         <a href={sourceUrl} target="_blank" rel="noreferrer" className={`${styles.linkOpen} ${styles.footerSpacer}`}>Open job posting{EXTERNAL_LINK_ICON}</a>
       ) : <span className={styles.footerSpacer} />}
       {mode === "stepper" && step > 1 ? (
-        <button type="button" className={styles.modalBtnClose} onClick={() => { if (!actionInFlightRef.current.active) setStep((s) => (s - 1) as WizardStep); }} disabled={!ready || busy}>Back</button>
+        <button type="button" className={styles.modalBtnClose} onClick={() => { if (!actionInFlightRef.current.active) setStep((s) => (noContactsFound && s === 4 ? 2 : (s - 1) as WizardStep)); }} disabled={!ready || busy}>Back</button>
       ) : null}
       {mode === "stepper" && step === 1 ? (
         <button type="button" className={styles.modalBtnSave} onClick={submitReview} disabled={!ready || busy}>Continue</button>
       ) : mode === "stepper" && step === 2 ? (
-        <button type="button" className={styles.modalBtnSave} onClick={submitContacts} disabled={!ready || busy || providerUnavailable || noContactsFound}>Continue</button>
+        <button type="button" className={styles.modalBtnSave} onClick={submitContacts} disabled={!ready || busy || providerUnavailable}>Continue</button>
       ) : mode === "stepper" && step === 3 ? (
         outreachError ? (
           <button type="button" className={styles.modalBtnSave} onClick={retryOutreach} disabled={!ready || busy}>Try again</button>
