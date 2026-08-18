@@ -33,11 +33,21 @@ HTTP 200, persisted 75 active results, rendered the same 75 after reload, record
 errors, and cleaned the Auth user, profile, and scan rows back to zero. This is production scan
 verification for the deployed matcher and finalization path.
 
-No existing account was rescanned. A follow-up attempt to rescan only the reported Randall Fransen
-profile was blocked by the production safety review because it would replace that real account's
-current snapshot while using a minted administrative session. Do not bypass that block. A fresh,
-explicit owner approval is required before that single-account mutation. Six active snapshots
-exceed the 35% churn bound, and a mass rescan remains unauthorized.
+After fresh explicit approval, only the reported `fransencomesalive@gmail.com` profile was
+rescanned through the production dashboard on deployment `dpl_FQVf3DmMnxokuMJiQUbk26s2kbJh`,
+commit `86effc8`. The POST returned HTTP 200 and immutable run
+`14449220-9bc3-4595-804d-5ec43767853a` recorded matcher v5, the exact source commit and deployment,
+the current profile-context hash, 9,934 candidates, 871 eligible jobs, and 75 selected jobs. All 75
+active rows reference that run. The selected mix exactly matches the approved shadow expectation:
+35 program/project, 28 content/video production, 5 digital production, 7 AI enablement, and zero
+marketing-management jobs.
+
+The dashboard correctly displays 68 active jobs before and after reload. Seven of the 75 persisted
+selections are intentionally absent from the active queue because the account already has six of
+those exact job IDs saved or pursued and one additional equivalent company/title posting; the
+saved-state filter hides all seven. Both authenticated GETs returned HTTP 200 with 68 jobs and 29
+saved jobs, and the browser recorded no console or page errors. Six other active snapshots exceed
+the 35% churn bound, and a mass rescan remains unauthorized.
 
 ## 2026-08-06 - Nightly tester account-usage spreadsheet sync: LIVE (Codex)
 

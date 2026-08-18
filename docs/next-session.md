@@ -3,7 +3,7 @@
 _Updated 2026-08-17. Read `AGENTS.md` and follow the Session Start Protocol in
 `docs/project-operating-state.md` before taking any action._
 
-## Active handoff: matcher v5 is live; real-account rescan requires fresh approval
+## Active handoff: matcher v5 is live and the reported account is verified
 
 The diagnostics migration is applied and recorded, matcher v5 is deployed, and the production scan
 journey is verified on commit `d6a3ae4`, deployment `dpl_FrrKwKNqUWfuhbDNbPiJgAzge7Sm`. GitHub
@@ -15,19 +15,24 @@ existing results. The live dashboard Run scan control sent exactly one POST, rec
 persisted 75 rows for that user, displayed the same count after reload, and produced no browser or
 console errors. Cleanup removed the disposable Auth user, profile, and scan rows.
 
-No real account has been rescanned. The attempted next action was deliberately blocked by the
-production safety review because replacing Randall Fransen's existing 75-result snapshot would be
-a real-user mutation performed with a minted administrative session. Do not work around that
-block. Obtain a fresh, explicit owner approval naming that single profile before proceeding. If
-approved, rescan only `fransencomesalive@gmail.com`, then verify the immutable run, active rows,
-dashboard reload, source commit, deployment ID, and profile hash. The expected lane composition is
-0 marketing, 35 program/project, 28 content/video production, 5 digital production, and 7 AI
-enablement results. A mass rescan is not authorized.
+Randall then gave fresh explicit approval to replace only the reported
+`fransencomesalive@gmail.com` snapshot. The production dashboard dispatched one scan POST and
+returned HTTP 200. Immutable run `14449220-9bc3-4595-804d-5ec43767853a` records matcher v5, commit
+`86effc8`, deployment `dpl_FQVf3DmMnxokuMJiQUbk26s2kbJh`, a valid profile-context hash, 9,934
+candidates, 871 eligible jobs, and 75 selected jobs. All 75 active rows reference the new run. The
+selected mix is exactly 35 program/project, 28 content/video production, 5 digital production, 7 AI
+enablement, and zero marketing-management jobs.
+
+The account displays 68 active jobs before and after reload because the saved-state filter removes
+six exact saved or pursued job IDs plus one equivalent company/title posting from the active queue.
+The authenticated jobs endpoint returned HTTP 200 with the same 68 visible jobs and 29 saved jobs;
+there were no console or page errors. No other real account was rescanned. A mass rescan is not
+authorized.
 
 The final GET-only production replay covered all 11 complete profiles with no lost target, lost
 core lane, unexplained lane, or multi-target takeover. Six existing snapshots exceeded the 35%
 churn bound, so the read-only shadow intentionally exits nonzero and must not be treated as
-authorization to refresh those accounts.
+authorization to refresh those accounts. No job-scan deployment work remains.
 
 ---
 
