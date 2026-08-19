@@ -1,4 +1,42 @@
-# Next Session: 2026-08-17 Job Scan Matcher v5 Deployment
+# Next Session: 2026-08-18 Generic-Role Industry Validation
+
+_Updated 2026-08-18. Read `AGENTS.md` and follow the Session Start Protocol in
+`docs/project-operating-state.md` before taking any action._
+
+## Active handoff: matcher v6 is deployed; fresh production scan verification is not authorized
+
+Commit `f5a5a65` is on `origin/main` and live in Vercel deployment
+`dpl_7bSXmcEEd1sJQqsqeLorqWxGDwCM`. Vercel's exact commit status reports the deployment completed,
+and both `https://www.thejobmarketisadumpsterfire.com` and
+`https://dumpster-fire-llc.vercel.app` return HTTP 200 with that deployment identifier.
+
+Matcher v6 fixes generic-role discovery universally. A posting must first match an explicit saved
+role by exact title or compatible generic family and level. Only then is a generic role checked
+against the current account's declared target industries using current-posting evidence. Confident
+industry contradictions are excluded, unknown context ranks below aligned context, several selected
+industries use OR semantics, and no selected industry leaves the layer neutral. Profile experience
+does not redefine role or industry intent. Mixed specialized and generic targets remain independent.
+
+The root cause, rejected intermediate approaches, final implementation, and full replay evidence are
+recorded at the top of `docs/current-state.md`. The complete release check passed, including all
+migration harnesses, 37 fixture suites, typecheck, lint with four unrelated existing warnings, and
+the production build. An independent audit found no remaining P0 or P1 bypass. The read-only replay
+covered all 12 complete production profiles against 10,000 shared and 15 private jobs. The reported
+profile changed 33.3% relative to deployed v5 and removed confirmed IT and health-care Program roles.
+Randall explicitly approved the separate 88% correction for a finance and renewable-energy profile
+before deployment. No production data was written and no account was rescanned.
+
+**NOT VERIFIED:** matcher v6 has not completed a fresh authenticated production-browser scan journey.
+Do not infer authorization from this handoff. A production scan or real-account rescan still requires
+fresh explicit approval under the matching safety rules. If Randall authorizes verification, use a
+disposable complete profile with zero existing results, click the real production Run scan control,
+confirm `POST /api/jobs/scan` succeeds, verify persisted rows render before and after reload, record
+the account/deployment/commit/count, and clean up all disposable data. Otherwise, no implementation
+work remains in flight; wait for the next explicit scope.
+
+---
+
+# Prior Next Session: 2026-08-17 Job Scan Matcher v5 Deployment
 
 _Updated 2026-08-17. Read `AGENTS.md` and follow the Session Start Protocol in
 `docs/project-operating-state.md` before taking any action._

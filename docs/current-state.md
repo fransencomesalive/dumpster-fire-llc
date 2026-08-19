@@ -1,5 +1,61 @@
 # Current State
 
+## 2026-08-18 - Generic-role industry validation deployed as matcher v6 (Codex)
+
+The reported scan failure was reproduced against the current production pool. Saved generic titles
+such as Program Director were being accepted through occupation-lane matching before the posting's
+industry or functional context was validated. The declared target industry was mostly a score
+signal, so IT and health-care Program roles could remain eligible for an advertising, marketing,
+AI, crypto, or outdoor search. The global result cap then made those high-scoring wrong-industry
+rows visible.
+
+The final fix evaluates two independent layers in order. First, the posting must match an explicit
+saved role by exact title or a compatible generic role family and level. Second, generic roles are
+validated against the account's declared target industries using only current-posting evidence:
+functional title modifiers, structured industry when present, department, responsibilities,
+requirements, and description. Target industries use OR semantics. Confident contradictions are
+excluded, missing context remains unknown and ranks below confirmed alignment, and profiles with no
+selected industry remain neutral. Resume history, skills, work examples, and prior employers do not
+participate in either discovery layer.
+
+Implementation is matcher `public-job-matcher-v6` at commit `f5a5a65`. The industry resolver uses
+the complete 434-record catalogue plus posting-language aliases. Generic morphology handles reordered
+titles, PMO forms, individual-contributor roles, subordinate modifiers, and distinct role levels so
+Director, Officer, Analyst, Specialist, Associate, Coordinator, and similar titles do not collapse
+into one class. Mixed profiles are intent-scoped: adding Program Director cannot erase a separate
+Marketing Director result. Scan-run diagnostics now record industry-context composition, and the
+shadow audit fails if a conflicting generic-role result reaches selection.
+
+Several intermediate fixes were rejected before release. A hand-maintained industry subset was not
+universal. A same-lane-only role guard allowed adjacent roles such as Delivery Lead and Creative
+Strategist to backfill the cap. A global generic guard then hijacked valid specialized targets in
+mixed profiles. Non-leadership titles, PMO variants, and Program Officer initially bypassed or
+collapsed into the wrong level. Each failure is now a regression fixture, including symmetric
+role-family tests, mixed profiles, every catalogue leaf in production-shaped text, and mixed pools
+larger than the 75-result cap.
+
+The complete release check passed: all migration harnesses, 37 fixture suites, typecheck, lint with
+the same four unrelated warnings, and the production build. An independent audit found no remaining
+P0 or P1 bypass. A GET-only replay covered all 12 complete production profiles against 10,000 shared
+and 15 private jobs without writing or rescanning anything. The reported profile's direct
+deployed-v5 comparison changed 33.3% of its selected set and removed confirmed IT and health-care
+Program roles. A separate finance and renewable-energy operations profile changed 88% because the
+deployed set was dominated by roles or industries outside its saved search. Randall explicitly
+approved that over-threshold correction before deployment. The official stored-baseline shadow also
+reported three older baseline-drift failures; a direct proposed-versus-deployed-v5 replay showed
+those three accounts had no matcher-v6 churn beyond the bound.
+
+Commit `f5a5a65` is on `origin/main`. Vercel reported the exact deployment completed successfully as
+`dpl_7bSXmcEEd1sJQqsqeLorqWxGDwCM`; both the canonical domain and Vercel alias returned HTTP 200 with
+that deployment identifier. The repository was clean and synchronized after the push.
+
+Production scan behavior for matcher v6 is **NOT VERIFIED** through a fresh authenticated dashboard
+journey. No production scan or real-account rescan was triggered because that requires separate
+explicit approval. The next immediate verification, if authorized, is one disposable complete
+profile starting with zero results: click Run scan in production, confirm the POST succeeds, verify
+persisted rows and reload rendering, record the account/deployment/commit/count, and clean up every
+disposable row. No implementation work remains in flight.
+
 ## 2026-08-17 - Job scan matcher v5 deployed and production-verified (Codex)
 
 The reported Producer scan regression was reproduced and causally isolated. The August 11 matcher
