@@ -7,6 +7,7 @@ import {
 import type { MatchJob } from "../lib/public-profile/matching/types";
 import {
   evaluatePublicJobDecision,
+  industryContextForJob,
   matchingSignalsForAggregate,
   type PublicMatchDecision,
 } from "../lib/public-profile/matching/decision";
@@ -39,6 +40,9 @@ export type ScanShadowAudit = {
   selectedLaneCounts: Record<string, number>;
   eligibleTargetCounts: Record<string, number>;
   selectedTargetCounts: Record<string, number>;
+  eligibleIndustryContextCounts: Record<string, number>;
+  selectedIndustryContextCounts: Record<string, number>;
+  selectedIndustryContextConflicts: string[];
   lostEligibleCoreLanes: string[];
   lostEligibleTargets: string[];
   unexplainedSelectedLanes: string[];
@@ -138,8 +142,8 @@ function occupationLane(job: MatchJob): OccupationLane {
   }).lane;
 }
 
-function auditLane(job: MatchJob, targets: string[]) {
-  const directTarget = targets.find((target) => includesPhrase(job.title, target));
+function auditLane(item: ShadowMatch, targets: string[]) {
+  const directTarget = targets.find((target) => includesPhrase(item.job.title, target));
   if (directTarget) {
     const targetLane = classifyOccupation({
       title: directTarget,
@@ -148,7 +152,10 @@ function auditLane(job: MatchJob, targets: string[]) {
     }).lane;
     return targetLane === "unknown" ? `target:${normalize(directTarget)}` : targetLane;
   }
-  return occupationLane(job);
+  if (item.decision.roleFamily !== "unclassified" && item.decision.roleFamily !== "profile-target") {
+    return item.decision.roleFamily;
+  }
+  return occupationLane(item.job);
 }
 
 export function auditScanSelection(
@@ -164,15 +171,19 @@ export function auditScanSelection(
   const selectedLaneCounts = new Map<string, number>();
   const eligibleTargetCounts = new Map<string, number>();
   const selectedTargetCounts = new Map<string, number>();
+  const eligibleIndustryContextCounts = new Map<string, number>();
+  const selectedIndustryContextCounts = new Map<string, number>();
 
   for (const item of eligible) {
-    increment(eligibleLaneCounts, auditLane(item.job, targets));
+    increment(eligibleLaneCounts, auditLane(item, targets));
+    increment(eligibleIndustryContextCounts, industryContextForJob(item.job, matchingSignals).status);
     for (const target of targets) {
       if (includesPhrase(item.job.title, target)) increment(eligibleTargetCounts, target);
     }
   }
   for (const item of selected) {
-    increment(selectedLaneCounts, auditLane(item.job, targets));
+    increment(selectedLaneCounts, auditLane(item, targets));
+    increment(selectedIndustryContextCounts, industryContextForJob(item.job, matchingSignals).status);
     for (const target of targets) {
       if (includesPhrase(item.job.title, target)) increment(selectedTargetCounts, target);
     }
@@ -186,13 +197,13 @@ export function auditScanSelection(
     .filter((target) => (eligibleTargetCounts.get(target) ?? 0) > 0 && (selectedTargetCounts.get(target) ?? 0) === 0)
     .sort((first, second) => first.localeCompare(second));
 
-  const allowedLanes = new Set<OccupationLane>([
+  const allowedLanes = new Set<string>([
     ...profileLanes.coreLanes,
     ...profileLanes.stretchLanes,
   ]);
   const unexplainedSelectedLanes = [...new Set(selected
     .filter((item) => !targets.some((target) => includesPhrase(item.job.title, target)))
-    .map((item) => occupationLane(item.job))
+    .map((item) => auditLane(item, targets))
     .filter((lane) => lane !== "unknown" && !allowedLanes.has(lane)))]
     .sort();
 
@@ -221,11 +232,16 @@ export function auditScanSelection(
         threshold: thresholds.laneTakeoverShare,
       }
     : undefined;
+  const selectedIndustryContextConflicts = selected
+    .filter((item) => industryContextForJob(item.job, matchingSignals).status === "conflict")
+    .map((item) => item.job.id)
+    .sort();
 
   const failures = [
     ...lostEligibleCoreLanes.map((lane) => `lost eligible core lane: ${lane}`),
     ...lostEligibleTargets.map((target) => `lost eligible target: ${target}`),
     ...unexplainedSelectedLanes.map((lane) => `unexplained selected lane: ${lane}`),
+    ...selectedIndustryContextConflicts.map((jobId) => `selected generic-role industry conflict: ${jobId}`),
     ...(takeover ? [
       `lane takeover: ${takeover.lane} is ${(takeover.share * 100).toFixed(1)}% of selected results (maximum ${(takeover.threshold * 100).toFixed(1)}%)`,
     ] : []),
@@ -239,6 +255,9 @@ export function auditScanSelection(
     selectedLaneCounts: sortedRecord(selectedLaneCounts),
     eligibleTargetCounts: sortedRecord(eligibleTargetCounts),
     selectedTargetCounts: sortedRecord(selectedTargetCounts),
+    eligibleIndustryContextCounts: sortedRecord(eligibleIndustryContextCounts),
+    selectedIndustryContextCounts: sortedRecord(selectedIndustryContextCounts),
+    selectedIndustryContextConflicts,
     lostEligibleCoreLanes,
     lostEligibleTargets,
     unexplainedSelectedLanes,

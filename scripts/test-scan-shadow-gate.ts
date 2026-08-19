@@ -84,6 +84,26 @@ function jobs(prefix: string, title: string, count: number): Array<MatchJob & { 
   }));
 }
 
+function contextualJobs(
+  prefix: string,
+  count: number,
+  context: { department: string; description: string },
+): Array<MatchJob & { id: string }> {
+  return Array.from({ length: count }, (_, index) => ({
+    id: `${prefix}-${String(index).padStart(3, "0")}`,
+    title: "Program Director",
+    companyName: `${prefix} Organization ${index + 1}`,
+    department: context.department,
+    description: context.description,
+    responsibilities: ["Own strategy", "Lead delivery", "Manage stakeholders"],
+    requiredExperience: ["Cross-functional program leadership"],
+    location: "United States",
+    remoteType: "Remote",
+    postedAt: "2026-08-16T18:00:00.000Z",
+    scrapedAt: "2026-08-17T17:00:00.000Z",
+  }));
+}
+
 function replay(
   aggregate: CandidateProfileAggregate,
   candidates: Array<MatchJob & { id: string }>,
@@ -132,6 +152,83 @@ assert.equal(mixedReplay.selection.selected.length, 75);
 assert.ok((mixedReplay.audit.selectedTargetCounts["Program Manager"] ?? 0) > 0);
 assert.ok((mixedReplay.audit.selectedTargetCounts["Executive Producer"] ?? 0) > 0);
 assert.equal(mixedReplay.audit.takeover, undefined);
+
+// A generic role must resolve against each account's declared industry before
+// exact-title reservation or the 75-result cap. Changing only the profile's
+// industry must select the corresponding slice of the same global pool.
+const contextualProgramPool = [
+  ...contextualJobs("advertising-context", 80, {
+    department: "Advertising Account Services",
+    description: "Lead advertising campaigns, creative production, media planning, stakeholder strategy, and cross-functional delivery.",
+  }),
+  ...contextualJobs("it-context", 80, {
+    department: "Information Technology",
+    description: "Lead enterprise information technology programs across cloud infrastructure, cybersecurity, systems delivery, stakeholders, scope, and planning.",
+  }),
+  ...contextualJobs("healthcare-context", 80, {
+    department: "Clinical Operations",
+    description: "Lead healthcare modernization across clinical programs, patient services, regulatory care delivery, stakeholders, scope, and planning.",
+  }),
+];
+const contextualProfiles = [
+  { id: "advertising-context", industry: "Advertising Services", prefix: "advertising-context" },
+  { id: "it-context", industry: "Information Technology", prefix: "it-context" },
+  { id: "healthcare-context", industry: "Healthcare", prefix: "healthcare-context" },
+];
+for (const context of contextualProfiles) {
+  const result = replay(
+    profile(context.id, ["Program Director"], [context.industry]),
+    contextualProgramPool,
+  );
+  assert.equal(result.selection.candidates.length, 240);
+  assert.equal(result.selection.selected.length, 75);
+  assert.ok(result.selection.selected.every((item) => item.job.id.startsWith(`${context.prefix}-`)));
+  assert.ok(result.selection.candidates
+    .filter((item) => !item.job.id.startsWith(`${context.prefix}-`))
+    .every((item) => item.decision.included === false));
+}
+
+// Accepted word-order variants use the saved target's selector lane, not a raw
+// task classification. They must survive the global cap and pass the audit as
+// Program results.
+const programMorphologyReplay = replay(
+  profile("program-morphology", ["Program Director"], ["Advertising Services"]),
+  contextualJobs("program-morphology", 100, {
+    department: "Advertising Account Services",
+    description: "Lead advertising campaigns, creative production, media planning, stakeholder strategy, and cross-functional delivery.",
+  }).map((job) => ({ ...job, title: "Director of Program Management" })),
+);
+assert.equal(programMorphologyReplay.selection.selected.length, 75);
+assert.equal(programMorphologyReplay.audit.selectedLaneCounts["program-project-management"], 75);
+assert.ok(programMorphologyReplay.selection.selected.every((item) => item.decision.roleFamily === "program-project-management"));
+
+// The audit independently fails closed if a later selector ever injects an
+// exact-title result that contradicted the declared industry layer.
+const advertisingContextProfile = profile(
+  "advertising-context-corruption",
+  ["Program Director"],
+  ["Advertising Services"],
+);
+const advertisingContextSelection = replayScanSelection(
+  advertisingContextProfile,
+  contextualProgramPool,
+  NOW,
+  75,
+);
+const contradictoryContextCandidate = advertisingContextSelection.candidates.find(
+  (item) => item.job.id.startsWith("it-context-"),
+);
+assert.ok(contradictoryContextCandidate);
+const corruptedContextAudit = auditScanSelection(
+  advertisingContextProfile,
+  advertisingContextSelection.candidates,
+  [
+    ...advertisingContextSelection.selected.slice(0, 74),
+    contradictoryContextCandidate,
+  ],
+);
+assert.deepEqual(corruptedContextAudit.selectedIndustryContextConflicts, [contradictoryContextCandidate.job.id]);
+assert.ok(corruptedContextAudit.failures.some((failure) => failure.includes("industry conflict")));
 
 // The gate itself must fail closed when a selector drops an eligible target.
 const deliberatelyBroken = auditScanSelection(

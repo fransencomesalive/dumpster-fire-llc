@@ -645,9 +645,9 @@ async function main() {
     roleFamily,
   });
   const selectorIntents: ProfileMatchingSignals["explicitTitleIntents"] = [
-    { term: "Marketing Manager", titleLane: "marketing-management", contextLanes: [] },
-    { term: "Program Manager", titleLane: "program-project-management", contextLanes: [] },
-    { term: "Executive Producer", titleLane: "content-video-production", contextLanes: [] },
+    { term: "Marketing Manager", titleLane: "marketing-management", contextLanes: [], requiresIndustryContext: false },
+    { term: "Program Manager", titleLane: "program-project-management", contextLanes: [], requiresIndustryContext: true },
+    { term: "Executive Producer", titleLane: "content-video-production", contextLanes: [], requiresIndustryContext: false },
   ];
   const mixedSelectorCandidates = [
     ...Array.from({ length: 80 }, (_, index) => selectorCandidate(
@@ -718,11 +718,13 @@ async function main() {
       term: "Account Director",
       titleLane: "unknown",
       contextLanes: ["marketing-management"],
+      requiresIndustryContext: true,
     },
     {
       term: "Sales Director",
       titleLane: "sales-account-management",
       contextLanes: [],
+      requiresIndustryContext: false,
     },
   ];
   const accountDirectorCandidates = [
@@ -786,7 +788,7 @@ async function main() {
 
   const sameFamilyIntents: ProfileMatchingSignals["explicitTitleIntents"] = [
     selectorIntents[2],
-    { term: "Video Producer", titleLane: "content-video-production", contextLanes: [] },
+    { term: "Video Producer", titleLane: "content-video-production", contextLanes: [], requiresIndustryContext: false },
   ];
   const sameFamilySelection = selectTargetAwareScanJobs([
     selectorCandidate("executive-producer", "Executive Producer", "Executive Co", 90, "profile-target"),

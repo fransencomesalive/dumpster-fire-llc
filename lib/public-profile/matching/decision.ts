@@ -15,11 +15,20 @@ import {
   lanePolarityForProfile,
   profileLanesForAggregate,
   supportsDeclaredIndustryDisambiguation,
+  type OccupationClassification,
   type OccupationLane,
   type ProfileLanes,
 } from "./occupation";
 import { parseSalaryAmounts } from "./scorers";
 import { assessLocationEligibility } from "./location-eligibility";
+import {
+  assessIndustryContext,
+  genericCrossIndustryRoleFamily,
+  genericCrossIndustryRoleLevel,
+  hasGenericCrossIndustryRoleHead,
+  isGenericCrossIndustryTitle,
+  type IndustryContextAssessment,
+} from "./industry-context";
 import type { MatchJob, MatchLabel } from "./types";
 
 export type PublicMatchDecision = {
@@ -31,6 +40,7 @@ export type PublicMatchDecision = {
   positives: string[];
   risks: string[];
   evidence: string[];
+  industryContext: IndustryContextAssessment;
 };
 
 // Ported verbatim from the legacy config; these are generic seniority/ownership
@@ -55,6 +65,7 @@ const AUTHORITY_SIGNALS = [
 ];
 
 const JUNIOR_SIGNALS = ["intern", "junior", "entry level"];
+const SUBORDINATE_TITLE_MODIFIERS = new Set(["assistant", "associate", "deputy", "junior", "jr"]);
 
 const HOURS_PER_YEAR = 2080;
 
@@ -79,6 +90,12 @@ function matchingTerms(content: string, terms: string[]) {
   return [...matched];
 }
 
+function addsSubordinateTitleModifier(title: string, targetTitle: string) {
+  const titleTokens = new Set(normalize(title).split(" ").filter(Boolean));
+  const targetTokens = new Set(normalize(targetTitle).split(" ").filter(Boolean));
+  return [...SUBORDINATE_TITLE_MODIFIERS].some((modifier) => titleTokens.has(modifier) && !targetTokens.has(modifier));
+}
+
 export type ProfileMatchingSignals = {
   lanes: ProfileLanes;
   hasExplicitTargetTitles: boolean;
@@ -86,6 +103,7 @@ export type ProfileMatchingSignals = {
     term: string;
     titleLane: OccupationLane;
     contextLanes: OccupationLane[];
+    requiresIndustryContext: boolean;
   }>;
   titleTerms: string[];
   positiveKeywords: string[];
@@ -146,6 +164,7 @@ export function matchingSignalsForAggregate(aggregate: CandidateProfileAggregate
       term,
       titleLane: classifyOccupation({ title: term, description: "", companyName: "" }).lane,
       contextLanes: supportsDeclaredIndustryDisambiguation(term) ? contextLanes : [],
+      requiresIndustryContext: isGenericCrossIndustryTitle(term),
     })),
     titleTerms: declaredTitles,
     positiveKeywords: hasExplicitTargetTitles ? [] : unique([
@@ -180,6 +199,43 @@ export function labelForDecisionScore(score: number): MatchLabel {
   return "Probably Not Worth Your Time";
 }
 
+export function industryContextForJob(
+  job: MatchJob,
+  signals: ProfileMatchingSignals,
+  occupationClassification?: OccupationClassification,
+): IndustryContextAssessment {
+  const title = normalize(job.title);
+  const classification = occupationClassification ?? classifyOccupation({
+    title: job.title,
+    department: job.department,
+    description: [
+      job.industry ?? "",
+      job.description,
+      ...(job.responsibilities ?? []),
+      ...(job.requiredExperience ?? []),
+    ].join(" "),
+    companyName: job.companyName,
+  });
+  const exactIntents = signals.explicitTitleIntents.filter((intent) => includesTerm(title, intent.term));
+  const specializedIntentSupportsPosting = exactIntents.some((intent) => !intent.requiresIndustryContext)
+    || signals.explicitTitleIntents.some((intent) => (
+      !intent.requiresIndustryContext && intent.titleLane === classification.lane
+    ));
+  const relevantIntents = exactIntents.length > 0
+    ? exactIntents
+    : signals.explicitTitleIntents.filter((intent) => intent.titleLane === classification.lane);
+  const requiresIndustryContext = exactIntents.length > 0
+    ? exactIntents.every((intent) => intent.requiresIndustryContext)
+    : relevantIntents.some((intent) => intent.requiresIndustryContext)
+      || (
+        !specializedIntentSupportsPosting
+        &&
+        signals.explicitTitleIntents.some((intent) => intent.requiresIndustryContext)
+        && hasGenericCrossIndustryRoleHead(job.title)
+      );
+  return assessIndustryContext(job, signals.targetIndustries, requiresIndustryContext);
+}
+
 export function evaluatePublicJobDecision(
   job: MatchJob,
   signals: ProfileMatchingSignals,
@@ -208,7 +264,9 @@ export function evaluatePublicJobDecision(
 
   // Title family: direct target-title match is strong and immune to the lane
   // block; a core/stretch-lane title classification covers adjacent phrasing.
-  const titleTermMatches = matchingTerms(title, signals.titleTerms);
+  const titleTermMatches = signals.titleTerms.filter((term) => (
+    includesTerm(title, term) && !addsSubordinateTitleModifier(job.title, term)
+  ));
   const classification = classifyOccupation({
     title: job.title,
     department: job.department,
@@ -222,7 +280,40 @@ export function evaluatePublicJobDecision(
   });
   const lanePolarity = lanePolarityForProfile(classification.lane, signals.lanes);
   const laneTitleEvidence = classification.source === "title" || classification.source === "title_and_tasks";
-  const matchedTitleIntents = signals.explicitTitleIntents.filter((intent) => includesTerm(title, intent.term));
+  const exactMatchedTitleIntents = signals.explicitTitleIntents.filter((intent) => (
+    includesTerm(title, intent.term) && !addsSubordinateTitleModifier(job.title, intent.term)
+  ));
+  const subordinateTitleConflict = signals.explicitTitleIntents.some((intent) => (
+    includesTerm(title, intent.term) && addsSubordinateTitleModifier(job.title, intent.term)
+  )) && exactMatchedTitleIntents.length === 0;
+  const candidateGenericFamily = genericCrossIndustryRoleFamily(job.title);
+  const candidateGenericLevel = genericCrossIndustryRoleLevel(job.title);
+  const genericFamilyTitleIntents = exactMatchedTitleIntents.length > 0 || !candidateGenericFamily
+    ? []
+    : signals.explicitTitleIntents.filter((intent) => (
+      intent.requiresIndustryContext
+      && genericCrossIndustryRoleFamily(intent.term) === candidateGenericFamily
+      && genericCrossIndustryRoleLevel(intent.term) === candidateGenericLevel
+      && !addsSubordinateTitleModifier(job.title, intent.term)
+    ));
+  const genericTitleIntents = signals.explicitTitleIntents.filter((intent) => intent.requiresIndustryContext);
+  const specializedIntentSupportsPosting = exactMatchedTitleIntents.some((intent) => !intent.requiresIndustryContext)
+    || signals.explicitTitleIntents.some((intent) => (
+      !intent.requiresIndustryContext && intent.titleLane === classification.lane
+    ));
+  const genericCandidateRoleFamilyConflict = titleTermMatches.length === 0
+    && !specializedIntentSupportsPosting
+    && Boolean(candidateGenericFamily)
+    && genericTitleIntents.length > 0
+    && genericFamilyTitleIntents.length === 0;
+  const genericOnlyProfileRoleFamilyConflict = titleTermMatches.length === 0
+    && signals.explicitTitleIntents.length > 0
+    && signals.explicitTitleIntents.every((intent) => intent.requiresIndustryContext)
+    && genericFamilyTitleIntents.length === 0;
+  const matchedTitleIntents = [...exactMatchedTitleIntents, ...genericFamilyTitleIntents];
+  const industryContext = industryContextForJob(job, signals, classification);
+  const exactGenericIndustryMatch = matchedTitleIntents.some((intent) => intent.requiresIndustryContext)
+    && industryContext.status === "aligned";
 
   let roleFamily = "unclassified";
   let titleStrength: "strong" | "stretch" | "none" = "none";
@@ -235,6 +326,13 @@ export function evaluatePublicJobDecision(
     score += 42;
     positives.push(`Title matches your target: ${titleTermMatches.slice(0, 2).join(", ")}.`);
     evidence.push(`title evidence: ${titleTermMatches.slice(0, 2).join(", ")}`);
+  } else if (genericFamilyTitleIntents.length > 0) {
+    titleStrength = "strong";
+    roleFamily = genericFamilyTitleIntents.find((intent) => intent.titleLane !== "unknown")?.titleLane
+      ?? `${candidateGenericFamily}-leadership`;
+    score += 34;
+    positives.push(`Role family lines up with your target (${genericFamilyTitleIntents[0].term}).`);
+    evidence.push(`generic role family: ${candidateGenericFamily}`);
   } else if (lanePolarity === "core" && laneTitleEvidence) {
     titleStrength = "strong";
     roleFamily = classification.lane;
@@ -260,14 +358,21 @@ export function evaluatePublicJobDecision(
   // generic "program manager" target).
   if (
     isWrongLaneForProfile(classification, signals.lanes) &&
-    (titleTermMatches.length === 0 || laneTitleEvidence)
+    (titleTermMatches.length === 0 || laneTitleEvidence) &&
+    !exactGenericIndustryMatch
   ) {
     risks.push(`hard exclude: role is in a different lane (${classification.lane.replace(/-/g, " ")})`);
   }
+  if (subordinateTitleConflict) {
+    risks.push("hard exclude: title is subordinate to the saved target level");
+  }
+  if (genericCandidateRoleFamilyConflict || genericOnlyProfileRoleFamilyConflict) {
+    risks.push("hard exclude: role family differs from the saved generic target");
+  }
 
-  // A bare title such as "Account Director" can describe unrelated functions.
-  // When the saved title itself has no stable lane, resolve it from declared
-  // search context and the current posting, never from résumé evidence.
+  // Account Director has a separate function ambiguity inside the role itself.
+  // Preserve that role-layer check; the cross-industry validator applies only
+  // after a role family has been established.
   const ambiguousTitleIntents = matchedTitleIntents.filter((intent) => intent.titleLane === "unknown");
   const knownIntentSupportsPosting = matchedTitleIntents.some((intent) => intent.titleLane === classification.lane);
   const ambiguousContextSupportsPosting = ambiguousTitleIntents.some((intent) => intent.contextLanes.includes(classification.lane));
@@ -280,6 +385,17 @@ export function evaluatePublicJobDecision(
     !ambiguousContextSupportsPosting
   ) {
     risks.push(`hard exclude: ambiguous title conflicts with declared search context (${classification.lane.replace(/-/g, " ")})`);
+  }
+
+  if (industryContext.status === "aligned") {
+    score += 10;
+    positives.push("Posting context matches a target industry.");
+    evidence.push(...industryContext.evidence.slice(0, 3));
+  } else if (industryContext.status === "conflict") {
+    risks.push(`hard exclude: generic role conflicts with declared industry context (${industryContext.postingDomains.join(", ")})`);
+  } else if (industryContext.status === "unknown") {
+    score -= 5;
+    risks.push("Industry context is unclear for this generic target.");
   }
 
   const positiveMatches = matchingTerms(content, signals.positiveKeywords);
@@ -299,7 +415,7 @@ export function evaluatePublicJobDecision(
   }
 
   const industryMatches = matchingTerms(content, signals.targetIndustries);
-  if (industryMatches.length > 0) {
+  if (industryContext.status === "not_applicable" && industryMatches.length > 0) {
     score += Math.min(6, industryMatches.length * 2);
     positives.push(`Target industry overlap: ${industryMatches.slice(0, 2).join(", ")}.`);
   }
@@ -433,5 +549,6 @@ export function evaluatePublicJobDecision(
     positives,
     risks,
     evidence,
+    industryContext,
   };
 }

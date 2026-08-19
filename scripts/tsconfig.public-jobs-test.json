@@ -8,6 +8,7 @@
       "@/*": ["./*"]
     },
     "esModuleInterop": true,
+    "resolveJsonModule": true,
     "skipLibCheck": true,
     "outDir": "../node_modules/.cache/dumpster-fire-tests/public-jobs-repository"
   },

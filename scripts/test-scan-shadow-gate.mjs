@@ -10,6 +10,7 @@ const compile = spawnSync("npx", [
   "--module", "commonjs",
   "--moduleResolution", "node",
   "--esModuleInterop",
+  "--resolveJsonModule",
   "--skipLibCheck",
   "--lib", "ES2022,DOM",
   "--outDir", outDir,

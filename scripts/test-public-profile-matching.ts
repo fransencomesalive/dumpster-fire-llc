@@ -6,6 +6,10 @@ import {
   matchingSignalsForAggregate,
 } from "../lib/public-profile/matching/decision";
 import { classifyOccupation } from "../lib/public-profile/matching/occupation";
+import {
+  hasGenericCrossIndustryRoleHead,
+  isGenericCrossIndustryTitle,
+} from "../lib/public-profile/matching/industry-context";
 import type { MatchJob } from "../lib/public-profile/matching/types";
 import { completeCandidateProfileAggregate } from "./fixtures/public-profile";
 
@@ -416,16 +420,17 @@ const thinStretch = evaluateMatch({
   profile: profile(),
   job: {
     id: "job-thin-strategy-operations-feedback",
-    title: "Company Strategy & Operations",
+    title: "Director of Programs, Company Strategy & Operations",
     companyName: "Payments Company",
     description: "Lead corporate strategy, investment analysis, executive recommendations, and cross-functional strategic initiatives.",
+    industry: "AI",
     location: "Remote - US",
     remoteType: "remote",
     postedAt: "2026-06-27T12:00:00.000Z",
   },
   evaluatedAt: now,
 });
-assert.equal(thinStretch.label, "Potential Match");
+assert.equal(thinStretch.label, "Strong Match");
 assert.ok(thinStretch.internalScore >= 60);
 assert.equal(thinStretch.whyNotMatched.some((reason) => reason.includes("too thin")), false);
 
@@ -1050,5 +1055,596 @@ const partiallyTitledSignals = matchingSignalsForAggregate(partiallyTitledProfil
 assert.ok(partiallyTitledSignals.lanes.coreLanes.has("program-project-management"));
 assert.ok(partiallyTitledSignals.lanes.coreLanes.has("content-video-production"));
 assert.deepEqual(partiallyTitledSignals.titleTerms, ["Program Director", "Executive Producer"]);
+
+// Regression 2026-08-18: a generic target title is only the role layer. The
+// posting's current industry or functional context is a separate layer, and the
+// same rule must work symmetrically for every user's declared industry.
+const genericProgramContexts = [
+  {
+    id: "advertising",
+    targetIndustry: "Advertising Services",
+    department: "Advertising Account Services",
+    description: "Lead advertising campaigns, creative production, media planning, stakeholder strategy, and cross-functional delivery.",
+  },
+  {
+    id: "it",
+    targetIndustry: "Information Technology",
+    department: "Information Technology",
+    description: "Lead enterprise information technology programs across cloud infrastructure, cybersecurity, systems delivery, stakeholders, scope, and planning.",
+  },
+  {
+    id: "healthcare",
+    targetIndustry: "Healthcare",
+    department: "Clinical Operations",
+    description: "Lead healthcare modernization across clinical programs, patient services, regulatory care delivery, stakeholders, scope, and planning.",
+  },
+] as const;
+
+function genericProgramProfile(targetIndustry: string) {
+  const aggregate = profile();
+  aggregate.preferences = {
+    ...aggregate.preferences!,
+    targetIndustries: targetIndustry ? [targetIndustry] : [],
+    avoidIndustries: [],
+    avoidCompanies: [],
+  };
+  aggregate.roleTracks[0] = {
+    ...aggregate.roleTracks[0],
+    name: "Program Leadership",
+    targetTitles: ["Program Director"],
+    keyResponsibilities: [],
+    requiredExperiencePatterns: [],
+    strongJobSignals: [],
+    weakJobSignals: [],
+    mismatchSignals: [],
+  };
+  aggregate.skills = [];
+  aggregate.workExamples = [];
+  aggregate.fitSignals = undefined;
+  return aggregate;
+}
+
+function genericProgramJob(context: typeof genericProgramContexts[number]): MatchJob {
+  return {
+    id: `job-generic-program-${context.id}`,
+    title: "Program Director",
+    companyName: `${context.id} organization`,
+    department: context.department,
+    description: context.description,
+    remoteType: "remote",
+    postedAt: "2026-06-27T12:00:00.000Z",
+  };
+}
+
+for (const profileContext of genericProgramContexts) {
+  const aggregate = genericProgramProfile(profileContext.targetIndustry);
+  const signals = matchingSignalsForAggregate(aggregate);
+  for (const jobContext of genericProgramContexts) {
+    const decision = evaluatePublicJobDecision(genericProgramJob(jobContext), signals, now);
+    assert.equal(
+      decision.included,
+      profileContext.id === jobContext.id,
+      `${profileContext.targetIndustry} Program Director search must ${profileContext.id === jobContext.id ? "include" : "exclude"} ${jobContext.id} context`,
+    );
+    assert.equal(decision.industryContext.status, profileContext.id === jobContext.id ? "aligned" : "conflict");
+  }
+}
+
+for (const [targetIndustry, jobContext] of [
+  ["Technology, Information and Internet", genericProgramContexts[1]],
+  ["Hospitals and Health Care", genericProgramContexts[2]],
+  ["Brand", genericProgramContexts[0]],
+] as const) {
+  const decision = evaluatePublicJobDecision(
+    genericProgramJob(jobContext),
+    matchingSignalsForAggregate(genericProgramProfile(targetIndustry)),
+    now,
+  );
+  assert.equal(decision.included, true, `${targetIndustry} catalogue label must resolve to ${jobContext.id}`);
+  assert.equal(decision.industryContext.status, "aligned");
+}
+
+for (const title of [
+  "Program Director",
+  "Project Manager",
+  "Operations Director",
+  "Chief of Staff",
+  "COO",
+  "Fractional COO",
+  "Program Analyst",
+  "Program Specialist",
+  "Program Administrator",
+  "Program Associate",
+  "Program Management Office Director",
+  "Program Management Office Analyst",
+  "PMO Director",
+]) {
+  assert.equal(isGenericCrossIndustryTitle(title), true, `${title} must require industry context`);
+}
+for (const title of [
+  "Program Director, Integrated Healthcare Modernization",
+  "Senior Information Technology Program Manager",
+  "Legal Account Director",
+]) {
+  assert.equal(hasGenericCrossIndustryRoleHead(title), true, `${title} must retain its generic role head`);
+}
+for (const title of ["Marketing Program Director", "Technical Program Manager", "Clinical Operations Director"]) {
+  assert.equal(isGenericCrossIndustryTitle(title), false, `${title} already carries functional context`);
+}
+
+// Multiple target industries are a union. Adding IT makes both advertising and
+// IT contexts valid without admitting an unrelated healthcare context.
+const multiIndustryProgramProfile = genericProgramProfile("Advertising Services");
+multiIndustryProgramProfile.preferences!.targetIndustries = ["Advertising Services", "Information Technology"];
+const multiIndustryProgramSignals = matchingSignalsForAggregate(multiIndustryProgramProfile);
+for (const jobContext of genericProgramContexts) {
+  const decision = evaluatePublicJobDecision(genericProgramJob(jobContext), multiIndustryProgramSignals, now);
+  assert.equal(decision.included, jobContext.id !== "healthcare");
+}
+
+// Functional qualifiers remain authoritative. A Marketing Program Director on
+// a health-care company's marketing team is not reclassified as a clinical role.
+const qualifiedMarketingProgramProfile = genericProgramProfile("Advertising Services");
+qualifiedMarketingProgramProfile.roleTracks[0].targetTitles = ["Marketing Program Director"];
+const qualifiedMarketingProgramDecision = evaluatePublicJobDecision({
+  id: "job-qualified-marketing-program-healthcare-company",
+  title: "Marketing Program Director",
+  companyName: "Hospital Network",
+  department: "Integrated Marketing",
+  description: "Lead brand marketing, advertising campaigns, media planning, creative production, stakeholders, and delivery for a healthcare organization.",
+  remoteType: "remote",
+  postedAt: "2026-06-27T12:00:00.000Z",
+}, matchingSignalsForAggregate(qualifiedMarketingProgramProfile), now);
+assert.equal(qualifiedMarketingProgramDecision.included, true);
+assert.equal(qualifiedMarketingProgramDecision.industryContext.status, "not_applicable");
+
+// A generic target cannot hijack a separate specialized target in the same
+// profile. Each posting is validated against the intent that supports it.
+const marketingOnlyProfile = genericProgramProfile("Advertising Services");
+marketingOnlyProfile.roleTracks[0].targetTitles = ["Marketing Director"];
+const mixedMarketingAndProgramProfile = clone(marketingOnlyProfile);
+mixedMarketingAndProgramProfile.roleTracks[0].targetTitles.push("Program Director");
+const marketingStrategyJob: MatchJob = {
+  id: "job-marketing-strategy-director-mixed-targets",
+  title: "Director of Marketing Strategy",
+  companyName: "Advertising Agency",
+  department: "Marketing",
+  description: "Lead brand marketing strategy, advertising campaigns, media planning, and creative production.",
+  remoteType: "remote",
+  postedAt: "2026-06-27T12:00:00.000Z",
+};
+const marketingOnlyDecision = evaluatePublicJobDecision(
+  marketingStrategyJob,
+  matchingSignalsForAggregate(marketingOnlyProfile),
+  now,
+);
+const mixedMarketingAndProgramDecision = evaluatePublicJobDecision(
+  marketingStrategyJob,
+  matchingSignalsForAggregate(mixedMarketingAndProgramProfile),
+  now,
+);
+assert.equal(mixedMarketingAndProgramDecision.included, marketingOnlyDecision.included);
+assert.equal(mixedMarketingAndProgramDecision.score, marketingOnlyDecision.score);
+assert.equal(mixedMarketingAndProgramDecision.industryContext.status, marketingOnlyDecision.industryContext.status);
+
+// Search context, not experience history, controls the industry layer.
+const advertisingProgramProfile = genericProgramProfile("Advertising Services");
+const oppositeExperienceProgramProfile = clone(advertisingProgramProfile);
+oppositeExperienceProgramProfile.roleTracks[0].keyResponsibilities = ["Lead clinical healthcare modernization and hospital programs"];
+oppositeExperienceProgramProfile.skills = [{
+  ...profile().skills[0],
+  skillName: "Clinical operations",
+  evidence: ["Hospital transformation"],
+}];
+const advertisingProgramSignals = matchingSignalsForAggregate(advertisingProgramProfile);
+const oppositeExperienceProgramSignals = matchingSignalsForAggregate(oppositeExperienceProgramProfile);
+for (const jobContext of genericProgramContexts) {
+  const job = genericProgramJob(jobContext);
+  const baselineDecision = evaluatePublicJobDecision(job, advertisingProgramSignals, now);
+  const oppositeExperienceDecision = evaluatePublicJobDecision(job, oppositeExperienceProgramSignals, now);
+  assert.equal(oppositeExperienceDecision.included, baselineDecision.included);
+  assert.equal(oppositeExperienceDecision.score, baselineDecision.score);
+}
+
+// With no declared industry, the industry layer is neutral. A sparse posting is
+// unknown rather than falsely contradictory.
+const unconstrainedProgramDecision = evaluatePublicJobDecision(
+  genericProgramJob(genericProgramContexts[1]),
+  matchingSignalsForAggregate(genericProgramProfile("")),
+  now,
+);
+assert.equal(unconstrainedProgramDecision.included, true);
+assert.equal(unconstrainedProgramDecision.industryContext.status, "not_applicable");
+const unknownContextProgramDecision = evaluatePublicJobDecision({
+  id: "job-generic-program-unknown",
+  title: "Program Director",
+  companyName: "Organization",
+  description: "Own strategy, lead cross-functional delivery, manage stakeholders, scope, planning, and budget across the organization.",
+  remoteType: "remote",
+  postedAt: "2026-06-27T12:00:00.000Z",
+}, matchingSignalsForAggregate(genericProgramProfile("Advertising Services")), now);
+assert.equal(unknownContextProgramDecision.included, true);
+assert.equal(unknownContextProgramDecision.industryContext.status, "unknown");
+const alignedContextProgramDecision = evaluatePublicJobDecision(
+  genericProgramJob(genericProgramContexts[0]),
+  matchingSignalsForAggregate(genericProgramProfile("Advertising Services")),
+  now,
+);
+assert.ok(alignedContextProgramDecision.score > unknownContextProgramDecision.score);
+
+// A selected industry mentioned incidentally in the body cannot override a
+// contradictory functional modifier in the title or department.
+const aiProgramSignals = matchingSignalsForAggregate(genericProgramProfile("AI"));
+const aiMentionInsideItProgram = evaluatePublicJobDecision({
+  id: "job-generic-program-it-with-ai-mention",
+  title: "Program Director, Information Technology",
+  companyName: "Enterprise Organization",
+  department: "Information Technology",
+  description: "Lead cloud infrastructure, enterprise systems, cybersecurity, and an AI modernization workstream across stakeholders and delivery.",
+  remoteType: "remote",
+  postedAt: "2026-06-27T12:00:00.000Z",
+}, aiProgramSignals, now);
+assert.equal(aiMentionInsideItProgram.included, false);
+assert.equal(aiMentionInsideItProgram.industryContext.status, "conflict");
+const aiQualifiedGenericProgram = evaluatePublicJobDecision({
+  id: "job-generic-program-ai-qualified",
+  title: "AI Program Director",
+  companyName: "Enterprise Organization",
+  department: "AI Enablement",
+  description: "Lead enterprise AI deployment, generative AI workflows, stakeholders, strategy, and cross-functional delivery.",
+  remoteType: "remote",
+  postedAt: "2026-06-27T12:00:00.000Z",
+}, aiProgramSignals, now);
+assert.equal(aiQualifiedGenericProgram.included, true);
+assert.equal(aiQualifiedGenericProgram.industryContext.status, "aligned");
+const aiCompanyLegalProgram = evaluatePublicJobDecision({
+  id: "job-generic-program-legal-at-ai-company",
+  title: "Legal Program Manager",
+  companyName: "AI Company",
+  department: "Legal and Compliance",
+  description: "Lead contract governance and regulatory compliance for an artificial intelligence company, managing stakeholders, scope, and delivery.",
+  remoteType: "remote",
+  postedAt: "2026-06-27T12:00:00.000Z",
+}, matchingSignalsForAggregate(genericProgramProfile("Artificial Intelligence")), now);
+assert.equal(aiCompanyLegalProgram.included, false);
+assert.equal(aiCompanyLegalProgram.industryContext.status, "conflict");
+
+// Industry validation also applies when an existing broad role lane admits a
+// different generic title. Exact-title wording cannot be the only protected path.
+const financeChiefOfStaffProfile = genericProgramProfile("Financial Services");
+financeChiefOfStaffProfile.roleTracks[0].targetTitles = ["Chief of Staff"];
+const healthcareProgramForFinanceOperations = evaluatePublicJobDecision(
+  genericProgramJob(genericProgramContexts[2]),
+  matchingSignalsForAggregate(financeChiefOfStaffProfile),
+  now,
+);
+assert.equal(healthcareProgramForFinanceOperations.industryContext.status, "conflict");
+assert.equal(healthcareProgramForFinanceOperations.included, false);
+
+// Generic-title morphology cannot be a bypass. Word order, plurals, and
+// non-functional modifiers still require the same industry validation.
+for (const title of [
+  "Director of Programs",
+  "Senior Director of Programs",
+  "Head of Programs",
+  "Strategic Program Director",
+  "Director of Strategic Programs",
+  "Program Management Director",
+  "Head of Strategic Programs",
+]) {
+  assert.equal(isGenericCrossIndustryTitle(title), true, `${title} must be treated as a generic title`);
+  const alignedDecision = evaluatePublicJobDecision({
+    ...genericProgramJob(genericProgramContexts[0]),
+    id: `job-generic-variant-aligned-${title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
+    title,
+  }, matchingSignalsForAggregate(genericProgramProfile("Advertising Services")), now);
+  assert.equal(alignedDecision.industryContext.status, "aligned");
+  assert.equal(alignedDecision.included, true, `${title} must remain eligible in the selected industry`);
+  const decision = evaluatePublicJobDecision({
+    ...genericProgramJob(genericProgramContexts[2]),
+    id: `job-generic-variant-${title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
+    title,
+  }, matchingSignalsForAggregate(genericProgramProfile("Advertising Services")), now);
+  assert.equal(decision.industryContext.status, "conflict", `${title} cannot bypass industry validation`);
+  assert.equal(decision.included, false);
+}
+
+// Catalogue leaves remain atomic. Shared parent words such as "manufacturing"
+// do not turn sibling industries into matches, while a broad selected parent
+// can accept a more specific descendant.
+const sportingGoodsSignals = matchingSignalsForAggregate(genericProgramProfile("Sporting Goods Manufacturing"));
+const automotiveProgramJob: MatchJob = {
+  id: "job-generic-program-automotive-manufacturing",
+  title: "Program Director",
+  companyName: "Vehicle Manufacturer",
+  department: "Automotive Manufacturing",
+  description: "Lead Motor Vehicle Manufacturing programs across vehicle plants, suppliers, stakeholders, scope, and delivery.",
+  remoteType: "remote",
+  postedAt: "2026-06-27T12:00:00.000Z",
+};
+const sportingGoodsAgainstAutomotive = evaluatePublicJobDecision(automotiveProgramJob, sportingGoodsSignals, now);
+assert.equal(sportingGoodsAgainstAutomotive.included, false);
+assert.equal(sportingGoodsAgainstAutomotive.industryContext.status, "conflict");
+const sportingGoodsProgramJob: MatchJob = {
+  ...automotiveProgramJob,
+  id: "job-generic-program-sporting-goods-manufacturing",
+  companyName: "Sporting Goods Manufacturer",
+  department: "Sporting Goods Manufacturing",
+  description: "Lead sporting goods manufacturing programs across athletic products, suppliers, stakeholders, scope, and delivery.",
+};
+assert.equal(evaluatePublicJobDecision(sportingGoodsProgramJob, sportingGoodsSignals, now).industryContext.status, "aligned");
+assert.equal(
+  evaluatePublicJobDecision(
+    sportingGoodsProgramJob,
+    matchingSignalsForAggregate(genericProgramProfile("Manufacturing")),
+    now,
+  ).industryContext.status,
+  "aligned",
+  "a selected parent industry must accept a catalogue descendant",
+);
+const broadManufacturingPosting = evaluatePublicJobDecision({
+  ...automotiveProgramJob,
+  id: "job-generic-program-broad-manufacturing",
+  department: "Manufacturing",
+  description: "Lead manufacturing programs across plants, suppliers, stakeholders, scope, and delivery.",
+}, sportingGoodsSignals, now);
+assert.equal(broadManufacturingPosting.industryContext.status, "unknown", "a broad parent cannot confirm a specific leaf");
+
+const medicalEquipmentAgainstHealthcare = evaluatePublicJobDecision(
+  genericProgramJob(genericProgramContexts[2]),
+  matchingSignalsForAggregate(genericProgramProfile("Medical Equipment Manufacturing")),
+  now,
+);
+assert.equal(medicalEquipmentAgainstHealthcare.included, false);
+assert.equal(medicalEquipmentAgainstHealthcare.industryContext.status, "conflict");
+const consumerServicesAgainstHealthcare = evaluatePublicJobDecision(
+  genericProgramJob(genericProgramContexts[2]),
+  matchingSignalsForAggregate(genericProgramProfile("Consumer Services")),
+  now,
+);
+assert.equal(consumerServicesAgainstHealthcare.included, false);
+assert.equal(consumerServicesAgainstHealthcare.industryContext.status, "conflict");
+
+// A target phrase in body copy participates in the same evidence comparison;
+// it cannot short-circuit a decisive, contradictory title or department.
+const consultingMentionInsideItProgram = evaluatePublicJobDecision({
+  ...genericProgramJob(genericProgramContexts[1]),
+  id: "job-generic-program-it-with-consulting-mention",
+  description: "Lead enterprise information technology programs and coordinate with management consulting partners across stakeholders and delivery.",
+}, matchingSignalsForAggregate(genericProgramProfile("Management Consulting")), now);
+assert.equal(consultingMentionInsideItProgram.included, false);
+assert.equal(consultingMentionInsideItProgram.industryContext.status, "conflict");
+
+// Role validation runs before industry validation. Sharing a broad occupation
+// lane and target industry cannot turn a different generic role into the saved
+// role.
+const financeOperationsProfile = genericProgramProfile("Financial Services");
+financeOperationsProfile.roleTracks[0].targetTitles = ["Director of Operations"];
+const financeStrategistForOperations = evaluatePublicJobDecision({
+  id: "job-finance-strategist-for-operations-director",
+  title: "Strategy Manager",
+  companyName: "Financial Organization",
+  department: "Financial Services",
+  description: "Lead financial services deal strategy, stakeholders, planning, and cross-functional delivery.",
+  remoteType: "remote",
+  postedAt: "2026-06-27T12:00:00.000Z",
+}, matchingSignalsForAggregate(financeOperationsProfile), now);
+assert.equal(financeStrategistForOperations.included, false);
+assert.ok(financeStrategistForOperations.risks.some((risk) => risk.includes("role family differs")));
+
+const advertisingRoleFirstProgramProfile = genericProgramProfile("Advertising Services");
+const advertisingOperationsForProgram = evaluatePublicJobDecision({
+  id: "job-advertising-operations-for-program-director",
+  title: "Director of Operations",
+  companyName: "Advertising Agency",
+  department: "Advertising Services",
+  description: "Lead advertising operations, planning, stakeholders, and cross-functional delivery.",
+  remoteType: "remote",
+  postedAt: "2026-06-27T12:00:00.000Z",
+}, matchingSignalsForAggregate(advertisingRoleFirstProgramProfile), now);
+assert.equal(advertisingOperationsForProgram.included, false);
+assert.ok(advertisingOperationsForProgram.risks.some((risk) => risk.includes("role family differs")));
+
+const advertisingOperationsProfile = genericProgramProfile("Advertising Services");
+advertisingOperationsProfile.roleTracks[0].targetTitles = ["Director of Operations"];
+const advertisingProgramForOperations = evaluatePublicJobDecision({
+  id: "job-advertising-program-for-operations-director",
+  title: "Program Director",
+  companyName: "Advertising Agency",
+  department: "Advertising Services",
+  description: "Lead advertising programs, planning, stakeholders, and cross-functional delivery.",
+  remoteType: "remote",
+  postedAt: "2026-06-27T12:00:00.000Z",
+}, matchingSignalsForAggregate(advertisingOperationsProfile), now);
+assert.equal(advertisingProgramForOperations.included, false);
+assert.ok(advertisingProgramForOperations.risks.some((risk) => risk.includes("role family differs")));
+
+const advertisingProgramOfficerForDirector = evaluatePublicJobDecision({
+  id: "job-advertising-program-officer-for-program-director",
+  title: "Senior Program Officer",
+  companyName: "Advertising Agency",
+  department: "Advertising Services",
+  description: "Support advertising programs, planning, stakeholders, and cross-functional delivery.",
+  remoteType: "remote",
+  postedAt: "2026-06-27T12:00:00.000Z",
+}, matchingSignalsForAggregate(advertisingRoleFirstProgramProfile), now);
+assert.equal(advertisingProgramOfficerForDirector.included, false);
+assert.ok(advertisingProgramOfficerForDirector.risks.some((risk) => risk.includes("role family differs")));
+
+const advertisingProgramAnalystProfile = genericProgramProfile("Advertising Services");
+advertisingProgramAnalystProfile.roleTracks[0].targetTitles = ["Program Analyst"];
+const advertisingProgramAnalyst = evaluatePublicJobDecision({
+  id: "job-advertising-program-analyst",
+  title: "Program Analyst",
+  companyName: "Advertising Agency",
+  department: "Advertising Services",
+  description: "Analyze advertising programs, campaign planning, stakeholders, and delivery.",
+  remoteType: "remote",
+  postedAt: "2026-06-27T12:00:00.000Z",
+}, matchingSignalsForAggregate(advertisingProgramAnalystProfile), now);
+assert.equal(advertisingProgramAnalyst.included, true);
+assert.equal(advertisingProgramAnalyst.industryContext.status, "aligned");
+const informationTechnologyProgramAnalyst = evaluatePublicJobDecision({
+  id: "job-information-technology-program-analyst",
+  title: "Program Analyst",
+  companyName: "Technology Company",
+  department: "Information Technology",
+  description: "Analyze enterprise information technology programs, systems, stakeholders, and delivery.",
+  remoteType: "remote",
+  postedAt: "2026-06-27T12:00:00.000Z",
+}, matchingSignalsForAggregate(advertisingProgramAnalystProfile), now);
+assert.equal(informationTechnologyProgramAnalyst.included, false);
+assert.equal(informationTechnologyProgramAnalyst.industryContext.status, "conflict");
+
+const advertisingPmoDirectorProfile = genericProgramProfile("Advertising Services");
+advertisingPmoDirectorProfile.roleTracks[0].targetTitles = ["PMO Director"];
+for (const [id, department, description, expectedIncluded, expectedStatus] of [
+  [
+    "advertising",
+    "Advertising Services",
+    "Lead the advertising program management office across campaigns, stakeholders, and delivery.",
+    true,
+    "aligned",
+  ],
+  [
+    "information-technology",
+    "Information Technology",
+    "Lead the enterprise information technology program management office across systems and delivery.",
+    false,
+    "conflict",
+  ],
+] as const) {
+  const decision = evaluatePublicJobDecision({
+    id: `job-${id}-pmo-director`,
+    title: "Program Management Office Director",
+    companyName: "Organization",
+    department,
+    description,
+    remoteType: "remote",
+    postedAt: "2026-06-27T12:00:00.000Z",
+  }, matchingSignalsForAggregate(advertisingPmoDirectorProfile), now);
+  assert.equal(decision.included, expectedIncluded);
+  assert.equal(decision.industryContext.status, expectedStatus);
+}
+
+const advertisingProgramOfficerProfile = genericProgramProfile("Advertising Services");
+advertisingProgramOfficerProfile.roleTracks[0].targetTitles = ["Program Officer"];
+const advertisingProgramOfficer = evaluatePublicJobDecision({
+  id: "job-advertising-program-officer",
+  title: "Senior Program Officer",
+  companyName: "Advertising Agency",
+  department: "Advertising Services",
+  description: "Support advertising programs, planning, stakeholders, and cross-functional delivery.",
+  remoteType: "remote",
+  postedAt: "2026-06-27T12:00:00.000Z",
+}, matchingSignalsForAggregate(advertisingProgramOfficerProfile), now);
+assert.equal(advertisingProgramOfficer.included, true);
+assert.equal(advertisingProgramOfficer.industryContext.status, "aligned");
+
+// Production rows currently provide posting text, not structured industry.
+// Every catalogue leaf must therefore be visible from title, department, and
+// description text even when neither side belongs to a supplemental alias.
+for (const [targetIndustry, postingIndustry] of [
+  ["Dairy Product Manufacturing", "Chemical Manufacturing"],
+  ["Museums, Historical Sites, and Zoos", "Restaurants"],
+  ["Airlines and Aviation", "Freight and Package Transportation"],
+  ["Primary and Secondary Education", "Oil and Gas"],
+] as const) {
+  const decision = evaluatePublicJobDecision({
+    id: `job-production-shape-${postingIndustry.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
+    title: "Program Director",
+    companyName: "Organization",
+    department: postingIndustry,
+    description: `Lead ${postingIndustry} programs across strategy, stakeholders, scope, and cross-functional delivery.`,
+    remoteType: "remote",
+    postedAt: "2026-06-27T12:00:00.000Z",
+  }, matchingSignalsForAggregate(genericProgramProfile(targetIndustry)), now);
+  assert.equal(decision.industryContext.status, "conflict", `${postingIndustry} must be visible against ${targetIndustry}`);
+  assert.equal(decision.included, false);
+}
+
+for (const [targetIndustry, postingIndustry] of [
+  ["Software Development", "IT Services and IT Consulting"],
+  ["IT Services and IT Consulting", "Software Development"],
+  ["Advertising Services", "Marketing Services"],
+  ["Marketing Services", "Advertising Services"],
+] as const) {
+  const decision = evaluatePublicJobDecision({
+    id: `job-catalogue-sibling-${targetIndustry.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${postingIndustry.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
+    title: "Program Director",
+    companyName: "Organization",
+    department: postingIndustry,
+    description: `Lead ${postingIndustry} programs across strategy, stakeholders, scope, and cross-functional delivery.`,
+    remoteType: "remote",
+    postedAt: "2026-06-27T12:00:00.000Z",
+  }, matchingSignalsForAggregate(genericProgramProfile(targetIndustry)), now);
+  assert.equal(decision.industryContext.status, "conflict", `${targetIndustry} must not absorb sibling ${postingIndustry}`);
+  assert.equal(decision.included, false);
+}
+
+const stableGenericFamilyDecision = evaluatePublicJobDecision({
+  ...genericProgramJob(genericProgramContexts[0]),
+  id: "job-generic-program-management-director-family",
+  title: "Director of Program Management",
+}, matchingSignalsForAggregate(genericProgramProfile("Advertising Services")), now);
+assert.equal(stableGenericFamilyDecision.included, true);
+assert.equal(stableGenericFamilyDecision.roleFamily, "program-project-management");
+
+const coordinatorForDirectorDecision = evaluatePublicJobDecision({
+  ...genericProgramJob(genericProgramContexts[0]),
+  id: "job-program-coordinator-for-director",
+  title: "Program Coordinator",
+}, matchingSignalsForAggregate(genericProgramProfile("Advertising Services")), now);
+assert.equal(coordinatorForDirectorDecision.included, false, "Program Coordinator cannot inherit Program Director equivalence");
+
+for (const title of ["Assistant Program Director", "Associate Program Director", "Deputy Program Director"]) {
+  const subordinateDecision = evaluatePublicJobDecision({
+    ...genericProgramJob(genericProgramContexts[0]),
+    id: `job-subordinate-program-director-${title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
+    title,
+  }, matchingSignalsForAggregate(genericProgramProfile("Advertising Services")), now);
+  assert.equal(subordinateDecision.included, false, `${title} cannot receive exact Program Director treatment`);
+  assert.ok(subordinateDecision.risks.some((risk) => risk.includes("subordinate to the saved target level")));
+}
+
+const assistantProgramProfile = genericProgramProfile("Advertising Services");
+assistantProgramProfile.roleTracks[0].targetTitles = ["Assistant Program Director"];
+const assistantProgramSignals = matchingSignalsForAggregate(assistantProgramProfile);
+const alignedAssistantProgram = evaluatePublicJobDecision({
+  ...genericProgramJob(genericProgramContexts[0]),
+  id: "job-assistant-program-director-advertising",
+  title: "Assistant Program Director",
+}, assistantProgramSignals, now);
+assert.equal(alignedAssistantProgram.included, true);
+assert.equal(alignedAssistantProgram.industryContext.status, "aligned");
+const conflictingAssistantProgram = evaluatePublicJobDecision({
+  ...genericProgramJob(genericProgramContexts[1]),
+  id: "job-assistant-program-director-it",
+  title: "Assistant Program Director",
+}, assistantProgramSignals, now);
+assert.equal(conflictingAssistantProgram.included, false);
+assert.equal(conflictingAssistantProgram.industryContext.status, "conflict");
+
+for (const [targetIndustry, description] of [
+  [
+    "Climate Technology",
+    "Lead clinical healthcare programs and coordinate with Climate Technology partners across strategy, stakeholders, and delivery.",
+  ],
+  [
+    "Circular Economy Platforms",
+    "Lead Financial Services programs and coordinate with Circular Economy Platforms partners across strategy, stakeholders, and delivery.",
+  ],
+] as const) {
+  const decision = evaluatePublicJobDecision({
+    id: `job-custom-industry-ambiguous-${targetIndustry.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
+    title: "Program Director",
+    companyName: "Organization",
+    department: "Program Management",
+    description,
+    remoteType: "remote",
+    postedAt: "2026-06-27T12:00:00.000Z",
+  }, matchingSignalsForAggregate(genericProgramProfile(targetIndustry)), now);
+  assert.equal(decision.industryContext.status, "unknown", "equal-source custom evidence must remain ambiguous");
+}
 
 console.log("public profile matching: all assertions passed");

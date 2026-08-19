@@ -343,6 +343,34 @@ The matching fixture gate is **blocking within `npm run release:check`** when th
 the production shadow replay remains an explicit pre-deployment operation because CI does not hold
 production credentials.
 
+### Generic Role Industry Validation (Randall, 2026-08-18)
+
+Generic job titles must be evaluated on two independent dimensions: the role and the current
+posting's industry or functional context. An exact generic title match is not sufficient evidence
+that the job belongs in the user's search.
+
+- Apply the same role-plus-industry decision to every account. Never map a generic title globally
+  to advertising, technology, health care, or any other industry, and never add an account-specific
+  exception.
+- Derive role eligibility from explicit target titles. Validate a generic role's context against
+  the user's declared target industries using only current-posting evidence such as a functional
+  title modifier, department, responsibilities, required experience, and description.
+- Keep résumé history, skills, work examples, prior employers, and other experience evidence out
+  of industry validation. They may explain a selected result but cannot redefine search intent.
+- A posting that supports any one of several declared target industries is contextually eligible.
+  Multiple target industries use OR semantics; one selected industry must not suppress another.
+- A confident posting-context contradiction is ineligible even when the title exactly matches a
+  saved generic title. Missing posting context remains unknown, not contradictory, and must rank
+  below confirmed alignment rather than being presented as confirmed.
+- If no target industry is selected, industry validation is neutral and role matching behaves as
+  configured.
+- Regression coverage must be symmetric across mixed industries and profiles, must cross the
+  production result cap, and must prove that changing only the user's declared industry changes
+  contextual eligibility without changing the role classifier.
+
+Enforcement class: **advisory** for this instruction text. The symmetric matcher and shadow-audit
+fixtures are **blocking within `npm run release:check`** when that command is run.
+
 ### Action Color Roles (Randall 2026-07-23)
 
 Standing color semantics for every action control, app-wide. `--role-action` is **teal**.

@@ -13,6 +13,7 @@ const compileArgs = [
   "--moduleResolution",
   "node",
   "--esModuleInterop",
+  "--resolveJsonModule",
   "--skipLibCheck",
   "--lib",
   "ES2022,DOM",

@@ -828,11 +828,13 @@ async function finalizeCompletedScan(
     .sort(compareEvaluatedScanCandidates);
   const laneCounts: Record<string, DiagnosticCountBucket> = {};
   const targetCounts: Record<string, DiagnosticCountBucket> = {};
+  const industryContextCounts: Record<string, DiagnosticCountBucket> = {};
   const exclusionCounts: Record<string, number> = {};
 
   for (const candidate of input.evaluated) {
     incrementDiagnosticCount(laneCounts, candidate.lane, "candidate");
     incrementDiagnosticCount(targetCounts, candidate.targetTitle, "candidate");
+    incrementDiagnosticCount(industryContextCounts, candidate.decision.industryContext.status, "candidate");
     if (!candidate.decision.included) {
       const hardRisks = [...new Set(candidate.decision.risks.filter((risk) => risk.startsWith("hard ")))];
       const reasons = hardRisks.length > 0
@@ -845,9 +847,11 @@ async function finalizeCompletedScan(
     }
     incrementDiagnosticCount(laneCounts, candidate.lane, "eligible");
     incrementDiagnosticCount(targetCounts, candidate.targetTitle, "eligible");
+    incrementDiagnosticCount(industryContextCounts, candidate.decision.industryContext.status, "eligible");
     const outcome = selectedIds.has(candidate.job.id) ? "selected" : "cutoff";
     incrementDiagnosticCount(laneCounts, candidate.lane, outcome);
     incrementDiagnosticCount(targetCounts, candidate.targetTitle, outcome);
+    incrementDiagnosticCount(industryContextCounts, candidate.decision.industryContext.status, outcome);
   }
 
   const contextHash = createHash("sha256")
@@ -901,6 +905,7 @@ async function finalizeCompletedScan(
         scan_context: {
           providerMode: "normalized_public_jobs",
           parameters: scanParametersForAggregate(input.profile),
+          industryContextCounts,
         },
         lane_counts: laneCounts,
         target_counts: targetCounts,
